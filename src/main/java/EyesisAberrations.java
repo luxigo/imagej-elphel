@@ -195,12 +195,12 @@ public class EyesisAberrations {
 								tilesX, // number of kernels in a row
 								tileX, // horizontal number of kernel to extract
 								tileY); // vertical number of kernel to extract
-						/** Find direct kernel approximation ellipse, increase it, mirror center around 0,0 and use it as a mask for the reversed kernel */
+						/* Find direct kernel approximation ellipse, increase it, mirror center around 0,0 and use it as a mask for the reversed kernel */
 						selection=    findClusterOnPSF(kernel,  inverseParameters.psfCutoffEnergy, "",globalDebugLevel);
 						ellipse_coeff=findEllipseOnPSF(kernel,  selection, "",globalDebugLevel); // coefficients for direct PSF, for rPSF [0] and [1] need to be opposite size
 
 						rKernel=resizeForFFT(kernel,inverseParameters.rSize);
-/** Apply variable blur to direct kernel using it's center X,Y */
+/* Apply variable blur to direct kernel using it's center X,Y */
 						if (inverseParameters.filterDirect) {
 							variableSigmas= createSigmasFromCenter(inverseParameters.rSize, // side of square
 									inverseParameters.sigmaToRadiusDirect, // variable blurring - sigma will be proportional distance from the center
@@ -217,21 +217,21 @@ public class EyesisAberrations {
 									globalDebugLevel);
 						}
 						
-/** reverse PSF kernel */
+/* reverse PSF kernel */
 						rKernel= cleanupAndReversePSF (rKernel,  // input pixels
 								inverseParameters,
 								//    						  false,  // fold high frequency into low, when false - use Hamming to cut off high frequencies
 								fht_instance,
 						"",
 						globalDebugLevel); // just for the plot names
-/**  mask  the reversed kernel */
+/*  mask  the reversed kernel */
 						rKernel= maskReversePSFKernel(rKernel, // reversed psf, square array
 								ellipse_coeff, // ellipse coefficients from _direct_ kernel
 								inverseParameters.psfEllipseScale,
 								inverseParameters.rpsfMinMaskThreshold); // zero output element if elliptical Gauss mask is below this threshold
 
 						normalizeKernel(rKernel); // in-place
-/** Apply variable blur to inversed kernel, using (and reversing sign) the center X,Y from the direct kernel */
+/* Apply variable blur to inversed kernel, using (and reversing sign) the center X,Y from the direct kernel */
 						if (inverseParameters.filter) {
 							variableSigmas= createSigmasFromCenter(inverseParameters.rSize, // side of square
 									inverseParameters.sigmaToRadius, // variable blurring - sigma will be proportional distance from the center
@@ -263,7 +263,7 @@ public class EyesisAberrations {
 		}
 		startAndJoin(threads);
 		//	  System.out.println("Threads done at "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
-/** prepare result stack to return */
+/* prepare result stack to return */
 		final ImageStack outStack=new ImageStack(tilesX*inverseParameters.rSize,tilesY*inverseParameters.rSize);
 		for (int chn=0;chn<nChn;chn++) {
 			outStack.addSlice(PSFStack.getSliceLabel(chn+1), outPixels[chn]);
@@ -271,7 +271,7 @@ public class EyesisAberrations {
 		return outStack;
 	}
   	
-	/** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 	private double [] maskReversePSFKernel( double []rpsf_pixels, // reversed psf, square array
 			double [] ellipse_coeff, // ellipse coefficients from _direct_ kernel
 			double ellipse_scale,
@@ -297,7 +297,7 @@ public class EyesisAberrations {
 		return masked_rpsf;
 	}
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	
 	
 	private  double [] createSigmasFromCenter(
@@ -321,7 +321,7 @@ public class EyesisAberrations {
 
 	
 	
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public double [] cleanupAndReversePSF (double []   psf_pixels,  // input pixels
 			EyesisAberrations.InverseParameters inverseParameters, // size (side of square) of direct PSF kernel
 			DoubleFHT fht_instance,  // provide DoubleFHT instance to save on initializations (or null)
@@ -335,11 +335,11 @@ public class EyesisAberrations {
 
 		double [] cpixels=psf_pixels.clone();
 		if (fht_instance==null) fht_instance=new DoubleFHT(); // move upstream to reduce number of initializations
-/** Swapping quadrants, so the center will be 0,0 */
+/* Swapping quadrants, so the center will be 0,0 */
 		fht_instance.swapQuadrants(cpixels);
-/** get to frequency domain */
+/* get to frequency domain */
 		fht_instance.transform(cpixels);
-/** Convert from FHT to complex FFT - avoid that in the future, process FHT directly*/
+/* Convert from FHT to complex FFT - avoid that in the future, process FHT directly*/
 		fft_complex= FHT2FFTHalf (cpixels,size);
 		double [][]fft_energy=new double[(size/2)+1][size];
 		for (i=0;i<(size/2+1);i++) for (j=0;j<size;j++) {
@@ -347,8 +347,8 @@ public class EyesisAberrations {
 		}
 		int  [][] clusterPS = findClusterOnPS(fft_energy, inverseParameters.otfCutoffEnergy,title,debugLevel);
 		double [] ellipse_coeff = findEllipseOnPS(fft_energy, clusterPS, title,debugLevel);
-/** create ellipse window using Hamming */
-/** TODO: scale radius */
+/* create ellipse window using Hamming */
+/* TODO: scale radius */
 		double [][] ellipseMask=new double [size/2+1][size];
 		k2=1/inverseParameters.otfEllipseScale/inverseParameters.otfEllipseScale;
 		for (i=0;i<(size/2+1);i++) for (j=0;j<size;j++) {
@@ -363,7 +363,7 @@ public class EyesisAberrations {
 				ellipseMask[i][j]=(r>1.0)?0.0:(0.54+0.46*Math.cos(r*Math.PI));
 			}
 		}
-/** optionally display selection */
+/* optionally display selection */
 		if (debugLevel>2) {
 			ImageProcessor ip_ellipse = new FloatProcessor(size,size);
 			float [] ellipsePixels = new float [size*size];
@@ -383,7 +383,7 @@ public class EyesisAberrations {
 			imp_ellipse.show();
 		}
 
-/** inverse fft_complex */
+/* inverse fft_complex */
 		if (inverseParameters.invertRange>0.0) {
 			/// Invert Z for large values, but make them Z - for small ones. So it will be a mixture of correlation and deconvolution
 			//here the targets are round, but what will th\be the colrrect way fo assymmetrical ones?
@@ -402,7 +402,7 @@ public class EyesisAberrations {
 				fft_complex[i][j][0]=r*Math.cos(a);
 				fft_complex[i][j][1]=r*Math.sin(a);
 			}
-/** multiply by ellipse window */
+/* multiply by ellipse window */
 			for (i=0;i<fft_complex.length; i++) for (j=0;j<fft_complex[0].length;j++) {
 				fft_complex[i][j][0]*=ellipseMask[i][j];
 				fft_complex[i][j][1]*=ellipseMask[i][j];
@@ -419,21 +419,21 @@ public class EyesisAberrations {
 		}
 
 		double [] pixels=null;
-/** convert back original dimension array if there was no decimation or debug is set (in that case both sizes arrays will be converted) */
-/** Convert fft array back to fht array and 
+/* convert back original dimension array if there was no decimation or debug is set (in that case both sizes arrays will be converted) */
+/* Convert fft array back to fht array and 
     set fht pixels with new values */
 	    pixels=FFTHalf2FHT (fft_complex,size);
-/** optionally show the result FHT*/
-/** transform to space */
+/* optionally show the result FHT*/
+/* transform to space */
 		fht_instance.inverseTransform(pixels);
 		fht_instance.swapQuadrants(pixels);
-/**   return inverted psf pixels */
+/*   return inverted psf pixels */
 		return pixels;
 	}
 	
-	/** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+	/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 
-	/** finds cluster (with the center at DC)  by flooding from DC, so total energy is cutoff_energy fraction
+	/* finds cluster (with the center at DC)  by flooding from DC, so total energy is cutoff_energy fraction
 	returns integer array (same dimensions as input) with 1 - selected, 0 - not selected */
 		private int [][] findClusterOnPS(
 				double [][]       ps, // half power spectrum, starting from 0.0 (DC)
@@ -448,7 +448,7 @@ public class EyesisAberrations {
 			double full_energy=0.0;
 			int [][] dirs={{-1,0},{-1,-1},{0,-1},{1,-1},{1,0},{1,1},{0,1},{-1,1}};
 			for (i=0;i<(size/2+1);i++) for (j=0;j<size;j++) {
-				full_energy+=((i%(size/2))==0)?ps[i][j]:(2*ps[i][j]); /** first and last line are counted once, others - twice */
+				full_energy+=((i%(size/2))==0)?ps[i][j]:(2*ps[i][j]); /* first and last line are counted once, others - twice */
 				clusterMap[i][j]=0;
 			}
 			double threshold=full_energy*cutoff_energy;
@@ -469,7 +469,7 @@ public class EyesisAberrations {
 			cluster_energy+=ps[iy][ix];
 			boolean noNew=true;
 			while ((pixelList.size()>0) &&  (cluster_energy<threshold)) {
-	/** Find maximal new neighbor */
+	/* Find maximal new neighbor */
 				maxValue=0.0;
 				listIndex=0;
 				while (listIndex<pixelList.size()) {
@@ -496,7 +496,7 @@ public class EyesisAberrations {
 					System.out.println("findClusterOnPS: - should not get here - no points around >0, and threshold is not reached yet.");
 					break;
 				}
-	/** Add this new point to the list */
+	/* Add this new point to the list */
 				Index=maxY*size + maxX;
 				pixelList.add (Index);
 				clusterSize++;
@@ -555,7 +555,7 @@ public class EyesisAberrations {
 			return clusterMap;
 		}
 
-	/** calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from DC, so total energy is cutoff_energy fraction
+	/* calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from DC, so total energy is cutoff_energy fraction
 	returns {a,b,c} , where a*x^2+b*y^2 + c*x*y=r^2 , so r^2 can be used for a window that removes high frequancy components that are too low to be useful*/
 
 		private double [] findEllipseOnPS(
@@ -602,9 +602,9 @@ public class EyesisAberrations {
 	
 	
 	
-	/** ======================================================================== */
-	/** TODO: REPLACE doubleFHT  */
-	/** converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
+	/* ======================================================================== */
+	/* TODO: REPLACE doubleFHT  */
+	/* converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
 
 		private double[][][] FHT2FFTHalf (double [] fht_pixels, int fftsize) {
 			double[][][] fftHalf=new double[(fftsize>>1)+1][fftsize][2];
@@ -639,7 +639,7 @@ public class EyesisAberrations {
 
 	
    	
-   	/** interpolate kernels minimizing memory image - use directly the image stack (32-bit, float) with kernels.
+   	/* interpolate kernels minimizing memory image - use directly the image stack (32-bit, float) with kernels.
    	  Add kernels around by either replication or extrapolation to compensate for "margins" in the original; kernels */
  //TODO: FIXME: Does not work if overwrite is disabled
    	public boolean interpolateKernels( 
@@ -846,7 +846,7 @@ public class EyesisAberrations {
    								firstFHTColumn=secondFHTColumn;
    								secondFHTColumn=null; // invalidate
    								//  if (DEBUG_LEVEL>2)  System.out.println(" secondFHTColumn==null");
-   	/** swap columns, the new second one will be just reused */
+   	/* swap columns, the new second one will be just reused */
    								swapArray=cornerFHT[0][0];
    								cornerFHT[0][0]=cornerFHT[0][1];
    								cornerFHT[0][1]=swapArray;
@@ -859,7 +859,7 @@ public class EyesisAberrations {
    						if (globalDebugLevel>2)  System.out.println(" interpolateKernelStack(): tileHeight="+tileHeight+" tileWidth="+tileWidth+" inTopLeft[0]="+inTopLeft[0]+" inTopLeft[1]="+inTopLeft[1]+
    								" outTopLeft[0]="+outTopLeft[0]+" outTopLeft[1]="+outTopLeft[1]);
 
-   						if (firstFHTColumn==null) { /** First colum needs to be input and calculated*/
+   						if (firstFHTColumn==null) { /* First colum needs to be input and calculated*/
    							extractOneKernel(          pixels, //  array of combined square kernels, each 
    									cornerFHT[0][0], // will be filled, should have correct size before call
    									inTilesX, // number of kernels in a row
@@ -870,19 +870,19 @@ public class EyesisAberrations {
    									inTilesX, // number of kernels in a row
    									inTopLeft[0], // horizontal number of kernel to extract
    									inTopLeft[1]+1); // vertical number of kernel to extract
-   	/** convert to frequency domain */
+   	/* convert to frequency domain */
    							fht_instance.swapQuadrants(cornerFHT[0][0]);
    							fht_instance.transform(    cornerFHT[0][0]);
    							fht_instance.swapQuadrants(cornerFHT[1][0]);
    							fht_instance.transform(    cornerFHT[1][0]);
-   	/** inter/extrapolate the column */
+   	/* inter/extrapolate the column */
    							firstFHTColumn=fht_instance.interpolateFHT (cornerFHT[0][0],    // first FHT array
    									cornerFHT[1][0],    // second FHT array
    									pointsVert,    // array of interpolation points - 0.0 - fht0, 1.0 - fht1
    									false);   // OK not to clone, so corners will be referenced?
    							if (globalDebugLevel>2)  System.out.println(" firstFHTColumn.length="+firstFHTColumn.length);
    						}
-   						if (secondFHTColumn==null) { /** Last colum needs to be input and calculated*/
+   						if (secondFHTColumn==null) { /* Last colum needs to be input and calculated*/
    							extractOneKernel(          pixels, //  array of combined square kernels, each 
    									cornerFHT[0][1], // will be filled, should have correct size before call
    									inTilesX, // number of kernels in a row
@@ -893,12 +893,12 @@ public class EyesisAberrations {
    									inTilesX, // number of kernels in a row
    									inTopLeft[0]+1, // horizontal number of kernel to extract
    									inTopLeft[1]+1); // vertical number of kernel to extract
-   	/** convert to frequency domain */
+   	/* convert to frequency domain */
    							fht_instance.swapQuadrants(cornerFHT[0][1]);
    							fht_instance.transform(    cornerFHT[0][1]);
    							fht_instance.swapQuadrants(cornerFHT[1][1]);
    							fht_instance.transform(    cornerFHT[1][1]);
-   	/** inter/extrapolate the column */
+   	/* inter/extrapolate the column */
    							secondFHTColumn=fht_instance.interpolateFHT (cornerFHT[0][1],    // first FHT array
    									cornerFHT[1][1],    // second FHT array
    									pointsVert,    // array of interpolation points - 0.0 - fht0, 1.0 - fht1
@@ -910,8 +910,8 @@ public class EyesisAberrations {
    								System.out.println("");
    							}
    						}
-   	/** interpolate horizontally */
-   	/** TODO: calculate top-left corner in output array */
+   	/* interpolate horizontally */
+   	/* TODO: calculate top-left corner in output array */
    						/*
    	   if ((DEBUG_LEVEL>1) &&(tileY==0)) {
    	      SDFA_instance.showArrays(firstFHTColumn,size,size, "firstFHTColumn");
@@ -944,15 +944,15 @@ public class EyesisAberrations {
    					}
    				}
    			}    
-   	/** prepare result stack to return */
+   	/* prepare result stack to return */
    			ImageStack outStack=new ImageStack(outTilesX*interpolateParameters.size,outTilesY*interpolateParameters.size);
    			for (chn=0;chn<nChn;chn++) {
    				outStack.addSlice(kernelStack.getSliceLabel(chn+1), outPixels[chn]);
    			}
    			return outStack;
    		}
-   	/** ======================================================================== */
-   	/** Used in interpolateKernelStack() */  
+   	/* ======================================================================== */
+   	/* Used in interpolateKernelStack() */  
    		private void storeOneKernel(
    				float []  pixels, // float [] array of combined square kernels - will be filled
    				double [] kernel, // square kernel to store
@@ -967,7 +967,7 @@ public class EyesisAberrations {
    			for (i=0;i<size;i++) for (j=0;j<size;j++) pixels[base+i*pixelsWidth+j]= (float) kernel[i*size+j];
    		}
 
-   	/** ======================================================================== */
+   	/* ======================================================================== */
    	
    	
    	public String [][]  preparePartialKernelsFilesList(
@@ -1873,7 +1873,7 @@ public class EyesisAberrations {
 	
 	
 	
-	/** ======================================================================== */
+	/* ======================================================================== */
 	//Finalize accumulated kernels - transform them from frequency to space domain
 	public void inverseTransformKernels(
 			double [][][][] psfKernelMap){
@@ -2011,7 +2011,7 @@ public class EyesisAberrations {
 
 	} 
 	
-	/** ======================================================================== */
+	/* ======================================================================== */
 	private void extractOneKernel(
 			float []  pixels, //  array of combined square kernels, each 
 			double [] kernel, // will be filled, should have correct size before call
@@ -2024,7 +2024,7 @@ public class EyesisAberrations {
 		int pixelsWidth=numHor*size;
 		int pixelsHeight=pixels.length/pixelsWidth;
 		int numVert=pixelsHeight/size;
-/** limit tile numbers - effectively add margins around the known kernels */
+/* limit tile numbers - effectively add margins around the known kernels */
 		if (xTile<0) xTile=0;
 		else if (xTile>=numHor) xTile=numHor-1;
 		if (yTile<0) yTile=0;
@@ -2170,7 +2170,7 @@ public class EyesisAberrations {
 		final double [] bitmaskPattern= simulationPattern.patternGenerator(simulParameters);
 		int nTileX,nTileY;
 		int numPatternCells=0;
-/** Filter results based on correlation with the actual pattern */
+/* Filter results based on correlation with the actual pattern */
 		boolean [][]   PSFBooleanMap; // map of 2*fft_size x 2*fft_size squares with 2*fft_overlap step, true means that that tile can be used for PSF
 		if (sampleList==null){
 				PSFBooleanMap= mapFromPatternMask ( // count number of defined cells
@@ -2199,7 +2199,7 @@ public class EyesisAberrations {
 //		globalDebugLevel=debug_level;
 		simulationPattern.debugLevel=globalDebugLevel;
 		int ncell=0;
-/** Create array of coordinates of cells to process, fill result array with zeros (to be actually written by threads */       
+/* Create array of coordinates of cells to process, fill result array with zeros (to be actually written by threads */       
 		final int [][] tilesToProcessXY=new int [numPatternCells][4];
 
 		for (nTileY=0;nTileY<PSFBooleanMap.length;nTileY++) for (nTileX=0;nTileX<PSFBooleanMap[0].length;nTileX++){
@@ -2311,7 +2311,7 @@ public class EyesisAberrations {
 //		globalDebugLevel=saved_globalDebugLevel;
 		return pdfKernelMap;
 	}
-	/** Combine both greens as a checkerboard pattern (after oversampleFFTInput()) */
+	/* Combine both greens as a checkerboard pattern (after oversampleFFTInput()) */
 	private  double [][] combineCheckerGreens (double[][] input_pixels,   // pixel arrays after oversampleFFTInput() or extractSimulPatterns())
 			int ratio) { // same as used in oversampleFFTInput() - oversampling ratio
 		int width=(int) Math.sqrt(input_pixels[0].length);
@@ -2367,7 +2367,7 @@ public class EyesisAberrations {
 		return result;
 	}
 	*/
-	/** ======================================================================== */
+	/* ======================================================================== */
 	private  double[][] normalizeAndWindow (double [][] pixels, double [] windowFunction) {
 		return normalizeAndWindow (pixels, windowFunction, true);
 	}
@@ -2393,7 +2393,7 @@ public class EyesisAberrations {
 		return pixels;
 	}
 
-	/** inserts zeros between pixels */ 
+	/* inserts zeros between pixels */ 
 	private  double [][] oversampleFFTInput (double[][] input_pixels,
 			int ratio) {
 		double [][] pixels=new double[input_pixels.length][];
@@ -2431,7 +2431,7 @@ public class EyesisAberrations {
 	}
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private  void normalizeKernel(double [][] kernel) {
 		int i;
 		for (i=0;i<kernel.length;i++) if (kernel[i]!=null) normalizeKernel(kernel[i]);
@@ -2446,8 +2446,8 @@ public class EyesisAberrations {
 		for (i=0;i<kernel.length;i++) kernel[i]*=s;
 	}
 
-/** ======================================================================== */
-/** extends/shrinks image to make it square for FFT */
+/* ======================================================================== */
+/* extends/shrinks image to make it square for FFT */
 	private double[][] resizeForFFT (double[][]kernels, int size) {
 		if (kernels==null) return null;
 		double [][]result=new double [kernels.length][];
@@ -2480,7 +2480,7 @@ public class EyesisAberrations {
 		}
 		return kernelForFFT;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 
 	private  int kernelLength(double[][]kernels) {
 		if (kernels==null) return 0;
@@ -2532,7 +2532,7 @@ public class EyesisAberrations {
 		double [][] dbgSimPix=null;
 		
 		if ((simArray==null) || (psfParameters.approximateGrid)){ // just for testing
-			/** Calculate pattern parameters, including distortion */
+			/* Calculate pattern parameters, including distortion */
 			if (matchSimulatedPattern.PATTERN_GRID==null) {
 				double[][] distortedPattern= matchSimulatedPattern.findPatternDistorted(input_bayer, // pixel array to process (no windowing!)
 						patternDetectParameters,
@@ -2715,8 +2715,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					title+"-"+i);
 		}
 		if (debugThis) SDFA_INSTANCE.showArrays(inverted, fft_size*subpixel, fft_size*subpixel, title+"_Combined-PSF");
-/** correct composite greens */
-/** Here we divide wave vectors by subpixel as the pixels are already added */
+/* correct composite greens */
+/* Here we divide wave vectors by subpixel as the pixels are already added */
 		double [][] wVrotMatrix= {{0.5,0.5},{-0.5,0.5}};
 		double [][]wVectors4= new double [2][2];
 		for (i=0;i<2;i++) for (j=0;j<2;j++) {
@@ -2747,7 +2747,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			psf_inverted_masked[i]=null;
 		}
 		//int [][]  clusterMask;
-/** Start with referenceComp */
+/* Start with referenceComp */
 		i= referenceComp;
 		if (globalDebugLevel>2) {
 			System.out.println(x0+":"+y0+"1-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
@@ -2770,7 +2770,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
 		if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
 
-		if (!psfParameters.ignoreChromatic) { /** Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
+		if (!psfParameters.ignoreChromatic) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
 			for (j=0;j<input_bayer.length;j++) if ((colorComponents.colorsToCorrect[j]) && (j!=referenceComp)) {
 				PSF_shifts[j]=shiftSensorToBayer (shiftBayerToSensor(PSF_shifts[referenceComp],referenceComp,subpixel),j,subpixel);
 				if (globalDebugLevel>2)       System.out.println(x0+":"+y0+"After-2 (recalc): color Component "+j+" PSF_shifts["+j+"][0]="+IJ.d2s(PSF_shifts[j][0],3)+" PSF_shifts["+j+"][1]="+IJ.d2s(PSF_shifts[j][1],3));
@@ -2782,7 +2782,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				i,
 				subpixel);
 		lateralChromaticAbs[i]=Math.sqrt(lateralChromatic[i][0]*lateralChromatic[i][0]+lateralChromatic[i][1]*lateralChromatic[i][1]);
-/** Now process all the other components */
+/* Now process all the other components */
 		for (i=0; i<input_bayer.length;i++) if ((i!=referenceComp) && (colorComponents.colorsToCorrect[i])) {
 			if (globalDebugLevel>2) {
 				System.out.println(x0+":"+y0+"2-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
@@ -2841,8 +2841,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		}
 		return kernels;
 	}
-	/** ======================================================================== */
-	/** shift (like lateral chromatic aberration) in Bayer component to sensor pixels */
+	/* ======================================================================== */
+	/* shift (like lateral chromatic aberration) in Bayer component to sensor pixels */
 
 		private  double [] shiftBayerToSensor ( double [] dxy,
 				int color,
@@ -2891,7 +2891,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		}
 
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 
 	private double[] limitedInverseOfFHT(double [] measuredPixels,  // measured pixel array
 			double [] modelPixels,  // simulated (model) pixel array)
@@ -2964,7 +2964,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		DoubleGaussianBlur gb=new DoubleGaussianBlur();
 		if ((oversample>1) && (threshold_low<1.0)) {
 			double [] ps=fht_instance.calculateAmplitude2(denominatorPixels);
-/** create mask */
+/* create mask */
 			mask= maskAliases (denominatorPixels,   // complex spectrum, [size/2+1][size]
 					checker, // checkerboard pattern in the source file (use when filtering)
 					oversample,   // measured array is sampled at 1/oversample frequency than model (will add more parameters later)
@@ -2975,23 +2975,23 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					threshold_low,  // leave intact if energy is below this part of maximal
 					fht_instance,
 					globalDebugLevel);
-/** debug show the mask */
-			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+/* debug show the mask */
+			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(mask, title+"-MASK");
 			}
 			for (int ii=0;ii<ps.length;ii++) ps[ii]=Math.log(ps[ii]); // can be twice faster
-			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(ps, "LOG-"+title);
 			}
 			double [] ps_smooth=ps.clone();
 			gb.blurDouble(ps_smooth, size, size, mask1_sigma, mask1_sigma, 0.01);
-			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(ps_smooth, "SM-"+title);
 			}
 			double threshold1=Math.log(2.0*mask1_threshold);
 			mask1=new double [ps.length];
 			for (int ii=0;ii<ps.length;ii++) mask1[ii]= ps[ii]-ps_smooth[ii]-threshold1;
-			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(mask1, "M1-"+title);
 			}
 			fht_instance.swapQuadrants(mask1); // zero in the corner
@@ -3002,28 +3002,28 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				}
 				mask1[ii]*=mask[ii];
 			}
-			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(mask1, "M1A-"+title);
 			}
 		}
-/** Mask already includes zeros on ps, so we can just use divisions of FHT*/		  
+/* Mask already includes zeros on ps, so we can just use divisions of FHT*/		  
 		//Swapping quadrants of the nominator, so the center will be 0,0
 		fht_instance.swapQuadrants(nominatorPixels);
 		//get to frequency domain
 		fht_instance.transform(nominatorPixels);
-		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug evel later */ // was 3
+		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug evel later */ // was 3
 			SDFA_INSTANCE.showArrays(nominatorPixels, title+"-NOM-FHT");
 			SDFA_INSTANCE.showArrays(denominatorPixels, title+"-DENOM-FHT");
 		}			    
 		double [] pixels=fht_instance.divide(nominatorPixels,denominatorPixels);
-		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug evel later */ // was 3
+		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug evel later */ // was 3
 			SDFA_INSTANCE.showArrays(pixels, title+"-DECONV");
 		}			    
 		for (i=0;i<pixels.length;i++) {
 			if (mask[i]==0.0) pixels[i]=0.0; // preventing NaN*0.0
 			else pixels[i]*=mask[i];
 		}
-		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 			SDFA_INSTANCE.showArrays(pixels, title+"-MASKED");
 			double [][] aphase=fht_instance.fht2AmpHase(pixels,true);
 			SDFA_INSTANCE.showArrays(aphase, true,"AP="+title+"-MASKED");
@@ -3040,7 +3040,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				if (mask1[jj]>mask_denoise) fft_reIm_centered[ii][jj]/=mask1[jj];
 				else if (mask1[jj]>=0.0) fft_reIm_centered[ii][jj]/=mask_denoise;
 				else  fft_reIm_centered[ii][jj]=0.0;
-			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(fft_reIm_centered, true,"ReIm-"+title);
 			}
 			fht_instance.swapQuadrants(fft_reIm_centered[0]); // zero in the corner
@@ -3051,14 +3051,14 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		/// transform to space
 		fht_instance.inverseTransform(pixels);
 		fht_instance.swapQuadrants(pixels);
-		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /** Increase debug level later */ // was 3
+		if ((debug>2) ||((globalDebugLevel>2) && (title!=""))) { /* Increase debug level later */ // was 3
 			SDFA_INSTANCE.showArrays(pixels, "PSF-"+title);
 		}
 		return pixels;
 	}
 
-	/** ======================================================================== */
-	/** Trying to remove aliasing artifacts when the decimated (pixel resolution) image is deconvolved with full resolution (sub-pixel resolution)
+	/* ======================================================================== */
+	/* Trying to remove aliasing artifacts when the decimated (pixel resolution) image is deconvolved with full resolution (sub-pixel resolution)
 	model pattern. This effect is also easily visible if the decimated model is deconvolved with the same one art full resolution.
 	Solution is to clone the power spectrum of the full resolution model with the shifts to match oversampling (15 clones for the 4x oversampling),
 	And add them together (adding also zero frequerncy point - it might be absent on the model) but not include the original (true one) and
@@ -3082,7 +3082,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			//	double [][] ps=new double [size/2+1][size];
 			int i,ix,iy, cloneNx, cloneNy, cloneX, cloneY;
 			int cloneStep=size/oversample;
-	/** generating power spectrum for the high-res complex spectrum, find maximum value and normalize */
+	/* generating power spectrum for the high-res complex spectrum, find maximum value and normalize */
 			if (fht_instance==null) fht_instance=new DoubleFHT(); // move upstream to reduce number of initializations
 			double [] ps=fht_instance.calculateAmplitude2(fht);
 			double psMax=0.0;
@@ -3090,7 +3090,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			double k=1.0/psMax;
 			for (i=0;i<length; i++) ps[i]*=k;
 			if (globalDebugLevel>2) SDFA_INSTANCE.showArrays(ps, "PS");
-	/** Add maximum at (0,0) */
+	/* Add maximum at (0,0) */
 			double [] psWithZero=ps;
 			if (zerofreq_size>0.0) {
 				psWithZero=ps.clone();
@@ -3102,10 +3102,10 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					psWithZero[base+iy*size+ix]+=Math.exp(-k*(iy*iy+ix*ix));
 				}
 			}
-	/** put zero in the center */
+	/* put zero in the center */
 			double [] mask=new double [length];
 			for (i=0;i<length; i++) mask[i]=0.0;
-	/** clone spectrums */
+	/* clone spectrums */
 			for (iy=0;iy<size;iy++) for (ix=0;ix<size;ix++){
 				for (cloneNy=0;cloneNy<oversample;cloneNy++) for (cloneNx=0;cloneNx<oversample;cloneNx++)
 					if (((cloneNy!=0) || (cloneNx!=0)) && // not a zero point
@@ -3116,7 +3116,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 						mask[cloneY*size+cloneX]+=psWithZero[iy*size+ix];
 					}			
 			}
-	/** debug show the mask */
+	/* debug show the mask */
 			if (globalDebugLevel>2) SDFA_INSTANCE.showArrays(mask, "PS-cloned");
 			if (sigma>0) {
 				DoubleGaussianBlur gb = new DoubleGaussianBlur();
@@ -3124,7 +3124,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				if (globalDebugLevel>2) SDFA_INSTANCE.showArrays(mask, "PS-smooth");
 			}
 
-	/** make mask of cloned power spectrums */
+	/* make mask of cloned power spectrums */
 			double a;
 			double k2=deconvInvert*deconvInvert;
 			double min=0.01*k2; // less than 1/10 of that value - mask=0.0
@@ -3191,7 +3191,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		return result;
 	}
 	
-	/** ======================================================================== 
+	/* ======================================================================== 
 	/**
 	 * Mostly done, need to move where szis\
 	 * TODO: currently the shift of the PSF during binning is done with the integer steps. If ignoreChromatic - to all colors
@@ -3223,7 +3223,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				System.out.println("combinePSF title="+title+" wV[1][0]="+IJ.d2s(wVectors[1][0],4)+" wV[1][1]="+IJ.d2s(wVectors[1][1],4));
 			}
 
-	/** vectors perpendicular to the checkerboard edges, lengths equal to the periods */
+	/* vectors perpendicular to the checkerboard edges, lengths equal to the periods */
 			double [][] f= {{wVectors[0][0]/(wVectors[0][0]*wVectors[0][0]+wVectors[0][1]*wVectors[0][1]),
 				wVectors[0][1]/(wVectors[0][0]*wVectors[0][0]+wVectors[0][1]*wVectors[0][1])},
 				{wVectors[1][0]/(wVectors[1][0]*wVectors[1][0]+wVectors[1][1]*wVectors[1][1]),
@@ -3233,7 +3233,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				System.out.println("combinePSF title="+title+" f[1][0]="+IJ.d2s(f[1][0],4)+" f[1][1]="+IJ.d2s(f[1][1],4));
 			}
 
-	/** vectors parallel to checkerboard edges, lenghs equal to the period along those lines */
+	/* vectors parallel to checkerboard edges, lenghs equal to the period along those lines */
 			double l2f1=   f[0][0]*f[0][0]+f[0][1]*f[0][1];
 			double l2f2=   f[1][0]*f[1][0]+f[1][1]*f[1][1];
 			double pf1f2  =f[0][1]*f[1][0]-f[1][1]*f[0][0];
@@ -3243,7 +3243,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				System.out.println("combinePSF title="+title+" g0[0][0]="+IJ.d2s(g0[0][0],4)+" g[0][1]="+IJ.d2s(g0[0][1],4));
 				System.out.println("combinePSF title="+title+" g0[1][0]="+IJ.d2s(g0[1][0],4)+" g[1][1]="+IJ.d2s(g0[1][1],4));
 			}
-	/** calculate vectors connecting centers of the "positive" PSF copies */
+	/* calculate vectors connecting centers of the "positive" PSF copies */
 
 			double [][] g= {{0.5*(g0[0][0]+g0[1][0]), 0.5*(g0[0][1]+g0[1][1])},
 					{0.5*(g0[0][0]-g0[1][0]), 0.5*(g0[0][1]-g0[1][1])}};
@@ -3254,7 +3254,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			}
 			/// =================
 
-	/** calculate outSize to be able to use FFT here */
+	/* calculate outSize to be able to use FFT here */
 			double sizeNegatives= Math.max(Math.max(Math.abs(g[0][0]+ g[1][0]),Math.abs(g[0][1]+ g[1][1])),
 					Math.max(Math.abs(g[0][0]- g[1][0]),Math.abs(g[0][1]- g[1][1])));
 			double scaleSize=2.5; /// Will include next positive centers and overlap
@@ -3310,7 +3310,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			DoubleGaussianBlur gb=new DoubleGaussianBlur();
 			gb.blurDouble(smoothPixelsPSF, outSize, outSize, smoothSigma, smoothSigma, 0.01);
 
-	/** find amplitude of smoothed pixel array */
+	/* find amplitude of smoothed pixel array */
 			double smoothMin=0.0;
 			double smoothMax=0.0;
 			for (i=0;i<smoothPixelsPSF.length;i++) {
@@ -3334,7 +3334,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 
 			if (debugLevel>2) System.out.println("Centroid after first binPSF: x="+IJ.d2s(centroidXY[0],3)+" y="+IJ.d2s(centroidXY[1],3)+" center was at x="+IJ.d2s(centerXY[0],3)+" y="+IJ.d2s(centerXY[1],3));
 
-	/** Re-bin results with the new center if ignoreChromatic is true, update centerXY[](shift of the result PSF array) and centroidXY[] (center of the optionally shifted PDF array) */
+	/* Re-bin results with the new center if ignoreChromatic is true, update centerXY[](shift of the result PSF array) and centroidXY[] (center of the optionally shifted PDF array) */
 			if (master || psfParameters.ignoreChromatic) {
 				if (centerXY!=null) {
 					centerXY[0]+=centroidXY[0];
@@ -3361,7 +3361,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 							 -(centerXY[1]-Math.round(centerXY[1])));
 //					fht_instance.debug=false;
 				}
-	/**  recalculate centroids  */
+	/*  recalculate centroids  */
 				smoothPixelsPSF= pixelsPSF.clone();
 				gb.blurDouble(smoothPixelsPSF, outSize, outSize, smoothSigma, smoothSigma, 0.01);
 				smoothMin=0.0;
@@ -3389,7 +3389,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			
 			
 			
-	/** compensate center point and/or add center-symmetrical points if enabled */
+	/* compensate center point and/or add center-symmetrical points if enabled */
 			double [] rejectedClonesPixels=null;
 			double [][] modelPSFVectors={{0.5*(g[0][0]+g[1][0]),0.5*(g[0][1]+g[1][1])},
 					{0.5*(g[0][0]-g[1][0]),0.5*(g[0][1]-g[1][1])}};
@@ -3441,7 +3441,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 
 
 			if (debugLevel>2) {
-	/** Sigmas are 0 here ??? */
+	/* Sigmas are 0 here ??? */
 				if (psfParameters.sigmaToRadius>0.0) {
 					float [] floatPixelsSigmas=new float[sigmas.length];
 					for (j=0;j<sigmas.length;j++) floatPixelsSigmas[j]=(float) sigmas[j];
@@ -3459,7 +3459,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			centroid_xy[1]=centroidXY[1];
 			return  varFilteredPSF;
 		}
-		/** ======================================================================== */
+		/* ======================================================================== */
 		public double [][] matrix2x2_invert(double [][] m ){
 			double det=m[0][0]*m[1][1]-m[0][1]*m[1][0];
 			double [][] rslt= {{ m[1][1]/det,  -m[0][1]/det},
@@ -3499,8 +3499,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			return rslt;
 		}
 		
-		/** ======================================================================== */
-		/** zeroes out area outside of the area bound by 4 negative clones (or a fraction of it), either sharp or with Hamming */
+		/* ======================================================================== */
+		/* zeroes out area outside of the area bound by 4 negative clones (or a fraction of it), either sharp or with Hamming */
 			private double [] maskClonesPSF(double [] pixels, // square pixel array where the model PSF is added
 					double windowPart, // multiply window by this value
 					double xc, // Center of the remaining single PSF
@@ -3512,7 +3512,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				int size = (int) Math.sqrt (pixels.length);
 				double [] xy= new double[2];
 				double [] uv;
-		/** matrix that converts u,v (lengths along the) 2 input vectors connecting opposite sign PSFs into x,y coordinates */
+		/* matrix that converts u,v (lengths along the) 2 input vectors connecting opposite sign PSFs into x,y coordinates */
 				double [][] uv2xy= {{vectors[0][0]*windowPart,vectors[1][0]*windowPart},
 						{vectors[0][1]*windowPart,vectors[1][1]*windowPart}};
 				double [][] xy2uv=  matrix2x2_invert(uv2xy);
@@ -3529,7 +3529,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				}
 				return pixels;
 			}
-			/** ======================================================================== */
+			/* ======================================================================== */
 			private double [] variableGaussBlurr (double []pixels, // input square pixel array, preferrably having many exact zeros (they will be skipped)
 					double []sigmas, // array of sigmas to be used for each pixel, matches pixels[]
 					double nSigma, // drop calculatin if farther then nSigma
@@ -3561,7 +3561,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 							if (sigma==0.0) {
 								result[iy*size+ix]+=d; // just copy input data, no convolving
 							} else {
-		/** opposite to "normal" convolution we have diffrent kernel for each point, so we need to make sure that two points with the same values but
+		/* opposite to "normal" convolution we have diffrent kernel for each point, so we need to make sure that two points with the same values but
 		  diffrent sigma values will not move "energy" from one to another. For this we can do accumulation both ways - from the source point to all
 		   points "reachable" by the kernel (proportional to the pixel value) and also in opposite direction - from those other points to the current
 		   pointer (where kernel is centered) with the value proportional to that othre point  */
@@ -3600,8 +3600,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			
 			
 			
-		/** ======================================================================== */
-		/** find ellipse approximating section of the PSF, scale ellipse and use it as a mask to remove PSF far wings */
+		/* ======================================================================== */
+		/* find ellipse approximating section of the PSF, scale ellipse and use it as a mask to remove PSF far wings */
 			private double [] cutPSFWings (double [] psf_pixels, // direct PSF function, square array, may be proportionally larger than reversed
 					double cutoff_energy, // fraction of energy in the pixels to be used
 					double ellipse_scale,
@@ -3652,7 +3652,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			}
 
 
-		/** ======================================================================== */
+		/* ======================================================================== */
 			private double PSFAtXY(double [] pixels, int size, double x, double y) {
 				int ix=(int) Math.round(x);
 				int iy=(int) Math.round(y);
@@ -3666,7 +3666,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				}
 				return pixels[index];
 			}
-		/** ======================================================================== */
+		/* ======================================================================== */
 
 			private double contrastAtXY(int sign, double [] pixels, int size, double x, double y, double [][] g, double [] cache) {
 				int ir= (int) Math.round(0.2*Math.min(Math.max(Math.abs(g[0][0]),Math.abs(g[1][0])),Math.max(Math.abs(g[0][1]),Math.abs(g[1][1])))); // sample at square 1 1/2x1/2 of the grid "square"
@@ -3696,8 +3696,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			}
 
 
-		/** ======================================================================== */
-		/** create aray (to be used with variableGaussBlurr() ) of per-pixel sigma values for gauss blur, proportional to distance from the specified center */
+		/* ======================================================================== */
+		/* create aray (to be used with variableGaussBlurr() ) of per-pixel sigma values for gauss blur, proportional to distance from the specified center */
 			private double [] createSigmasRadius (double []pixels, // input square pixel array, preferrably having many exact zeros (they will be skipped)
 					double sigmaToRadius, // sigma is proportional to the distance from the center
 					double xc, // model PSF center X-coordinate (in pixels[] units, from the center of the array )
@@ -3732,7 +3732,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				return sigmas;
 			}
 
-			/** calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from the initial center,
+			/* calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from the initial center,
 			so total energy is cutoff_energy fraction
 			returns {x0,y0,a,b,c} , where a*x^2+b*y^2 + c*x*y=r^2 , so r^2 can be used for a window that removes high far pixels
 			distribute the whol mass at the ends of short and long ellipse axis
@@ -3776,7 +3776,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					double S0=0.0;
 					double d; //,k;
 					//	double area=0; // selection area
-			/** find centyer */
+			/* find centyer */
 
 					for (i=0;i<size;i++) {
 						y=i-size/2;
@@ -3796,7 +3796,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 						System.out.println("findEllipseOnPSF: title="+title+" S0="+S0+" SX="+SX+" SY="+SY+" centerX="+centerX+" centerY="+centerY);
 					}
 
-			/** second pass (could all be done in a single) */
+			/* second pass (could all be done in a single) */
 					SX2=0.0;
 					SY2=0.0;
 					SXY=0.0;
@@ -3838,8 +3838,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				}
 
 		
-		/** ======================================================================== */
-		/** finds cluster on the PSF (with the center at specidfied point)  by flooding from the specified center, so total energy is cutoff_energy fraction
+		/* ======================================================================== */
+		/* finds cluster on the PSF (with the center at specidfied point)  by flooding from the specified center, so total energy is cutoff_energy fraction
 		returns integer array (same dimensions as input) with 1 - selected, 0 - not selected
 		cutoff_energy: if positive - specifies fraction of total energy, if negative -cutoff_energy is the minimal value of the pixel to be included 
 		UPDATE: follows gradient from the start point to a local maximum if "cutoff_energy" is negative" */
@@ -3878,7 +3878,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				iy=startY;
 				Index=iy*size + ix;
 				double maxValue=psf[Index];
-		/** Make ix,iy to start from the maximal value on PSF */
+		/* Make ix,iy to start from the maximal value on PSF */
 				Index=0;
 				for (i=0;i<size;i++) for (j=0;j<size;j++) {
 					full_energy+=psf[Index];
@@ -3933,7 +3933,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				cluster_energy+=psf[Index];
 				noNew=true;
 				while ((pixelList.size()>0) &&  (noThreshold || (cluster_energy<threshold) )) { // will break from the loop if  (psf[Index] <minValue)
-		/** Find maximal new neighbor */
+		/* Find maximal new neighbor */
 					maxValue=0.0;
 					listIndex=0;
 					while (listIndex<pixelList.size()) {
@@ -3960,7 +3960,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 						if (!noThreshold) System.out.println("findClusterOnPSF: - should not get here - no points around >0, and threshold is not reached yet.");
 						break;
 					}
-		/** Add this new point to the list */
+		/* Add this new point to the list */
 					if (psf[Index]<minValue) break; // break if the condition was value, not total energy
 					Index=maxY*size + maxX;
 					pixelList.add (Index);
@@ -3995,13 +3995,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				return clusterMap;
 			}
 
-			/** ======================================================================== */
-			/** ======================================================================== */
-			/** calculates 2x2 matrix that converts two pairs of vectors: u2=M*u1, v2=M*v1*/
+			/* ======================================================================== */
+			/* ======================================================================== */
+			/* calculates 2x2 matrix that converts two pairs of vectors: u2=M*u1, v2=M*v1*/
 
-			/** ======================================================================== */
+			/* ======================================================================== */
 
-			/** ======================================================================== */
+			/* ======================================================================== */
 
 				private  int [] convert2d_1d(int [][] pixels){
 					int i,j;
@@ -4011,7 +4011,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					return rslt;
 				}
 
-			/** pixels should be a square array, zero is in the center (/center+0.5 for even dimensions) */
+			/* pixels should be a square array, zero is in the center (/center+0.5 for even dimensions) */
 //				private  double [] calcCentroidFromCenter(double [] pixels) {return calcCentroidFromCenter(pixels, (int[]) null, 0.0);}
 				private  double [] calcCentroidFromCenter(double [] pixels, // square pixel array
 						int[][] mask, // integer mask -0 - don't use this pixel, 1 - use it
@@ -4052,7 +4052,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					return result;
 				}
 
-		/** ======================================================================== */
+		/* ======================================================================== */
 		private double [] binPSF(double [] pixels,
 				double [][] g,
 				int outSize,
@@ -4116,9 +4116,9 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				np=(int)Math.floor((1+p)/2);
 				nq=(int)Math.floor((1+q)/2);
 				//if (debug)  debugPixels[indx]=(int)Math.floor((1+q)/2);
-	/** see if the point is in the cell of positive or negative OTF instance */
+	/* see if the point is in the cell of positive or negative OTF instance */
 				PSF_sign= (((np + nq) & 1)==0)?1:-1;
-	/** find x,y coordinates of the center of the cell */
+	/* find x,y coordinates of the center of the cell */
 				uc=0.5*(np+nq);
 				vc=0.5*(np-nq);
 				//xc=g[0][0]*uc + g[1][0]*vc;
@@ -4130,7 +4130,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 
 				//if (debug) debugPixels[indx]=p/2-Math.round(p/2);
 
-	/** See if this cell has enough contrast */
+	/* See if this cell has enough contrast */
 				overThreshold=contrastAtXY(PSF_sign,pixels, pixelSize, xc,yc,  g, contrastCache);
 				//if (debug) debugPixels[indx]=overThreshold;
 				if (overThreshold<threshold) {
@@ -4139,23 +4139,23 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				} else {
 					//if (debug) debugPixels[indx]=yc;
 
-	/** Do binning itself here */
+	/* Do binning itself here */
 					d=PSF_sign*PSFAtXY(pixels, pixelSize, x,y);
 
-	/** map to the segment around 0,0 */        
+	/* map to the segment around 0,0 */        
 					dp=p/2-Math.round(p/2);
 					dq=q/2-Math.round(q/2);
-	/** dp, dq are between +/- 0.5 - use them for Hamming windowing -NOT HERE, moved later*/
+	/* dp, dq are between +/- 0.5 - use them for Hamming windowing -NOT HERE, moved later*/
 					du=(dp+dq)/2;
 					dv=(dp-dq)/2;
 
-	/** bin this point to the center and some (positive) duplicates if enabled */
+	/* bin this point to the center and some (positive) duplicates if enabled */
 					for (i=-(multiple/2); i<=(multiple/2); i++) for (j=-(multiple/2); j<=(multiple/2); j++) {
 						xr= uv2xy[0][0]*(j+du) + uv2xy[0][1]*(i+dv);
 						yr= uv2xy[1][0]*(j+du) + uv2xy[1][1]*(i+dv);
 						xr= Math.round(xr-center[0]);
 						yr= Math.round(yr-center[1]);
-	/** does it fit into output array ? */
+	/* does it fit into output array ? */
 						if ((yr>=-halfOutSize) && (yr<halfOutSize) && (xr>=-halfOutSize) && (xr<halfOutSize)) {
 							outIndex=outSize*(outSize/2+ ((int) yr))+(outSize/2)+((int) xr);
 							pixelsPSFCount[outIndex]++;
@@ -4163,7 +4163,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 							pixelsPSFWeight[outIndex]+=overThreshold;
 						}
 					}
-	/** bin this to center-symmetrical point if enabled */
+	/* bin this to center-symmetrical point if enabled */
 					if (symmXY!=null) {
 						for (i=-(multiple/2); i<=(multiple/2); i++) for (j=-(multiple/2); j<=(multiple/2); j++) {
 							xr= uv2xy[0][0]*(j+du) + uv2xy[0][1]*(i+dv);
@@ -4179,7 +4179,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 							}
 						}
 					}
-	/** Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
+	/* Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
 					if (multiple>0) for (i=-((multiple+1)/2); i<((multiple+1)/2); i++) for (j=-((multiple+1)/2); j<((multiple+1)/2); j++) {
 						xr= uv2xy[0][0]*(j+du+0.5) + uv2xy[0][1]*(i+dv+0.5);
 						yr= uv2xy[1][0]*(j+du+0.5) + uv2xy[1][1]*(i+dv+0.5);
@@ -4193,8 +4193,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 							pixelsPSFWeight[outIndex]+=overThreshold;
 						}
 					}
-	/** bin this to center-symmetrical point if enabled */
-	/** Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
+	/* bin this to center-symmetrical point if enabled */
+	/* Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
 					if (symmXY!=null) {
 						if (multiple>0) for (i=-((multiple+1)/2); i<((multiple+1)/2); i++) for (j=-((multiple+1)/2); j<((multiple+1)/2); j++) {
 							xr= uv2xy[0][0]*(j+du+0.5) + uv2xy[0][1]*(i+dv+0.5);
@@ -4217,7 +4217,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			for (i=0;i<pixelsPSF.length;i++) {
 				if (pixelsPSFWeight[i]>0.0) pixelsPSF[i]/=pixelsPSFWeight[i];
 			}
-	/** Interpolate  missing points (pixelsPSFCount[i]==0) */
+	/* Interpolate  missing points (pixelsPSFCount[i]==0) */
 
 			for (i=0;i<pixelsPSF.length;i++) if (pixelsPSFWeight[i]==0.0){
 				iy=i/outSize;
@@ -4236,7 +4236,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					}
 				}
 			}
-	/** optionally show original array with masked out low-contrast cells */
+	/* optionally show original array with masked out low-contrast cells */
 			if ((globalDebugLevel>2) && (pass==1))  SDFA_INSTANCE.showArrays(pixelsPSF, title+"_Used-PSF");
 			if (debug) {
 				SDFA_INSTANCE.showArrays(debugPixels, title+"_mask_PSF");
@@ -4255,8 +4255,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 	
 	
 	
-	/** ======================================================================== */
-	/** Create a Thread[] array as large as the number of processors available.
+	/* ======================================================================== */
+	/* Create a Thread[] array as large as the number of processors available.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */
@@ -4265,7 +4265,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 			return new Thread[n_cpus];
 		}
-	/** Start all given threads and wait on each of them until all are done.
+	/* Start all given threads and wait on each of them until all are done.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */
@@ -4286,7 +4286,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				throw new RuntimeException(ie);
 			}
 		}
-		/** === Parameter classes === */
+		/* === Parameter classes === */
 		public static class MultiFilePSF {
 			public double  overexposedMaxFraction; // allowed fraction of the overexposed pixels in the PSF kernel measurement area
 			public double  weightOnBorder=0.5;

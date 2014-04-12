@@ -91,8 +91,8 @@ JP46_Reader_camera jp4_instance;
  public static int     bayerComponent=-1; //all
  public static int     displayWidth=800;
  public static int     displayHeight=600;
- public static int     displayRotate=0; /** 90- degrees CCV from the image */
- public static double  goalG2R=1.05; /** Level of G/R when R/G indicator changes colors */
+ public static int     displayRotate=0; /* 90- degrees CCV from the image */
+ public static double  goalG2R=1.05; /* Level of G/R when R/G indicator changes colors */
 
  public static int     displayZonesGap=10;
  public static int     displayElementGap=2;
@@ -103,8 +103,8 @@ JP46_Reader_camera jp4_instance;
  private static float [] TargetFilter;
  public static float [][] input_bayer; 
  public static double [][][] targets; /// [v][h][y,x,value] (value=0 - invalid)
- public static int [][][] targetLocations=null; /** [number][v,h,white,black][x,y] */
- public static int [][] targetZones=null; /** [number][zone_x,zone_y]*/
+ public static int [][][] targetLocations=null; /* [number][v,h,white,black][x,y] */
+ public static int [][] targetZones=null; /* [number][zone_x,zone_y]*/
  public ImageProcessor ip_display;
  public ImagePlus      imp_display;
  public ImagePlus      imp_camera=null;
@@ -413,7 +413,7 @@ JP46_Reader_camera jp4_instance;
 
 
     DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-/** other commands need current image (float) */
+/* other commands need current image (float) */
     imp_src = WindowManager.getCurrentImage();
     if (imp_src==null) {
       IJ.showStatus("No image");
@@ -530,7 +530,7 @@ JP46_Reader_camera jp4_instance;
       if (DEBUG_LEVEL>0) {
         showTargets(targets, targetThreshold, newTitle);
       }
-/** make targetLocations*/
+/* make targetLocations*/
       int zv,zh;
       i=0;
       for (zv=0;zv<zonesVert;zv++) for (zh=0;zh<zonesHor;zh++) if (targets[zv][zh][2]>targetThreshold) i++;
@@ -606,7 +606,7 @@ catch(InterruptedException ie){
 
 
   public boolean measureAndDisplay(ImagePlus imp) {
-/** Make sure targets are defined (image existence is already tested)*/
+/* Make sure targets are defined (image existence is already tested)*/
     if (targetLocations==null) {
       IJ.showMessage("Error","Target locations are undefined.\nPlease run \"Find Targets\" first");
       return false;
@@ -668,7 +668,7 @@ catch(InterruptedException ie){
     jp4_instance.setTitle(gd.getNextString());
 
     FFTSize=1;
-    for (i=(int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /** make FFTSize to be power of 2*/
+    for (i=(int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /* make FFTSize to be power of 2*/
     FFTScanStep=        (int) gd.getNextNumber();
 
     targetFTolerance=   0.01* gd.getNextNumber();
@@ -1250,8 +1250,8 @@ catch(InterruptedException ie){
 //      Color color=new Color(0xffffff);
       for (dir=0;dir<2;dir++) {
           for (col=0;col<4;col++) {
-          logData[dir][col]=    Math.log(Math.max(Math.min(     data[dir][col],max),min)/min)/Math.log(max/min); /** min->0, max ->1.0 */
-          logBestData[dir][col]=Math.log(Math.max(Math.min(best_data[dir][col],max),min)/min)/Math.log(max/min); /** min->0, max ->1.0 */
+          logData[dir][col]=    Math.log(Math.max(Math.min(     data[dir][col],max),min)/min)/Math.log(max/min); /* min->0, max ->1.0 */
+          logBestData[dir][col]=Math.log(Math.max(Math.min(best_data[dir][col],max),min)/min)/Math.log(max/min); /* min->0, max ->1.0 */
           h=(int) (logData[dir][col]*height);
           h_best=(int) (logBestData[dir][col]*height);
           c=dir+2*(col^1);
@@ -1377,7 +1377,7 @@ catch(InterruptedException ie){
   }
 
 // imp argument is not used anymore, using global imp_camera
-/** measure 'MTF' at target frequencies, for each target, each orientation, each color). Same indexes as in targetLocs */
+/* measure 'MTF' at target frequencies, for each target, each orientation, each color). Same indexes as in targetLocs */
 /**
 Tries to re-measure "bad" measurements (i.e. somebody walked through), but false positives  happen when 3 measurements fall very close to each other
 so it is difficult to get a replacement image.
@@ -1525,7 +1525,7 @@ double ERR_this, ERR_others;
       ip.setRoi(targetLocs[nTarg][1][0]&(~1)-FFTSize,targetLocs[nTarg][1][1]&(~1)-FFTSize,FFTSize2,FFTSize2);
       pixels_hor_all=(float[])ip.crop().getPixels();
       for (nBayer=0;nBayer<4;nBayer++) {
-/** Calibrate White-Black for selected target/color */
+/* Calibrate White-Black for selected target/color */
         dwb=0.0;
         n=0;
         for (i=(nBayer>>1); i<calib_height;i+=2) for (j=(nBayer & 1); j<calib_width; j+=2) {
@@ -1549,15 +1549,15 @@ Exception in thread "AWT-EventQueue-0" java.lang.ArrayIndexOutOfBoundsException:
           }
         } 
         dwb/=n;
-/** Extract bayer component for vertical and horizontal patterns */
+/* Extract bayer component for vertical and horizontal patterns */
         n=0;
         for (i=(nBayer>>1); i<FFTSize2;i+=2) for (j=(nBayer & 1); j<FFTSize2; j+=2) {
           indx=i*FFTSize2+j;
           pixels_vert[n]=  pixels_vert_all[indx]; // out of bound exception 3584
           pixels_hor [n++]=pixels_hor_all[indx];
         }      
-/** Calculate vertical pattern MTF at patter frequency (horizontal resolution). Uses global Hamming and TargetFilter arrays */
-/** TODO: ? optimize measuresOne() to remove extra processing - copying, both directions */
+/* Calculate vertical pattern MTF at patter frequency (horizontal resolution). Uses global Hamming and TargetFilter arrays */
+/* TODO: ? optimize measuresOne() to remove extra processing - copying, both directions */
         max2=measuresOne(pixels_vert, FFTSize, Hamming, TargetFilter, 0, 0, FFTSize, false, "");
         rslt[nTarg][0][nBayer]=max2[0]/dwb; // Is it right 0/1 here (and below)?
         max2=measuresOne(pixels_hor, FFTSize, Hamming, TargetFilter, 0, 0, FFTSize, false, "");
@@ -1585,7 +1585,7 @@ Exception in thread "AWT-EventQueue-0" java.lang.ArrayIndexOutOfBoundsException:
 
 /// =========================================
 //public static float [][] input_bayer; 
- /** ignore ROI, use whole image */
+ /* ignore ROI, use whole image */
   public float[][] splitBayer (ImagePlus imp) {
     ImageProcessor ip=imp.getProcessor();
     Rectangle r=new Rectangle(imp.getWidth(),imp.getHeight());
@@ -1643,7 +1643,7 @@ Exception in thread "AWT-EventQueue-0" java.lang.ArrayIndexOutOfBoundsException:
         d2[i][j]=Math.exp(-k*dd);
       }
     }
-    /** now add the four of them */
+    /* now add the four of them */
     max=0;
     for (i=0; i<size;i++) for (j=0; j<size; j++) {
       d2a=d2[i][j];
@@ -1727,7 +1727,7 @@ Exception in thread "AWT-EventQueue-0" java.lang.ArrayIndexOutOfBoundsException:
   }  
 
 //      minFilter(vh_pixels[0], mwidth, mheight, minFilterRadius);
-/** Replaces pixel value with minimal in the square*/
+/* Replaces pixel value with minimal in the square*/
   public float[] minFilter(float [] pixels, int width, int height, int radius) {
     float []min=new float [pixels.length];
     float m;
@@ -1803,7 +1803,7 @@ Exception in thread "AWT-EventQueue-0" java.lang.ArrayIndexOutOfBoundsException:
     return corr;
   }
 
-/** if (x0==0) full_pixels are considered to be just the square to process, no windowing is performed */
+/* if (x0==0) full_pixels are considered to be just the square to process, no windowing is performed */
   public float[] measuresOne(float[] full_pixels, int size, float [] hamming, float [] target_filter, int x0, int y0, int width, boolean show, String title) {
     int i,j,m,x,y, base0, base;
     int half_size=size>>1;
@@ -2047,7 +2047,7 @@ targetF
     }
     new TextWindow(title, header, sb.toString(), 1200,800);
   }
-/** Calculates astigmatism as difference between "best focus" distance for tangential and radial off-center components
+/* Calculates astigmatism as difference between "best focus" distance for tangential and radial off-center components
      and vertical-horizontal for the center*/
   public void showAstigmatismTable(double[][][][] maxScanTargetOrientColor, //[scan direction][target][v,h][r,g,b] 1.0 - one scan sample
                                    double micronsPerSample,  // microns per 1 scan sample
@@ -2056,7 +2056,7 @@ targetF
                                                                 // considered unreliable
                                    String title,                // window title
                                    int precision) {             // output precision in decimals
- /** targets 1,3,5:  v=t, h=r; targets 2,4: v=r, h=t  */
+ /* targets 1,3,5:  v=t, h=r; targets 2,4: v=r, h=t  */
     double  [][] astigm =new double [maxScanTargetOrientColor[0].length][3];
     boolean [][] reliable =new boolean [maxScanTargetOrientColor[0].length][3];
     int target, color;

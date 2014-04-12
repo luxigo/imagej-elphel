@@ -53,10 +53,10 @@ Panel panel1,panel2;
 
  private static int DEBUG_LEVEL = 1;
  private static int MASTER_DEBUG_LEVEL = 1;
- private static int sSize=32; /** change name to something meaningful */
- private static boolean IS_MONOCHROMATIC=true; /** in monochromatic mode chromatic aberrations are eliminated, edge position is common for all Bayer components */
- private static int EMODE=2; /** trying different modes to determine the edge position on individual lines. 2 seems to be the best so far */
- private static boolean TRUNCATE_ROWS=true; /** truncate number of processed rows to equlaize number of phase rotations */
+ private static int sSize=32; /* change name to something meaningful */
+ private static boolean IS_MONOCHROMATIC=true; /* in monochromatic mode chromatic aberrations are eliminated, edge position is common for all Bayer components */
+ private static int EMODE=2; /* trying different modes to determine the edge position on individual lines. 2 seems to be the best so far */
+ private static boolean TRUNCATE_ROWS=true; /* truncate number of processed rows to equlaize number of phase rotations */
  private static double LSFHamming=0.5; /**Hamming window width for LSF calculation, fraction of the full window. 0.0 - no window */
  private static boolean USE_COMPLEX=true;
  private static boolean SHOW_edgeinfo=false;
@@ -67,7 +67,7 @@ Panel panel1,panel2;
  private static boolean SHOW_CROSSTALK=false;
 
  private static boolean ALLOW_FULL_IMAGE=false;
- private static double GB2GR_CORR=1.0; /** difference in Green sensitivity Gb/Gr*/
+ private static double GB2GR_CORR=1.0; /* difference in Green sensitivity Gb/Gr*/
  private int maxJump=8;
  private ImagePlus imp_src;
  private boolean horizontalEdges=false;
@@ -78,22 +78,22 @@ Panel panel1,panel2;
  private double[][][]   color_coeff_abc;
  private double[][][] binDataBoth;
  private double[][][] binDataDiffBoth;
- private double[][]   MTFVectorsBoth =    new double [8][];   /** Amplitudes */
+ private double[][]   MTFVectorsBoth =    new double [8][];   /* Amplitudes */
  private double[][]   MTFPVectorsBoth =   new double [8][];  /**Phases */
  private double[][]   MTFCVectorsBoth =   new double [16][]; /**Complex */
  private Complex[][]  MTFComplex=         new Complex [8][];
  private double[][]   MTFCRatios =        new double [16][]; /**Complex, each MTF divided  by maximal (separately for each direction) */
- private double[][]   MTFCRatiosA =       new double [8][];  /** Amplitude */
- private double[][]   MTFCRatiosRe=       new double [8][];  /** Real part */
- private double[][]   MTFCRatiosAMasked=  new double [8][];  /** Amplitude, plots for main color zeroed */
- private double[][]   MTFCRatiosReMasked= new double [8][];  /** Real part, Masked */
- private double[][]   MTFCRatiosP =       new double [8][];  /** Phase */
+ private double[][]   MTFCRatiosA =       new double [8][];  /* Amplitude */
+ private double[][]   MTFCRatiosRe=       new double [8][];  /* Real part */
+ private double[][]   MTFCRatiosAMasked=  new double [8][];  /* Amplitude, plots for main color zeroed */
+ private double[][]   MTFCRatiosReMasked= new double [8][];  /* Real part, Masked */
+ private double[][]   MTFCRatiosP =       new double [8][];  /* Phase */
  private Complex[][]  MTFRatioComplex=    new Complex [8][];
  private Complex[][]  MTF_GG_RB=          new Complex [2][];
  private double [][]  MTF_GG_RB_REIM    = new double  [4][];
 
- private int          MTFMaximalChannel;                   /** Color number that has highest DC value - averaged for both directions */
- private double[]     MTF_DC          =   new double [8]; /** DC coefficinets of MTF - calculated separately from ESF to avoid window function skew */
+ private int          MTFMaximalChannel;                   /* Color number that has highest DC value - averaged for both directions */
+ private double[]     MTF_DC          =   new double [8]; /* DC coefficinets of MTF - calculated separately from ESF to avoid window function skew */
 
 
 
@@ -168,7 +168,7 @@ Panel panel1,panel2;
       showDialog();
       return;
     }
-    DEBUG_LEVEL=MASTER_DEBUG_LEVEL; /** Move to particular command if needed */
+    DEBUG_LEVEL=MASTER_DEBUG_LEVEL; /* Move to particular command if needed */
     if (label.equals("Process")) {
       if (!openImage()) {
 //        IJ.showMessage("Error","openImage() failed");
@@ -179,13 +179,13 @@ Panel panel1,panel2;
       int [][] posEdgesV=null;
       int [][] posEdgesH=null;
 
-/** try both vertical and horizontal edges, use one that has more edges (if any) */
+/* try both vertical and horizontal edges, use one that has more edges (if any) */
       esfV = generateSelection(imp_src,  false);
       if (esfV!=null) posEdgesV=findEdges(esfV, maxJump);
 
       esfH = generateSelection(imp_src,  true);
       if (esfH!=null) posEdgesH=findEdges(esfH, maxJump);
-/** Both directions OK - use the best one */
+/* Both directions OK - use the best one */
       if ((posEdgesV!=null) && (posEdgesH!=null)) {
         if (posEdgesH[0].length>posEdgesV[0].length) {
           ESFArray=esfH;
@@ -260,7 +260,7 @@ Panel panel1,panel2;
     double[] av0= new double [8];
     double[] av4= new double [8];
     double[] aav0= new double [4];
-    Complex quaterFreqMC; /** average of two directions of main component */
+    Complex quaterFreqMC; /* average of two directions of main component */
     if (MTFVectorsBoth[0]==null) {
         IJ.showMessage("Error","No data available, please run \"Process\" first");
         return;
@@ -292,7 +292,7 @@ Panel panel1,panel2;
    Complex Kv=Kv1.plus(Kv2);
    Kv=Kv.scale(0.5);
    double KHV, Khv, Khv1, Khv2; /**Kh-Kv, considering Kd==0, Kv-Kh= (GR(0)-GB(0))/(R(0)-B(0))/2/(K0-4*Kd)  */
-/** next direction is always absolute, does not depend on horizontalEdges */
+/* next direction is always absolute, does not depend on horizontalEdges */
    Khv1=0.5*(av0[0]-av0[6])/(av0[2]-av0[4]); 
    Khv2=0.5*(av0[1]-av0[7])/(av0[3]-av0[5]);
    Khv=0.5*(Khv1+Khv2);
@@ -332,8 +332,8 @@ Panel panel1,panel2;
   ((DEBUG_LEVEL>1)?("Kv  _/\t"+        stringComplexComplex(Kv1,precision)+"\n"):"")+
   ((DEBUG_LEVEL>1)?("Kv  \\_\t"+        stringComplexComplex(Kv2,precision)+"\n"):"")+
   ((DEBUG_LEVEL>1)?("Kv average\t"+         stringComplexComplex(Kv,precision)+"\n"):"")+
-  ((DEBUG_LEVEL>1)?("dG["+qf+"]/G[0] _/\t"+IJ.d2s(GBmGR1.abs()/aav0[0],precision)+"\n"):"")+ /** quality factor */
-  ((DEBUG_LEVEL>1)?("dG["+qf+"]/G[0] \\_\t"+IJ.d2s(GBmGR2.abs()/aav0[0],precision)+"\n"):"")+ /** quality factor */
+  ((DEBUG_LEVEL>1)?("dG["+qf+"]/G[0] _/\t"+IJ.d2s(GBmGR1.abs()/aav0[0],precision)+"\n"):"")+ /* quality factor */
+  ((DEBUG_LEVEL>1)?("dG["+qf+"]/G[0] \\_\t"+IJ.d2s(GBmGR2.abs()/aav0[0],precision)+"\n"):"")+ /* quality factor */
   ((DEBUG_LEVEL>2)?("Kh-Kv _/1\t"+    IJ.d2s(Khv1,precision+1)+"\n"):"")+
   ((DEBUG_LEVEL>2)?("Kh-Kv \\_\t"+    IJ.d2s(Khv1,precision+1)+"\n"):"")+
   "Filter\t"+     (((aav0[1] > aav0[0]) && (aav0[1] > aav0[2]) && (aav0[1]>aav0[3]))?"Red":(((aav0[2] > aav0[0]) && (aav0[2] > aav0[1]) && (aav0[2]>aav0[3]))? "Blue":"Green/None"))+"\n"+
@@ -363,7 +363,7 @@ Panel panel1,panel2;
   public void makeMTF() {
     int n,i, n1;
     int N=sSize*4;
-    int M=(N>>3)+1; /** Only quarter (because of bins) of the first half is needed */
+    int M=(N>>3)+1; /* Only quarter (because of bins) of the first half is needed */
     Complex[] ArrayComplex = new Complex[N];
     Complex[] VectorFFTC = new Complex[N];
     boolean masked=false;
@@ -376,7 +376,7 @@ Panel panel1,panel2;
       for (i=0;i<N;i++) {
          ArrayComplex[(i+(N>>1))%N] = new Complex(binDataDiffBoth[n & 1][n>>1][i], 0); 
       }
-      /** Calculate DC coefficients of MTF using ESF (not LSF multiplied by window function. Precise DC coefficients are needed to determine crosstalk
+      /* Calculate DC coefficients of MTF using ESF (not LSF multiplied by window function. Precise DC coefficients are needed to determine crosstalk
           assymmentry Horizontal-Vertical (may be caused by limited bandwidth of an ammplifier/ADC).
           Use difference between average ESF in the first and the last quaters */
       MTF_DC[n]=0.0;
@@ -409,7 +409,7 @@ Panel panel1,panel2;
 // private double [][]  MTF_GG_RB_REIM    = new double  [4][];
 //divideBy   
 
-    /** calculate results of division of each channel MTF by the channel that has the maximal total energy.
+    /* calculate results of division of each channel MTF by the channel that has the maximal total energy.
     Based on assumption that:
     1 -  image was acquired with monochromatic light (no chromatic aberrations), and
     2 - one channel has much higher signal, so it can be considered as "actual" light input
@@ -425,8 +425,8 @@ Panel panel1,panel2;
     }
     for (n=0;n<8;n++) {
       switch (MTFMaximalChannel) {
-        case 0: /** Green red line */
-        case 3: /** Green blue line */
+        case 0: /* Green red line */
+        case 3: /* Green blue line */
           masked= ((n >> 1) == MTFMaximalChannel) || ((n >> 1) == (MTFMaximalChannel^3));
           break;
         default: masked= ((n >> 1) == MTFMaximalChannel);
@@ -435,13 +435,13 @@ Panel panel1,panel2;
       n1=(n & 1) + (MTFMaximalChannel << 1);
       MTFCRatios[n<<1]=      new double[M];
       MTFCRatios[(n<<1)+1]=  new double[M];
-      MTFCRatiosA[n] =       new double [M];  /** Amplitude */
-      MTFCRatiosAMasked[n] = new double [M];  /** Amplitude, masked */
-      MTFCRatiosRe[n]=       new double [M];  /** Real part */
-      MTFCRatiosReMasked[n]= new double [M];  /** Real part, Masked */
+      MTFCRatiosA[n] =       new double [M];  /* Amplitude */
+      MTFCRatiosAMasked[n] = new double [M];  /* Amplitude, masked */
+      MTFCRatiosRe[n]=       new double [M];  /* Real part */
+      MTFCRatiosReMasked[n]= new double [M];  /* Real part, Masked */
 
 
-      MTFCRatiosP[n] = new double [M];  /** Phase */
+      MTFCRatiosP[n] = new double [M];  /* Phase */
       MTFRatioComplex[n]=new Complex[M];
       for (i=0;i<M;i++) {
 
@@ -620,7 +620,7 @@ Panel panel1,panel2;
    gd.addCheckboxGroup(1,7,GGRB_labels, SHOW_GGRB);
    gd.addCheckbox("Show calculated crosstalk (monochrome mode, red or blue filter required)",SHOW_CROSSTALK);
    gd.addCheckbox("Allow_full_image?", ALLOW_FULL_IMAGE);
-// private static double bg2gr_corr=1.0; /** difference in Green sensitivity Gb/Gr*/
+// private static double bg2gr_corr=1.0; /* difference in Green sensitivity Gb/Gr*/
    gd.addNumericField("Gb/Gr sensitivity correction:",GB2GR_CORR, 5);
  
    gd.addNumericField("Debug_Level:",      MASTER_DEBUG_LEVEL, 0);
@@ -628,7 +628,7 @@ Panel panel1,panel2;
    if (gd.wasCanceled()) return false;
    title_src = gd.getNextString();
    sSize=1;
-   for (i=(int) gd.getNextNumber(); i >1; i>>=1) sSize <<=1; /** make sSize to be power of 2*/
+   for (i=(int) gd.getNextNumber(); i >1; i>>=1) sSize <<=1; /* make sSize to be power of 2*/
 
    IS_MONOCHROMATIC=gd.getNextBoolean();
 //   EMODE=(int) gd.getNextNumber();
@@ -680,11 +680,11 @@ Panel panel1,panel2;
     int i,n, edge;
     double rmsMax=0.0;
     StringBuffer sb = new StringBuffer();
-    double [][][] data_total=new double[2][4][6]; /** calculate totals for each edge, each Bayer component */
+    double [][][] data_total=new double[2][4][6]; /* calculate totals for each edge, each Bayer component */
     for (edge=0;edge<2;edge++) for (n=0;n<4;n++) for (i=0;i<6;i++) data_total[edge][n][i]=0.0;
 
     for (i=0;i<nValid;i++) for (n=0;n<4;n++) {
-      edge=posEdges[halfHeight][i]; /** 0 - black-> white, 1 white->black*/
+      edge=posEdges[halfHeight][i]; /* 0 - black-> white, 1 white->black*/
       data_total[edge][n][0]+=color_coeff_abc[i][n][0]*color_coeff_abc[i][n][5];
       data_total[edge][n][1]+=color_coeff_abc[i][n][1]*color_coeff_abc[i][n][5];
       data_total[edge][n][2]+=color_coeff_abc[i][n][2]*color_coeff_abc[i][n][5];
@@ -765,11 +765,11 @@ Panel panel1,panel2;
       } else {
         IJ.showMessage("Error","No selection (line or rectangle) in the source image.\n"+
                                "You may allow processing of the full image in \"Configure\"");
-        return false; /** Full image selected */
+        return false; /* Full image selected */
       }
     }
     Rectangle r=roi_src.getBounds();
-/** align ROI to Bayer */
+/* align ROI to Bayer */
     r.width &= ~1;
     r.height &= ~1;
     r.x &= ~1;
@@ -791,25 +791,25 @@ Panel panel1,panel2;
     selecHeight=horizontal?r.width:r.height;
     int w=ip.getWidth();
     if (selecWidth<sSize) return null; //sample size is bigger than selection width
-/** selection already aligned to color mosaic */
+/* selection already aligned to color mosaic */
     double [][] esf=new double[selecHeight][selecWidth];
     if (DEBUG_LEVEL>4) IJ.showMessage("Debug","selecWidth="+selecWidth+"\tselecHeight="+selecHeight);
 
-    if (horizontal) { /** (nearly) horizontal edges */
+    if (horizontal) { /* (nearly) horizontal edges */
       for (i=0; i< selecWidth; i++) {
          base=((r.y+i) * w+r.x);
          i1=selecWidth-i-1;
          for (j=0;j< selecHeight; j++) {
-            if (((i&1)==0) && ((j&1)==0)) esf[j][i1]= GB2GR_CORR* pixels[base+j]; /** Gr*=GB2GR_CORR */
+            if (((i&1)==0) && ((j&1)==0)) esf[j][i1]= GB2GR_CORR* pixels[base+j]; /* Gr*=GB2GR_CORR */
             else                          esf[j][i1]= pixels[base+j];
          }
 //GB2GR_CORR
       }
-    } else {  /** (nearly) vertical edges */
+    } else {  /* (nearly) vertical edges */
       for (i=0; i< selecHeight; i++) {
          base=((r.y+i) * w+r.x);
          for (j=0;j< selecWidth; j++) {
-            if (((i&1)==0) && ((j&1)==0)) esf[i][j]= GB2GR_CORR* pixels[base+j]; /** Gr*=GB2GR_CORR */
+            if (((i&1)==0) && ((j&1)==0)) esf[i][j]= GB2GR_CORR* pixels[base+j]; /* Gr*=GB2GR_CORR */
             else                          esf[i][j]= pixels[base+j];
          }
       }
@@ -826,7 +826,7 @@ Panel panel1,panel2;
   int [][] findEdges(double[][] esf, int maxJump) {
     int halfHeight=selecHeight/2;
     int k,i,j,k2,k21, sign,pos;
-    int [][] intEdges=new int [halfHeight][selecWidth]; /** used later !!!*/
+    int [][] intEdges=new int [halfHeight][selecWidth]; /* used later !!!*/
     int [] initialSign=new int[halfHeight];
     int [] numEdges=new int[halfHeight];
     double [] smoothLine=new double [selecWidth]; // 0,1,selecWidth-1 - undefined
@@ -848,8 +848,8 @@ Panel panel1,panel2;
         if (smoothLine[i] > mx) mx=smoothLine[i];
         if (smoothLine[i] < mn) mn=smoothLine[i];
       }
-/**  mx and mn are supposed to be of opposite sign here, set thereshold 1/4 of the minimal of the absolute values of mx and mn */
-      if ((mn*mx)>=0.0) return null; /** no edges found */
+/*  mx and mn are supposed to be of opposite sign here, set thereshold 1/4 of the minimal of the absolute values of mx and mn */
+      if ((mn*mx)>=0.0) return null; /* no edges found */
       thresh=mx/4;
       if (thresh > -(mn/4)) thresh = -(mn/4);
       sign=0; // 0 - unknown yet, 1 - last was max, -1 - last was min
@@ -897,7 +897,7 @@ Panel panel1,panel2;
       }
     }
 //    IJ.showMessage("calcEdges() debug 1  halfHeight="+halfHeight,"First line has "+numEdges[0]+" edges");
-/** for now - considering only edges that run the full height */
+/* for now - considering only edges that run the full height */
     boolean []   valid=new boolean [numEdges[0]]; // if the edge runs all the way from top to bottom
 //    int [][] posEdges=new int [halfHeight][numEdges[0]]; // horizontal positions of edges
     int [][] posEdges=new int [halfHeight+1][numEdges[0]]; // horizontal positions of edges, [halfHeight][i] - signs of edges (0/1)
@@ -907,13 +907,13 @@ Panel panel1,panel2;
 
     for (k=0; k<halfHeight;k++) {
 
-/** Verify current line does not get out of halfSize from the ends (enough room on both sides of the edge) */
+/* Verify current line does not get out of halfSize from the ends (enough room on both sides of the edge) */
       for (i=0; i<numEdges[0]; i++) if (valid[i]) {
         if ((posEdges[k][i]<halfSize) || (posEdges[k][i]>= (selecWidth-halfSize))) valid[i] = false;
       }
 
       if (k< (halfHeight-1)) {
-/** See if the edge is continued to the next line */
+/* See if the edge is continued to the next line */
         for (i=0; i<numEdges[0]; i++) if (valid[i]) {
           posEdges[k+1][i]=-1;
           for (j=0; j<=maxJump; j=-j+((j<=0)?1:0)) {
@@ -927,17 +927,17 @@ Panel panel1,panel2;
       }
 
     }
-/** compact posEdges by removing invalid columns, calculate nValid; */
+/* compact posEdges by removing invalid columns, calculate nValid; */
     int nValid=0;
     for (i=0; i<numEdges[0]; i++) if (valid[i]) {
       if (i!=nValid) for (k=0; k< halfHeight; k++) posEdges[k][nValid]=posEdges[k][i];
       nValid++;
     }
-    for (i=0;i<nValid; i++ )  posEdges[halfHeight][i]= (intEdges[0][posEdges[0][i]]>0)?0:1; /** 0 - black-> white, 1 white->black*/
+    for (i=0;i<nValid; i++ )  posEdges[halfHeight][i]= (intEdges[0][posEdges[0][i]]>0)?0:1; /* 0 - black-> white, 1 white->black*/
     if (DEBUG_LEVEL>4) IJ.showMessage("calcEdges() debug 2","First line has "+numEdges[0]+" edges, of the "+nValid+" run all the way");
     if (nValid==0) return null;
 
-/** Copy posEdges to a new array that has all columns valid, use this array as return value of this function.
+/* Copy posEdges to a new array that has all columns valid, use this array as return value of this function.
     Last row contains signes of the edges (0/1)*/
     int [][] posEdges1=new int [halfHeight+1][nValid];
 //  if (DEBUG_LEVEL>10)IJ.showMessage("Debug-22","posEdges1.length="+((posEdges1==null)?"null":posEdges1.length)+"\nhalfHeight="+halfHeight );
@@ -968,7 +968,7 @@ Panel panel1,panel2;
           for (n=0; n<nValid; n++) {
             pos=2*(posEdges[k][n]/2)-halfSize+byr_h;
             switch (EMODE) {
-              case 0: /** centroid -> multiply by window -> recalcualte centroid */
+              case 0: /* centroid -> multiply by window -> recalcualte centroid */
                 for (i=0; i<halfSize; i++) LSFColorVector[i]=ESFArray[k2][pos+2*i+2]-ESFArray[k2][pos+2*i];
                 a=0.0;
                 
@@ -977,7 +977,7 @@ Panel panel1,panel2;
                   a +=LSFColorVector[i];
                   ax+=LSFColorVector[i]*i;
                 }
-                cx=ax/a+0.5; /** center position without window */
+                cx=ax/a+0.5; /* center position without window */
                 if (HammingHalfWidth> 0) {
                   a=0.0;
                   ax=0.0;
@@ -989,7 +989,7 @@ Panel panel1,panel2;
                 }
                 posColorEdges[k][byr_index][n]= 2*(ax/a)+pos+0.5; ///pixel position (in original pixels) of the maximum
                 break;
-              case 3: /** centroid -> multiply by window -> recalcualte centroid, reduce window twice - recalculate again */
+              case 3: /* centroid -> multiply by window -> recalcualte centroid, reduce window twice - recalculate again */
                 double HammingQuaterWidth=HammingHalfWidth/1;
                 for (i=0; i<halfSize; i++) LSFColorVector[i]=ESFArray[k2][pos+2*i+2]-ESFArray[k2][pos+2*i];
                 a=0.0;
@@ -998,7 +998,7 @@ Panel panel1,panel2;
                   a +=LSFColorVector[i];
                   ax+=LSFColorVector[i]*i;
                 }
-                cx=ax/a+0.5; /** center position without window */
+                cx=ax/a+0.5; /* center position without window */
                 if (HammingHalfWidth> 0) {
                   a=0.0;
                   ax=0.0;
@@ -1007,7 +1007,7 @@ Panel panel1,panel2;
                     a +=aw;
                     ax+=aw*i;
                   }
-                  cx=ax/a+0.5; /** center position with full Hamming window */
+                  cx=ax/a+0.5; /* center position with full Hamming window */
                   a=0.0;
                   ax=0.0;
                   for(i=0;i<halfSize;i++) if (Math.abs(i-cx)<=HammingHalfWidth){
@@ -1021,8 +1021,8 @@ Panel panel1,panel2;
 
 
 
-              case 1: /** average leftmost quarter, rightmost quarter, find middle between them, find crossing point with linear interpolation.*/
-              case 2: /** average leftmost quarter, rightmost quarter, find middle between them, find crossing point with 3-rd polynome interpolation. */
+              case 1: /* average leftmost quarter, rightmost quarter, find middle between them, find crossing point with linear interpolation.*/
+              case 2: /* average leftmost quarter, rightmost quarter, find middle between them, find crossing point with 3-rd polynome interpolation. */
                 s1=0.0;
                 s2=0.0;
                 for (i=0;i<quarterSize;i++) {
@@ -1034,37 +1034,37 @@ Panel panel1,panel2;
                 s2/=quarterSize;
                 s=0.5*(s1+s2);
                 for (i=quarterSize; (i< (sSize-quarterSize) && ((s1-s)*(ESFArray[k2][pos+2*i]-s) >0)); i++) ;
-                /** edge between i-1 and i*/
+                /* edge between i-1 and i*/
                 y1=ESFArray[k2][pos+2*i-2]-s;
                 y2=ESFArray[k2][pos+2*i]-s;
                 if (y2==0.0) {
-                  posColorEdges[k][byr_index][n]= pos+2*i-0.5; /** unlikely exact match */
+                  posColorEdges[k][byr_index][n]= pos+2*i-0.5; /* unlikely exact match */
                   break;
                 }
-                if ((y1)*(y2)>=0) { /** Should not be so, retry wider */
+                if ((y1)*(y2)>=0) { /* Should not be so, retry wider */
                   for (i=2; (i< (sSize-2) && ((s1-s)*(ESFArray[k2][pos+2*i]-s) >0)); i++) ;
-                  /** edge between i-1 and i*/
+                  /* edge between i-1 and i*/
                   y1=ESFArray[k2][pos+2*i-2]-s;
                   y2=ESFArray[k2][pos+2*i]-s;
                 }
-                posColorEdges[k][byr_index][n]= pos+2*((i-1)+(y1)/(y1-y2))-0.5; /** linear, uase a backup for cubic */
+                posColorEdges[k][byr_index][n]= pos+2*((i-1)+(y1)/(y1-y2))-0.5; /* linear, uase a backup for cubic */
                 if (EMODE==1) break;
                 y0=ESFArray[k2][pos+2*i-4]-s;
                 y3=ESFArray[k2][pos+2*i+2]-s;
-/** y= pa*x^3+pb*x^2+pc*x+pd*/
+/* y= pa*x^3+pb*x^2+pc*x+pd*/
                 pd=          y0;
                 pa= -(1.0/6)*y0 +0.5*y1 -0.5*y2 +(1.0/6)*y3;
                 pb=          y0 -2.5*y1   +2*y2     -0.5*y3;
                 pc=-(11.0/6)*y0   +3*y1 -1.5*y2 +(1.0/3)*y3;
-/** solve cubic equation and select solution between 1 and 2, if none - use linear */
-/** simplified solution - add the point from linear interpolation, linear interpolate before/after */
+/* solve cubic equation and select solution between 1 and 2, if none - use linear */
+/* simplified solution - add the point from linear interpolation, linear interpolate before/after */
                 x0=y1/(y1-y2) +1.0;
                 yy=pa*x0*x0*x0+pb*x0*x0+pc*x0+pd;
                 if (y1*yy == 0.0) {
-                  posColorEdges[k][byr_index][n]= pos+2*(i-2+x0)-0.5; /** unlikely exact match */
-                } else if (y1*yy > 0.0) { /** interpolate between yy and y2 */
+                  posColorEdges[k][byr_index][n]= pos+2*(i-2+x0)-0.5; /* unlikely exact match */
+                } else if (y1*yy > 0.0) { /* interpolate between yy and y2 */
                   posColorEdges[k][byr_index][n]= pos+2*((i-2+x0)+ (2-x0)*yy/(yy-y2))-0.5;
-                } else { /** interpolate between y1 and yy */
+                } else { /* interpolate between y1 and yy */
                   posColorEdges[k][byr_index][n]= pos+2*(i-1+ (x0-1)*y1/(y1-yy))-0.5;
                 }
                 break;
@@ -1074,7 +1074,7 @@ Panel panel1,panel2;
       }
     }
 //    color_coeff_abc=new double [nValid][4][4];
-    color_coeff_abc=new double [nValid][4][6]; /** [4] (monochromatic only) - average difference between approximated edge and this color component,
+    color_coeff_abc=new double [nValid][4][6]; /* [4] (monochromatic only) - average difference between approximated edge and this color component,
                                                    [5] - number of rows used */
     double SX4,SYX2,SX3,SX2,SYX,SY,SX,S0;
     double x,rms, skew, pmax,err;
@@ -1087,8 +1087,8 @@ Panel panel1,panel2;
       SYX=0.0;
       SY=0.0;
       S0=0.0;
-/** TODO: Make weighted contributions of different components (or even the main one) */
-      if (IS_MONOCHROMATIC) { /** gets here with (n==3) only, combine all Bayer components, taking care of shifts */
+/* TODO: Make weighted contributions of different components (or even the main one) */
+      if (IS_MONOCHROMATIC) { /* gets here with (n==3) only, combine all Bayer components, taking care of shifts */
         for (n1=0;n1<4;n1++) {
           dx=0.5*bayer_loc[horizontalEdges?1:0][n1][0];
           for(k=0;k<halfHeight;k++){
@@ -1141,8 +1141,8 @@ Panel panel1,panel2;
             c =(SY -  a*SX2 - b*SX)/S0 */
       color_coeff_abc[i][n][0]=(SY -  color_coeff_abc[i][n][2]*SX2 - color_coeff_abc[i][n][1]*SX)/S0;
 
-      if (IS_MONOCHROMATIC) { /** gets here with (n==3) only, combine all Bayer components, taking care of shifts */
-        for (n1=0;n1<3;n1++) for (k=0;k<3;k++)  color_coeff_abc[i][n1][k]=color_coeff_abc[i][3][k]; /** copy coefficients to all other components */
+      if (IS_MONOCHROMATIC) { /* gets here with (n==3) only, combine all Bayer components, taking care of shifts */
+        for (n1=0;n1<3;n1++) for (k=0;k<3;k++)  color_coeff_abc[i][n1][k]=color_coeff_abc[i][3][k]; /* copy coefficients to all other components */
         for (n1=0;n1<4;n1++) {
           dx=0.5*bayer_loc[horizontalEdges?1:0][n1][0];
           rms=0;
@@ -1168,7 +1168,7 @@ Panel panel1,panel2;
           rms+=err*err;
         }
         color_coeff_abc[i][n][3]=Math.sqrt(rms/selecHeight);
-        color_coeff_abc[i][n][4]=skew/selecHeight; /** should be 0 */
+        color_coeff_abc[i][n][4]=skew/selecHeight; /* should be 0 */
       } 
     }
     return color_coeff_abc;
@@ -1176,7 +1176,7 @@ Panel panel1,panel2;
 
   private void binESF() {
     int nValid=color_coeff_abc.length;
-    binDataBoth   = new double[2][4][sSize*4+1]; /** global double[][][]  */
+    binDataBoth   = new double[2][4][sSize*4+1]; /* global double[][][]  */
     int [][][] binNumberBoth = new int [2][4][sSize*4+1];
 /**
 Scale data so all the ESF curves would have the same amplitude before adding to bins - that will decrease fluctuations caused by binNumber modulation
@@ -1206,15 +1206,15 @@ Scale data so all the ESF curves would have the same amplitude before adding to 
     }
     for (edgeNumber=0; edgeNumber<nValid; edgeNumber++) {
       for (n=0;n<4;n++) {
-        thisHeight=halfHeight; /** Will backup to this if there are too few edges */
-        edgeSign=posEdges[halfHeight][edgeNumber]; /** 0 - black-> white, 1 white->black*/
-/** Equalize number of phases, taking into account that we are binning each Bayer component separately,
+        thisHeight=halfHeight; /* Will backup to this if there are too few edges */
+        edgeSign=posEdges[halfHeight][edgeNumber]; /* 0 - black-> white, 1 white->black*/
+/* Equalize number of phases, taking into account that we are binning each Bayer component separately,
     so number of pixel crossings should be (approximately) multiple of 2
 */
         dk=thisHeight-1;
         ph0=color_coeff_abc[edgeNumber][n][0];
         ph1=color_coeff_abc[edgeNumber][n][2]*dk*dk +  color_coeff_abc[edgeNumber][n][1]*dk +  color_coeff_abc[edgeNumber][n][0];
-        if (TRUNCATE_ROWS && (Math.abs(ph1-ph0)>2.0)) {/** reduce  thisHeight */
+        if (TRUNCATE_ROWS && (Math.abs(ph1-ph0)>2.0)) {/* reduce  thisHeight */
           slantDir=(ph1>ph0)?1:-1;
           phLim=ph0+slantDir*2.0*Math.floor(0.5*Math.abs(ph1-ph0));
           while (slantDir*(ph1-phLim) >0) {
@@ -1223,13 +1223,13 @@ Scale data so all the ESF curves would have the same amplitude before adding to 
             ph1=color_coeff_abc[edgeNumber][n][2]*dk*dk +  color_coeff_abc[edgeNumber][n][1]*dk +  color_coeff_abc[edgeNumber][n][0];
           }
         }
-        color_coeff_abc[edgeNumber][n][5]=thisHeight; /** for statistics */
+        color_coeff_abc[edgeNumber][n][5]=thisHeight; /* for statistics */
         for(k=0;k<thisHeight;k++){
           nb=horizontalEdges?rb[n]:n; 
           dk=k+0.5*(nb>>1);
           binShift= (int) (4*(color_coeff_abc[edgeNumber][n][2]*dk*dk +
                               color_coeff_abc[edgeNumber][n][1]*dk +
-                              color_coeff_abc[edgeNumber][n][0]+0.5)-2*sSize); /** where is the real center? */
+                              color_coeff_abc[edgeNumber][n][0]+0.5)-2*sSize); /* where is the real center? */
 //                              color_coeff_abc[edgeNumber][n][0]) +4.0 -2*sSize);
           hor_min=(binShift)/4;
           hor_max=binShift/4+sSize+4;
@@ -1262,7 +1262,7 @@ Scale data so all the ESF curves would have the same amplitude before adding to 
             ThisESFMin=FirstQuaterTotal/FirstQuaterNumber;
             ThisESFAmp=LastQuaterTotal/LastQuaterNumber-ThisESFMin;
           }
-          binMinBoth[edgeSign][n]+=ThisESFMin; /** out of bounds here*/
+          binMinBoth[edgeSign][n]+=ThisESFMin; /* out of bounds here*/
           binAmpBoth[edgeSign][n]+=ThisESFAmp;
           binScaleBothNumber[edgeSign][n]++;
           for (hor=hor_min;hor<=hor_max;hor+=2) {
@@ -1319,7 +1319,7 @@ Next is restoration of the original shifts and scales applied before accumulatin
 
 
 
-/** ============================== */
+/* ============================== */
   private double[][] normalizePlots (double[][] Vectors, boolean both ) {
      double [][] result= new double [Vectors.length][Vectors[0].length];
      int n,i;
@@ -1464,7 +1464,7 @@ Next is restoration of the original shifts and scales applied before accumulatin
     plotResult.show();
   }
 
-  double [][] scaleReIm (double [][] data) { /** Scale each plot, preserving 0 */
+  double [][] scaleReIm (double [][] data) { /* Scale each plot, preserving 0 */
     double [][] result = new double [data.length][data[0].length];
     double mx;
     int i,n;
@@ -1528,9 +1528,9 @@ Next is restoration of the original shifts and scales applied before accumulatin
       //Scale of values for x-axis
       for(i=1;i<N;i++) xValues[i]=xValues[i-1]+(0.5/(N-1));
     } else if(plot.substring(0,3).equals("DV4")){
-      for(i=0;i<N;i++) xValues[i]=0.25*(i+1); /** why is it from 1, not from 0 ? */
+      for(i=0;i<N;i++) xValues[i]=0.25*(i+1); /* why is it from 1, not from 0 ? */
     } else { 
-      for(i=0;i<N;i++) xValues[i]=i+1; /** why is it from 1, not from 0 ? */
+      for(i=0;i<N;i++) xValues[i]=i+1; /* why is it from 1, not from 0 ? */
     }
     return xValues;
   }
@@ -1538,7 +1538,7 @@ Next is restoration of the original shifts and scales applied before accumulatin
 
 
 
-/** ============================== */
+/* ============================== */
 
   public class Complex {
     private final double re;   // the real part

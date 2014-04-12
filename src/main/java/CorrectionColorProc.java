@@ -77,7 +77,7 @@ public class CorrectionColorProc {
         int length=fpixels_r.length;
         int width= stack.getWidth();
         int height=stack.getHeight();
-  /** Scale colors, gamma-convert */
+  /* Scale colors, gamma-convert */
         int i;
         double gain_red= thisBalanceRed* thisGain/scale;
         double gain_blue=thisBalanceBlue*thisGain/scale;
@@ -136,13 +136,13 @@ public class CorrectionColorProc {
         	}
         }
         
-  /** Convert to YPbPr */
+  /* Convert to YPbPr */
         double Y,Pb,Pr;
 //        double Kg=1.0-colorProcParameters.kr-colorProcParameters.kb;
         double Sb=0.5/(1.0-colorProcParameters.kb)*colorProcParameters.saturationBlue;
         double Sr=0.5/(1.0-colorProcParameters.kr)*colorProcParameters.saturationRed;
         double Yr,Yg,Yb,Wr,Wg,Wb,S;
-  /** coefficients to find Y from Pb, Pr and a color (R,G or B)
+  /* coefficients to find Y from Pb, Pr and a color (R,G or B)
    Yr = R- Pr*KPrR
    Yb = B- Pb*KPbB
    Yg = G+ Pr*KPrG  + Pb*KPbG
@@ -178,7 +178,7 @@ public class CorrectionColorProc {
           fpixels_pr[i] = (float) (Sr*(fpixels_r[i]-Y));
           fpixels_y0[i]=(float) Y;
         }
-  /** calculate Y from weighted colors, weights derived from how good each color component predicts signal in each subpixel of Bayer pattern */
+  /* calculate Y from weighted colors, weights derived from how good each color component predicts signal in each subpixel of Bayer pattern */
         if (useWeights) {
           fpixels_y=  new float [length];
           for (i=0;i<length;i++) {
@@ -203,7 +203,7 @@ public class CorrectionColorProc {
             }
           }
         }
-  /** Low-pass filter Pb and Pr */
+  /* Low-pass filter Pb and Pr */
   	  DoubleGaussianBlur gb=new DoubleGaussianBlur();
         double [] dpixels_pr=new double[fpixels_pr.length];
         double [] dpixels_pb=new double[fpixels_pb.length];
@@ -310,7 +310,7 @@ public class CorrectionColorProc {
           int length=fpixels_r.length;
           int width= stack.getWidth();
           int height=stack.getHeight();
-    /** Scale colors, gamma-convert */
+    /* Scale colors, gamma-convert */
           int i;
           double gain_red= thisBalanceRed* thisGain/scale;
           double gain_blue=thisBalanceBlue*thisGain/scale;
@@ -325,13 +325,13 @@ public class CorrectionColorProc {
             fpixels_b[i]=(float) linGamma(colorProcParameters.gamma, gamma_a, gamma_linK, colorProcParameters.minLin, fpixels_b[i]*gain_blue);
           }
           
-    /** Convert to YPbPr */
+    /* Convert to YPbPr */
           double Y,Pb,Pr;
           double Kg=1.0-colorProcParameters.kr-colorProcParameters.kb;
           double Sb=0.5/(1.0-colorProcParameters.kb)*colorProcParameters.saturationBlue;
           double Sr=0.5/(1.0-colorProcParameters.kr)*colorProcParameters.saturationRed;
           double Yr,Yg,Yb,Wr,Wg,Wb,S;
-    /** coefficients to find Y from Pb, Pr and a color (R,G or B)
+    /* coefficients to find Y from Pb, Pr and a color (R,G or B)
      Yr = R- Pr*KPrR
      Yb = B- Pb*KPbB
      Yg = G+ Pr*KPrG  + Pb*KPbG
@@ -367,7 +367,7 @@ public class CorrectionColorProc {
             fpixels_pr[i] = (float) (Sr*(fpixels_r[i]-Y));
             fpixels_y0[i]=(float) Y;
           }
-    /** calculate Y from weighted colors, weights derived from how good each color component predicts signal in each subpixel of Bayer pattern */
+    /* calculate Y from weighted colors, weights derived from how good each color component predicts signal in each subpixel of Bayer pattern */
           if (useWeights) {
             fpixels_y=  new float [length];
             for (i=0;i<length;i++) {
@@ -392,7 +392,7 @@ public class CorrectionColorProc {
               }
             }
           }
-    /** Low-pass filter Pb and Pr */
+    /* Low-pass filter Pb and Pr */
     	  DoubleGaussianBlur gb=new DoubleGaussianBlur();
           double [] dpixels_pr=new double[fpixels_pr.length];
           double [] dpixels_pb=new double[fpixels_pb.length];
@@ -470,7 +470,7 @@ public class CorrectionColorProc {
       }
 
     
-    /** ======================================================================== */
+    /* ======================================================================== */
     public double linGamma(double gamma, double a, double k, double x0, double x) {
     	if (x<0) return 0.0;
 

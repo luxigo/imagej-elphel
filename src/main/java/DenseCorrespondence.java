@@ -1873,7 +1873,7 @@ public class DenseCorrespondence {
 					titles);
 		}
 	} // end of private class Photometric
-	/** Create a Thread[] array as large as the number of processors available.
+	/* Create a Thread[] array as large as the number of processors available.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */
@@ -1882,7 +1882,7 @@ public class DenseCorrespondence {
 		if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 		return new Thread[n_cpus];
 	}
-/** Start all given threads and wait on each of them until all are done.
+/* Start all given threads and wait on each of them until all are done.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */

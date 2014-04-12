@@ -968,67 +968,67 @@ if (MORE_BUTTONS) {
 		if (DEBUG_LEVEL>0) System.out.println("--- Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")");
 
 		if (label==null) return;
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Globals")) {
 			showConfigureGlobalsDialog();
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. Components")) {
 			showcolorComponentsDialog(COMPONENTS);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. Multifile")) {
 			showMultiFilePSFDialog(MULTIFILE_PSF);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. Simulation")) {
 			showSimulParametersDialog(SIMUL);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. Pattern Detection")) {
 			showPatternDetectParametersDialog(PATTERN_DETECT);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. PSF")) {
 			showPSFParametersDialog(PSF_PARS);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. OTF Filter")) {
 			showOTFFilterParametersDialog(OTF_FILTER);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. Interpolation")) {
 			showInterpolateParametersDialog(INTERPOLATE);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. Inversion")) {
 			showInverseParametersDialog(INVERSE);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Conf. Results")) {
 			showShowResultsDialog(SHOW_RESULTS);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Select source directory")) {
 	    	String fileName= selectSourceDirectory(PROCESS_PARAMETERS.sourceSuperDirectory);
 	        if (fileName!=null) PROCESS_PARAMETERS.sourceSuperDirectory=fileName;
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Select intermediate directory")) {
 	    	String fileName= selectPartialKernelsDirectory(PROCESS_PARAMETERS.partialKernelsSuperDirectory);
 	        if (fileName!=null) PROCESS_PARAMETERS.partialKernelsSuperDirectory=fileName;
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Select results directory")) {
 	    	String fileName= selectKernelsDirectory(PROCESS_PARAMETERS.kernelsDirectory);
 	        if (fileName!=null) PROCESS_PARAMETERS.kernelsDirectory=fileName;
 			return;
-			/** ======================================================================== */
+			/* ======================================================================== */
 		     
 	    } else if (label.equals("Save")) {
 	    	saveProperties(null,PROCESS_PARAMETERS.kernelsDirectory,PROCESS_PARAMETERS.useXML, PROPERTIES);
 	    	return;
-/** ======================================================================== */
+/* ======================================================================== */
 	        
 	    } else if (label.equals("Restore") || label.equals("Restore no autoload")) {
 	    	boolean noAuto=label.equals("Restore no autoload");
@@ -1084,7 +1084,7 @@ if (MORE_BUTTONS) {
 	    	}
 	    	return;
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Process Calibration Files")) {
 			if (!showProcessCalibrationFilesDialog(PROCESS_PARAMETERS)) return;
 			boolean noMessageBoxes=false; //TODO: move to configuration 
@@ -1349,18 +1349,18 @@ if (MORE_BUTTONS) {
 			System.out.println("Processing done in "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+ " seconds");
 			if (PROCESS_PARAMETERS.saveSettings) saveProperties(PROCESS_PARAMETERS.kernelsDirectory+Prefs.getFileSeparator()+"calibration_settings",null,PROCESS_PARAMETERS.useXML, PROPERTIES);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Configure")) {
 			if (!showConfigureDialog(OTF_FILTER, PATTERN_DETECT,COMPONENTS,INVERSE,MULTIFILE_PSF)) return;
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Configure Simul.")) {
 			if (!showSimulDialog(SIMUL)) return;
 			return;
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 		} else if (label.equals("Map PSF")) {
 			if (!showPSFDialog(PSF_PARS,INVERSE,OTF_FILTER,SIMUL)) return;
@@ -1465,9 +1465,9 @@ if (MORE_BUTTONS) {
 				IJ.saveAs(imp_psf,"tif",path);
 			}
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 			// calculate a single PSF      
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Interpolate Stack")) {
 			//      int loop_debug_level=1;
 			if (!showInterpolateKernelsDialog(INTERPOLATE)) return;
@@ -1498,7 +1498,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Scan and Map")) {
 			boolean noMessageBoxes=false;
 			int loop_debug_level=1;
@@ -1616,7 +1616,7 @@ if (MORE_BUTTONS) {
 
 			return;
 
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Combine PSF files")) {
 			if (!showValidateKernelsDialog(INTERPOLATE, MULTIFILE_PSF)) return;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -1833,7 +1833,7 @@ if (MORE_BUTTONS) {
 
 			}
 			return;   
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Invert Stack")) {
 			if (!showInverseStackDialog(INVERSE)) return;
 			long startTime = System.nanoTime();
@@ -1865,7 +1865,7 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>1)  System.out.println("Kernel inversion done in "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+" seconds");
 			return;
 
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Gaussian Stack")) {
 			if (!showGaussianStackDialog(INVERSE)) return;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -1893,7 +1893,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Correlation tests")) {
 			if (!showDistortionDialog(DISTORTION)) return;
 			long 	  startTime=System.nanoTime();
@@ -1922,15 +1922,15 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>0) System.out.println("Pattern correlation test done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 
             return;
-            /** ======================================================================== */
+            /* ======================================================================== */
 		} else if (label.equals("Configure Distortion")) {
 			if (!showDistortionDialog(DISTORTION)) return;
             return;
-            /** ======================================================================== */
+            /* ======================================================================== */
 		} else if (label.equals("Configure Pointers")) {
 			if (!LASER_POINTERS.showDialog("Laser Pointers Setup ")) return;
             return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Distortion")) {
 //			if (!showDistortionDialog(DISTORTION)) return;
 			boolean noMessageBoxes=false;
@@ -2029,7 +2029,7 @@ if (MORE_BUTTONS) {
 			}
 			
             return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Grid Brightness")) {
 //			if (!showDistortionDialog(DISTORTION)) return;
 //			boolean noMessageBoxes=false;
@@ -2070,7 +2070,7 @@ if (MORE_BUTTONS) {
 			}
 			SDFA_INSTANCE.showArrays(showGridIintensity, intensities[0][0].length,intensities[0].length, true,"gridIntensities", titles);
 			return;
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("List Pointers")) {
 			boolean noMessageBoxes=false;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -2094,7 +2094,7 @@ if (MORE_BUTTONS) {
 
             return;
             
-/** ======================================================================== */
+/* ======================================================================== */
 		} else if (label.equals("Simulate Full")) {
 			if ((matchSimulatedPattern==null) || (matchSimulatedPattern.patternOK())){
 				IJ.showMessage("Error","Distortion data is not yet calculated\nProcess canceled");
@@ -2123,22 +2123,22 @@ if (MORE_BUTTONS) {
 					DISTORTION.loop_debug_level); // debug level
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Flat Field")) {
 			if (showFlatFieldDialog(FLATFIELD_PARAMETERS,true,false)) showFlatFieldDialog(FLATFIELD_PARAMETERS,false,true);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Remove FF Source Dirs")) {
 			selectDirectoriesToRemove(FLATFIELD_PARAMETERS);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Add FF Source Dirs")) {
 			addFlatFieldSources(FLATFIELD_PARAMETERS);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Accumulate Flat Fields")) {
 			if (!showFlatFieldDialog(FLATFIELD_PARAMETERS, true,false)) return;
 	        DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -2148,7 +2148,7 @@ if (MORE_BUTTONS) {
 
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Process Flat Field")) {
 			if (!showFlatFieldDialog(FLATFIELD_PARAMETERS,false)) return;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -2162,23 +2162,23 @@ if (MORE_BUTTONS) {
             processFlatField (FLATFIELD_PARAMETERS,pixels_ff, imp_sel.getWidth(), imp_sel.getTitle());
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Pattern Dimensions")) {
 			PATTERN_PARAMETERS.showDialog();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Distortion/Location")) {
 			LENS_DISTORTION_PARAMETERS.showDialog();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Eyesis4pi")) {
 			EYESIS_CAMERA_PARAMETERS.showDialog("Configure Eyesis4pi camera"); // returns false
 			if (LENS_DISTORTIONS!=null) LENS_DISTORTIONS.resetGridImageMasks(); // will force recalculation
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("List Eyesis4pi")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			System.out.println("DISTORTION_CALIBRATION_DATA="+((DISTORTION_CALIBRATION_DATA==null)?"null":" NOT null"));
@@ -2197,7 +2197,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Process Lens Distortion")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			LENS_DISTORTIONS=new Distortions(LENS_DISTORTION_PARAMETERS,PATTERN_PARAMETERS,REFINE_PARAMETERS,this.SYNC_COMMAND.stopRequested);
@@ -2218,7 +2218,7 @@ if (MORE_BUTTONS) {
 					LENS_DISTORTIONS.displayGridOnSensorTitles());
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Select Grid Files")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			LENS_DISTORTIONS=new Distortions(LENS_DISTORTION_PARAMETERS,PATTERN_PARAMETERS,REFINE_PARAMETERS,this.SYNC_COMMAND.stopRequested);
@@ -2273,7 +2273,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 /*
   		if       (label.equals("Use Current Images")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -2287,7 +2287,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 */		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Edit Calibration")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_CALIBRATION_DATA==null) {
@@ -2301,14 +2301,14 @@ if (MORE_BUTTONS) {
 // numImage =-1 - "done", <-1 - "canceled"            
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Save Calibration")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_CALIBRATION_DATA==null) return;
 			DISTORTION_CALIBRATION_DATA.selectAndSaveToXML(false,"");
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Restore Calibration")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			String defaultPath= (DISTORTION_CALIBRATION_DATA!=null)?DISTORTION_CALIBRATION_DATA.pathName:"";
@@ -2330,7 +2330,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("New Strategy")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_CALIBRATION_DATA==null) {
@@ -2355,7 +2355,7 @@ if (MORE_BUTTONS) {
 			IJ.showMessage("Empty new strategy initialized");
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		
 		if       (label.equals("Edit Strategy")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -2379,7 +2379,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.fittingStrategy.selectStrategy(LENS_DISTORTIONS.seriesNumber);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Save Strategy")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2391,7 +2391,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.fittingStrategy.selectAndSaveToXML(false,null);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Restore Strategy")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_CALIBRATION_DATA==null) {
@@ -2428,7 +2428,7 @@ if (MORE_BUTTONS) {
 
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Run LMA")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2443,7 +2443,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.LevenbergMarquardt(true); // open dialog
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Bad Nodes")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2457,7 +2457,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.dialogMarkBadNodes(DEBUG_LEVEL);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Debug deriv")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2471,21 +2471,21 @@ if (MORE_BUTTONS) {
 			return;
 		}
 
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Lasers")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			LASERS.debugLevel=DEBUG_LEVEL;
 			LASERS.showDialog("Configure laser pointers hardware", true);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Manual laser pointers")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			LASERS.debugLevel=DEBUG_LEVEL;
 			for (;	LASERS.manualSetLasers(););
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Cameras")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -2496,7 +2496,7 @@ if (MORE_BUTTONS) {
 			MOTORS.clearHistory();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Cameras Settings")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -2506,7 +2506,7 @@ if (MORE_BUTTONS) {
 			CAMERAS.setupCameraAcquisition();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Cameras")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -2515,7 +2515,7 @@ if (MORE_BUTTONS) {
 			
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test No Lasers")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -2524,7 +2524,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Process Distortions")) {
 			DISTORTION_PROCESS_CONFIGURATION.debugLevel=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_PROCESS_CONFIGURATION.showDialog("")){
@@ -2532,7 +2532,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Quick get&show")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -2567,7 +2567,7 @@ if (MORE_BUTTONS) {
 		
 		
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Acquire")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -2584,7 +2584,7 @@ if (MORE_BUTTONS) {
 			System.out.println("\"Acquire\" command finished in ("+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+" sec");
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Grid candidate")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			imp_sel = WindowManager.getCurrentImage();
@@ -2609,7 +2609,7 @@ if (MORE_BUTTONS) {
 		}
 //		
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Calculate grids")) {
 		    if ((LASER_POINTERS==null) || (LASER_POINTERS.laserUVMap.length==0)){
 		    	IJ.showMessage("Laser pointer data needed for this function is not provided");
@@ -2705,7 +2705,7 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>0) System.out.println(((this.SYNC_COMMAND.stopRequested.get()>0)?"Partial (interrupted by user) set of grids":"All")+ " grids calculation done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
             return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Calculate Sensor Masks")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		    if (DISTORTION_CALIBRATION_DATA==null){
@@ -2719,7 +2719,7 @@ if (MORE_BUTTONS) {
 			if (LENS_DISTORTIONS!=null) LENS_DISTORTIONS.updateSensorMasks();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Save Sensor Masks")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		    if (DISTORTION_CALIBRATION_DATA==null){
@@ -2745,7 +2745,7 @@ if (MORE_BUTTONS) {
 			
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Restore Sensor Masks")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		    if (DISTORTION_CALIBRATION_DATA==null){
@@ -2768,7 +2768,7 @@ if (MORE_BUTTONS) {
 			if (LENS_DISTORTIONS!=null) LENS_DISTORTIONS.updateSensorMasks();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Reset Grid")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		    if (PATTERN_PARAMETERS==null){
@@ -2793,7 +2793,7 @@ if (MORE_BUTTONS) {
 			PATTERN_PARAMETERS.calculateGridGeometryAndPhotometric(resetGeometry);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Reset Margins")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		    if (PATTERN_PARAMETERS==null){
@@ -2806,7 +2806,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Restore Grid")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		    if (PATTERN_PARAMETERS==null){
@@ -2826,7 +2826,7 @@ if (MORE_BUTTONS) {
 					DISTORTION_CALIBRATION_DATA.eyesisCameraParameters.numStations);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Correct Grid")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2858,7 +2858,7 @@ if (MORE_BUTTONS) {
 					UPDATE_STATUS);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Reset Variations")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2871,7 +2871,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Correct Grid0")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2900,7 +2900,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.modifyGrid0(DISTORTION_CALIBRATION_DATA);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Grid Diffs")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2936,7 +2936,7 @@ if (MORE_BUTTONS) {
 		}
 		
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Save Grid")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		    if (PATTERN_PARAMETERS==null){
@@ -2949,7 +2949,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Reset Sensor")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2961,7 +2961,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.initSensorCorrection(); // set zero corerctions (to be able to save sesnor correction files)
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Restore Sensor")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -2991,7 +2991,7 @@ if (MORE_BUTTONS) {
 		    else LENS_DISTORTIONS.setDistortionFromImageStack(pathname, numSensor,true,overwriteExtrinsic); // report missing files
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Correct Sensor Old")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -3022,7 +3022,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.modifyPixelCorrection(DISTORTION_CALIBRATION_DATA);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Correct Sensor")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -3064,7 +3064,7 @@ if (MORE_BUTTONS) {
 					DEBUG_LEVEL);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Save Sensor")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -3106,7 +3106,7 @@ if (MORE_BUTTONS) {
 		    }
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 /*		if       (label.equals("TestIpl")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
@@ -3114,7 +3114,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 */		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Convert X/Y slices to color")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			imp_sel = WindowManager.getCurrentImage();
@@ -3128,7 +3128,7 @@ if (MORE_BUTTONS) {
 
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("List Calibration")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -3141,7 +3141,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.listImageParameters(false); // not silent
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Reproject")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -3154,7 +3154,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.showImageReprojectionErrorsDialog(DEBUG_LEVEL);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Focusing")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUS_MEASUREMENT_PARAMETERS.showDialog("Focus Measurement Parameters")) return;
@@ -3167,12 +3167,12 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Reset Focusing")) {
 			matchSimulatedPattern=null;
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 ///Get Focusing Grid		
 		if       (label.equals("Get Focusing Grid")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -3230,7 +3230,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 //		addButton("Update Focusing Grid",panelFocusing);
 		if  (label.equals("Update Focusing Grid")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -3299,7 +3299,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Focusing PSF")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (matchSimulatedPattern==null) return;
@@ -3353,7 +3353,7 @@ if (MORE_BUTTONS) {
 			
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if      ((label.equals("Focusing New PSF")) || (label.equals("Focusing Acquire PSF"))) {
 			long 	  startTime=System.nanoTime();
 			if (label.equals("Focusing Acquire PSF")) {
@@ -3437,7 +3437,7 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>0) System.out.println("Calculating PSF parameters done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if      (label.equals("Select WOI")) {
 			imp_sel = WindowManager.getCurrentImage();
 			if ((imp_sel==null) || (imp_sel.getRoi()==null)){
@@ -3448,7 +3448,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 //		addButton("Head Orientation",panelFocusing);
-/** ======================================================================== */
+/* ======================================================================== */
 		if      (label.equals("Head Orientation")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
@@ -3501,7 +3501,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 //TODO: - reduce length of the laser sequence when focusing?		
 		if      ((label.equals("Lens Center")) || (label.equals("Find Grid"))) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -3757,14 +3757,14 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Reset Histories")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.clearPreFocus();
 			MOTORS.clearHistory();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Motors Home")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
@@ -3777,13 +3777,13 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		//
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("List Pre-focus")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.listPreFocus(null,FOCUS_MEASUREMENT_PARAMETERS.comment);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       ((label.equals("Manual Pre-focus")) || (label.equals("Auto Pre-focus"))) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -3892,7 +3892,7 @@ if (MORE_BUTTONS) {
 
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Scan Calib")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -3985,7 +3985,7 @@ if (MORE_BUTTONS) {
 			saveCurrentConfig();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       ((label.equals("Manual Focus/Tilt")) || (label.equals("Auto Focus/Tilt"))|| (label.equals("Fine Focus"))) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
@@ -4184,7 +4184,7 @@ if (MORE_BUTTONS) {
 			saveCurrentConfig();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Probe around")) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
@@ -4236,7 +4236,7 @@ if (MORE_BUTTONS) {
 					DISTORTION.loop_debug_level);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("List History")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.listHistory(
@@ -4252,7 +4252,7 @@ if (MORE_BUTTONS) {
 					);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Show PSF")) {
 			
 //TODO: change name to have a history step there			
@@ -4287,7 +4287,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 //	private  ImageStack mergeKernelsToStack(double [][][][] kernels,String [] names) { // use oldStack.getSliceLabels() to get names[]
 //
 		if       (label.equals("Show Grid")) {
@@ -4303,7 +4303,7 @@ if (MORE_BUTTONS) {
 
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Calibrate Distance")) {
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -4354,7 +4354,7 @@ if (MORE_BUTTONS) {
 			saveCurrentConfig();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Lasers Toggle")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -4362,7 +4362,7 @@ if (MORE_BUTTONS) {
 			UV_LED_LASERS.lasersToggle(FOCUS_MEASUREMENT_PARAMETERS);
 			return;
 		}		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("UV on")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
@@ -4371,7 +4371,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("UV off")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -4390,7 +4390,7 @@ if (MORE_BUTTONS) {
 			saveCurrentConfig();
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Camera Power Cycled")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			checkSerialAndRestore(); // Compare S/N before it was will be reset 
@@ -4402,13 +4402,13 @@ if (MORE_BUTTONS) {
 //			updateSerial(FOCUS_MEASUREMENT_PARAMETERS); // is it still needed?
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Restore SFE Latest")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			restoreSFELatest();
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("List SFE")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 //			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
@@ -4652,7 +4652,7 @@ if (MORE_BUTTONS) {
     		return;
 		}	
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Acquire&Save")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			getAndSaveImage(
@@ -4665,7 +4665,7 @@ if (MORE_BUTTONS) {
 					MASTER_DEBUG_LEVEL);
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("No-move measure")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
@@ -4706,7 +4706,7 @@ if (MORE_BUTTONS) {
 					DISTORTION.loop_debug_level);
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Temp. Scan") || label.equals("Focus Average")) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
 			boolean modeAverage=label.equals("Focus Average");
@@ -4838,7 +4838,7 @@ if (MORE_BUTTONS) {
 		}	
 ///	"No-move measure"	
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure Goniometer")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (GONIOMETER_PARAMETERS.showDialog("Goniometer  Parameters")) return;
@@ -4853,7 +4853,7 @@ if (MORE_BUTTONS) {
 */			
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Goniometer Scan")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			
@@ -4906,7 +4906,7 @@ if (MORE_BUTTONS) {
 			return;
 		}		
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Filter Grids")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_CALIBRATION_DATA==null) {
@@ -4958,7 +4958,7 @@ if (MORE_BUTTONS) {
 			
 			return; 
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Update Image Set")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_CALIBRATION_DATA==null) {
@@ -4975,7 +4975,7 @@ if (MORE_BUTTONS) {
 					);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Remove Outlayers")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -4992,7 +4992,7 @@ if (MORE_BUTTONS) {
 					);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Remove Sets")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -5009,7 +5009,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		//
-/** ======================================================================== */
+/* ======================================================================== */
 		if  (label.equals("Update Sets Orientation")) { // update "panoramas" orientation after LMA
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DISTORTION_CALIBRATION_DATA==null) {
@@ -5020,7 +5020,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("List Image Sets")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -5034,7 +5034,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.listImageSets();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Re-calibrate Grids")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -5083,7 +5083,7 @@ if (MORE_BUTTONS) {
     		System.out.println("Number of (new) matched images: "+numMatched);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Re-calibrate Set")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -5282,7 +5282,7 @@ if (MORE_BUTTONS) {
 		}
 
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Get Orientation")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (DEBUG_LEVEL>0){
@@ -5377,7 +5377,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Hinted Grid")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			ImagePlus [] images={WindowManager.getCurrentImage()};
@@ -5432,7 +5432,7 @@ if (MORE_BUTTONS) {
 					
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Hinted Grid Cameras")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (GONIOMETER==null) {
@@ -5478,7 +5478,7 @@ if (MORE_BUTTONS) {
 					
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Simulate Grid View")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -5520,7 +5520,7 @@ if (MORE_BUTTONS) {
     		imp_simulatePatternOnSensor.show();	
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Show grid/hint")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -5538,7 +5538,7 @@ if (MORE_BUTTONS) {
 		
 		//"Simulate Grid View"
 //		/"Test Progress"
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Progress")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			long 	  endTime=System.nanoTime();
@@ -5550,20 +5550,20 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Load Pixel Mapping")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			PIXEL_MAPPING=new PixelMapping((String)null,DEBUG_LEVEL);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("List Mapping Parameters")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping((String)null,DEBUG_LEVEL);
 			PIXEL_MAPPING.listParameters();
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Direct Mapping")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping((String)null,DEBUG_LEVEL);
@@ -5597,7 +5597,7 @@ if (MORE_BUTTONS) {
 			this.SDFA_INSTANCE.showArrays(PIXEL_MAPPING.sensors[channelNumber].directMap.map, outputWidth, outputHeight,  true, "DPM-"+channelNumber, titles);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Equirectangular Mapping")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping((String)null,DEBUG_LEVEL);
@@ -5658,7 +5658,7 @@ if (MORE_BUTTONS) {
 
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Crop Equirectangular Mapping")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping((String) null,DEBUG_LEVEL);
@@ -5691,7 +5691,7 @@ if (MORE_BUTTONS) {
 			  }
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Generate & Save Equirectangular")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping((String)null,DEBUG_LEVEL); // ask for and load sensor calibration files
@@ -5758,7 +5758,7 @@ if (MORE_BUTTONS) {
 
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Load Equirectangular Maps")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null){
@@ -5773,7 +5773,7 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Show Maps Overlap")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -5795,7 +5795,7 @@ if (MORE_BUTTONS) {
 			PIXEL_MAPPING.listOverlap(overlap);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Lanczos")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -5853,7 +5853,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Warp Image")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -5879,7 +5879,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
  
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Warp Files")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -5912,7 +5912,7 @@ if (MORE_BUTTONS) {
 					THREADS_MAX);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Create Plane Map")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -6064,7 +6064,7 @@ if (MORE_BUTTONS) {
 	     */
 		
 //		new CalibrationFileManagement.MultipleExtensionsFileFilter("grid",extensions,"Calibrated grid files");
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Plane Map")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -6091,7 +6091,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Create Intermaps")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -6126,7 +6126,7 @@ if (MORE_BUTTONS) {
 		    		);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Intermaps")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping(null,true,DEBUG_LEVEL);
@@ -6160,7 +6160,7 @@ if (MORE_BUTTONS) {
 			titles);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Show Sobel")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -6234,7 +6234,7 @@ if (MORE_BUTTONS) {
 			return;
 //		addButton("Show Sobel",panelStereo);
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Edge Thinning")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -6295,7 +6295,7 @@ if (MORE_BUTTONS) {
 					titles);
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Distance from Edges")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -6352,7 +6352,7 @@ if (MORE_BUTTONS) {
 					titles);
 			return;
 		}	
-		/** ======================================================================== */
+		/* ======================================================================== */
 		if       (label.equals("Edge Areas")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -6477,7 +6477,7 @@ if (MORE_BUTTONS) {
 		}	
 
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Edges")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -6538,7 +6538,7 @@ if (MORE_BUTTONS) {
 //		addButton("Show Sobel",panelStereo);
 		}	
 
-/** ======================================================================== */
+/* ======================================================================== */
 		
 		if       (label.equals("Intercam correlations")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -6615,7 +6615,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Test Line")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -6695,7 +6695,7 @@ if (MORE_BUTTONS) {
 					DEBUG_LEVEL);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Linear Features")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -6950,7 +6950,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		
 		if       (label.equals("Intercam rectangular")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -7092,7 +7092,7 @@ if (MORE_BUTTONS) {
 //PIXEL_MAPPING.lastUsedInterSensor
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Thershold Disparity")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -7134,7 +7134,7 @@ if (MORE_BUTTONS) {
 			"D"+((""+contrastThreshold).replace('.','_'))+(secondSide?"R":"L")+(autocorrelation?"A":""));
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		
 		if       (label.equals("Disparity Tiles0")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -7215,7 +7215,7 @@ if (MORE_BUTTONS) {
 			titles);
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		
 		if       (label.equals("Disparity Tiles")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -7376,7 +7376,7 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>0) System.out.println("Finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Disparity Section")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -7549,7 +7549,7 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>0) System.out.println("Finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Disparity Map")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -7610,7 +7610,7 @@ if (MORE_BUTTONS) {
  			return;
 		}
 
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Create Ambiguity")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -7695,7 +7695,7 @@ if (MORE_BUTTONS) {
 
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Initial Resolve")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -7761,7 +7761,7 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>0) System.out.println("Finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Ambiguity Resolve")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) {
@@ -7860,7 +7860,7 @@ if (MORE_BUTTONS) {
 			}
 
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Pattern Flat-Field")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -7878,7 +7878,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.correctPatternFlatField(true); // boolean enableShow
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Remove Specular")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -7924,7 +7924,7 @@ if (MORE_BUTTONS) {
 					LENS_DISTORTIONS.refineParameters.specularShowDebug);
 			return;
 		}	
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Flat-Field")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -8000,7 +8000,7 @@ if (MORE_BUTTONS) {
 		}		
 		
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Pattern Flat-Field0")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -8136,19 +8136,19 @@ if (MORE_BUTTONS) {
 		}		
 //"Pattern Flat-Field"
 //"Generate & Save Equirectangular" 
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Configure aberrations")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			ABERRATIONS_PARAMETERS.showDialog("Aberration processing parameters",LENS_DISTORTIONS); //LENS_DISTORTIONS==null OK
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Select Channels")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			ABERRATIONS_PARAMETERS.selectChannelsToProcess("Select channels to process",LENS_DISTORTIONS); //LENS_DISTORTIONS==null OK
 			return;
 		}
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Partial Kernels")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -8224,7 +8224,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 		
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Combine Kernels")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -8287,7 +8287,7 @@ if (MORE_BUTTONS) {
 		}
 		//		addButton("Combine Kernels",panelAberrations);
 
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Interpolate Kernels")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -8340,7 +8340,7 @@ if (MORE_BUTTONS) {
 		}
 		//		addButton("Combine Kernels",panelAberrations);
 //		"Invert Kernels"
-/** ======================================================================== */
+/* ======================================================================== */
 		if       (label.equals("Invert Kernels")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (LENS_DISTORTIONS==null) {
@@ -8392,7 +8392,7 @@ if (MORE_BUTTONS) {
 			return;
 		}
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 		IJ.showMessage("Not yet implemented");
 		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -8400,7 +8400,7 @@ if (MORE_BUTTONS) {
 	}
 	
 	
-/** ===== Other methods ==================================================== */
+/* ===== Other methods ==================================================== */
 	public boolean checkSerialAndRestore(){
 		// wait for camera
 		CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -10752,7 +10752,7 @@ Reff=sqrt(1/sqrt(Ar*Br-(Cr/2)^2))
 		
 	}
 	
-/** ======================================================================== */
+/* ======================================================================== */
 //Flat-field related
     public void processFlatField (FlatFieldParameters flatFieldParameters, float [] fpixels, int origWidth, String title){
         int numSect=5; // assuming 5 sections
@@ -12132,7 +12132,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	   
 	
 // end of Flat-field related
-	/** ======================================================================== */
+	/* ======================================================================== */
 /*
 	public float[][] simulateGridAll (
 			int width, // extend to full image, width, height - original (not scaled) image size
@@ -12201,7 +12201,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	}	
 
 */	
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public void saveTimestampedProperties(
 			String path,      // full path or null
 			String directory, // use as default directory if path==null 
@@ -12271,7 +12271,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	 if (DEBUG_LEVEL>0) System.out.println("Configuration parameters are saved to "+path);
 
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public void loadProperties(
 			String path,
 			String directory,
@@ -12326,7 +12326,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	     getAllProperties(properties);
 		 if (DEBUG_LEVEL>0) System.out.println("Configuration parameters are restored from "+path);
 	}
-/** ======================================================================== */
+/* ======================================================================== */
     public void setAllProperties(Properties properties){
        	properties.setProperty("MASTER_DEBUG_LEVEL", MASTER_DEBUG_LEVEL+"");
     	properties.setProperty("SHOW_AS_STACKS",     SHOW_AS_STACKS+"");//  Show debug images as stacks (false - individual)
@@ -12364,7 +12364,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
         GONIOMETER_PARAMETERS.setProperties("GONIOMETER_PARAMETERS.", properties);
         ABERRATIONS_PARAMETERS.setProperties("ABERRATIONS_PARAMETERS.", properties);
     }
-/** ======================================================================== */
+/* ======================================================================== */
     public void getAllProperties(Properties properties){
        MASTER_DEBUG_LEVEL = Integer.parseInt(properties.getProperty("MASTER_DEBUG_LEVEL"));
    	   SHOW_AS_STACKS =     Boolean.parseBoolean(properties.getProperty("SHOW_AS_STACKS")); //  Show debug images as stacks (false - individual)
@@ -12444,7 +12444,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 				  defaultPaths);
 	  }
 	  
-/** ======================================================================== */
+/* ======================================================================== */
 /*	  public String selectDirectory(boolean save, String title, String button, FileFilter filter, String defaultPath) {
 		  return selectDirectoryOrFile(save,true, title, button, filter,defaultPath);
 	  }
@@ -12458,7 +12458,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		  return selectDirectoriesOrFiles(save,false, title, button, filter, defaultPaths );
 	  }
 */
-/** ======================================================================== */
+/* ======================================================================== */
 /*
 	  public String [] selectDirectoriesOrFiles(boolean save,
 			  boolean directory,
@@ -12564,7 +12564,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		  return fc.getSelectedFile().getPath();
 	  }
 */
-/** ======================================================================== */
+/* ======================================================================== */
 /*
 	  class MultipleExtensionsFileFilter extends FileFilter {
 		  protected String [] patterns; // case insensitive
@@ -12598,7 +12598,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		  }
 	  }
 */
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean combinePSFKernels (
 			EyesisAberrations.InterpolateParameters  interpolateParameters, // INTERPOLATE
 			EyesisAberrations.MultiFilePSF           multiFilePSF ,         // MULTIFILE_PSF = new EyesisAberrations.MultiFilePSF(
@@ -12902,9 +12902,9 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	}
 */	
 	
-/** ======================================================================== */
+/* ======================================================================== */
 // returns [*][0][*] - only one pair src/dest per channel
-/** ======================================================================== */
+/* ======================================================================== */
 	// returns [*][0][*] - only one pair src/dest per channel
 	public String [][][] prepareInvertGaussianKernelsList(ProcessCalibrationFilesParameters processCalibrationFilesParameters,
 			String prefix) { // one of rpsfPrefix and gaussianPrefix
@@ -12951,7 +12951,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 
 		return fileNames;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	// returns [*][0][*] - only one pair src/dest per channel
 	public String [][][] prepareInterpolateKernelsList(ProcessCalibrationFilesParameters processCalibrationFilesParameters) {
 		String [][][] fileNames = new String [processCalibrationFilesParameters.subdirNames.length][][];
@@ -12992,7 +12992,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		
 		return fileNames;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public String [][][] preparePartialKernelsFilesList(ProcessCalibrationFilesParameters processCalibrationFilesParameters) {
 		String [][][] fileNames = new String [processCalibrationFilesParameters.subdirNames.length][][];
 		int dirNum,fileNum,numFiles,i;
@@ -13074,7 +13074,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		}		
 		return fileNames;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public String [][][] prepareCalibrationFilesList(ProcessCalibrationFilesParameters processCalibrationFilesParameters) {
 		String [][][] fileNames = new String [processCalibrationFilesParameters.subdirNames.length][][];
 		int dirNum,fileNum,numFiles,i;
@@ -13202,7 +13202,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	}
 
 	
-/** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 
 
 	public void showMmaskReversePSFKernel( int rpsf_size, // size of kernel to show
@@ -13236,7 +13236,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 	public ImageStack  generateGaussianStackFromDirect(ImageStack PSFStack, // stack of 3 32-bit (float) images, made of square kernels
 			EyesisAberrations.InverseParameters inverseParameters, // size (side of square) of direct PSF kernel
@@ -13278,7 +13278,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 							tilesX, // number of kernels in a row
 							tileX, // horizontal number of kernel to extract
 							tileY); // vertical number of kernel to extract
-/** Find direct kernel approximation ellipse, mirror center around 0,0 */
+/* Find direct kernel approximation ellipse, mirror center around 0,0 */
 					selection=    findClusterOnPSF(kernel,  inverseParameters.psfCutoffEnergy, "");
 					ellipse_coeff=findEllipseOnPSF(kernel,  selection, ""); // coefficients for direct PSF, for rPSF [0] and [1] need to be opposite size
 					nSigma2=(4*sigmas[chn])*(4*sigmas[chn]);
@@ -13309,7 +13309,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 				}
 			} 
 		}
-/** prepare result stack to return */
+/* prepare result stack to return */
 		ImageStack outStack=new ImageStack(tilesX*inverseParameters.rSize,tilesY*inverseParameters.rSize);
 		for (chn=0;chn<nChn;chn++) {
 			outStack.addSlice(PSFStack.getSliceLabel(chn+1), outPixels[chn]);
@@ -13319,7 +13319,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 	//getSliceLabels()
 	// Will build global PSF_KERNEL_MAP (each [][][]element should be set to null?
@@ -13375,7 +13375,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		}
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	//Finalize accumulated kernels - transfrom them from frequency to space domain
 	public void inverseTransformKernels(){
 		DoubleFHT fht_instance =new DoubleFHT(); // provide DoubleFHT instance to save on initializations (or null)
@@ -13392,7 +13392,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 	public double [][][][] kernelStackToEllipseCoefficients(
 			ImageStack kernelStack, // Image stack, each slice consists of square kernels of one channel
@@ -13445,9 +13445,9 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		return ellipseCoeffs;
 
 	} 
-/** ======================================================================== */
+/* ======================================================================== */
 
-/** interpolate kernels minimizing memory image - use directly the image stack (32-bit, float) with kernels.
+/* interpolate kernels minimizing memory image - use directly the image stack (32-bit, float) with kernels.
   Add kernels around by either replication or extrapolation to compensate for "margins" in the original; kernels */
 	public ImageStack interpolateKernelStack(
 			ImageStack kernelStack, // Image stack, each slice consists of square kernels of one channel
@@ -13549,7 +13549,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 							firstFHTColumn=secondFHTColumn;
 							secondFHTColumn=null; // invalidate
 							//  if (DEBUG_LEVEL>2)  System.out.println(" secondFHTColumn==null");
-/** swap columns, the new second one will be just reused */
+/* swap columns, the new second one will be just reused */
 							swapArray=cornerFHT[0][0];
 							cornerFHT[0][0]=cornerFHT[0][1];
 							cornerFHT[0][1]=swapArray;
@@ -13562,7 +13562,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 					if (DEBUG_LEVEL>2)  System.out.println(" interpolateKernelStack(): tileHeight="+tileHeight+" tileWidth="+tileWidth+" inTopLeft[0]="+inTopLeft[0]+" inTopLeft[1]="+inTopLeft[1]+
 							" outTopLeft[0]="+outTopLeft[0]+" outTopLeft[1]="+outTopLeft[1]);
 
-					if (firstFHTColumn==null) { /** First colum needs to be input and calculated*/
+					if (firstFHTColumn==null) { /* First colum needs to be input and calculated*/
 						extractOneKernel(          pixels, //  array of combined square kernels, each 
 								cornerFHT[0][0], // will be filled, should have correct size before call
 								inTilesX, // number of kernels in a row
@@ -13573,19 +13573,19 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 								inTilesX, // number of kernels in a row
 								inTopLeft[0], // horizontal number of kernel to extract
 								inTopLeft[1]+1); // vertical number of kernel to extract
-/** convert to frequency domain */
+/* convert to frequency domain */
 						fht_instance.swapQuadrants(cornerFHT[0][0]);
 						fht_instance.transform(    cornerFHT[0][0]);
 						fht_instance.swapQuadrants(cornerFHT[1][0]);
 						fht_instance.transform(    cornerFHT[1][0]);
-/** inter/extrapolate the column */
+/* inter/extrapolate the column */
 						firstFHTColumn=fht_instance.interpolateFHT (cornerFHT[0][0],    // first FHT array
 								cornerFHT[1][0],    // second FHT array
 								pointsVert,    // array of interpolation points - 0.0 - fht0, 1.0 - fht1
 								false);   // OK not to clone, so corners will be referenced?
 						if (DEBUG_LEVEL>2)  System.out.println(" firstFHTColumn.length="+firstFHTColumn.length);
 					}
-					if (secondFHTColumn==null) { /** Last colum needs to be input and calculated*/
+					if (secondFHTColumn==null) { /* Last colum needs to be input and calculated*/
 						extractOneKernel(          pixels, //  array of combined square kernels, each 
 								cornerFHT[0][1], // will be filled, should have correct size before call
 								inTilesX, // number of kernels in a row
@@ -13596,12 +13596,12 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 								inTilesX, // number of kernels in a row
 								inTopLeft[0]+1, // horizontal number of kernel to extract
 								inTopLeft[1]+1); // vertical number of kernel to extract
-/** convert to frequency domain */
+/* convert to frequency domain */
 						fht_instance.swapQuadrants(cornerFHT[0][1]);
 						fht_instance.transform(    cornerFHT[0][1]);
 						fht_instance.swapQuadrants(cornerFHT[1][1]);
 						fht_instance.transform(    cornerFHT[1][1]);
-/** inter/extrapolate the column */
+/* inter/extrapolate the column */
 						secondFHTColumn=fht_instance.interpolateFHT (cornerFHT[0][1],    // first FHT array
 								cornerFHT[1][1],    // second FHT array
 								pointsVert,    // array of interpolation points - 0.0 - fht0, 1.0 - fht1
@@ -13613,8 +13613,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 							System.out.println("");
 						}
 					}
-/** interpolate horizontally */
-/** TODO: calculate top-left corner in output array */
+/* interpolate horizontally */
+/* TODO: calculate top-left corner in output array */
 					/*
    if ((DEBUG_LEVEL>1) &&(tileY==0)) {
       SDFA_instance.showArrays(firstFHTColumn,size,size, "firstFHTColumn");
@@ -13647,15 +13647,15 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 				}
 			}
 		}    
-/** prepare result stack to return */
+/* prepare result stack to return */
 		ImageStack outStack=new ImageStack(outTilesX*interpolateParameters.size,outTilesY*interpolateParameters.size);
 		for (chn=0;chn<nChn;chn++) {
 			outStack.addSlice(kernelStack.getSliceLabel(chn+1), outPixels[chn]);
 		}
 		return outStack;
 	}
-/** ======================================================================== */
-/** Used in interpolateKernelStack() */  
+/* ======================================================================== */
+/* Used in interpolateKernelStack() */  
 	private void storeOneKernel(
 			float []  pixels, // float [] array of combined square kernels - will be filled
 			double [] kernel, // square kernel to store
@@ -13670,7 +13670,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		for (i=0;i<size;i++) for (j=0;j<size;j++) pixels[base+i*pixelsWidth+j]= (float) kernel[i*size+j];
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private void extractOneKernel(
 			float []  pixels, //  array of combined square kernels, each 
 			double [] kernel, // will be filled, should have correct size before call
@@ -13683,7 +13683,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		int pixelsWidth=numHor*size;
 		int pixelsHeight=pixels.length/pixelsWidth;
 		int numVert=pixelsHeight/size;
-/** limit tile numbers - effectively add margins around the known kernels */
+/* limit tile numbers - effectively add margins around the known kernels */
 		if (xTile<0) xTile=0;
 		else if (xTile>=numHor) xTile=numHor-1;
 		if (yTile<0) yTile=0;
@@ -13695,7 +13695,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 
 
 
-/** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 	 * @param inverseParameters TODO*/
 
 	public ImageStack  reversePSFKernelStack(
@@ -13739,12 +13739,12 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 								tilesX, // number of kernels in a row
 								tileX, // horizontal number of kernel to extract
 								tileY); // vertical number of kernel to extract
-						/** Find direct kernel approximation ellipse, increase it, mirror center around 0,0 and use it as a mask for the reversed kernel */
+						/* Find direct kernel approximation ellipse, increase it, mirror center around 0,0 and use it as a mask for the reversed kernel */
 						selection=    findClusterOnPSF(kernel,  inverseParameters.psfCutoffEnergy, "");
 						ellipse_coeff=findEllipseOnPSF(kernel,  selection, ""); // coefficients for direct PSF, for rPSF [0] and [1] need to be opposite size
 
 						rKernel=resizeForFFT(kernel,inverseParameters.rSize);
-/** Apply variable blur to direct kernel using it's center X,Y */
+/* Apply variable blur to direct kernel using it's center X,Y */
 						if (inverseParameters.filterDirect) {
 							variableSigmas= createSigmasFromCenter(inverseParameters.rSize, // side of square
 									inverseParameters.sigmaToRadiusDirect, // variable blurring - sigma will be proportional distance from the center
@@ -13760,20 +13760,20 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 									inverseParameters.rSize); //int WOIHeight)
 						}
 						
-/** reverse PSF kernel */
+/* reverse PSF kernel */
 						rKernel= cleanupAndReversePSF (rKernel,  // input pixels
 								inverseParameters,
 								//    						  false,  // fold high frequency into low, when false - use Hamming to cut off high frequencies
 								fht_instance,
 						""); // just for the plot names
-/**  mask  the reversed kernel */
+/*  mask  the reversed kernel */
 						rKernel= maskReversePSFKernel(rKernel, // reversed psf, square array
 								ellipse_coeff, // ellipse coefficients from _direct_ kernel
 								inverseParameters.psfEllipseScale,
 								inverseParameters.rpsfMinMaskThreshold); // zero output element if elliptical Gauss mask is below this threshold
 
 						normalizeKernel(rKernel); // in-place
-/** Apply variable blur to inversed kernel, using (and reversing sign) the center X,Y from the direct kernel */
+/* Apply variable blur to inversed kernel, using (and reversing sign) the center X,Y from the direct kernel */
 						if (inverseParameters.filter) {
 							variableSigmas= createSigmasFromCenter(inverseParameters.rSize, // side of square
 									inverseParameters.sigmaToRadius, // variable blurring - sigma will be proportional distance from the center
@@ -13804,7 +13804,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		}
 		startAndJoin(threads);
 		//	  System.out.println("Threads done at "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
-/** prepare result stack to return */
+/* prepare result stack to return */
 		final ImageStack outStack=new ImageStack(tilesX*inverseParameters.rSize,tilesY*inverseParameters.rSize);
 		for (int chn=0;chn<nChn;chn++) {
 			outStack.addSlice(PSFStack.getSliceLabel(chn+1), outPixels[chn]);
@@ -13814,10 +13814,10 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 
-/** calculates and updates global array PSF_KERNEL_MAP */
+/* calculates and updates global array PSF_KERNEL_MAP */
 	public double [][][][] createPSFMap(
 			final MatchSimulatedPattern commonMatchSimulatedPattern, // to be cloned in therads, using common data
 			final ImagePlus          imp_sel, // linearized Bayer mosaic image form the camera, GR/BG
@@ -13848,7 +13848,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		final double [] bitmaskPattern= simulationPattern.patternGenerator(simulParameters);
 		int nTileX,nTileY;
 		int numPatternCells=0;
-/** Filter results based on correlation with the actual pattern */
+/* Filter results based on correlation with the actual pattern */
 		boolean [][]   PSFBooleanMap; // map of 2*fft_size x 2*fft_size squares with 2*fft_overlap step, true means that that tile can be used for PSF
 		final boolean useOld=(matchSimulatedPattern==null) || (matchSimulatedPattern.getUVIndex()==null);
 		if (sampleList==null){
@@ -13905,7 +13905,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		DEBUG_LEVEL=debug_level;
 		simulationPattern.debugLevel=DEBUG_LEVEL;
 		int ncell=0;
-/** Create array of coordinates of cells to process, fill result array with zeros (to be actually written by threads */       
+/* Create array of coordinates of cells to process, fill result array with zeros (to be actually written by threads */       
 		final int [][] tilesToProcessXY=new int [numPatternCells][4];
 
 		for (nTileY=0;nTileY<PSFBooleanMap.length;nTileY++) for (nTileX=0;nTileX<PSFBooleanMap[0].length;nTileX++){
@@ -14049,7 +14049,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 			IJ.showMessage("Error","There are no cells with patternn\nProcess canceled");
 			return;
 		}
-/** Filter results based on correlation with the actual pattern */
+/* Filter results based on correlation with the actual pattern */
 		boolean [][]   PSFBooleanMap; // map of 2*fft_size x 2*fft_size squares with 2*fft_overlap step, true means that that tile can be used for PSF
 		PSFBooleanMap= remapSquares(patternMap, // [][]map of either null or 2 wave vectors
 				mapFFTsize/2, // step of initial map
@@ -14066,7 +14066,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		DEBUG_LEVEL=debug_level;
 		simulationPattern.debugLevel=DEBUG_LEVEL;
 		int ncell=0;
-/** Create array of coordinates of cells to process, fill result array with zeros (to be actually written by threads */       
+/* Create array of coordinates of cells to process, fill result array with zeros (to be actually written by threads */       
 		final int [][] tilesToProcessXY=new int [numPatternCells][2];
 		for (nTileY=0;nTileY<PSFBooleanMap.length;nTileY++) for (nTileX=0;nTileX<PSFBooleanMap[0].length;nTileX++){
 			if (PSFBooleanMap[nTileY][nTileX]) {
@@ -14162,8 +14162,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	}
 
 
-/** ======================================================================== */
-/** Create a Thread[] array as large as the number of processors available.
+/* ======================================================================== */
+/* Create a Thread[] array as large as the number of processors available.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */
@@ -14172,7 +14172,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 		return new Thread[n_cpus];
 	}
-/** Start all given threads and wait on each of them until all are done.
+/* Start all given threads and wait on each of them until all are done.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */
@@ -14193,7 +14193,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 			throw new RuntimeException(ie);
 		}
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public double [][][][] scanImageForPatterns(ImagePlus imp,
 			int                                        size, // FFT size
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -14230,7 +14230,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		int mapHeight= (imp.getHeight()/2-size)/(size/2)+1; // 50% overlap
 		String title=imp.getTitle();
 		if (DEBUG_LEVEL>1) {
-/** title is the same - window, not file */
+/* title is the same - window, not file */
 			System.out.println("Mapping image with squares of "+(size*2)+"x"+(size*2)+"pixels, with 50% overlap, covering total area of "+
 					((mapWidth+1)*size)+"x"+((mapHeight+1)*size));
 		}
@@ -14240,7 +14240,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		int wasDebug=DEBUG_LEVEL;
 		double [][] pixels;
 		double [] hamming=initWindowFunction(size);
-/** Prepare for filtering - common part outside of the iteration */
+/* Prepare for filtering - common part outside of the iteration */
 		double [][]  sim_pix;
 		SimulationPattern.SimulParameters  thisSimulParameters=simulParameters.clone();
 //		int this_simul_subdiv=2;
@@ -14275,7 +14275,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 						patternDetectParameters,
 						true,
 						title); // title - will not be used
-/** Now verify by correlating with the actual pattern */
+/* Now verify by correlating with the actual pattern */
 				if ((patternMap[nTileY][nTileX]!=null) && (patternDetectParameters.minCorrContrast>0.0)) {
 					simulationPattern.simulatePatternFullPattern(
 							patternMap[nTileY][nTileX][0][0],
@@ -14321,8 +14321,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		//
 	}
 
-/** ======================================================================== */
-/** build a map of available overlapping squares of different size than initially mapped. New size and step should be multiple of initial step */
+/* ======================================================================== */
+/* build a map of available overlapping squares of different size than initially mapped. New size and step should be multiple of initial step */
 	private boolean [][] remapSquares (double [][][][] map, // [][]map of either null or 2 wave vectors
 			int mapStep, // step of initial map
 			int mapSquare, // size of square used in scanning of initial map (should be multiple of map step)
@@ -14338,16 +14338,16 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 			System.out.println("remapSquares, map.length= "+map.length+" map[0].length="+map[0].length+" nSteps="+nSteps+" mapSizeY="+mapSizeY+" mapSizeX="+mapSizeX);
 		}
 
-/** create full map from initial */     
+/* create full map from initial */     
 		for (y=0;y<mapSizeY;y++) for (x=0;x<mapSizeX;x++) bmap[y][x]=false;
 		for (nTileY=0;nTileY<map.length;nTileY++) for (nTileX=0;nTileX<map[0].length;nTileX++) if (map[nTileY][nTileX]!=null){
 			for (y=0;y<nSteps;y++) for (x=0;x<nSteps;x++) bmap[nTileY+y][nTileX+x]=true;
 		}
-/** build output map */
+/* build output map */
 		int rsltStep=newStep/mapStep;
 		int rsltSquare=newSquare/mapStep;
 
-		int rsltSizeY=(mapSizeY-rsltSquare)/rsltStep+1; /** got zero when overlap was set to 16 - less than initial scan */
+		int rsltSizeY=(mapSizeY-rsltSquare)/rsltStep+1; /* got zero when overlap was set to 16 - less than initial scan */
 		int rsltSizeX=(mapSizeX-rsltSquare)/rsltStep+1;
 
 		if (DEBUG_LEVEL>1) {
@@ -14403,7 +14403,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	}
 	
 	
-/** ======================================================================== */
+/* ======================================================================== */
 	public double [][] matrix2x2_invert(double [][] m ){
 		double det=m[0][0]*m[1][1]-m[0][1]*m[1][0];
 		double [][] rslt= {{ m[1][1]/det,  -m[0][1]/det},
@@ -14443,10 +14443,10 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		return rslt;
 	}
 	
-/** ======================================================================== */
-/** Use ROI */
-/** Supply rectangle */
-/** Accept slices, default to first slice */
+/* ======================================================================== */
+/* Use ROI */
+/* Supply rectangle */
+/* Accept slices, default to first slice */
 /*	
 	private double[][] splitBayer (ImagePlus imp, Rectangle r, boolean equalize_greens) {
 		return splitBayer ((float[])imp.getProcessor().getPixels(), imp.getWidth(),  r,  equalize_greens);
@@ -14671,7 +14671,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		return result;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private  void normalizeKernel(double [][] kernel) {
 		int i;
 		for (i=0;i<kernel.length;i++) if (kernel[i]!=null) normalizeKernel(kernel[i]);
@@ -14686,8 +14686,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		for (i=0;i<kernel.length;i++) kernel[i]*=s;
 	}
 
-/** ======================================================================== */
-/** extends/shrinks image to make it square for FFT */
+/* ======================================================================== */
+/* extends/shrinks image to make it square for FFT */
 	private double[][] resizeForFFT (double[][]kernels, int size) {
 		if (kernels==null) return null;
 		double [][]result=new double [kernels.length][];
@@ -14720,7 +14720,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		}
 		return kernelForFFT;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 
 	private  int kernelLength(double[][]kernels) {
 		if (kernels==null) return 0;
@@ -14728,7 +14728,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		return 0;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private  ImageStack mergeKernelsToStack(double [][][][] kernels) {
 		return mergeKernelsToStack(kernels,null);
 
@@ -14786,7 +14786,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		return stack;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	public double [][] getPSFKernels ( ImagePlus imp,
 			float [][] simArray, //simulation image, scaled PSF_subpixel/2 (or null), [0] - main pixels, [1] - shifted diagonally by 0.5 pixels (for checker greens)
 			int size,   // size in pixels (twice FFT_SIZE)
@@ -14826,7 +14826,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 		double [][] dbgSimPix=null;
 		
 		if ((simArray==null) || (psfParameters.approximateGrid)){ // just for testing
-			/** Calculate pattern parameters, including distortion */
+			/* Calculate pattern parameters, including distortion */
 			if (matchSimulatedPattern.PATTERN_GRID==null) {
 				double[][] distortedPattern= matchSimulatedPattern.findPatternDistorted(input_bayer, // pixel array to process (no windowing!)
 						patternDetectParameters,
@@ -15008,8 +15008,8 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 					title+"-"+i);
 		}
 		if (DEBUG_LEVEL>2) SDFA_INSTANCE.showArrays(inverted, fft_size*subpixel, fft_size*subpixel, title+"_Combined-PSF");
-/** correct composite greens */
-/** Here we divide wave vectors by subpixel as the pixels are already added */
+/* correct composite greens */
+/* Here we divide wave vectors by subpixel as the pixels are already added */
 		double [][] wVrotMatrix= {{0.5,0.5},{-0.5,0.5}};
 		double [][]wVectors4= new double [2][2];
 		for (i=0;i<2;i++) for (j=0;j<2;j++) {
@@ -15040,7 +15040,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 			psf_inverted_masked[i]=null;
 		}
 		//int [][]  clusterMask;
-/** Start with referenceComp */
+/* Start with referenceComp */
 		i= referenceComp;
 		if (DEBUG_LEVEL>2) {
 			System.out.println("1-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
@@ -15061,7 +15061,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		if (DEBUG_LEVEL>2)     System.out.println("After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
 		if (DEBUG_LEVEL>2)     System.out.println("After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
 
-		if (!psfParameters.ignoreChromatic) { /** Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
+		if (!psfParameters.ignoreChromatic) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
 			for (j=0;j<input_bayer.length;j++) if ((colorComponents.colorsToCorrect[j]) && (j!=referenceComp)) {
 				PSF_shifts[j]=shiftSensorToBayer (shiftBayerToSensor(PSF_shifts[referenceComp],referenceComp,subpixel),j,subpixel);
 				if (DEBUG_LEVEL>2)       System.out.println("After-2 (recalc): color Component "+j+" PSF_shifts["+j+"][0]="+IJ.d2s(PSF_shifts[j][0],3)+" PSF_shifts["+j+"][1]="+IJ.d2s(PSF_shifts[j][1],3));
@@ -15073,7 +15073,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 				i,
 				subpixel);
 		lateralChromaticAbs[i]=Math.sqrt(lateralChromatic[i][0]*lateralChromatic[i][0]+lateralChromatic[i][1]*lateralChromatic[i][1]);
-/** Now process all the other components */
+/* Now process all the other components */
 		for (i=0; i<input_bayer.length;i++) if ((i!=referenceComp) && (colorComponents.colorsToCorrect[i])) {
 			if (DEBUG_LEVEL>2) {
 				System.out.println("2-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
@@ -15126,8 +15126,8 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 
 
 
-/** ======================================================================== */
-/** Combine both greens as a checkerboard pattern (after oversampleFFTInput()) */
+/* ======================================================================== */
+/* Combine both greens as a checkerboard pattern (after oversampleFFTInput()) */
 	private  double [][] combineCheckerGreens (double[][] input_pixels,   // pixel arrays after oversampleFFTInput() or extractSimulPatterns())
 			int ratio) { // same as used in oversampleFFTInput() - oversampling ratio
 		int width=(int) Math.sqrt(input_pixels[0].length);
@@ -15172,8 +15172,8 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		return pixels;
 	}
 
-/** ======================================================================== */
-/** inserts zeros between pixels */ 
+/* ======================================================================== */
+/* inserts zeros between pixels */ 
 	private  double [][] oversampleFFTInput (double[][] input_pixels,
 			int ratio) {
 		double [][] pixels=new double[input_pixels.length][];
@@ -15212,7 +15212,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		return pixels;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 	private double[] limitedInverseOfFHT(double [] measuredPixels,  // measured pixel array
 			double [] modelPixels,  // simulated (model) pixel array)
@@ -15282,7 +15282,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		DoubleGaussianBlur gb=new DoubleGaussianBlur();
 		if ((oversample>1) && (threshold_low<1.0)) {
 			double [] ps=fht_instance.calculateAmplitude2(denominatorPixels);
-/** create mask */
+/* create mask */
 			mask= maskAliases (denominatorPixels,   // complex spectrum, [size/2+1][size]
 					checker, // checkerboard pattern in the source file (use when filtering)
 					oversample,   // measured array is sampled at 1/oversample frequency than model (will add more parameters later)
@@ -15292,23 +15292,23 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 					threshold_high,   // reject completely if energy is above this part of maximal
 					threshold_low,  // leave intact if energy is below this part of maximal
 					fht_instance);
-/** debug show the mask */
-			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+/* debug show the mask */
+			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(mask, title+"-MASK");
 			}
 			for (int ii=0;ii<ps.length;ii++) ps[ii]=Math.log(ps[ii]); // can be twice faster
-			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(ps, "LOG-"+title);
 			}
 			double [] ps_smooth=ps.clone();
 			gb.blurDouble(ps_smooth, size, size, mask1_sigma, mask1_sigma, 0.01);
-			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(ps_smooth, "SM-"+title);
 			}
 			double threshold1=Math.log(2.0*mask1_threshold);
 			mask1=new double [ps.length];
 			for (int ii=0;ii<ps.length;ii++) mask1[ii]= ps[ii]-ps_smooth[ii]-threshold1;
-			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(mask1, "M1-"+title);
 			}
 			fht_instance.swapQuadrants(mask1); // zero in the corner
@@ -15319,28 +15319,28 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 				}
 				mask1[ii]*=mask[ii];
 			}
-			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(mask1, "M1A-"+title);
 			}
 		}
-/** Mask already includes zeros on ps, so we can just use divisions of FHT*/		  
+/* Mask already includes zeros on ps, so we can just use divisions of FHT*/		  
 		//Swapping quadrants of the nominator, so the center will be 0,0
 		fht_instance.swapQuadrants(nominatorPixels);
 		//get to frequency domain
 		fht_instance.transform(nominatorPixels);
-		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug evel later */ // was 3
+		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug evel later */ // was 3
 			SDFA_INSTANCE.showArrays(nominatorPixels, title+"-NOM-FHT");
 			SDFA_INSTANCE.showArrays(denominatorPixels, title+"-DENOM-FHT");
 		}			    
 		double [] pixels=fht_instance.divide(nominatorPixels,denominatorPixels);
-		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug evel later */ // was 3
+		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug evel later */ // was 3
 			SDFA_INSTANCE.showArrays(pixels, title+"-DECONV");
 		}			    
 		for (i=0;i<pixels.length;i++) {
 			if (mask[i]==0.0) pixels[i]=0.0; // preventing NaN*0.0
 			else pixels[i]*=mask[i];
 		}
-		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 			SDFA_INSTANCE.showArrays(pixels, title+"-MASKED");
 			double [][] aphase=fht_instance.fht2AmpHase(pixels,true);
 			SDFA_INSTANCE.showArrays(aphase, true,"AP="+title+"-MASKED");
@@ -15357,7 +15357,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 				if (mask1[jj]>mask_denoise) fft_reIm_centered[ii][jj]/=mask1[jj];
 				else if (mask1[jj]>=0.0) fft_reIm_centered[ii][jj]/=mask_denoise;
 				else  fft_reIm_centered[ii][jj]=0.0;
-			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+			if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 				SDFA_INSTANCE.showArrays(fft_reIm_centered, true,"ReIm-"+title);
 			}
 			fht_instance.swapQuadrants(fft_reIm_centered[0]); // zero in the corner
@@ -15368,15 +15368,15 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		/// transform to space
 		fht_instance.inverseTransform(pixels);
 		fht_instance.swapQuadrants(pixels);
-		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /** Increase debug level later */ // was 3
+		if ((debug>1) ||((DEBUG_LEVEL>2) && (title!=""))) { /* Increase debug level later */ // was 3
 			SDFA_INSTANCE.showArrays(pixels, "PSF-"+title);
 		}
 		return pixels;
 	}
 
 
-/** ======================================================================== */
-/** shift (like lateral chromatic aberration) in Bayer component to sensor pixels */
+/* ======================================================================== */
+/* shift (like lateral chromatic aberration) in Bayer component to sensor pixels */
 
 	private  double [] shiftBayerToSensor ( double [] dxy,
 			int color,
@@ -15426,7 +15426,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 
 
 
-/** ======================================================================== 
+/* ======================================================================== 
 /**
  * Mostly done, need to move where szis\
  * TODO: currently the shift of the PSF during binning is done with the integer steps. If ignoreChromatic - to all colors
@@ -15457,7 +15457,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 			System.out.println("combinePSF title="+title+" wV[1][0]="+IJ.d2s(wVectors[1][0],4)+" wV[1][1]="+IJ.d2s(wVectors[1][1],4));
 		}
 
-/** vectors perpendicular to the checkerboard edges, lengths equal to the periods */
+/* vectors perpendicular to the checkerboard edges, lengths equal to the periods */
 		double [][] f= {{wVectors[0][0]/(wVectors[0][0]*wVectors[0][0]+wVectors[0][1]*wVectors[0][1]),
 			wVectors[0][1]/(wVectors[0][0]*wVectors[0][0]+wVectors[0][1]*wVectors[0][1])},
 			{wVectors[1][0]/(wVectors[1][0]*wVectors[1][0]+wVectors[1][1]*wVectors[1][1]),
@@ -15467,7 +15467,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 			System.out.println("combinePSF title="+title+" f[1][0]="+IJ.d2s(f[1][0],4)+" f[1][1]="+IJ.d2s(f[1][1],4));
 		}
 
-/** vectors parallel to checkerboard edges, lenghs equal to the period along those lines */
+/* vectors parallel to checkerboard edges, lenghs equal to the period along those lines */
 		double l2f1=   f[0][0]*f[0][0]+f[0][1]*f[0][1];
 		double l2f2=   f[1][0]*f[1][0]+f[1][1]*f[1][1];
 		double pf1f2  =f[0][1]*f[1][0]-f[1][1]*f[0][0];
@@ -15477,7 +15477,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 			System.out.println("combinePSF title="+title+" g0[0][0]="+IJ.d2s(g0[0][0],4)+" g[0][1]="+IJ.d2s(g0[0][1],4));
 			System.out.println("combinePSF title="+title+" g0[1][0]="+IJ.d2s(g0[1][0],4)+" g[1][1]="+IJ.d2s(g0[1][1],4));
 		}
-/** calculate vectors connecting centers of the "positive" PSF copies */
+/* calculate vectors connecting centers of the "positive" PSF copies */
 
 		double [][] g= {{0.5*(g0[0][0]+g0[1][0]), 0.5*(g0[0][1]+g0[1][1])},
 				{0.5*(g0[0][0]-g0[1][0]), 0.5*(g0[0][1]-g0[1][1])}};
@@ -15488,7 +15488,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		}
 		/// =================
 
-/** calculate outSize to be able to use FFT here */
+/* calculate outSize to be able to use FFT here */
 		double sizeNegatives= Math.max(Math.max(Math.abs(g[0][0]+ g[1][0]),Math.abs(g[0][1]+ g[1][1])),
 				Math.max(Math.abs(g[0][0]- g[1][0]),Math.abs(g[0][1]- g[1][1])));
 		double scaleSize=2.5; /// Will include next positive centers and overlap
@@ -15543,7 +15543,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		DoubleGaussianBlur gb=new DoubleGaussianBlur();
 		gb.blurDouble(smoothPixelsPSF, outSize, outSize, smoothSigma, smoothSigma, 0.01);
 
-/** find amplitude of smoothed pixel array */
+/* find amplitude of smoothed pixel array */
 		double smoothMin=0.0;
 		double smoothMax=0.0;
 		for (i=0;i<smoothPixelsPSF.length;i++) {
@@ -15566,7 +15566,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 
 		if (DEBUG_LEVEL>2) System.out.println("Centroid after first binPSF: x="+IJ.d2s(centroidXY[0],3)+" y="+IJ.d2s(centroidXY[1],3)+" center was at x="+IJ.d2s(centerXY[0],3)+" y="+IJ.d2s(centerXY[1],3));
 
-/** Re-bin results with the new center if ignoreChromatic is true, update centerXY[](shift of the result PSF array) and centroidXY[] (center of the optionally shifted PDF array) */
+/* Re-bin results with the new center if ignoreChromatic is true, update centerXY[](shift of the result PSF array) and centroidXY[] (center of the optionally shifted PDF array) */
 		if (master || psfParameters.ignoreChromatic) {
 			if (centerXY!=null) {
 				centerXY[0]+=centroidXY[0];
@@ -15592,7 +15592,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 						 -(centerXY[1]-Math.round(centerXY[1])));
 //				fht_instance.debug=false;
 			}
-/**  recalculate centroids  */
+/*  recalculate centroids  */
 			smoothPixelsPSF= pixelsPSF.clone();
 			gb.blurDouble(smoothPixelsPSF, outSize, outSize, smoothSigma, smoothSigma, 0.01);
 			smoothMin=0.0;
@@ -15619,7 +15619,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		
 		
 		
-/** compensate center point and/or add center-symmetrical points if enabled */
+/* compensate center point and/or add center-symmetrical points if enabled */
 		double [] rejectedClonesPixels=null;
 		double [][] modelPSFVectors={{0.5*(g[0][0]+g[1][0]),0.5*(g[0][1]+g[1][1])},
 				{0.5*(g[0][0]-g[1][0]),0.5*(g[0][1]-g[1][1])}};
@@ -15669,7 +15669,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 
 
 		if (DEBUG_LEVEL>2) {
-/** Sigmas are 0 here ??? */
+/* Sigmas are 0 here ??? */
 			if (psfParameters.sigmaToRadius>0.0) {
 				float [] floatPixelsSigmas=new float[sigmas.length];
 				for (j=0;j<sigmas.length;j++) floatPixelsSigmas[j]=(float) sigmas[j];
@@ -15688,10 +15688,10 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		return  varFilteredPSF;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 
-/** ======================================================================== */
-/** Trying to remove aliasing artifacts when the decimated (pixel resolution) image is deconvolved with full resolution (sub-pixel resolution)
+/* ======================================================================== */
+/* Trying to remove aliasing artifacts when the decimated (pixel resolution) image is deconvolved with full resolution (sub-pixel resolution)
 model pattern. This effect is also easily visible if the decimated model is deconvolved with the same one art full resolution.
 Solution is to clone the power spectrum of the full resolution model with the shifts to match oversampling (15 clones for the 4x oversampling),
 And add them together (adding also zero frequerncy point - it might be absent on the model) but not include the original (true one) and
@@ -15714,7 +15714,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		//	double [][] ps=new double [size/2+1][size];
 		int i,ix,iy, cloneNx, cloneNy, cloneX, cloneY;
 		int cloneStep=size/oversample;
-/** generating power spectrum for the high-res complex spectrum, find maximum value and normalize */
+/* generating power spectrum for the high-res complex spectrum, find maximum value and normalize */
 		if (fht_instance==null) fht_instance=new DoubleFHT(); // move upstream to reduce number of initializations
 		double [] ps=fht_instance.calculateAmplitude2(fht);
 		double psMax=0.0;
@@ -15722,7 +15722,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		double k=1.0/psMax;
 		for (i=0;i<length; i++) ps[i]*=k;
 		if (DEBUG_LEVEL>2) SDFA_INSTANCE.showArrays(ps, "PS");
-/** Add maximum at (0,0) */
+/* Add maximum at (0,0) */
 		double [] psWithZero=ps;
 		if (zerofreq_size>0.0) {
 			psWithZero=ps.clone();
@@ -15734,10 +15734,10 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 				psWithZero[base+iy*size+ix]+=Math.exp(-k*(iy*iy+ix*ix));
 			}
 		}
-/** put zero in the center */
+/* put zero in the center */
 		double [] mask=new double [length];
 		for (i=0;i<length; i++) mask[i]=0.0;
-/** clone spectrums */
+/* clone spectrums */
 		for (iy=0;iy<size;iy++) for (ix=0;ix<size;ix++){
 			for (cloneNy=0;cloneNy<oversample;cloneNy++) for (cloneNx=0;cloneNx<oversample;cloneNx++)
 				if (((cloneNy!=0) || (cloneNx!=0)) && // not a zero point
@@ -15748,7 +15748,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 					mask[cloneY*size+cloneX]+=psWithZero[iy*size+ix];
 				}			
 		}
-/** debug show the mask */
+/* debug show the mask */
 		if (DEBUG_LEVEL>2) SDFA_INSTANCE.showArrays(mask, "PS-cloned");
 		if (sigma>0) {
 			DoubleGaussianBlur gb = new DoubleGaussianBlur();
@@ -15756,7 +15756,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			if (DEBUG_LEVEL>2) SDFA_INSTANCE.showArrays(mask, "PS-smooth");
 		}
 
-/** make mask of cloned power spectrums */
+/* make mask of cloned power spectrums */
 		double a;
 		double k2=deconvInvert*deconvInvert;
 		double min=0.01*k2; // less than 1/10 of that value - mask=0.0
@@ -15780,7 +15780,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return mask;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private double [] binPSF(double [] pixels,
 			double [][] g,
 			int outSize,
@@ -15846,9 +15846,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			np=(int)Math.floor((1+p)/2);
 			nq=(int)Math.floor((1+q)/2);
 			//if (debug)  debugPixels[indx]=(int)Math.floor((1+q)/2);
-/** see if the point is in the cell of positive or negative OTF instance */
+/* see if the point is in the cell of positive or negative OTF instance */
 			PSF_sign= (((np + nq) & 1)==0)?1:-1;
-/** find x,y coordinates of the center of the cell */
+/* find x,y coordinates of the center of the cell */
 			uc=0.5*(np+nq);
 			vc=0.5*(np-nq);
 			//xc=g[0][0]*uc + g[1][0]*vc;
@@ -15860,7 +15860,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 
 			//if (debug) debugPixels[indx]=p/2-Math.round(p/2);
 
-/** See if this cell has enough contrast */
+/* See if this cell has enough contrast */
 			overThreshold=contrastAtXY(PSF_sign,pixels, pixelSize, xc,yc,  g, contrastCache);
 			//if (debug) debugPixels[indx]=overThreshold;
 			if (overThreshold<threshold) {
@@ -15869,23 +15869,23 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			} else {
 				//if (debug) debugPixels[indx]=yc;
 
-/** Do binning itself here */
+/* Do binning itself here */
 				d=PSF_sign*PSFAtXY(pixels, pixelSize, x,y);
 
-/** map to the segment around 0,0 */        
+/* map to the segment around 0,0 */        
 				dp=p/2-Math.round(p/2);
 				dq=q/2-Math.round(q/2);
-/** dp, dq are between +/- 0.5 - use them for Hamming windowing -NOT HERE, moved later*/
+/* dp, dq are between +/- 0.5 - use them for Hamming windowing -NOT HERE, moved later*/
 				du=(dp+dq)/2;
 				dv=(dp-dq)/2;
 
-/** bin this point to the center and some (positive) duplicates if enabled */
+/* bin this point to the center and some (positive) duplicates if enabled */
 				for (i=-(multiple/2); i<=(multiple/2); i++) for (j=-(multiple/2); j<=(multiple/2); j++) {
 					xr= uv2xy[0][0]*(j+du) + uv2xy[0][1]*(i+dv);
 					yr= uv2xy[1][0]*(j+du) + uv2xy[1][1]*(i+dv);
 					xr= Math.round(xr-center[0]);
 					yr= Math.round(yr-center[1]);
-/** does it fit into output array ? */
+/* does it fit into output array ? */
 					if ((yr>=-halfOutSize) && (yr<halfOutSize) && (xr>=-halfOutSize) && (xr<halfOutSize)) {
 						outIndex=outSize*(outSize/2+ ((int) yr))+(outSize/2)+((int) xr);
 						pixelsPSFCount[outIndex]++;
@@ -15893,7 +15893,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 						pixelsPSFWeight[outIndex]+=overThreshold;
 					}
 				}
-/** bin this to center-symmetrical point if enabled */
+/* bin this to center-symmetrical point if enabled */
 				if (symmXY!=null) {
 					for (i=-(multiple/2); i<=(multiple/2); i++) for (j=-(multiple/2); j<=(multiple/2); j++) {
 						xr= uv2xy[0][0]*(j+du) + uv2xy[0][1]*(i+dv);
@@ -15909,7 +15909,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 						}
 					}
 				}
-/** Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
+/* Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
 				if (multiple>0) for (i=-((multiple+1)/2); i<((multiple+1)/2); i++) for (j=-((multiple+1)/2); j<((multiple+1)/2); j++) {
 					xr= uv2xy[0][0]*(j+du+0.5) + uv2xy[0][1]*(i+dv+0.5);
 					yr= uv2xy[1][0]*(j+du+0.5) + uv2xy[1][1]*(i+dv+0.5);
@@ -15923,8 +15923,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 						pixelsPSFWeight[outIndex]+=overThreshold;
 					}
 				}
-/** bin this to center-symmetrical point if enabled */
-/** Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
+/* bin this to center-symmetrical point if enabled */
+/* Now bin this point to the negative duplicates if enabled (debug feature). Normally it will be skipped */
 				if (symmXY!=null) {
 					if (multiple>0) for (i=-((multiple+1)/2); i<((multiple+1)/2); i++) for (j=-((multiple+1)/2); j<((multiple+1)/2); j++) {
 						xr= uv2xy[0][0]*(j+du+0.5) + uv2xy[0][1]*(i+dv+0.5);
@@ -15947,7 +15947,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		for (i=0;i<pixelsPSF.length;i++) {
 			if (pixelsPSFWeight[i]>0.0) pixelsPSF[i]/=pixelsPSFWeight[i];
 		}
-/** Interpolate  missing points (pixelsPSFCount[i]==0) */
+/* Interpolate  missing points (pixelsPSFCount[i]==0) */
 
 		for (i=0;i<pixelsPSF.length;i++) if (pixelsPSFWeight[i]==0.0){
 			iy=i/outSize;
@@ -15966,7 +15966,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 				}
 			}
 		}
-/** optionally show original array with masked out low-contrast cells */
+/* optionally show original array with masked out low-contrast cells */
 		if ((DEBUG_LEVEL>2) && (pass==1))  SDFA_INSTANCE.showArrays(pixelsPSF, title+"_Used-PSF");
 		if (debug) {
 			SDFA_INSTANCE.showArrays(debugPixels, title+"_mask_PSF");
@@ -15982,8 +15982,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 	}
 
 
-/** ======================================================================== */
-/** pixels should be a square array, zero is in the center (/center+0.5 for even dimensions) */
+/* ======================================================================== */
+/* pixels should be a square array, zero is in the center (/center+0.5 for even dimensions) */
 //	private  double [] calcCentroidFromCenter(double [] pixels) {return calcCentroidFromCenter(pixels, (int[]) null, 0.0);}
 	private  double [] calcCentroidFromCenter(double [] pixels, // square pixel array
 			int[][] mask, // integer mask -0 - don't use this pixel, 1 - use it
@@ -16025,8 +16025,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 	}
 
 
-/** ======================================================================== */
-/** zeroes out area outside of the area bound by 4 negative clones (or a fraction of it), either sharp or with Hamming */
+/* ======================================================================== */
+/* zeroes out area outside of the area bound by 4 negative clones (or a fraction of it), either sharp or with Hamming */
 	private double [] maskClonesPSF(double [] pixels, // square pixel array where the model PSF is added
 			double windowPart, // multiply window by this value
 			double xc, // Center of the remaining single PSF
@@ -16038,7 +16038,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		int size = (int) Math.sqrt (pixels.length);
 		double [] xy= new double[2];
 		double [] uv;
-/** matrix that converts u,v (lengths along the) 2 input vectors connecting opposite sign PSFs into x,y coordinates */
+/* matrix that converts u,v (lengths along the) 2 input vectors connecting opposite sign PSFs into x,y coordinates */
 		double [][] uv2xy= {{vectors[0][0]*windowPart,vectors[1][0]*windowPart},
 				{vectors[0][1]*windowPart,vectors[1][1]*windowPart}};
 		double [][] xy2uv=  matrix2x2_invert(uv2xy);
@@ -16056,8 +16056,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return pixels;
 	}
 
-/** ======================================================================== */
-/** create aray (to be used with variableGaussBlurr() ) of per-pixel sigma values for gauss blur, proportional to distance from the specified center */
+/* ======================================================================== */
+/* create aray (to be used with variableGaussBlurr() ) of per-pixel sigma values for gauss blur, proportional to distance from the specified center */
 	private double [] createSigmasRadius (double []pixels, // input square pixel array, preferrably having many exact zeros (they will be skipped)
 			double sigmaToRadius, // sigma is proportional to the distance from the center
 			double xc, // model PSF center X-coordinate (in pixels[] units, from the center of the array )
@@ -16092,7 +16092,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return sigmas;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private double [] variableGaussBlurr (double []pixels, // input square pixel array, preferrably having many exact zeros (they will be skipped)
 			double []sigmas, // array of sigmas to be used for each pixel, matches pixels[]
 			double nSigma, // drop calculatin if farther then nSigma
@@ -16123,7 +16123,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 					if (sigma==0.0) {
 						result[iy*size+ix]+=d; // just copy input data, no convolving
 					} else {
-/** opposite to "normal" convolution we have diffrent kernel for each point, so we need to make sure that two points with the same values but
+/* opposite to "normal" convolution we have diffrent kernel for each point, so we need to make sure that two points with the same values but
   diffrent sigma values will not move "energy" from one to another. For this we can do accumulation both ways - from the source point to all
    points "reachable" by the kernel (proportional to the pixel value) and also in opposite direction - from those other points to the current
    pointer (where kernel is centered) with the value proportional to that othre point  */
@@ -16159,8 +16159,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		}
 		return result;
 	}
-/** ======================================================================== */
-/** find ellipse approximating section of the PSF, scale ellipse and use it as a mask to remove PSF far wings */
+/* ======================================================================== */
+/* find ellipse approximating section of the PSF, scale ellipse and use it as a mask to remove PSF far wings */
 	private double [] cutPSFWings (double [] psf_pixels, // direct PSF function, square array, may be proportionally larger than reversed
 			double cutoff_energy, // fraction of energy in the pixels to be used
 			double ellipse_scale,
@@ -16210,7 +16210,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 	}
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private double PSFAtXY(double [] pixels, int size, double x, double y) {
 		int ix=(int) Math.round(x);
 		int iy=(int) Math.round(y);
@@ -16224,7 +16224,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		}
 		return pixels[index];
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 
 	private double contrastAtXY(int sign, double [] pixels, int size, double x, double y, double [][] g, double [] cache) {
 		int ir= (int) Math.round(0.2*Math.min(Math.max(Math.abs(g[0][0]),Math.abs(g[1][0])),Math.max(Math.abs(g[0][1]),Math.abs(g[1][1])))); // sample at square 1 1/2x1/2 of the grid "square"
@@ -16253,12 +16253,12 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return rslt/ir/ir;
 	}
 
-/** ======================================================================== */
-/** calculates 2x2 matrix that converts two pairs of vectors: u2=M*u1, v2=M*v1*/
+/* ======================================================================== */
+/* calculates 2x2 matrix that converts two pairs of vectors: u2=M*u1, v2=M*v1*/
 
-/** ======================================================================== */
+/* ======================================================================== */
 
-/** ======================================================================== */
+/* ======================================================================== */
 
 	private  int [] convert2d_1d(int [][] pixels){
 		int i,j;
@@ -16269,7 +16269,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 	}
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 	public double [] cleanupAndReversePSF (double []   psf_pixels,  // input pixels
 			EyesisAberrations.InverseParameters inverseParameters, // size (side of square) of direct PSF kernel
 			DoubleFHT fht_instance,  // provide DoubleFHT instance to save on initializations (or null)
@@ -16282,11 +16282,11 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 
 		double [] cpixels=psf_pixels.clone();
 		if (fht_instance==null) fht_instance=new DoubleFHT(); // move upstream to reduce number of initializations
-/** Swapping quadrants, so the center will be 0,0 */
+/* Swapping quadrants, so the center will be 0,0 */
 		fht_instance.swapQuadrants(cpixels);
-/** get to frequency domain */
+/* get to frequency domain */
 		fht_instance.transform(cpixels);
-/** Convert from FHT to complex FFT - avoid that in the future, process FHT directly*/
+/* Convert from FHT to complex FFT - avoid that in the future, process FHT directly*/
 		fft_complex= FHT2FFTHalf (cpixels,size);
 		double [][]fft_energy=new double[(size/2)+1][size];
 		for (i=0;i<(size/2+1);i++) for (j=0;j<size;j++) {
@@ -16294,8 +16294,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		}
 		int  [][] clusterPS = findClusterOnPS(fft_energy, inverseParameters.otfCutoffEnergy,title);
 		double [] ellipse_coeff = findEllipseOnPS(fft_energy, clusterPS, title);
-/** create ellipse window using Hamming */
-/** TODO: scale radius */
+/* create ellipse window using Hamming */
+/* TODO: scale radius */
 		double [][] ellipseMask=new double [size/2+1][size];
 		k2=1/inverseParameters.otfEllipseScale/inverseParameters.otfEllipseScale;
 		for (i=0;i<(size/2+1);i++) for (j=0;j<size;j++) {
@@ -16310,7 +16310,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 				ellipseMask[i][j]=(r>1.0)?0.0:(0.54+0.46*Math.cos(r*Math.PI));
 			}
 		}
-/** optionally display selection */
+/* optionally display selection */
 		if (DEBUG_LEVEL>2) {
 			ImageProcessor ip_ellipse = new FloatProcessor(size,size);
 			float [] ellipsePixels = new float [size*size];
@@ -16330,7 +16330,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			imp_ellipse.show();
 		}
 
-/** inverse fft_complex */
+/* inverse fft_complex */
 		if (inverseParameters.invertRange>0.0) {
 			/// Invert Z for large values, but make them Z - for small ones. So it will be a mixture of correlation and deconvolution
 			//here the targets are round, but what will th\be the colrrect way fo assymmetrical ones?
@@ -16349,7 +16349,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 				fft_complex[i][j][0]=r*Math.cos(a);
 				fft_complex[i][j][1]=r*Math.sin(a);
 			}
-/** multiply by ellipse window */
+/* multiply by ellipse window */
 			for (i=0;i<fft_complex.length; i++) for (j=0;j<fft_complex[0].length;j++) {
 				fft_complex[i][j][0]*=ellipseMask[i][j];
 				fft_complex[i][j][1]*=ellipseMask[i][j];
@@ -16366,19 +16366,19 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		}
 
 		double [] pixels=null;
-/** convert back original dimension array if there was no decimation or debug is set (in that case both sizes arrays will be converted) */
-/** Convert fft array back to fht array and 
+/* convert back original dimension array if there was no decimation or debug is set (in that case both sizes arrays will be converted) */
+/* Convert fft array back to fht array and 
     set fht pixels with new values */
 	    pixels=FFTHalf2FHT (fft_complex,size);
-/** optionally show the result FHT*/
-/** transform to space */
+/* optionally show the result FHT*/
+/* transform to space */
 		fht_instance.inverseTransform(pixels);
 		fht_instance.swapQuadrants(pixels);
-/**   return inverted psf pixels */
+/*   return inverted psf pixels */
 		return pixels;
 	}
 
-/** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 	private double [] maskReversePSFKernel( double []rpsf_pixels, // reversed psf, square array
 			double [] ellipse_coeff, // ellipse coefficients from _direct_ kernel
 			double ellipse_scale,
@@ -16404,7 +16404,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return masked_rpsf;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	private  double [] createSigmasFromCenter(
 			int               size, // side of square
 			double sigma_to_radius, // variable blurring - sigma will be proportional distance from the center
@@ -16424,8 +16424,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return sigmas;
 	}
 
-/** ======================================================================== */
-/** finds cluster on the PSF (with the center at specidfied point)  by flooding from the specified center, so total energy is cutoff_energy fraction
+/* ======================================================================== */
+/* finds cluster on the PSF (with the center at specidfied point)  by flooding from the specified center, so total energy is cutoff_energy fraction
 returns integer array (same dimensions as input) with 1 - selected, 0 - not selected
 cutoff_energy: if positive - specifies fraction of total energy, if negative -cutoff_energy is the minimal value of the pixel to be included 
 UPDATE: follows gradient from the start point to a local maximum if "cutoff_energy" is negative" */
@@ -16461,7 +16461,7 @@ UPDATE: follows gradient from the start point to a local maximum if "cutoff_ener
 		iy=startY;
 		Index=iy*size + ix;
 		double maxValue=psf[Index];
-/** Make ix,iy to start from the maximal value on PSF */
+/* Make ix,iy to start from the maximal value on PSF */
 		Index=0;
 		for (i=0;i<size;i++) for (j=0;j<size;j++) {
 			full_energy+=psf[Index];
@@ -16516,7 +16516,7 @@ if (DEBUG_LEVEL>1)		System.out.println("findClusterOnPSF: ix="+ix+" iy="+iy);
 		cluster_energy+=psf[Index];
 		noNew=true;
 		while ((pixelList.size()>0) &&  (noThreshold || (cluster_energy<threshold) )) { // will break from the loop if  (psf[Index] <minValue)
-/** Find maximal new neighbor */
+/* Find maximal new neighbor */
 			maxValue=0.0;
 			listIndex=0;
 			while (listIndex<pixelList.size()) {
@@ -16543,7 +16543,7 @@ if (DEBUG_LEVEL>1)		System.out.println("findClusterOnPSF: ix="+ix+" iy="+iy);
 				if (!noThreshold) System.out.println("findClusterOnPSF: - should not get here - no points around >0, and threshold is not reached yet.");
 				break;
 			}
-/** Add this new point to the list */
+/* Add this new point to the list */
 			if (psf[Index]<minValue) break; // break if the condition was value, not total energy
 			Index=maxY*size + maxX;
 			pixelList.add (Index);
@@ -16578,7 +16578,7 @@ if (DEBUG_LEVEL>1)		System.out.println("findClusterOnPSF: ix="+ix+" iy="+iy);
 		return clusterMap;
 	}
 
-/** calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from the initial center,
+/* calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from the initial center,
 so total energy is cutoff_energy fraction
 returns {x0,y0,a,b,c} , where a*x^2+b*y^2 + c*x*y=r^2 , so r^2 can be used for a window that removes high far pixels
 distribute the whol mass at the ends of short and long ellipse axis
@@ -16621,7 +16621,7 @@ c= -1/Ru^2 * 1/Rv^2 * (4*SXY/S0)
 		double S0=0.0;
 		double d; //,k;
 		//	double area=0; // selection area
-/** find centyer */
+/* find centyer */
 
 		for (i=0;i<size;i++) {
 			y=i-size/2;
@@ -16641,7 +16641,7 @@ c= -1/Ru^2 * 1/Rv^2 * (4*SXY/S0)
 			System.out.println("findEllipseOnPSF: title="+title+" S0="+S0+" SX="+SX+" SY="+SY+" centerX="+centerX+" centerY="+centerY);
 		}
 
-/** second pass (could all be done in a single) */
+/* second pass (could all be done in a single) */
 		SX2=0.0;
 		SY2=0.0;
 		SXY=0.0;
@@ -16685,9 +16685,9 @@ c= -1/Ru^2 * 1/Rv^2 * (4*SXY/S0)
 	// Old version, seem wrong
 
 
-/** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+/* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 
-/** finds cluster (with the center at DC)  by flooding from DC, so total energy is cutoff_energy fraction
+/* finds cluster (with the center at DC)  by flooding from DC, so total energy is cutoff_energy fraction
 returns integer array (same dimensions as input) with 1 - selected, 0 - not selected */
 	private int [][] findClusterOnPS(
 			double [][]       ps, // half power spectrum, starting from 0.0 (DC)
@@ -16701,7 +16701,7 @@ returns integer array (same dimensions as input) with 1 - selected, 0 - not sele
 		double full_energy=0.0;
 		int [][] dirs={{-1,0},{-1,-1},{0,-1},{1,-1},{1,0},{1,1},{0,1},{-1,1}};
 		for (i=0;i<(size/2+1);i++) for (j=0;j<size;j++) {
-			full_energy+=((i%(size/2))==0)?ps[i][j]:(2*ps[i][j]); /** first and last line are counted once, others - twice */
+			full_energy+=((i%(size/2))==0)?ps[i][j]:(2*ps[i][j]); /* first and last line are counted once, others - twice */
 			clusterMap[i][j]=0;
 		}
 		double threshold=full_energy*cutoff_energy;
@@ -16722,7 +16722,7 @@ returns integer array (same dimensions as input) with 1 - selected, 0 - not sele
 		cluster_energy+=ps[iy][ix];
 		boolean noNew=true;
 		while ((pixelList.size()>0) &&  (cluster_energy<threshold)) {
-/** Find maximal new neighbor */
+/* Find maximal new neighbor */
 			maxValue=0.0;
 			listIndex=0;
 			while (listIndex<pixelList.size()) {
@@ -16749,7 +16749,7 @@ returns integer array (same dimensions as input) with 1 - selected, 0 - not sele
 				System.out.println("findClusterOnPS: - should not get here - no points around >0, and threshold is not reached yet.");
 				break;
 			}
-/** Add this new point to the list */
+/* Add this new point to the list */
 			Index=maxY*size + maxX;
 			pixelList.add (Index);
 			clusterSize++;
@@ -16808,7 +16808,7 @@ returns integer array (same dimensions as input) with 1 - selected, 0 - not sele
 		return clusterMap;
 	}
 
-/** calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from DC, so total energy is cutoff_energy fraction
+/* calculates ellipse (with the center at DC) that interpolates area of the points defined by flooding from DC, so total energy is cutoff_energy fraction
 returns {a,b,c} , where a*x^2+b*y^2 + c*x*y=r^2 , so r^2 can be used for a window that removes high frequancy components that are too low to be useful*/
 
 	private double [] findEllipseOnPS(
@@ -16851,35 +16851,35 @@ returns {a,b,c} , where a*x^2+b*y^2 + c*x*y=r^2 , so r^2 can be used for a windo
 		return result;
 	}
 
-/** Trying to remove aliasing artifacts when the decimated (pixel resolution) image is deconvolved with full resolution (sub-pixel resolution)
+/* Trying to remove aliasing artifacts when the decimated (pixel resolution) image is deconvolved with full resolution (sub-pixel resolution)
 model pattern. This effect is also easily visible if the decimated model is deconvolved with the same one art full resolution.
 Solution is to clone the power spectrum of the full resolution model with the shifts to match oversampling (15 clones for the 4x oversampling),
 And add them together (adding also zero frequerncy point - it might be absent o0n the model) but not include the original (true one) and
 use the result to create a rejectiobn mask - if the energy was high, (multiplicative) mask should be zero at those points. */
 
 
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
 	public boolean showSimulParametersDialog(SimulationPattern.SimulParameters simulParameters) {
 		GenericDialog gd = new GenericDialog("Simulated pattern parameters");
 		gd.addNumericField ("Pattern bitmap size",                 simulParameters.patternSize,0); // 512
@@ -16926,7 +16926,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		simulParameters.offsetY=           gd.getNextNumber();
 		return true;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showInverseParametersDialog(EyesisAberrations.InverseParameters inverseParameters) {
 		int i;
 		GenericDialog gd = new GenericDialog("PSF stack inversion parameters");
@@ -16955,9 +16955,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		gd.showDialog();
 		if (gd.wasCanceled()) return false;
 		inverseParameters.dSize=1;
-		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.dSize <<=1; /** make it to be power of 2 */
+		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.dSize <<=1; /* make it to be power of 2 */
 		inverseParameters.rSize=1;
-		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /** make it to be power of 2 */
+		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /* make it to be power of 2 */
 		inverseParameters.invertRange=                 gd.getNextNumber();
 		inverseParameters.otfCutoffEnergy=             gd.getNextNumber();
 		inverseParameters.otfEllipseScale=             gd.getNextNumber();
@@ -16979,7 +16979,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		inverseParameters.gaussianSigmaChecker=        gd.getNextNumber();
 		return true;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showPSFParametersDialog(EyesisAberrations.PSFParameters psfParameters) {
 
 		GenericDialog gd = new GenericDialog("PSF Parameters");
@@ -17025,8 +17025,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return true;
 	}
 	
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
 	public boolean showInterpolateParametersDialog(EyesisAberrations.InterpolateParameters interpolateParameters) {
 		GenericDialog gd = new GenericDialog("Interpolate kernels parameters");
 		gd.addNumericField("Input kernel size",                                                            interpolateParameters.size,     0); // 64
@@ -17047,8 +17047,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		interpolateParameters.extrapolate=      gd.getNextNumber();
 		return true;
 	}  
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
 /**TODO: add variable gaussian filter to direct psf */
 	public boolean showOTFFilterParametersDialog(EyesisAberrations.OTFFilterParameters otfFilterParameters) {
 		GenericDialog gd = new GenericDialog("OTF Filter parameters");
@@ -17066,7 +17066,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		otfFilterParameters.thresholdLow=        gd.getNextNumber();
 		return true;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showPatternDetectParametersDialog(MatchSimulatedPattern.PatternDetectParameters patternDetectParameters) {
 ///gaussWidth
 		GenericDialog gd = new GenericDialog("Parameters");
@@ -17119,7 +17119,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			}
 
 	
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showcolorComponentsDialog(EyesisAberrations.ColorComponents colorComponents) {
 		GenericDialog gd = new GenericDialog("Color components parameters");
 		gd.addCheckbox     ("Calculate correction for RED component",               colorComponents.colorsToCorrect[1]); //  true;
@@ -17146,7 +17146,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return true;
 	}
 	
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showShowResultsDialog(ShowResults showResults) {
 		GenericDialog gd = new GenericDialog("Show MTF and other results");
 		gd.addCheckbox    ("Show PSF",                                                        showResults.showPSF); // show combined PSF kernels (per-color and/or composite, as defined in SHOW_INDIVIDUAL, SHOW_COMPOSITE)
@@ -17163,7 +17163,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		showResults.showGaussians=                     gd.getNextBoolean();
 		return true;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showMultiFilePSFDialog(EyesisAberrations.MultiFilePSF multiFilePSF) {
 		GenericDialog gd = new GenericDialog("Validate kernels parameters");
 		gd.addNumericField("Allowed overexposed pixels (fraction of the area) ",multiFilePSF.overexposedMaxFraction,3); //  0.005; // allowed fraction of the overexposed pixels in the PSF kernel measurement area
@@ -17209,7 +17209,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return true;
 	}  
 
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showConfigureGlobalsDialog() {
 		int i;
 		GenericDialog gd = new GenericDialog("Parameters");
@@ -17230,9 +17230,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		JP4_INSTANCE.setTitle(gd.getNextString());
 		JP4_INSTANCE.setURL(gd.getNextString());
 		FFT_SIZE=4;
-		for (i=(int) gd.getNextNumber(); i >4; i>>=1) FFT_SIZE <<=1; /** make FFT_SIZE to be power of 2*/
+		for (i=(int) gd.getNextNumber(); i >4; i>>=1) FFT_SIZE <<=1; /* make FFT_SIZE to be power of 2*/
 		MAP_FFT_SIZE=4;
-		for (i=(int) gd.getNextNumber(); i >4; i>>=1) MAP_FFT_SIZE <<=1; /** make FFT_SIZE to be power of 2*/
+		for (i=(int) gd.getNextNumber(); i >4; i>>=1) MAP_FFT_SIZE <<=1; /* make FFT_SIZE to be power of 2*/
 		GAUSS_WIDTH=               gd.getNextNumber();
 		FFT_OVERLAP=         (int) gd.getNextNumber();
 		PSF_SUBPIXEL=        (int) gd.getNextNumber();
@@ -17243,7 +17243,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return true;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	   public boolean showProcessCalibrationFilesDialog(ProcessCalibrationFilesParameters processCalibrationFilesParameters) {
 		    int i;
 		    GenericDialog gd = new GenericDialog("Process parameters");
@@ -17314,9 +17314,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			MASTER_DEBUG_LEVEL=                                       (int) gd.getNextNumber();
 		  return true;
 	  }
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
 		public boolean showDistortionDialog(MatchSimulatedPattern.DistortionParameters distortionParameters) {
 			int i;
 			GenericDialog gd = new GenericDialog("Distrortion parameters");
@@ -17397,10 +17397,10 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			if (gd.wasCanceled()) return false;
 
 			distortionParameters.FFTSize=1;
-			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.FFTSize <<=1; /** make it to be power of 2 */
+			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.FFTSize <<=1; /* make it to be power of 2 */
 			distortionParameters.fftGaussWidth=           gd.getNextNumber();
 			distortionParameters.correlationSize=1;
-			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.correlationSize <<=1; /** make it to be power of 2 */
+			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.correlationSize <<=1; /* make it to be power of 2 */
 			distortionParameters.correlationGaussWidth=   gd.getNextNumber();
 			distortionParameters.absoluteCorrelationGaussWidth=gd.getNextBoolean();
 			distortionParameters.zeros=             (int) gd.getNextNumber();
@@ -17425,7 +17425,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			distortionParameters.correlationThreshold= 0.01*gd.getNextNumber();
 			distortionParameters.correlationSubdiv= (int) gd.getNextNumber();
 			distortionParameters.correlationFFTSubdiv=1;
-			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.correlationFFTSubdiv <<=1; /** make it to be power of 2 */
+			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.correlationFFTSubdiv <<=1; /* make it to be power of 2 */
 			distortionParameters.correlationDx=           gd.getNextNumber();
 			distortionParameters.correlationDy=           gd.getNextNumber();
 			distortionParameters.gridSize=          (int) gd.getNextNumber();
@@ -17459,8 +17459,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			MASTER_DEBUG_LEVEL=                     (int) gd.getNextNumber();
 			return true;
 		}
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
 	public boolean showGaussianStackDialog(EyesisAberrations.InverseParameters inverseParameters) {
 		int i;
 		GenericDialog gd = new GenericDialog("Gaussian stack generation parameters");
@@ -17478,9 +17478,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		if (gd.wasCanceled()) return false;
 
 		inverseParameters.dSize=1;
-		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.dSize <<=1; /** make it to be power of 2 */
+		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.dSize <<=1; /* make it to be power of 2 */
 		inverseParameters.rSize=1;
-		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /** make it to be power of 2 */
+		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /* make it to be power of 2 */
 		inverseParameters.psfCutoffEnergy=             gd.getNextNumber();
 		inverseParameters.gaussianSigmaIndividual=       gd.getNextNumber();
 		inverseParameters.gaussianSigmaChecker=          gd.getNextNumber();
@@ -17488,7 +17488,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		MASTER_DEBUG_LEVEL=      (int) gd.getNextNumber();
 		return true;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showInverseStackDialog(EyesisAberrations.InverseParameters inverseParameters) {
 		int i;
 		GenericDialog gd = new GenericDialog("PSF stack inversion parameters");
@@ -17519,9 +17519,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		if (gd.wasCanceled()) return false;
 
 		inverseParameters.dSize=1;
-		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.dSize <<=1; /** make it to be power of 2 */
+		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.dSize <<=1; /* make it to be power of 2 */
 		inverseParameters.rSize=1;
-		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /** make it to be power of 2 */
+		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /* make it to be power of 2 */
 		inverseParameters.otfCutoffEnergy=             gd.getNextNumber();
 		inverseParameters.otfEllipseScale=             gd.getNextNumber();
 		inverseParameters.otfEllipseGauss=             gd.getNextBoolean();
@@ -17541,7 +17541,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return true;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	//public static EyesisAberrations.InterpolateParameters INTERPOLATE= new EyesisAberrations.InterpolateParameters (
 
 	public boolean showValidateKernelsDialog(
@@ -17565,7 +17565,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		MASTER_DEBUG_LEVEL=         (int) gd.getNextNumber();
 		return true;
 	}  
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showInterpolateKernelsDialog(EyesisAberrations.InterpolateParameters interpolateParameters) {
 		GenericDialog gd = new GenericDialog("Interpolate kernels parameters");
 		gd.addNumericField("Input kernel size",                                                            interpolateParameters.size,     0); // 64
@@ -17593,7 +17593,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		MASTER_DEBUG_LEVEL=               (int) gd.getNextNumber();
 		return true;
 	}  
-/** ======================================================================== */
+/* ======================================================================== */
 
 	public boolean showSimulDialog(SimulationPattern.SimulParameters simulParameters) {
 		GenericDialog gd = new GenericDialog("Simulated pattern parameters");
@@ -17628,7 +17628,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 	}
 
 
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showRPSFDialog(
 			EyesisAberrations.InverseParameters inverseParameters,
 			ShowResults showResults) {
@@ -17672,7 +17672,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		inverseParameters.blurDiagonal=                gd.getNextNumber();
 		inverseParameters.blurChecker=                 gd.getNextNumber();
 		inverseParameters.rSize=1;
-		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /** make it to be power of 2 */
+		for (i=(int) gd.getNextNumber(); i >1; i>>=1) inverseParameters.rSize <<=1; /* make it to be power of 2 */
 		UPDATE_STATUS=                                 gd.getNextBoolean();
 		showResults.showPSF=                           gd.getNextBoolean();
 		showResults.showMTF=                           gd.getNextBoolean();
@@ -17690,7 +17690,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		//     if (imp!=null) measureAndDisplay(imp);
 		return imp;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public boolean showPSFDialog(EyesisAberrations.PSFParameters psfParameters,
 			                     EyesisAberrations.InverseParameters inverseParameters,
 			                     EyesisAberrations.OTFFilterParameters otfFilterParameters,
@@ -17805,9 +17805,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		JP4_INSTANCE.setTitle(gd.getNextString());
 		JP4_INSTANCE.setURL(gd.getNextString());
 		FFT_SIZE=4;
-		for (i=(int) gd.getNextNumber(); i >4; i>>=1) FFT_SIZE <<=1; /** make FFT_SIZE to be power of 2*/
+		for (i=(int) gd.getNextNumber(); i >4; i>>=1) FFT_SIZE <<=1; /* make FFT_SIZE to be power of 2*/
 		MAP_FFT_SIZE=4;
-		for (i=(int) gd.getNextNumber(); i >4; i>>=1) MAP_FFT_SIZE <<=1; /** make FFT_SIZE to be power of 2*/
+		for (i=(int) gd.getNextNumber(); i >4; i>>=1) MAP_FFT_SIZE <<=1; /* make FFT_SIZE to be power of 2*/
 		GAUSS_WIDTH=              gd.getNextNumber();
 		FFT_OVERLAP=         (int) gd.getNextNumber();
 		otfFilterParameters.deconvInvert=             gd.getNextNumber();  //0.05; // when FFT component is lass than this fraction of the maximal value, replace 1/z with Z
@@ -17837,9 +17837,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		MASTER_DEBUG_LEVEL=      (int) gd.getNextNumber();
 		return true;
 	}
-/** ======================================================================== */
-/** TODO: REPLACE doubleFHT  */
-/** converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
+/* ======================================================================== */
+/* TODO: REPLACE doubleFHT  */
+/* converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
 
 	private double[][][] FHT2FFTHalf (double [] fht_pixels, int fftsize) {
 		double[][][] fftHalf=new double[(fftsize>>1)+1][fftsize][2];
@@ -17873,8 +17873,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 
 
 
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
 	private  double[] initWindowFunction(int size) {
 		return initWindowFunction(size,GAUSS_WIDTH);
 	}
@@ -17897,7 +17897,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		}
 		return windowFunction;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	private  double[][] normalizeAndWindow (double [][] pixels, double [] windowFunction) {
 		return normalizeAndWindow (pixels, windowFunction, true);
 	}
@@ -17921,7 +17921,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return pixels;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 //	copied from IJ.java 
 	private String updateExtension(String path, String extension) {
 		if (path==null) return null;
@@ -17937,8 +17937,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		return path;
 	}
 	
-/** ======================================================================== */
-/** === Parameter classes === */
+/* ======================================================================== */
+/* === Parameter classes === */
 	/*
 	public static class MultiFilePSF {
 		public double  overexposedMaxFraction; // allowed fraction of the overexposed pixels in the PSF kernel measurement area 

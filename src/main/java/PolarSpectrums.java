@@ -45,7 +45,7 @@ public class PolarSpectrums  {
   private int    []     cartAmpList = null;      // list of indices of the elements of the cartesian array (symmetrical around the center) so the distance is between ampRMinMax[0] and ampRMinMax[1]
   private double []     ampRMinMax  ={0.0,0.0};
   public PolarSpectrums() { }  // so "Compile and Run" will be happy
-/** Convert cartesian to polar array, dimensions are set in the class constructor. Uses bi-linear interpolation */
+/* Convert cartesian to polar array, dimensions are set in the class constructor. Uses bi-linear interpolation */
   public double [] cartesianToPolar (double [] cartPixels ) {
     double [] polPixels=new double[iRadiusPlus1*(iAngle+1)];
     int i;
@@ -92,7 +92,7 @@ public class PolarSpectrums  {
     return cartPixels;
   }
 
-/** Caculates maximal value of a center-symmetrical array of the amplitudes in a ring. Uses cached table of indices, recalculates if it changed */
+/* Caculates maximal value of a center-symmetrical array of the amplitudes in a ring. Uses cached table of indices, recalculates if it changed */
   public double maxAmpInRing ( double []amps ){ return  maxAmpInRing (amps,size*0.118,size*0.236);} // ~=1/3* (Math.sqrt(2)/4), 2/3* (Math.sqrt(2)/4) (center 1/3 ring between center and the closest alias for greens)
   public double maxAmpInRing ( double []amps,
                                  double rMin,
@@ -135,7 +135,7 @@ public class PolarSpectrums  {
   }
 
 
-/** return polar array width (== radius+1) */
+/* return polar array width (== radius+1) */
   public int getWidth() { return iRadiusPlus1; } 
   public int getHeight() { return iAngle+1; } 
 
@@ -175,14 +175,14 @@ public class PolarSpectrums  {
     boolean good=true;
     while (iMax>=0) {
       step++;
-/** add polar point index */
+/* add polar point index */
       newVal=good?step:-step;
 //      index=iMax*iRadiusPlus1+rayLength[iMax]; // rayLength[iMax] should point to a new cell (with intMap[]==0) may ommit - set in the end of the loop and before the loop?
       intMap[index]=newVal;
       if (sameCartesian[index]!=null) for (i=0;i<sameCartesian[index].length;i++) intMap[sameCartesian[index][i]]=newVal;
-/** add aliases of point index (as negative values) */
+/* add aliases of point index (as negative values) */
       if ((good) &&(polarMap[index]!=null)) for (i=0;i<polarMap[index].length;i++) intMap[polarMap[index][i]]=-step;
-/** update ray lengths and status */
+/* update ray lengths and status */
       max=-1.0;
       iMax=-1;
       for  (ia=0;ia<=iAngle;ia++) if (rayOpen[ia]) {
@@ -202,7 +202,7 @@ public class PolarSpectrums  {
       if (iMax>=0) {
         rayLength[iMax]++;
         index=iMax*iRadiusPlus1+rayLength[iMax];
-/** See if any of the aliases of the new point  hit the positive value, then this point is prohibited (good=false). Otherwise add it with good=true */
+/* See if any of the aliases of the new point  hit the positive value, then this point is prohibited (good=false). Otherwise add it with good=true */
         good=true;
         if (polarMap[index]!=null) for (i=0;i<polarMap[index].length;i++) {
           if (intMap[polarMap[index][i]]>0) {
@@ -211,7 +211,7 @@ public class PolarSpectrums  {
           }
         }
       }
-/** index is set if (iMax>=0) */
+/* index is set if (iMax>=0) */
     }
     double [] result=new double [intMap.length];
     if (mode==0) {
@@ -366,8 +366,8 @@ public class PolarSpectrums  {
 
 
 
-/** Create per-polar pixel list of aliases for green Bayer. For each polar point it shows the polar coordinates of the same (and rotated by pi) point of aliases */
-/** current implementation - us cartesian (original) pixels as all/nothing, maybe it makes sense to go directly polar-polar, but then it may leave gaps */
+/* Create per-polar pixel list of aliases for green Bayer. For each polar point it shows the polar coordinates of the same (and rotated by pi) point of aliases */
+/* current implementation - us cartesian (original) pixels as all/nothing, maybe it makes sense to go directly polar-polar, but then it may leave gaps */
   public void initAliasMaps (int type) { // 0 - green, 1 - Red/Blue
 /*    int [][] aliasMapGreen=  {{-2,-2},{-2,0},{-2,2},
                                   {-1,-1},{-1,1},
@@ -415,7 +415,7 @@ public class PolarSpectrums  {
           }
         }
       }
-/**  convert set to int[] */
+/*  convert set to int[] */
       if (aliasList.size()==0) polarMap[polarIndex]=null;
       else {
         polarMap[polarIndex]=new int[aliasList.size()];
@@ -437,7 +437,7 @@ public class PolarSpectrums  {
       else {
         sameCartesian[polarIndex]=new int [cartesian2PolarIndices[cartesianIndex].length-1];
         j=0;
-/** copy all elements but this one - out of bounds may mean that it was not included - bug */
+/* copy all elements but this one - out of bounds may mean that it was not included - bug */
         for (i=0;i<cartesian2PolarIndices[cartesianIndex].length;i++) if (cartesian2PolarIndices[cartesianIndex][i]!=polarIndex) sameCartesian[polarIndex][j++]=cartesian2PolarIndices[cartesianIndex][i];
       }
     }

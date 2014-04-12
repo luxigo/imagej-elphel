@@ -65,7 +65,7 @@ public final class WindowTools {
 
   // -- Utility methods --
 
-  /** Adds AWT scroll bars to the given container. */
+  /* Adds AWT scroll bars to the given container. */
   @SuppressWarnings("serial")
 public static void addScrollBars(Container pane) {
     GridBagLayout layout = (GridBagLayout) pane.getLayout();
@@ -170,17 +170,17 @@ public static void addScrollBars(Container pane) {
     w.setLocation(p);
   }
 
-  /** Reports the given exception with stack trace in an ImageJ error dialog. */
+  /* Reports the given exception with stack trace in an ImageJ error dialog. */
   public static void reportException(Throwable t) {
     reportException(t, false, null);
   }
 
-  /** Reports the given exception with stack trace in an ImageJ error dialog. */
+  /* Reports the given exception with stack trace in an ImageJ error dialog. */
   public static void reportException(Throwable t, boolean quiet) {
     reportException(t, quiet, null);
   }
 
-  /** Reports the given exception with stack trace in an ImageJ error dialog. */
+  /* Reports the given exception with stack trace in an ImageJ error dialog. */
   public static void reportException(Throwable t, boolean quiet, String msg) {
     if (quiet) return;
 //    BF.status(quiet, "");

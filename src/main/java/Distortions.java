@@ -45,7 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.SwingUtilities;
 
-//import Jama.LUDecomposition;
 import Jama.LUDecomposition;
 import Jama.Matrix;
 //import src.java.org.apache.commons.configuration.*;
@@ -10700,7 +10699,7 @@ Which parameters affect which matrices
 		// Next line is not needed anymore (will harm as will set orientationEstimated for all unselected sets)
 //		if (!allImages) fittingStrategy.distortionCalibrationData.updateSetOrientation(selectedImages); // only for selected images (not all enabled), OK
     }
-	/** Create a Thread[] array as large as the number of processors available.
+	/* Create a Thread[] array as large as the number of processors available.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */
@@ -10709,7 +10708,7 @@ Which parameters affect which matrices
 		if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 		return new Thread[n_cpus];
 	}
-/** Start all given threads and wait on each of them until all are done.
+/* Start all given threads and wait on each of them until all are done.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */

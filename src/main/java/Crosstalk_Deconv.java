@@ -52,51 +52,51 @@ Panel panel;
 
  public static int DEBUG_LEVEL = 1;
  public static int MASTER_DEBUG_LEVEL = 1;
- public static boolean in_place = true; /** replace image with the processed */
- public static int BayerMask=1; /** Which components to keep during "Mask Bayer" command (+1 - g1, +2 - r, +4 - b, +8 - g2*/
+ public static boolean in_place = true; /* replace image with the processed */
+ public static int BayerMask=1; /* Which components to keep during "Mask Bayer" command (+1 - g1, +2 - r, +4 - b, +8 - g2*/
  public static boolean kernels_valid=false;
- public static boolean monoRed=false; /** use crosstalk for red in all channels */
- public static boolean monoBlue=false; /** use crosstalk for blue in all channels */
+ public static boolean monoRed=false; /* use crosstalk for red in all channels */
+ public static boolean monoBlue=false; /* use crosstalk for blue in all channels */
  public static double [][] crossCoeff= { /**[red.green,blue][N,NE,E,...NW] */
                                         {0.061,  0.0,  0.091,  0.0,  0.061,  0.0,  0.061,  0.0},
                                         {0.023,  0.0,  0.038,  0.0,  0.023,  0.0,  0.038,  0.0},
                                         {0.0086, 0.0,  0.019,  0.0,  0.0086, 0.0,  0.019,  0.0}};
  public static int FFTSize=16;
  public static int imageFFTSize=128;
- public static int [][][][] invertSeq ; /** once calculated sequence of elements for 4x4 matrix inversion i,j,i,j,i,j,sign */
- public static int [][]     determinantSeq ;      /** once calculated sequence of elements for 4x4 matrix determinant: j,j,j,j,sign */
- public static int invertDimension=0;                           /** determins if 4x4 matrix inversion arrays are initialized */
+ public static int [][][][] invertSeq ; /* once calculated sequence of elements for 4x4 matrix inversion i,j,i,j,i,j,sign */
+ public static int [][]     determinantSeq ;      /* once calculated sequence of elements for 4x4 matrix determinant: j,j,j,j,sign */
+ public static int invertDimension=0;                           /* determins if 4x4 matrix inversion arrays are initialized */
 
- public static double    crosstalkThreshold=0.02; /** ignore crosstalk coefficients when abs(ip_RminusB)< is less than crosstalkThreshold */
+ public static double    crosstalkThreshold=0.02; /* ignore crosstalk coefficients when abs(ip_RminusB)< is less than crosstalkThreshold */
 
  public static int       simulWidth=1200;
  public static int       simulHeight=800;
- public static double    simulSlant=0.033; /** pixel shift between rows */
- public static double    simulPeriod=64.1; /** stripes period */
- public static double    simulContrast=0.9; /** blackLevel=simulContrast*whiteLevel  */
+ public static double    simulSlant=0.033; /* pixel shift between rows */
+ public static double    simulPeriod=64.1; /* stripes period */
+ public static double    simulContrast=0.9; /* blackLevel=simulContrast*whiteLevel  */
  public static double    simulLSFWidth=1.1;
- public static double [] simulBayer={30.0,120.0,1.0,30.0}; /** Gr,R,B,Gb - as with 600x10nm filter - need correction. that was with crosstalk */
- public static double    simulElectrons=66.7; /** 120 - 8000e- */
+ public static double [] simulBayer={30.0,120.0,1.0,30.0}; /* Gr,R,B,Gb - as with 600x10nm filter - need correction. that was with crosstalk */
+ public static double    simulElectrons=66.7; /* 120 - 8000e- */
 
  String                  patternName="Pattern";
 // public boolean          patternHorizontal;
- public static int       patternType=2; /** 0 - vertical, 1 - horizontal, 2 - H+V, 3 - H*V */
+ public static int       patternType=2; /* 0 - vertical, 1 - horizontal, 2 - H+V, 3 - H*V */
  public static int       patternWidth=1920;
  public static int       patternHeight=1200;
- public static int       patternColor=1; /** 1 - red, 2 - green, 4 - blue and their combinartions */
- public static double    patternContrast=1.0; /** stripes contrast */
- public static double    patternPeriod=12.96; /** stripes period */
- public static double    patternNonLinear=0.0; /** non-linearity of the pattern - 0.0 - linear, 1.0 square*/
- public static double    patternSlant=0.033; /** pixel shift between rows */
- public static double    patternScale=0.303; /** sensor pixels per LCD screen pixels */
- public static double    patternV2H=1.0; /** contrast ratio (>1 - V more than H), to simulate astigmatism */
- public static double    pattern3rdHA=0.0; /** simulation: amount of third harmonic, 1.0 - 100% (horizontal)*/
- public static double    pattern3rdHP=0.0; /** simulation: 3-rd harmonic phase,  */
- public static double    pattern3rdVA=0.0; /** simulation: amount of third harmonic, 1.0 - 100% (horizontal)*/
- public static double    pattern3rdVP=0.0; /** simulation: 3-rd harmonic phase,  */
- public static int       patternSimSize=300; /** size of simulated pattern (square, poweer of 2) */
- public static double [] patternSimBayer={30.0,120.0,1.0,30.0}; /** Gr,R,B,Gb as acquiered by simulated sensor */
- public static double    patternSimElectrons=66.7; /** 120 - 8000e- */
+ public static int       patternColor=1; /* 1 - red, 2 - green, 4 - blue and their combinartions */
+ public static double    patternContrast=1.0; /* stripes contrast */
+ public static double    patternPeriod=12.96; /* stripes period */
+ public static double    patternNonLinear=0.0; /* non-linearity of the pattern - 0.0 - linear, 1.0 square*/
+ public static double    patternSlant=0.033; /* pixel shift between rows */
+ public static double    patternScale=0.303; /* sensor pixels per LCD screen pixels */
+ public static double    patternV2H=1.0; /* contrast ratio (>1 - V more than H), to simulate astigmatism */
+ public static double    pattern3rdHA=0.0; /* simulation: amount of third harmonic, 1.0 - 100% (horizontal)*/
+ public static double    pattern3rdHP=0.0; /* simulation: 3-rd harmonic phase,  */
+ public static double    pattern3rdVA=0.0; /* simulation: amount of third harmonic, 1.0 - 100% (horizontal)*/
+ public static double    pattern3rdVP=0.0; /* simulation: 3-rd harmonic phase,  */
+ public static int       patternSimSize=300; /* size of simulated pattern (square, poweer of 2) */
+ public static double [] patternSimBayer={30.0,120.0,1.0,30.0}; /* Gr,R,B,Gb as acquiered by simulated sensor */
+ public static double    patternSimElectrons=66.7; /* 120 - 8000e- */
 
  public static double    DC_RminusB,DC_RBminusGG;
  public static double [] DC_bayer;  
@@ -106,8 +106,8 @@ Panel panel;
  
  private FHT fht_kr, fht_kg,fht_kb;
  private FHT fht_RminusB, fht_GbminusGr,fht_crosstalk;
- private static double [] accum_crosstalk; /** accumulating fht pixles here */ 
- private static double [] accum_crosstalk_weight; /** accumulating fht pixles weights (abs of denominators)  here */ 
+ private static double [] accum_crosstalk; /* accumulating fht pixles here */ 
+ private static double [] accum_crosstalk_weight; /* accumulating fht pixles weights (abs of denominators)  here */ 
  private static  double [][][] FKr,FKrX,FKrY,FKrXY,  FKg,FKgX,FKgY,FKgXY,  FKb,FKbX,FKbY,FKbXY;
  private static  double [][][] FRslt_g1, FRslt_r, FRslt_b, FRslt_g2; 
  private static  float[] direct_kr,direct_kg,direct_kb; 
@@ -186,7 +186,7 @@ Panel panel;
        simulatePatternCapture();
        return;
     }
-/** other commands need current image (float) */
+/* other commands need current image (float) */
     imp_src = WindowManager.getCurrentImage();
     if (imp_src==null) {
        IJ.showStatus("No image");
@@ -222,7 +222,7 @@ public boolean preprocessCrosstalk(ImageProcessor ip, String title) {
 
 */
 
-/** calculate kernels if they are not current */
+/* calculate kernels if they are not current */
     if (!kernels_valid) {
        DEBUG_LEVEL=0;
        createReverseKernels();
@@ -243,9 +243,9 @@ public boolean preprocessCrosstalk(ImageProcessor ip, String title) {
 //    IJ.showMessage("Crosstalk_Deconv","Add Crosstalk");
        newTitle+="_"+(((BayerMask&1)!=0)?"G1":"")+(((BayerMask&2)!=0)?"R":"")+(((BayerMask&2)!=0)?"B":"")+(((BayerMask&8)!=0)?"G2":"");
        IJ.showStatus("Masking out Bayer components");
-    } else return; /** add more options later, if needed */
+    } else return; /* add more options later, if needed */
     if (!in_place) {
-      ip=ip.duplicate(); /** create a copy of the image before convolving */
+      ip=ip.duplicate(); /* create a copy of the image before convolving */
       imp= new ImagePlus(newTitle, ip);
       imp.show();
     } else imp.setTitle(newTitle);
@@ -255,7 +255,7 @@ public boolean preprocessCrosstalk(ImageProcessor ip, String title) {
       convolveBayerKernel(ip);
     }
 
-    imp.updateAndDraw(); /** Redisplays final image*/
+    imp.updateAndDraw(); /* Redisplays final image*/
     IJ.showStatus("Crosstalk_Deconv DONE");
 
   }
@@ -355,7 +355,7 @@ public void createColorPattern () {
         if (patternNonLinear >= 1.0) p= (p>0.0)?1.0:-1.0;
         else if (p>0.0) p=Math.pow(p,1.0-patternNonLinear);
         else if (p<0.0) p=-Math.pow(-p,1.0-patternNonLinear);
-      } else if (patternNonLinear < 0.0) { /** odd harmonics also */
+      } else if (patternNonLinear < 0.0) { /* odd harmonics also */
         p= 2.0*Math.pow(0.5*(p+1.0),1.0+patternNonLinear)-1.0;
       }
 
@@ -392,12 +392,12 @@ public void simulatePatternCapture() {
       x/=simPeriod;
       x-=Math.floor(x);
       wv=Math.sin(2*Math.PI*x);
-      if (pattern3rdHA>0.0)  wv=wv*(1-pattern3rdHA)+pattern3rdHA*Math.sin(2*Math.PI*(3*x+pattern3rdHP/360.0)); /** may be less than 1.0 amplitude */
+      if (pattern3rdHA>0.0)  wv=wv*(1-pattern3rdHA)+pattern3rdHA*Math.sin(2*Math.PI*(3*x+pattern3rdHP/360.0)); /* may be less than 1.0 amplitude */
       x=(patternHeight-i-1)+patternSlant*j;
       x/=simPeriod;
       x-=Math.floor(x);
       wh=Math.sin(2*Math.PI*x);
-      if (pattern3rdVA>0.0)  wh=wh*(1-pattern3rdVA)+pattern3rdVA*Math.sin(2*Math.PI*(3*x+pattern3rdVP/360.0)); /** may be less than 1.0 amplitude */
+      if (pattern3rdVA>0.0)  wh=wh*(1-pattern3rdVA)+pattern3rdVA*Math.sin(2*Math.PI*(3*x+pattern3rdVP/360.0)); /* may be less than 1.0 amplitude */
       switch (patternType) {
         case 0:  p=wv; break;
         case 1:  p=wh; break;
@@ -408,11 +408,11 @@ public void simulatePatternCapture() {
                  break;
         case 3:  p=wv*wh; break;
       }
-      if (patternNonLinear > 0.0) { /** only even harmonics */
+      if (patternNonLinear > 0.0) { /* only even harmonics */
         if (patternNonLinear >= 1.0) p= (p>0.0)?1.0:-1.0;
         else if (p>0.0) p=Math.pow(p,1.0-patternNonLinear);
         else if (p<0.0) p=-Math.pow(-p,1.0-patternNonLinear);
-      } else if (patternNonLinear < 0.0) { /** odd harmonics also */
+      } else if (patternNonLinear < 0.0) { /* odd harmonics also */
         p= 2.0*Math.pow(0.5*(p+1.0),1.0+patternNonLinear)-1.0;
       }
       p= 0.5*(1.0+patternContrast*p);
@@ -444,7 +444,7 @@ public boolean accumulateCrosstalk (ImagePlus imp, int size, String title, doubl
     IJ.showMessage("Error","Selection is too small");
     return false;
   }
-/** align to Bayer */
+/* align to Bayer */
   if ((r.x & 1) !=0) {
     r.width+=1;
     r.x--;
@@ -460,12 +460,12 @@ public boolean accumulateCrosstalk (ImagePlus imp, int size, String title, doubl
   nw=(dw + (size >> 2)) / (size >>1);
   nh=(dh + (size >> 2)) / (size >>1);
 
-/** initialize arrays here */
+/* initialize arrays here */
   accum_crosstalk = new double[size*size];
   accum_crosstalk_weight= new double[size*size];
-  for (i=0;i<accum_crosstalk.length;i++) accum_crosstalk[i]=0.0 ; /** is there arrayFill() ? */
-  for (i=0;i<accum_crosstalk_weight.length;i++) accum_crosstalk_weight[i]=0.0 ; /** is there arrayFill() ? */
-/** silent if (nw>0) || (nh>0) or just iw>0 or ih>0 */
+  for (i=0;i<accum_crosstalk.length;i++) accum_crosstalk[i]=0.0 ; /* is there arrayFill() ? */
+  for (i=0;i<accum_crosstalk_weight.length;i++) accum_crosstalk_weight[i]=0.0 ; /* is there arrayFill() ? */
+/* silent if (nw>0) || (nh>0) or just iw>0 or ih>0 */
   Rectangle rs= new Rectangle();
   float [] pixels_RminusB;
 //  float [] pixels_GbminusGr;
@@ -487,7 +487,7 @@ public boolean accumulateCrosstalk (ImagePlus imp, int size, String title, doubl
     fht_GbminusGr=new FHT(ip_GbminusGr);
     fht_RminusB.transform();
     fht_GbminusGr.transform();
-    fht_crosstalk=fht_GbminusGr.divide(fht_RminusB); /** values are twice the crosstalk */
+    fht_crosstalk=fht_GbminusGr.divide(fht_RminusB); /* values are twice the crosstalk */
     pixels_RminusB=(float[])fht_RminusB.getPixels();
 //    pixels_GbminusGr=(float[])fht_GbminusGr.getPixels();
     pixels_crosstalk=(float[]) fht_crosstalk.getPixels();
@@ -501,7 +501,7 @@ public boolean accumulateCrosstalk (ImagePlus imp, int size, String title, doubl
       }
     }
   }
-/** restore, mask*/
+/* restore, mask*/
   double max =0.0;
   for (row=0; row<size; row++) {
     base=row*size;
@@ -510,7 +510,7 @@ public boolean accumulateCrosstalk (ImagePlus imp, int size, String title, doubl
       if (p>max) max=p;
     }
   }
-/** divide arrays here */
+/* divide arrays here */
   max*=threshold;
   for (row=0; row<size; row++) {
     base=row*size;
@@ -530,9 +530,9 @@ public boolean accumulateCrosstalk (ImagePlus imp, int size, String title, doubl
   fht_crosstalk.setPixels(pixels_crosstalk);
   fht_RminusB.setPixels(pixels_RminusB);
 
-/** find results */
+/* find results */
   finalizeCrosstalk(fht_RminusB, fht_crosstalk, size, title);
-  imp_src.setRoi(r); /** restore origional ROI */
+  imp_src.setRoi(r); /* restore origional ROI */
   return true;
 }
 
@@ -550,23 +550,23 @@ public void finalizeCrosstalk(FHT fht_RminusB, FHT fht_crosstalk, int size, Stri
   float [] pixels_crosstalk=(float[]) fht_crosstalk.getPixels();
   if (DEBUG_LEVEL>3) printComplexSubArray(pixels_RminusB, -(size>>2) - (region>>1) , - (region>>1), region,  region, size, "RminusB");
   if (DEBUG_LEVEL>2) printComplexSubArray(pixels_crosstalk, -(size>>2) - (region>>1) , - (region>>1), region,  region, size, "crosstalk");
-/** find two maximums in R-B near vertical lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
+/* find two maximums in R-B near vertical lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
   maxXY[0]=findTwoMax(pixels_RminusB, -(size>>2) , 0, region,  region, size);
 
   maxXY[1][0]=-(size>>1)-maxXY[0][0];
   maxXY[1][1]=-maxXY[0][1];
   K[0]=getFHTComplexPixel(pixels_crosstalk, maxXY[0][0], maxXY[0][1], size);
   K[1]=getFHTComplexPixel(pixels_crosstalk, maxXY[1][0], maxXY[1][1], size);
-/** find two maximums in R-B near horizontal lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
-/** Do it independently, so will work with just vertical or just horizontal lines pattern */
+/* find two maximums in R-B near horizontal lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
+/* Do it independently, so will work with just vertical or just horizontal lines pattern */
   maxXY[2]=findTwoMax(pixels_RminusB, 0, -(size>>2) , region,  region, size);
   maxXY[3][0]=-maxXY[2][0];
   maxXY[3][1]=-(size>>1)-maxXY[2][1];
   K[2]=getFHTComplexPixel(pixels_crosstalk, maxXY[2][0], maxXY[2][1], size);
   K[3]=getFHTComplexPixel(pixels_crosstalk, maxXY[3][0], maxXY[3][1], size);
 
-/** Find which is real, which is fake */
-  if ((K[0][0]*K[0][0]+K[0][1]*K[0][1])>(K[1][0]*K[1][0]+K[1][1]*K[1][1])) { /** swap */
+/* Find which is real, which is fake */
+  if ((K[0][0]*K[0][0]+K[0][1]*K[0][1])>(K[1][0]*K[1][0]+K[1][1]*K[1][1])) { /* swap */
     Kswap=K[0];
     K[0]=K[1];
     K[1]=Kswap;
@@ -574,8 +574,8 @@ public void finalizeCrosstalk(FHT fht_RminusB, FHT fht_crosstalk, int size, Stri
     maxXY[0]=maxXY[1];
     maxXY[1]=maxXYswap;
   }
-/** Find which is real, which is fake (make it independently) */
-  if ((K[2][0]*K[2][0]+K[2][1]*K[2][1])>(K[3][0]*K[3][0]+K[3][1]*K[3][1])) { /** swap */
+/* Find which is real, which is fake (make it independently) */
+  if ((K[2][0]*K[2][0]+K[2][1]*K[2][1])>(K[3][0]*K[3][0]+K[3][1]*K[3][1])) { /* swap */
     Kswap=K[2];
     K[2]=K[3];
     K[3]=Kswap;
@@ -584,7 +584,7 @@ public void finalizeCrosstalk(FHT fht_RminusB, FHT fht_crosstalk, int size, Stri
     maxXY[3]=maxXYswap;
   }
   c=getFHTComplexPixel(pixels_RminusB, maxXY[0][0], maxXY[0][1], size);
-  e1=(Math.sqrt(c[0]*c[0]+c[1]*c[1])/Math.abs(DC_RminusB))/size/size*8.0; /** 8.0 - 8 maximums*/
+  e1=(Math.sqrt(c[0]*c[0]+c[1]*c[1])/Math.abs(DC_RminusB))/size/size*8.0; /* 8.0 - 8 maximums*/
   c=getFHTComplexPixel(pixels_RminusB, maxXY[2][0], maxXY[2][1], size);
   e2=(Math.sqrt(c[0]*c[0]+c[1]*c[1])/Math.abs(DC_RminusB))/size/size*8.0;
   new TextWindow(title+"_crosstalk_raw_data", "parameter\tvalue",
@@ -603,7 +603,7 @@ public void finalizeCrosstalk(FHT fht_RminusB, FHT fht_crosstalk, int size, Stri
          "K[2]("+maxXY[2][0]+","+maxXY[2][1]+")\t"+IJ.d2s(K[2][0],precision)+ ((K[2][1]>=0)?"+":"")+IJ.d2s(K[2][1],precision)+"i\n"+
          "(K[3]("+maxXY[3][0]+","+maxXY[3][1]+")\t"+IJ.d2s(K[3][0],precision)+ ((K[3][1]>=0)?"+":"")+IJ.d2s(K[3][1],precision)+"i)\n"):"")+
        ((DEBUG_LEVEL>1)?
-/** K[0][0] is inverted as y in the image is upside down */
+/* K[0][0] is inverted as y in the image is upside down */
          ("S+N\t"+IJ.d2s(-K[0][0],precision)+"\n"+
          "E-W\t"+IJ.d2s(K[0][1],precision)+"\n"+
          "E+W\t"+IJ.d2s(K[2][0],precision)+"\n"+
@@ -655,7 +655,7 @@ public Rectangle prepareCrosstalkRegion(ImagePlus imp) {
     r.x=0;r.y=0;r.width=0;r.height=0;
     return r;
   }
-/** find largest square power of 2 roi inside the current one */
+/* find largest square power of 2 roi inside the current one */
   if ((r.x & 1) !=0) {
     r.width+=1;
     r.x--;
@@ -681,7 +681,7 @@ public void preprocessCrosstalk(ImageProcessor ip, String title, boolean silent)
   Rectangle r=ip.getRoi();
   int size=r.width;
   float [] pixels=(float[])ip.crop().getPixels();
-/** remove DC, apply Hamming */
+/* remove DC, apply Hamming */
   DC_bayer=new double[4];
   index=0;
   for (row=0;row<size;row++) {
@@ -708,19 +708,19 @@ public void preprocessCrosstalk(ImageProcessor ip, String title, boolean silent)
       for (col=0;col<size;col++) {
         bcol=col & 1;
         switch ((brow<<1)+bcol) {
-          case 0: /** Gr */
+          case 0: /* Gr */
                 pixels_GbminusGr[index] = - (float) ((pixels[index]-DC_bayer[0])*hamming[row]*hamming[col]);
                 pixels_RminusB[index] = 0.0f;
                 break;
-          case 1: /** R */
+          case 1: /* R */
                 pixels_GbminusGr[index] = 0.0f;
                 pixels_RminusB[index] =  (float) ((pixels[index]-DC_bayer[1])*hamming[row]*hamming[col]);
                 break;
-          case 2: /** B */
+          case 2: /* B */
                 pixels_GbminusGr[index] = 0.0f;
                 pixels_RminusB[index] = - (float) ((pixels[index]-DC_bayer[2])*hamming[row]*hamming[col]);
                 break;
-          case 3: /** Gb */
+          case 3: /* Gb */
                 pixels_GbminusGr[index] =   (float) ((pixels[index]-DC_bayer[3])*hamming[row]*hamming[col]);
                 pixels_RminusB[index] = 0.0f;
                 break;
@@ -761,11 +761,11 @@ public void measureCrosstalk(ImageProcessor ip_RminusB,ImageProcessor ip_Gbminus
   if (DEBUG_LEVEL>3) printComplexSubArray(pixels_GbminusGr, -(size>>2) - (region>>1) , - (region>>1), region,  region, size, "GrminusGb");
 
 //public FHT divide(FHT fht) {
-  fht_crosstalk=fht_GbminusGr.divide(fht_RminusB); /** values are twice the crosstalk */
+  fht_crosstalk=fht_GbminusGr.divide(fht_RminusB); /* values are twice the crosstalk */
   float [] pixels_crosstalk=(float[]) fht_crosstalk.getPixels();
 
   if (DEBUG_LEVEL>2) printComplexSubArray(pixels_crosstalk, -(size>>2) - (region>>1) , - (region>>1), region,  region, size, "crosstalk");
-/** find two maximums in R-B near vertical lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
+/* find two maximums in R-B near vertical lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
 
 //  maxXY[0]=findTwoMax(pixels_RminusB, -(size>>2) , - (region>>1), region,  region, size); // worked?
   maxXY[0]=findTwoMax(pixels_RminusB, -(size>>2) , 0, region,  region, size);
@@ -774,16 +774,16 @@ public void measureCrosstalk(ImageProcessor ip_RminusB,ImageProcessor ip_Gbminus
   maxXY[1][1]=-maxXY[0][1];
   K[0]=getFHTComplexPixel(pixels_crosstalk, maxXY[0][0], maxXY[0][1], size);
   K[1]=getFHTComplexPixel(pixels_crosstalk, maxXY[1][0], maxXY[1][1], size);
-/** find two maximums in R-B near horizontal lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
-/** Do it independently, so will work with just vertical or just horizontal lines pattern */
+/* find two maximums in R-B near horizontal lines pattern. One is real, other - alias (gets high energy in Gb-Gr) */
+/* Do it independently, so will work with just vertical or just horizontal lines pattern */
   maxXY[2]=findTwoMax(pixels_RminusB, 0, -(size>>2) , region,  region, size);
   maxXY[3][0]=-maxXY[2][0];
   maxXY[3][1]=-(size>>1)-maxXY[2][1];
   K[2]=getFHTComplexPixel(pixels_crosstalk, maxXY[2][0], maxXY[2][1], size);
   K[3]=getFHTComplexPixel(pixels_crosstalk, maxXY[3][0], maxXY[3][1], size);
 
-/** Find which is real, which is fake */
-  if ((K[0][0]*K[0][0]+K[0][1]*K[0][1])>(K[1][0]*K[1][0]+K[1][1]*K[1][1])) { /** swap */
+/* Find which is real, which is fake */
+  if ((K[0][0]*K[0][0]+K[0][1]*K[0][1])>(K[1][0]*K[1][0]+K[1][1]*K[1][1])) { /* swap */
     Kswap=K[0];
     K[0]=K[1];
     K[1]=Kswap;
@@ -791,8 +791,8 @@ public void measureCrosstalk(ImageProcessor ip_RminusB,ImageProcessor ip_Gbminus
     maxXY[0]=maxXY[1];
     maxXY[1]=maxXYswap;
   }
-/** Find which is real, which is fake (make it independently) */
-  if ((K[2][0]*K[2][0]+K[2][1]*K[2][1])>(K[3][0]*K[3][0]+K[3][1]*K[3][1])) { /** swap */
+/* Find which is real, which is fake (make it independently) */
+  if ((K[2][0]*K[2][0]+K[2][1]*K[2][1])>(K[3][0]*K[3][0]+K[3][1]*K[3][1])) { /* swap */
     Kswap=K[2];
     K[2]=K[3];
     K[3]=Kswap;
@@ -801,7 +801,7 @@ public void measureCrosstalk(ImageProcessor ip_RminusB,ImageProcessor ip_Gbminus
     maxXY[3]=maxXYswap;
   }
   c=getFHTComplexPixel(pixels_RminusB, maxXY[0][0], maxXY[0][1], size);
-  e1=(Math.sqrt(c[0]*c[0]+c[1]*c[1])/Math.abs(DC_RminusB))/size/size*8.0; /** 8.0 - 8 maximums*/
+  e1=(Math.sqrt(c[0]*c[0]+c[1]*c[1])/Math.abs(DC_RminusB))/size/size*8.0; /* 8.0 - 8 maximums*/
   c=getFHTComplexPixel(pixels_RminusB, maxXY[2][0], maxXY[2][1], size);
   e2=(Math.sqrt(c[0]*c[0]+c[1]*c[1])/Math.abs(DC_RminusB))/size/size*8.0;
 //DC_RminusB,DC_RBminusGG
@@ -848,7 +848,7 @@ public void measureCrosstalk(ImageProcessor ip_RminusB,ImageProcessor ip_Gbminus
         imp2.show();
  }
 }
-/** return one pixel as complex, -size/2<=x<=+size/2,-size/2<=y<=+size/2, y negative at row=0 */
+/* return one pixel as complex, -size/2<=x<=+size/2,-size/2<=y<=+size/2, y negative at row=0 */
 
 public double[] getFHTComplexPixel(float [] fht_pixels, int x, int y, int size) {
    double [] rslt = {0.0,0.0};
@@ -1094,8 +1094,8 @@ public void maskFHT (FHT fht, FHT fht_mask, double threshold) {
    GenericDialog gd = new GenericDialog("Pixel Crosstalk parameters");
    gd.addStringField("Image suffix: ", crossTalkName, 32);
    gd.addCheckbox("Convert in-place?", in_place);
-// public static boolean monoRed=false; /** use crosstalk for red in all channels */
-// public static boolean monoBlue=false; /** use crosstalk for blue in all channels */
+// public static boolean monoRed=false; /* use crosstalk for red in all channels */
+// public static boolean monoBlue=false; /* use crosstalk for blue in all channels */
    gd.addCheckbox("Use red filter?",  monoRed && !monoBlue);
    gd.addCheckbox("Use blue filter?", !monoRed && monoBlue);
    for (c=0;c<threeColors.length;c++) for (i=0;i<dirs.length;i++) {
@@ -1125,14 +1125,14 @@ public void maskFHT (FHT fht, FHT fht_mask, double threshold) {
        crossCoeff[c][i]=gd.getNextNumber();
      }
      FFTSize=1;
-     for (i=(int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /** make FFTSize to be power of 2*/
+     for (i=(int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /* make FFTSize to be power of 2*/
 
      BayerMask  = (gd.getNextBoolean())?1:0;
      BayerMask |= (gd.getNextBoolean())?2:0;
      BayerMask |= (gd.getNextBoolean())?4:0;
      BayerMask |= (gd.getNextBoolean())?8:0;
      imageFFTSize=1;
-     for (i=(int) gd.getNextNumber(); i >1; i>>=1) imageFFTSize <<=1; /** make FFTSize to be power of 2*/
+     for (i=(int) gd.getNextNumber(); i >1; i>>=1) imageFFTSize <<=1; /* make FFTSize to be power of 2*/
      crosstalkThreshold= gd.getNextNumber();
      MASTER_DEBUG_LEVEL=  (int) gd.getNextNumber();
      kernels_valid=false;
@@ -1157,7 +1157,7 @@ public void maskFHT (FHT fht, FHT fht_mask, double threshold) {
     float [] src_pixels=(float[])ip.getPixels();
     float [] dst_pixels=new float[src_pixels.length];
 //arraycopy(Object src, int srcPos, Object dest, int destPos, int length) 
-//    System.arraycopy(src_pixels, 0, dst_pixels, 0, src_pixels.length); /** for the borders closer to 1/2 kernel size*/
+//    System.arraycopy(src_pixels, 0, dst_pixels, 0, src_pixels.length); /* for the borders closer to 1/2 kernel size*/
 //    java.util.Arrays.fill(mollyarray,0);
     Arrays.fill(dst_pixels,0.0f);
     int row,col,i,j,c,c0;
@@ -1246,7 +1246,7 @@ public void maskFHT (FHT fht, FHT fht_mask, double threshold) {
 
 public void crossTalkResolve () {
   int row, col;
-  double[][][] MK=new double [4][4][2]; /** elements are initialized from FK** */
+  double[][][] MK=new double [4][4][2]; /* elements are initialized from FK** */
   double[][][] RK;
   FRslt_g1=new double[(FFTSize>>1)+1][FFTSize][2];
   FRslt_r= new double[(FFTSize>>1)+1][FFTSize][2];
@@ -1262,10 +1262,10 @@ public void crossTalkResolve () {
       MK[2][0][1]= FKgY[row][col][1];  MK[2][1][1]=  FKrY[row][col][1];  MK[2][2][1]= -FKbY[row][col][1];  MK[2][3][1]= -FKgY[row][col][1];
       MK[3][0][0]= FKgXY[row][col][0]; MK[3][1][0]= -FKrXY[row][col][0]; MK[3][2][0]= -FKbXY[row][col][0]; MK[3][3][0]=  FKgXY[row][col][0];
       MK[3][0][1]= FKgXY[row][col][1]; MK[3][1][1]= -FKrXY[row][col][1]; MK[3][2][1]= -FKbXY[row][col][1]; MK[3][3][1]=  FKgXY[row][col][1];
-/** RK:= ~(MS*MK*MS)  */
+/* RK:= ~(MS*MK*MS)  */
       RK=complexMatrixInvert4(realComplexMatrixMultiply(MS,complexRealMatrixMultiply(MK,MS)));
-/** Save to resuls */
-/** lost 1/4 somewhere */
+/* Save to resuls */
+/* lost 1/4 somewhere */
       FRslt_g1[row][col][0]=4.0*RK[0][0][0]; FRslt_r[row][col][0]=4.0*RK[0][1][0];  FRslt_b[row][col][0]=4.0*RK[0][2][0]; FRslt_g2[row][col][0]=4.0*RK[0][3][0]; 
       FRslt_g1[row][col][1]=4.0*RK[0][0][1]; FRslt_r[row][col][1]=4.0*RK[0][1][1];  FRslt_b[row][col][1]=4.0*RK[0][2][1]; FRslt_g2[row][col][1]=4.0*RK[0][3][1]; 
     }
@@ -1305,10 +1305,10 @@ fht_kr
 inverseTransform()
 
 */
-/** make FHT from array of pixels, perform inverse FHT */
+/* make FHT from array of pixels, perform inverse FHT */
 //public ImagePlus iFHT(float[] fht_pixels, String title) {
 public FHT iFHT(float[] fht_pixels, String title) {
-   FHT fht=fht_kr.getCopy(); /** could not find a way to create a frequency-domain FHT, had to copy one */
+   FHT fht=fht_kr.getCopy(); /* could not find a way to create a frequency-domain FHT, had to copy one */
 //   ImageProcessor ip_fht = new FloatProcessor(FFTSize,FFTSize);
 /*
    ip_fht.setPixels(fht_pixels);
@@ -1317,7 +1317,7 @@ public FHT iFHT(float[] fht_pixels, String title) {
 */
    fht.setPixels(fht_pixels);
    fht.inverseTransform();
-   fht.swapQuadrants(); /** put 0,0 in the center */
+   fht.swapQuadrants(); /* put 0,0 in the center */
 
    float[] pixels=(float[])fht.getPixels();
    int i;
@@ -1337,7 +1337,7 @@ public void FHTCrosstalkKernels() {
     fht_kr =  new FHT(ip_kr);
     fht_kg =  new FHT(ip_kg);
     fht_kb =  new FHT(ip_kb);
-/** Swapping quadrants, so the center will be 0,0 */
+/* Swapping quadrants, so the center will be 0,0 */
 
     fht_kr.swapQuadrants();
     fht_kg.swapQuadrants();
@@ -1394,7 +1394,7 @@ private void setupFK () {
   FKbXY=shiftY(FKbX);
 }
 
-/** shifts sides horizontally by 1/2 of the range */
+/* shifts sides horizontally by 1/2 of the range */
 private double[][][] shiftX (double[][][] k) {
   double[][][] result = new double[(FFTSize>>1)+1][FFTSize][2];
   int row, col;
@@ -1405,7 +1405,7 @@ private double[][][] shiftX (double[][][] k) {
   return result;
 }
 
-/** shifts sides vertically by 1/2 of the range */
+/* shifts sides vertically by 1/2 of the range */
 private double[][][] shiftY (double[][][] k) {
   double[][][] result = new double[(FFTSize>>1)+1][FFTSize][2];
   int row1, row2, col;
@@ -1419,7 +1419,7 @@ private double[][][] shiftY (double[][][] k) {
   return result;
 }
 
-/** converts FHT results (frequency space) to complex numbers of [FFTSize/2+1][FFTSize] */
+/* converts FHT results (frequency space) to complex numbers of [FFTSize/2+1][FFTSize] */
 private double[][][] FHT2FFTHalf (FHT fht) {
    float[] fht_pixels=(float[])fht.getPixels();
    double[][][] fftHalf=new double[(FFTSize>>1)+1][FFTSize][2];
@@ -1437,7 +1437,7 @@ private double[][][] FHT2FFTHalf (FHT fht) {
    return fftHalf;
 }
 
-/** converts FFT arrays of complex numbers of [FFTSize/2+1][FFTSize] to FHT arrays */
+/* converts FFT arrays of complex numbers of [FFTSize/2+1][FFTSize] to FHT arrays */
 private float[] FFTHalf2FHT (double [][][] fft) {
    float[] fht_pixels=new float [FFTSize*FFTSize];
    int row1,row2,col1,col2;
@@ -1445,7 +1445,7 @@ private float[] FFTHalf2FHT (double [][][] fft) {
      row2=(FFTSize-row1) %FFTSize;
      for (col1=0;col1 < FFTSize;col1++) {
        col2=(FFTSize-col1) %FFTSize;
-/** out of bounds */
+/* out of bounds */
        fht_pixels[row1*FFTSize+col1]=(float)(fft[row1][col1][0]+fft[row1][col1][1]);
        fht_pixels[row2*FFTSize+col2]=(float)(fft[row1][col1][0]-fft[row1][col1][1]);
      }
@@ -1454,21 +1454,21 @@ private float[] FFTHalf2FHT (double [][][] fft) {
 }
 
 
-//public static boolean monoRed=false; /** use crosstalk for red in all channels */
-// public static boolean monoBlue=false; /** use crosstalk for blue in all channels */
+//public static boolean monoRed=false; /* use crosstalk for red in all channels */
+// public static boolean monoBlue=false; /* use crosstalk for blue in all channels */
 
 
 public void initCrosstalkKernels() {
    double [] cScales = new double[3];
    int center=FFTSize>>1;
-   int [][]dirsVectors={{ 0,-1}, /** N*/
-                        { 1,-1}, /** NE*/ 
-                        { 1, 0}, /**  E*/ 
-                        { 1, 1}, /** SE*/ 
-                        { 0, 1}, /** S*/ 
-                        {-1, 1}, /** SW*/ 
-                        {-1, 0}, /**  W*/ 
-                        {-1,-1}};/** NW*/ 
+   int [][]dirsVectors={{ 0,-1}, /* N*/
+                        { 1,-1}, /* NE*/ 
+                        { 1, 0}, /*  E*/ 
+                        { 1, 1}, /* SE*/ 
+                        { 0, 1}, /* S*/ 
+                        {-1, 1}, /* SW*/ 
+                        {-1, 0}, /*  W*/ 
+                        {-1,-1}};/* NW*/ 
    int c,i;
 
    for (c=0;c<3;c++) {
@@ -1570,7 +1570,7 @@ public void printComplexMatrix(double[][][] a, String title) {
    for (i=0;i<h;i++) for (j=0;j<w;j++) {
      result[i][j][0]=0.0;
      result[i][j][1]=0.0;
-     for (k=0;k<n;k++) result[i][j]=complexAdd(result[i][j],complexMultiply(a[i][k],b[k][j])); /** out of boud */
+     for (k=0;k<n;k++) result[i][j]=complexAdd(result[i][j],complexMultiply(a[i][k],b[k][j])); /* out of boud */
    }
    return result;
   }
@@ -1606,14 +1606,14 @@ public void printComplexMatrix(double[][][] a, String title) {
   }
 
 
-  public void matrix4InvertInit() { /** May be extended to different dimensions */
+  public void matrix4InvertInit() { /* May be extended to different dimensions */
     int row,k,l,l1,s;
     int[] i ={0,0,0,0,0};
     boolean[] t= {true,true,true,true};
     int[] seq= {0,0,0,0};
     if ( invertDimension!=4) {
-    invertSeq=     new int [4][4][6][7] ; /** once calculated sequence of elements for 4x4 matrix inversion i,j,i,j,i,j,sign */
-    determinantSeq=new int [24][5] ;      /** once calculated sequence of elements for 4x4 matrix determinant: j,j,j,j,sign */
+    invertSeq=     new int [4][4][6][7] ; /* once calculated sequence of elements for 4x4 matrix inversion i,j,i,j,i,j,sign */
+    determinantSeq=new int [24][5] ;      /* once calculated sequence of elements for 4x4 matrix determinant: j,j,j,j,sign */
       k=0;
       for (i[1]=0;i[1]<4;i[1]++) {
         t[i[1]]=false;
@@ -1621,7 +1621,7 @@ public void printComplexMatrix(double[][][] a, String title) {
           t[i[2]]=false;
           for (i[3]=0;i[3]<4;i[3]++) if (t[i[3]]) {
             t[i[3]]=false;
-            for (i[4]=0;i[4]<4;i[4]++) if (t[i[4]]) { /** now all i1,i2,i3,i4 are different */
+            for (i[4]=0;i[4]<4;i[4]++) if (t[i[4]]) { /* now all i1,i2,i3,i4 are different */
               determinantSeq[k][0]=i[1];
               determinantSeq[k][1]=i[2];
               determinantSeq[k][2]=i[3];
@@ -1649,7 +1649,7 @@ public void printComplexMatrix(double[][][] a, String title) {
           t[i[2]]=false;
           for (i[3]=0;i[3]<4;i[3]++) if (t[i[3]]) {
             t[i[3]]=false;
-            for (i[4]=0;i[4]<4;i[4]++) if (t[i[4]]) { /** now all i1,i2,i3,i4 are different */
+            for (i[4]=0;i[4]<4;i[4]++) if (t[i[4]]) { /* now all i1,i2,i3,i4 are different */
               seq[row]=i[1];
               l1=0;
               for (l=0;l<4;l++) if (l!=row) {
@@ -1657,7 +1657,7 @@ public void printComplexMatrix(double[][][] a, String title) {
                 invertSeq[row][i[1]][k][l1++]=l;
                 invertSeq[row][i[1]][k][l1++]=seq[l];
               }
-/** calculate sign of the term */
+/* calculate sign of the term */
               invertSeq[row][i[1]][k][l1]=1;
               while ((seq[0]>seq[1]) || (seq[1]>seq[2])  || (seq[2]>seq[3])) {
                 if      (seq[0]>seq[1]) {s=seq[0];seq[0]=seq[1];seq[1]=s;}
@@ -1665,7 +1665,7 @@ public void printComplexMatrix(double[][][] a, String title) {
                 else if (seq[2]>seq[3]) {s=seq[2];seq[2]=seq[3];seq[3]=s;}
                 invertSeq[row][i[1]][k][l1]*=-1;
               }
-              k++;/** next term */
+              k++;/* next term */
             }
             t[i[3]]=true;
           }
@@ -1677,7 +1677,7 @@ public void printComplexMatrix(double[][][] a, String title) {
     }
   }
 
-/** to troubleshoot - try real matrices */
+/* to troubleshoot - try real matrices */
   private double[][][] complexMatrixInvert4    (double[][][] a ) {
    if ( invertDimension!=4) matrix4InvertInit();
    if ((a.length!=4) ||(a[0].length!=4) || (a[0][0].length!=2)) {
@@ -1751,7 +1751,7 @@ public void printComplexMatrix(double[][][] a, String title) {
    return result;
   }
 
-/** Still do not understand - how to open scaled image that is all painted */
+/* Still do not understand - how to open scaled image that is all painted */
 public void showCrosstalkKernels() {
    int drawScale=16;
 

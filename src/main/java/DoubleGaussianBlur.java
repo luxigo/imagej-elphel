@@ -27,11 +27,11 @@
 
 
 public class DoubleGaussianBlur {
-	   /** the standard deviation of the Gaussian*/
+	   /* the standard deviation of the Gaussian*/
 //    private static double sigma = 2.0;
-    /** whether sigma is given in units corresponding to the pixel scale (not pixels)*/
+    /* whether sigma is given in units corresponding to the pixel scale (not pixels)*/
 //    private static boolean sigmaScaled = false;
-    /** The flags specifying the capabilities and needs */
+    /* The flags specifying the capabilities and needs */
 //    private int flags = DOES_ALL|SUPPORTS_MASKING|PARALLELIZE_STACKS|KEEP_PREVIEW;
 //    private ImagePlus imp;              // The ImagePlus of the setup call, needed to get the spatial calibration
 //    private boolean hasScale = false;   // whether the image has an x&y scale
@@ -39,7 +39,7 @@ public class DoubleGaussianBlur {
 //	private int nChannels = 1;        // The number of color channels
     private int pass;                   // Current pass
     
-    /** Default constructor */
+    /* Default constructor */
     public DoubleGaussianBlur() {
     }
 	
@@ -58,7 +58,7 @@ public class DoubleGaussianBlur {
 	        return;
 	    }
 
-	    /** Blur an image in one direction (x or y) by a Gaussian.
+	    /* Blur an image in one direction (x or y) by a Gaussian.
 	     * @param ip        The Image with the original data where also the result will be stored
 	     * @param sigma     Standard deviation of the Gaussian
 	     * @param accuracy  Accuracy of kernel, should not be > 0.02
@@ -139,7 +139,7 @@ public class DoubleGaussianBlur {
 	        }
 	        return;
 	    }
-	    /** Create a 1-dimensional normalized Gaussian kernel with standard deviation sigma
+	    /* Create a 1-dimensional normalized Gaussian kernel with standard deviation sigma
 	     *  and the running sum over the kernel
 	     *  Note: this is one side of the kernel only, not the full kernel as used by the
 	     *  Convolver class of ImageJ.
@@ -203,7 +203,7 @@ public class DoubleGaussianBlur {
 	        }
 	        return kernel;
 	    }
-	    /** Scale a line (row or column of a FloatProcessor or part thereof)
+	    /* Scale a line (row or column of a FloatProcessor or part thereof)
 	     * down by a factor <code>reduceBy</code> and write the result into
 	     * <code>cache</code>.
 	     * Input line pixel # <code>unscaled0</code> will correspond to output
@@ -253,7 +253,7 @@ public class DoubleGaussianBlur {
 	        return kernel;
 	    }
 
-	    /** Scale a line up by factor <code>reduceBy</code> and write as a row
+	    /* Scale a line up by factor <code>reduceBy</code> and write as a row
 	     * or column (or part thereof) to the pixels array of a FloatProcessor.
 	     */
 	    void upscaleLine (double[] cache, double[] pixels, double[] kernel,
@@ -269,7 +269,7 @@ public class DoubleGaussianBlur {
 	        }
 	    }
 
-	    /** Create a kernel for upscaling. The kernel function is a convolution
+	    /* Create a kernel for upscaling. The kernel function is a convolution
 	     *  of four unit squares, i.e., four uniform kernels with value +1
 	     *  from -0.5 to +0.5 (in downscaled coordinates). The second derivative
 	     *  of this kernel is smooth, the third is not. Its standard deviation
@@ -296,7 +296,7 @@ public class DoubleGaussianBlur {
 	        return kernel;
 	    }
 
-	    /** Convolve a line with a symmetric kernel and write to a separate array,
+	    /* Convolve a line with a symmetric kernel and write to a separate array,
 	     * possibly the pixels array of a FloatProcessor (as a row or column or part thereof)
 	     *
 	     * @param input     Input array containing the line

@@ -27,7 +27,7 @@ public class CalibrationFileManagement {
 		
 	}
 	*/
-/** ======================================================================== */
+/* ======================================================================== */
 	  public static String selectDirectory(boolean save, String title, String button, FileFilter filter, String defaultPath) {
 		  return selectDirectoryOrFile(false, save,true, title, button, filter,defaultPath);  // always open dialog
 	  }
@@ -56,7 +56,7 @@ public class CalibrationFileManagement {
 	  public static String [] selectFiles(boolean save,  String title, String button, FileFilter filter, String [] defaultPaths) {
 		  return  selectDirectoriesOrFiles(save,false, title, button, filter, defaultPaths );
 	  }
-/** ======================================================================== */
+/* ======================================================================== */
 	  public static String [] selectDirectoriesOrFiles(boolean save,
 			  boolean directory,
 			  String title,
@@ -204,7 +204,7 @@ public class CalibrationFileManagement {
 		  }
 	  }
 
-/** ======================================================================== */
+/* ======================================================================== */
 	  static class MultipleExtensionsFileFilter extends FileFilter implements FilenameFilter {
 		  protected String [] patterns; // case insensitive
 		  protected String    description="JP4 files";

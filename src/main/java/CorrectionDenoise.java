@@ -47,8 +47,8 @@ public class CorrectionDenoise {
     void setDebug(int debugLevel){this.debugLevel=debugLevel;}
     // uses global OUT_PIXELS to accumulate results
 
-	/** ======================================================================== */
-	/** Combine two  3-slice image stacks generated from the same source image - one high-res/high noise, other low-res/low noise 
+	/* ======================================================================== */
+	/* Combine two  3-slice image stacks generated from the same source image - one high-res/high noise, other low-res/low noise 
 	 * @param nonlinParameters TODO*/
 	  public ImageStack combineLoHiStacks(ImageStack        stack_convolved, // ImageStack with the image, convolved with the reversed PSF (sharp but with high noise)
 	                                      ImageStack         stack_gaussian, // ImageStack with the image, convolved with the Gaussian (just lateral compensated)  (blurred, but low noise)
@@ -71,7 +71,7 @@ public class CorrectionDenoise {
 	    	  filtMin*=nonlinParameters.thresholdCorr[channel];
 	    	  filtMax*=nonlinParameters.thresholdCorr[channel];
 	      }
-	/** find number of the green channel - should be called "green", if none - use last */
+	/* find number of the green channel - should be called "green", if none - use last */
 	      int greenChn=2;
 	      for (i=0;i<3;i++) if (stack_convolved.getSliceLabel(i+1).equals("green")){
 	        greenChn=i;
@@ -179,7 +179,7 @@ public class CorrectionDenoise {
 	      
 //	      final double [][]       noiseMask, // 2-d array of kernelsNoiseGain (divide mask by it)
 //	      final int               noiseStep, // linear pixels per noiseMask pixels (32)
-	/** divide mask by noiseMask, if defined */
+	/* divide mask by noiseMask, if defined */
 	      if (noiseMask!=null) {
 	    	  if (debugLevel>1) System.out.println ( "diffGreens.length="+diffGreens.length+" imgWidth="+imgWidth+" noiseMask.length="+noiseMask.length+" noiseMask[0].length="+noiseMask[0].length);
 	    	  
@@ -217,7 +217,7 @@ public class CorrectionDenoise {
 	     this.denoiseMask=diffGreens;
 	     this.denoiseMaskWidth=imgWidth; 
 
-	/** Combine 2 stacks and a mask */
+	/* Combine 2 stacks and a mask */
 	      return combineStacksWithMask (stack_gaussian,
 	                                   stack_convolved, 
 	                                        diffGreens);
@@ -302,7 +302,7 @@ public class CorrectionDenoise {
 						  tile=fht_instance.multiply(tile,filter,false);
 						  fht_instance.inverseTransform(tile);
 						  fht_instance.swapQuadrants(tile);
-						  /** accumulate result */
+						  /* accumulate result */
 						  /*This is synchronized method. It is possible to make threads to write to non-overlapping regions of the OUT_PIXELS, but as the accumulation
 						   * takes just small fraction of several FHTs, it should be OK - reasonable number of threads will spread and not "stay in line"
 						   */
@@ -323,7 +323,7 @@ public class CorrectionDenoise {
 	  
 	  
 	  
-	/** ======================================================================== */
+	/* ======================================================================== */
 	    public double [] ringFilter(double [] dmask,       // mask to be filtered
 	    		                    int       width,       // mask width
 	    		                    double    minMaxValue, // min value for the local maximum to be processed (absolute, not relative)
@@ -383,13 +383,13 @@ public class CorrectionDenoise {
 	    	}
 	    	return result;
 	    }
-	/** ======================================================================== */
+	/* ======================================================================== */
 	  
 	  
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 
-	  /** Combine 2 stacks and a mask */
+	  /* Combine 2 stacks and a mask */
 	  public ImageStack combineStacksWithMask (ImageStack stack_bg,
 			  ImageStack stack_fg, 
 			  //                                                 float [] mask ) {
@@ -409,7 +409,7 @@ public class CorrectionDenoise {
 		  }
 		  return stack;
 	  }
-	   /** ======================================================================== */
+	   /* ======================================================================== */
 	     public double [] getSlidingMask(int size) {
 	       double [] mask = new double [size*size];
 	       double [] maskLine=new double [size];
@@ -422,7 +422,7 @@ public class CorrectionDenoise {
 	     }
 
 
-	  /** ======================================================================== */
+	  /* ======================================================================== */
 	  /* Filters mask that selects between hi-res/high-noise deconvolved image and lo-res/lo-noise image convolved with Gaussian
 	   * by rejecting frequencies that correspond to multiples of JPEG blocks (here with the current settings it is 32 pixels - twice 16x16 macroblock
 	   */
@@ -512,7 +512,7 @@ public class CorrectionDenoise {
 		  return pixels;
 	  }
 	  
-	    /** ======================================================================== */
+	    /* ======================================================================== */
 	    /**extract and multiply by window function (same size as kernel itself) */
 	     void extractSquareTile(float [] pixels, // source pixel array,
 	                             double [] tile, // will be filled, should have correct size before call
@@ -537,7 +537,7 @@ public class CorrectionDenoise {
 	         }
 	       }
 	     }
-	   /** ======================================================================== */
+	   /* ======================================================================== */
 	     void extractSquareTile(double [] pixels, // source pixel array,
 	   		  double [] tile, // will be filled, should have correct size before call
 	   		  double [] window, // window (same size as the kernel)
@@ -564,7 +564,7 @@ public class CorrectionDenoise {
 
 	  
 	  
-	   /** accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
+	   /* accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
 	     synchronized void  accumulateSquareTile(
 	   		  float [] pixels, //  float pixels array to accumulate tile
 	   		  double []  tile, // data to accumulate to the pixels array
@@ -612,8 +612,8 @@ public class CorrectionDenoise {
 	   	  }
 	     }
 
-		/** ======================================================================== */
-		/** Create a Thread[] array as large as the number of processors available.
+		/* ======================================================================== */
+		/* Create a Thread[] array as large as the number of processors available.
 			 * From Stephan Preibisch's Multithreading.java class. See:
 			 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 			 */
@@ -622,7 +622,7 @@ public class CorrectionDenoise {
 				if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 				return new Thread[n_cpus];
 			}
-		/** Start all given threads and wait on each of them until all are done.
+		/* Start all given threads and wait on each of them until all are done.
 			 * From Stephan Preibisch's Multithreading.java class. See:
 			 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 			 */

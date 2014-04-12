@@ -1593,7 +1593,7 @@ public class LensAdjustment {
 			this.numIterations=        (int) gd.getNextNumber();
     		return true;
     	}
-/** ======================================================================== */
+/* ======================================================================== */
     	//returns triads - x,y,distance from the lens center 
     	public double [][][] sampleCoordinates(
     			double x0,   // lens center on the sensor

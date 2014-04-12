@@ -785,7 +785,7 @@ public class EyesisCorrectionParameters {
      }
     
     
-    /** === Parameter classes === */
+    /* === Parameter classes === */
     public static class ProcessParameters {
   	    public int numEyesisChannels=3;
   	    public int numEyesisSubChannels=3;
@@ -973,7 +973,7 @@ public class EyesisCorrectionParameters {
   		}
   	}
     
-  /** ======================================================================== */
+  /* ======================================================================== */
     public static class FilesParameters {
   	  public String [][] rPSFNames=new String [3][3];
   	  public String [][] gaussianNames=new String [3][3];
@@ -1057,7 +1057,7 @@ public class EyesisCorrectionParameters {
   		}
     }
 
-  /** ======================================================================== */
+  /* ======================================================================== */
     public static class RGBParameters {
   		public double r_min;
   		public double g_min;
@@ -1092,7 +1092,7 @@ public class EyesisCorrectionParameters {
   		}
   		
   	}
-  /** ======================================================================== */
+  /* ======================================================================== */
     
     public static class ColorProcParameters {
   		public double balanceRed;
@@ -1346,7 +1346,7 @@ public class EyesisCorrectionParameters {
   			if (properties.getProperty(prefix+"use8")!=null) this.use8=Boolean.parseBoolean(properties.getProperty(prefix+"use8"));
   		}
   	}
-    /** ======================================================================== */
+    /* ======================================================================== */
   // individual per-channel color balance and gain
     public static class ColorCalibParameters {
   		public double[][] gain=new double[3][3]; 
@@ -1437,7 +1437,7 @@ public class EyesisCorrectionParameters {
   		}
 
     }
-    /** ======================================================================== */
+    /* ======================================================================== */
     public static class NonlinParameters {
     	public boolean useRejectBlocksFilter;
     	public boolean combineBothModes; 
@@ -1608,7 +1608,7 @@ public class EyesisCorrectionParameters {
   	}
 
     }
-  /** ======================================================================== */
+  /* ======================================================================== */
     public static class SplitParameters {
   		public int oversample;
   		public int addLeft;
@@ -1639,7 +1639,7 @@ public class EyesisCorrectionParameters {
   			this.addBottom=Integer.parseInt(properties.getProperty(prefix+"addBottom"));
   		}
   	}
-  /** ======================================================================== */
+  /* ======================================================================== */
     public static class DebayerParameters {
   		public int size;
   		public double polarStep;
@@ -1945,6 +1945,6 @@ public class EyesisCorrectionParameters {
 
     
     
-  /** ======================================================================== */
+  /* ======================================================================== */
 
 }

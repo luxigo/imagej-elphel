@@ -54,7 +54,6 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 
 import loci.common.services.DependencyException;
-import loci.common.services.DependencyException;
 import loci.common.services.ServiceException;
 import loci.formats.FormatException;
 
@@ -276,7 +275,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 
    public double GAUSS_WIDTH=0.4; //0 - use Hamming window
 
-/** replace */
+/* replace */
    public static int     PSF_SUBPIXEL_SHOULD_BE_4=4;         // sub-pixel decimation 
 
 //   public float [][] OUT_PIXELS=null; // (global, used with threads to accumulate output result
@@ -578,44 +577,44 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	if (DEBUG_LEVEL>0) System.out.println("--- Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")");
 
     if (label==null) return;
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Configure spilt")) {
       showSplitBayerToStackDialog(SPLIT_PARAMETERS);
       return;
     }  
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Configure demosaic")) {
         showDeBayerDialog(DEBAYER_PARAMETERS, PROCESS_PARAMETERS);
         return;
     }  
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Configure convolution")) {
     	showStackConvolutionDialog();
         return;
     }  
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Configure denoise")) {
     	showCombinePairDialog(NONLIN_PARAMETERS, PROCESS_PARAMETERS);
         return;
     }  
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Configure color")) {
     	showColorProcessDialog(COLOR_PROC_PARAMETERS);
         return;
     } 
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Channel gains")) {
     	showColorCalibDialog(COLOR_CALIB_PARAMETERS);
         return;
     } 
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Configure RGB")) {
     	showRGBProcessDialog(RGB_PARAMETERS);
         return;
     }  
     
 //    
-/** ======================================================================== */
+/* ======================================================================== */
     if (label.equals("Split Image")) {
       if (!showSplitBayerToStackDialog(SPLIT_PARAMETERS)) return;
       DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -630,7 +629,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       imp_srcStack.getProcessor().resetMinAndMax();
       imp_srcStack.show();
       return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Debayer Image")) {
       if (! showDeBayerDialog(DEBAYER_PARAMETERS, PROCESS_PARAMETERS)) return;
       DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -654,7 +653,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       imp_debyrStack.show();
       return;
 
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Select kernel stack")) {
 //      int loop_debug_level=1;
       DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -671,7 +670,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       System.out.println("Select kernel stack "+imp_kernels.getTitle());
       return;
 
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Convolve with stack")) {
       if (convolutionKernelStack==null) {
         IJ.showMessage("Error","Convolution kernel stack needed, please select one with 'Select kernel stack' command");
@@ -699,7 +698,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       imp_convolvedStack.getProcessor().resetMinAndMax();
       imp_convolvedStack.show();
       return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Select lo-res")) {
       imp_gaussian=WindowManager.getCurrentImage();
       if ((imp_gaussian==null) || (imp_gaussian.getStackSize()<3)) {
@@ -709,7 +708,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       if (DEBUG_LEVEL>1) System.out.println ( "Read image "+imp_gaussian.getTitle()+" as the image convolved with Gaussian kernels");
 
       return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Combine pair")) {
       if ((imp_gaussian==null) || (imp_gaussian.getStackSize()<3)) {
         IJ.showMessage("Error","Wrong/empty Gaussian convolved image, please use 'Read Gaussian' command first");
@@ -743,7 +742,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       imp_stack_combo.getProcessor().resetMinAndMax();
       imp_stack_combo.show();
       return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Colors")) {
 
       ImagePlus imp_convolved=WindowManager.getCurrentImage();
@@ -758,10 +757,10 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       if (DEBUG_LEVEL>1) System.out.println ( "Read image "+imp_convolved.getTitle()+" as the image convolved with the reversed PSF kernels");
       ImageStack stack_convolved=imp_convolved.getStack();
 
-/** Set stack sequence to r-g-b */
+/* Set stack sequence to r-g-b */
 // public static String [] stackColorNames={"red","green","blue"};
 
-/** find number of the green channel - should be called "green", if none - use last */
+/* find number of the green channel - should be called "green", if none - use last */
      if (!fixSliceSequence (stack_convolved)) {
     	 return;     
      }
@@ -787,11 +786,11 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 
       SDFA_INSTANCE.showImageStackThree(stack_convolved, imp_convolved.getTitle()+"restored_rgb");
       return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Test")) {
         IJ.showMessage("Error","Nothing here, just a place holder");
      return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Test Debayer")) {
 
 /**TODO - use stacks? Parameter? */
@@ -814,7 +813,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
         roi_debayer= imp_debayer.getRoi();
       }
       Rectangle rroi=roi_debayer.getBounds();
-/** center to the selection center */
+/* center to the selection center */
       rroi.x= (rroi.x+rroi.width/2)- (DEBAYER_PARAMETERS.size/2);
       rroi.y= (rroi.y+rroi.height/2)-(DEBAYER_PARAMETERS.size/2);
       rroi.width=DEBAYER_PARAMETERS.size;
@@ -842,7 +841,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
         pixels_debayer[2][i*DEBAYER_PARAMETERS.size+j]*=  (((i % PSF_SUBPIXEL_SHOULD_BE_4)==(PSF_SUBPIXEL_SHOULD_BE_4/2)) && ((j % PSF_SUBPIXEL_SHOULD_BE_4)==0 ))?1.0:0.0;
       }
       if (DEBUG_LEVEL>1)   SDFA_INSTANCE.showArrays(pixels_debayer,  DEBAYER_PARAMETERS.debayerStacks, "mosaic");
-/** swap quadrants and perform FHT */
+/* swap quadrants and perform FHT */
       double [][] amps=null;
       if (DEBUG_LEVEL>1)  amps=new double[3][];
       for (i=0;i<3;i++) {
@@ -885,7 +884,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 
       SDFA_INSTANCE.showArrays(pixels_debayer,  DEBAYER_PARAMETERS.debayerStacks, "filtered");
 
-/** Swap quadrants in masks and display them */
+/* Swap quadrants in masks and display them */
       if (DEBUG_LEVEL>1){
         FHT_INSTANCE.swapQuadrants(green_mask);
         FHT_INSTANCE.swapQuadrants(red_blue_mask);
@@ -909,17 +908,17 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
        }
       }
       return;
-/** ======================================================================== */
+/* ======================================================================== */
      
     } else if (label.equals("Save")) {
     	saveProperties(null,CORRECTION_PARAMETERS.resultsDirectory,true, PROPERTIES);
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
         
     } else if (label.equals("Restore")) {
     	loadProperties(null,CORRECTION_PARAMETERS.resultsDirectory,true, PROPERTIES);
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("RGB" )) {
         ImagePlus imp_colorStack=WindowManager.getCurrentImage();
         if ((imp_colorStack==null) || (imp_colorStack.getStackSize()<3)) {
@@ -948,19 +947,19 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	    imp_RGB24.setTitle(imp_colorStack.getTitle()+"rgb24");
 	    imp_RGB24.show();
         return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Configure correction")) {
         DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	CORRECTION_PARAMETERS.showDialog("Correction parameters");
     	return;
     	
     	
-/** ======================================================================== */
+/* ======================================================================== */
     } else  if (label.equals("Channel gains/colors")) {
         DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	CHANNEL_GAINS_PARAMETERS.showDialog();
             return;
-/** ======================================================================== */
+/* ======================================================================== */
 
     } else  if (label.equals("Configure warping")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -974,14 +973,14 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     				DEBUG_LEVEL);           //int        globalDebugLevel){
     	}
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Select source files")) {
         DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	CORRECTION_PARAMETERS.selectSourceFiles(
     			false, // boolean allFiles,
     			DEBUG_LEVEL); //int debugLevel
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Process files")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	EYESIS_CORRECTIONS.setDebug(DEBUG_LEVEL);
@@ -1047,7 +1046,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
         }
 
         return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Tiff Writer")) {
         DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
         EyesisTiff eyesisTiff=new EyesisTiff();
@@ -1083,7 +1082,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 			e.printStackTrace();
 		}
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Tiff Properties")) {
         DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
         EyesisTiff eyesisTiff=new EyesisTiff();
@@ -1094,25 +1093,25 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		}
 		eyesisTiff.propertiesTiff(imp_sel);
 		return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Configure PP")) {
     	POST_PROCESSING.postProcessingParameters.showDialog("Configure processing parameters");
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	return;		
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Source PP")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	POST_PROCESSING.postProcessingParameters.selectSourceFiles(
     			false, // boolean allFiles,
     			DEBUG_LEVEL); //int debugLevel
     	return;		
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("ConvertPP")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	POST_PROCESSING.convertSourceFiles(
     			DEBUG_LEVEL); //int debugLevel
     	return;		
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Linear Features")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	if (!POST_PROCESSING.linearFeaturesParameters.showDialog("Configure linear features parameters")) return;
@@ -1121,7 +1120,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     			DEBUG_LEVEL); //int debugLevel
 
     	return;		
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Intercam correlations")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	if (POST_PROCESSING.interSensor==null){
@@ -1195,7 +1194,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     			POST_PROCESSING.disparityCorrelationParameters.corrFFTSize/POST_PROCESSING.disparityCorrelationParameters.tileOverlapFraction,
     			DEBUG_LEVEL); //int debugLevel
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Intercam correlations OLD")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	if (POST_PROCESSING.interSensor==null){
@@ -1286,7 +1285,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		"-PC"+((""+POST_PROCESSING.disparityCorrelationParameters.corrPhaseFraction).replace('.','_')),
 		titles1);
 		return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Tile correlations")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	if (POST_PROCESSING.interSensor==null){
@@ -1387,7 +1386,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     		fs.saveAsTiffStack(path);
     		
     	}
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Load correlations")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	if (POST_PROCESSING.interSensor==null){
@@ -1405,7 +1404,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  }
 
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Section correlations")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	GenericDialog gd = new GenericDialog("Correlation section parameters");
@@ -1520,7 +1519,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		"sect-"+(horizontal?"HOR":"VERT")+"-"+section+"_"+DISPARITY_TILES.corrFFTSize+"-"+DISPARITY_TILES.overlapStep,
 		titles);
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Setup Z-map")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	//centerPixels
@@ -1572,7 +1571,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     			"-H"+POST_PROCESSING.disparityCorrelationParameters.zMapWOI.height,
     			zMapTitles);
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     	
     } else if (label.equals("Fill FG gaps")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -1656,7 +1655,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     			zMapTitles);
     	return;
 //"Fill FG gaps"    	
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Filter Z-map")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	//centerPixels
@@ -1793,7 +1792,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     			"-WCAux"+POST_PROCESSING.disparityCorrelationParameters.zMapCorrWeights[3],
     			zMapTitles);
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Occluding FG")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	//centerPixels
@@ -2128,7 +2127,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		}
 		
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Refine Disparities")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	//centerPixels
@@ -2240,7 +2239,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     			DEBUG_LEVEL); //int debugLevel)
     	return;
 
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Init Photometry")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	//centerPixels
@@ -2312,7 +2311,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 				DEBUG_LEVEL); //int debugLevel)
     	DISPARITY_TILES.showPhotometric();
     	return;
-/** ======================================================================== */
+/* ======================================================================== */
     } else if (label.equals("Plane Likely")) {
     	DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
     	//centerPixels
@@ -2496,7 +2495,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     //	   addButton("Select source files", panel7);
 //	   addButton("Process files", panel7);
 
-/** ======================================================================== */
+/* ======================================================================== */
     DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
   }
 
@@ -2516,7 +2515,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		}
 		return false;
   }
-/** ======================================================================== */
+/* ======================================================================== */
   private String [] selectSourceFiles(String [] defaultPaths) {
 	  String []patterns={".jp4",".jp46",".tiff",".tif"};
 	  return selectFiles(false, // save  
@@ -2698,7 +2697,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   }
 
   
- /** ======================================================================== */
+ /* ======================================================================== */
   
   
   private boolean fixSliceSequence (ImageStack stack){
@@ -2739,7 +2738,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  }
 	  return true;
   }
-/** ======================================================================== */
+/* ======================================================================== */
   public void swapStackSlices(ImageStack stack,
                               int slice1,
                               int slice2) {
@@ -2752,7 +2751,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   }
  
 
-/** ======================================================================== */
+/* ======================================================================== */
    public ImageStack cropStack32(
 		  ImageStack stack,
 		  EyesisCorrectionParameters.SplitParameters splitParameters) {
@@ -2778,7 +2777,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  return stack_crop;
   }
 
-/** ======================================================================== */
+/* ======================================================================== */
   public ImageStack rotateStack32CW(
 		  ImageStack stack) {
 	  int size=stack.getSize();
@@ -2799,7 +2798,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  return stack_rot;
 	  
   }
-  /** ======================================================================== */
+  /* ======================================================================== */
   public ImagePlus cropImage32(
 		  ImagePlus imp,
 		  EyesisCorrectionParameters.SplitParameters splitParameters) {
@@ -2820,7 +2819,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  return imp_crop;
  }
 
-/** ======================================================================== */
+/* ======================================================================== */
  public ImagePlus rotateImage32CW(
 		 ImagePlus imp) {
 	  int width=imp.getWidth();
@@ -2837,7 +2836,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
  }
 
 
-/** ======================================================================== */
+/* ======================================================================== */
   public CompositeImage convertToComposite( ImagePlus imp) {
 //	  if (imp.isComposite()) return imp;
 	  if (imp.isComposite()) return null;
@@ -2852,7 +2851,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  return ci;
   }
 
-/** ======================================================================== */
+/* ======================================================================== */
   public ImageStack convertRGB32toRGB16Stack(
 		  ImageStack stack32,
 		  EyesisCorrectionParameters.RGBParameters rgbParameters) {
@@ -2917,7 +2916,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  ImagePlus imp=new ImagePlus(title,cp);
 	  return imp;
   }
-/** ======================================================================== */
+/* ======================================================================== */
   public ImagePlus Image32toGreyRGB24(
 		  ImagePlus imp){
 	  int width=imp.getWidth();
@@ -2943,7 +2942,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       ImagePlus imp_rgb=new ImagePlus(imp.getTitle(),cp);
 	  return imp_rgb;
   }
-/** ======================================================================== */
+/* ======================================================================== */
 	public void saveTimestampedProperties(
 			String path,      // full path or null
 			String directory, // use as default directory if path==null 
@@ -3024,7 +3023,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	
 	
 	
-/** ======================================================================== */
+/* ======================================================================== */
 	public void loadProperties(
 			String path,
 			String directory,
@@ -3074,7 +3073,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	     getAllProperties(properties);
 		 if (DEBUG_LEVEL>0) System.out.println("Configuration parameters are restored from "+path);
 	}
-/** ======================================================================== */
+/* ======================================================================== */
     public void setAllProperties(Properties properties){
     	properties.setProperty("MASTER_DEBUG_LEVEL",MASTER_DEBUG_LEVEL+"");
     	properties.setProperty("UPDATE_STATUS",     UPDATE_STATUS+     "");
@@ -3095,7 +3094,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     	properties.setProperty("GAUSS_WIDTH",GAUSS_WIDTH+""); // 0.4 (0 - use Hamming window)
     	properties.setProperty("PSF_SUBPIXEL_SHOULD_BE_4",PSF_SUBPIXEL_SHOULD_BE_4+""); // 4, sub-pixel decimation 
     }
-/** ======================================================================== */
+/* ======================================================================== */
     public void getAllProperties(Properties properties){
        MASTER_DEBUG_LEVEL = Integer.parseInt(properties.getProperty("MASTER_DEBUG_LEVEL"));
        UPDATE_STATUS= Boolean.parseBoolean(properties.getProperty("UPDATE_STATUS"));
@@ -3117,7 +3116,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	   PSF_SUBPIXEL_SHOULD_BE_4=Integer.parseInt(properties.getProperty("PSF_SUBPIXEL_SHOULD_BE_4")); 
     }
 
-/** ======================================================================== */
+/* ======================================================================== */
   public ImagePlus [][][] processChannelFiles(
 		  boolean                     saveResult, // free memory, return empty results if false
 		  JP46_Reader_camera        JP4_instance,
@@ -3319,7 +3318,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		  convolutionKernelStack=null;
 		  convolutionKernelStack2=null;
 		  runtime.gc();
-/**  imageNoiseGains is used , maybe change below to use just the array	kernelsNoise[nChn][nSubChn] */	  
+/*  imageNoiseGains is used , maybe change below to use just the array	kernelsNoise[nChn][nSubChn] */	  
      	  title="noiseGains_"+(nonlinParameters.useDiffNoiseGains?"diff_":"")+(nChn+1)+""+(nSubChn+1);
 		  imageNoiseGains[nChn][nSubChn]= new ImagePlus(title, kernelsNoise[nChn][nSubChn]);
 		  if (processParameters.saveNoiseGains || processParameters.showNoiseGains) {
@@ -3782,7 +3781,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  System.out.println("Processing done in "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+ " seconds");
 	  return result;
   }
-  /** ======================================================================== */
+  /* ======================================================================== */
   private void saveAndShow(
 		  ImagePlus             imp,
 		  EyesisCorrectionParameters.ProcessParameters     processParameters,
@@ -3912,8 +3911,8 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   
   
   
-  /** ======================================================================== */
-	/** Create a Thread[] array as large as the number of processors available.
+  /* ======================================================================== */
+	/* Create a Thread[] array as large as the number of processors available.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */
@@ -3922,7 +3921,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 		return new Thread[n_cpus];
 	}
-	/** Start all given threads and wait on each of them until all are done.
+	/* Start all given threads and wait on each of them until all are done.
 	 * From Stephan Preibisch's Multithreading.java class. See:
 	 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 	 */
@@ -3944,15 +3943,15 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		}
 	}
 
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
   public double[] initWindowFunction(int size) {
     double [] windowFunction =new double [size*size];
     double [] windowFunction_line=new double [size];
@@ -3973,13 +3972,13 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     return windowFunction;
   }
 
-/** ======================================================================== */
-  /** convolve image stack with the kernel stack using FHT. kernels should be (size/2)*(size/2) - currently 64x64, then image will be split into same 
+/* ======================================================================== */
+  /* convolve image stack with the kernel stack using FHT. kernels should be (size/2)*(size/2) - currently 64x64, then image will be split into same 
       (size/2)*(size/2) overlapping by step=size/4 segments. Both are zero-padded to size x size, so after convolution the result will not roll over, and
       processed 128x128 result arrays are accumulated in the output stack.
       The input image should be properly extended by size/4 in each direction (and so the kernel arrays should match it) - that would minimize border effects.*/
  
-  /** ======================================================================== */
+  /* ======================================================================== */
   public ImageStack convolveStackWithKernelStack (
 		  final ImageStack  imageStack,  // stack with 3 colors/slices with the image
 		  final ImageStack kernelStack, // stack with 3 colors/slices convolution kernels
@@ -4037,19 +4036,19 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 						  kernelPixels=(float[]) kernelStack.getPixels(chn+1);
 						  chn0=chn;
 					  }
-					  /** Read source image tile */
+					  /* Read source image tile */
 					  extractSquareTile( pixels, // source pixel array,
 							  inTile, // will be filled, should have correct size before call
 							  slidingWindow, // window (same size as the kernel)
 							  imgWidth, // width of pixels array
 							  tileX*step, // left corner X
 							  tileY*step); // top corner Y
-					  /** zero pad twice the original size*/
+					  /* zero pad twice the original size*/
 					  outTile=extendFFTInputTo (inTile, size);
-					  /** FHT transform of the source image data*/
+					  /* FHT transform of the source image data*/
 					  fht_instance.swapQuadrants(outTile);
 					  fht_instance.transform(    outTile);
-					  /** read convolution kernel */
+					  /* read convolution kernel */
 					  EYESIS_CORRECTIONS.extractOneKernel(kernelPixels, //  array of combined square kernels, each 
 							  kernel, // will be filled, should have correct size before call
 							  kernelNumHor, // number of kernels in a row
@@ -4057,22 +4056,22 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 							  //tileY*kernelSize); // vertical number of kernel to extract
 							  tileX, // horizontal number of kernel to extract
 							  tileY); // vertical number of kernel to extract
-					  /** zero pad twice the original size*/
+					  /* zero pad twice the original size*/
 					  doubleKernel=extendFFTInputTo (kernel, size);
 //					  debug_sum=0;
 //					  for (i=0;i<doubleKernel.length;i++) debug_sum+=doubleKernel[i];
 //					  if (MASTER_DEBUG_LEVEL>1) System.out.println("kernel sum="+debug_sum);
 					  
 					  //if ((tileY==tilesY/2) && (tileX==tilesX/2))  SDFA_INSTANCE.showArrays(doubleKernel,size,size, "doubleKernel-"+chn);
-					  /** FHT transform of the kernel */
+					  /* FHT transform of the kernel */
 					  fht_instance.swapQuadrants(doubleKernel);
 					  fht_instance.transform(    doubleKernel);
-					  /** multiply in frequency domain */
+					  /* multiply in frequency domain */
 					  outTile=     fht_instance.multiply(outTile, doubleKernel, false);
-					  /** FHT inverse transform of the product - back to space domain */
+					  /* FHT inverse transform of the product - back to space domain */
 					  fht_instance.inverseTransform(outTile);
 					  fht_instance.swapQuadrants(outTile);
-					  /** accumulate result */
+					  /* accumulate result */
 					  //if ((tileY==tilesY/2) && (tileX==tilesX/2))  SDFA_INSTANCE.showArrays(outTile,size,size, "out-"+chn);
 					  /*This is synchronized method. It is possible to make threads to write to non-overlapping regions of the outPixels, but as the accumulation
 					   * takes just small fraction of severtal FHTs, it should be OK - reasonable number of threads will spread and not "stay in line"
@@ -4089,17 +4088,17 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  startAndJoin(threads);
 	  if (DEBUG_LEVEL > 1) System.out.println("Threads done at "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 
-	  /** prepare result stack to return */
+	  /* prepare result stack to return */
 	  ImageStack outStack=new ImageStack(imgWidth,imgHeight);
 	  for (i=0;i<nChn;i++) {
 		  outStack.addSlice(imageStack.getSliceLabel(i+1), outPixels[i]);
 	  }
 	  return outStack;
   }
-/** ======================================================================== */ 
+/* ======================================================================== */ 
 
   
-  /** ======================================================================== */ 
+  /* ======================================================================== */ 
   // uses global OUT_PIXELS to accumulate results
   public ImageStack aliasScissorsStack (
 		  final ImageStack                        imageStack,  // stack with 3 colors/slices with the image
@@ -4130,7 +4129,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  final int tilesY=imgHeight/step-1; // vertical number of overlapping tiles in the source image (should be expanded from the registerd one by "step" in each direction)
 	  final int nChn=imageStack.getSize();
 	  int i,chn; //tileX,tileY;
-	  /** find number of the green channel - should be called "green", if none - use last */
+	  /* find number of the green channel - should be called "green", if none - use last */
 	  i=nChn-1;
 	  for (chn=0;chn<nChn;chn++) if (imageStack.getSliceLabel(chn+1).equals("green")){
 		  i=chn;
@@ -4188,7 +4187,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 								  tileY*step); // top corner Y
 					  }
 
-					  /** Scale green channel x0.5 as there are twice more pixels there as in red or blue. Or move it somewhere else and multiply to original range ? */
+					  /* Scale green channel x0.5 as there are twice more pixels there as in red or blue. Or move it somewhere else and multiply to original range ? */
 					  for (i=0;i<tile[greenChn].length;i++) tile[greenChn][i]*=0.5;
 					  if ((tileY==yTileDebug) && (tileX==xTileDebug)) {
 						  if (SDFA_instance==null) SDFA_instance=      new showDoubleFloatArrays();
@@ -4219,7 +4218,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 						  tile[chn]=fht_instance.multiply(tile[chn],both_masks[(chn==greenChn)?0:1],false);
 						  fht_instance.inverseTransform(tile[chn]);
 						  fht_instance.swapQuadrants(tile[chn]);
-						  /** accumulate result */
+						  /* accumulate result */
 						  /*This is synchronized method. It is possible to make threads to write to non-overlapping regions of the outPixles, but as the accumulation
 						   * takes just small fraction of severtal FHTs, it should be OK - reasonable number of threads will spread and not "stay in line"
 						   */
@@ -4238,7 +4237,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  }		      
 	  startAndJoin(threads);
 	  DEBUG_LEVEL=wasDebugLevel;
-	  /** prepare result stack to return */
+	  /* prepare result stack to return */
 	  ImageStack outStack=new ImageStack(imgWidth,imgHeight);
 	  for (chn=0;chn<nChn;chn++) {
 		  outStack.addSlice(imageStack.getSliceLabel(chn+1), outPixles[chn]);
@@ -4252,7 +4251,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   }
 
 
-  /** ======================================================================== */
+  /* ======================================================================== */
   /* Filters mask that selects between hi-res/high-noise deconvolved image and lo-res/lo-noise image convolved with Gaussian
    * by rejecting frequencies that correspond to multiples of JPEG blocks (here with the current settings it is 32 pixels - twice 16x16 macroblock
    */
@@ -4423,7 +4422,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 					  tile=fht_instance.multiply(tile,filter,false);
 					  fht_instance.inverseTransform(tile);
 					  fht_instance.swapQuadrants(tile);
-					  /** accumulate result */
+					  /* accumulate result */
 					  /*This is synchronized method. It is possible to make threads to write to non-overlapping regions of the OUT_PIXELS, but as the accumulation
 					   * takes just small fraction of several FHTs, it should be OK - reasonable number of threads will spread and not "stay in line"
 					   */
@@ -4444,7 +4443,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   
   
   
-/** ======================================================================== */
+/* ======================================================================== */
     public double [] ringFilter(double [] dmask,       // mask to be filtered
     		                    int       width,       // mask width
     		                    double    minMaxValue, // min value for the local maximum to be processed (absolute, not relative)
@@ -4504,8 +4503,8 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     	}
     	return result;
     }
-/** ======================================================================== */
-/** Combine two  3-slice image stacks generated from the same source image - one high-res/high noise, other low-res/low noise 
+/* ======================================================================== */
+/* Combine two  3-slice image stacks generated from the same source image - one high-res/high noise, other low-res/low noise 
  * @param nonlinParameters TODO*/
   public ImageStack combineLoHiStacks(ImageStack        stack_convolved, // ImageStack with the image, convolved with the reversed PSF (sharp but with high noise)
                                       ImageStack         stack_gaussian, // ImageStack with the image, convolved with the Gaussian (just lateral compensated)  (blurred, but low noise)
@@ -4528,7 +4527,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     	  filtMin*=nonlinParameters.thresholdCorrection[nChn][nSubChn];
     	  filtMax*=nonlinParameters.thresholdCorrection[nChn][nSubChn];
       }
-/** find number of the green channel - should be called "green", if none - use last */
+/* find number of the green channel - should be called "green", if none - use last */
       int greenChn=2;
       for (i=0;i<3;i++) if (stack_convolved.getSliceLabel(i+1).equals("green")){
         greenChn=i;
@@ -4635,7 +4634,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       
 //      final double [][]       noiseMask, // 2-d array of kernelsNoiseGain (divide mask by it)
 //      final int               noiseStep, // linear pixels per noiseMask pixels (32)
-/** divide mask by noiseMask, if defined */
+/* divide mask by noiseMask, if defined */
       if (noiseMask!=null) {
     	  if (DEBUG_LEVEL>1) System.out.println ( "diffGreens.length="+diffGreens.length+" imgWidth="+imgWidth+" noiseMask.length="+noiseMask.length+" noiseMask[0].length="+noiseMask[0].length);
     	  
@@ -4673,15 +4672,15 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
      DENOISE_MASK=diffGreens;
      DENOISE_MASK_WIDTH=imgWidth; 
 
-/** Combine 2 stacks and a mask */
+/* Combine 2 stacks and a mask */
       return combineStacksWithMask (stack_gaussian,
                                    stack_convolved, 
                                         diffGreens);
    }
 
-/** ======================================================================== */
+/* ======================================================================== */
 
-  /** Combine 2 stacks and a mask */
+  /* Combine 2 stacks and a mask */
   public ImageStack combineStacksWithMask (ImageStack stack_bg,
 		  ImageStack stack_fg, 
 		  //                                                 float [] mask ) {
@@ -4703,8 +4702,8 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   }
 
 
-/** ======================================================================== */
-/** Convert source Bayer pattern (GR/BG) image to higher resolution, add margins by duplicating pattern around */
+/* ======================================================================== */
+/* Convert source Bayer pattern (GR/BG) image to higher resolution, add margins by duplicating pattern around */
   public ImageStack  bayerToStack(ImagePlus imp, // source bayer image, linearized, 32-bit (float))
 		  EyesisCorrectionParameters.SplitParameters splitParameters){
 
@@ -4726,7 +4725,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     int ovrWidth= inWidth*splitParameters.oversample;
     int ovrHeight=inHeight*splitParameters.oversample;
     for (chn=0;chn<nChn;chn++) for (i=0;i<outPixels[chn].length;i++) outPixels[chn][i]=0.0f;
-/** Can be optimized - now it calculate input address for all those 0-es */
+/* Can be optimized - now it calculate input address for all those 0-es */
     for (index=0; index<outLength; index++) {
       y=(index / outWidth)-splitParameters.addTop;
       x=(index % outWidth)-splitParameters.addLeft;
@@ -4741,14 +4740,14 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
         outPixels[chn][index]=pixels[y*inWidth+x];
       }
     }
-/** prepare result stack to return */
+/* prepare result stack to return */
     ImageStack outStack=new ImageStack(outWidth,outHeight);
     for (chn=0;chn<nChn;chn++) {
       outStack.addSlice(chnNames[chn], outPixels[chn]);
     }
     return outStack;
 }
-/** ======================================================================== */
+/* ======================================================================== */
  /**extract and multiply by window function (same size as kernel itself) */
   void extractSquareTile(float [] pixels, // source pixel array,
                           double [] tile, // will be filled, should have correct size before call
@@ -4773,7 +4772,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
       }
     }
   }
-/** ======================================================================== */
+/* ======================================================================== */
   void extractSquareTile(double [] pixels, // source pixel array,
 		  double [] tile, // will be filled, should have correct size before call
 		  double [] window, // window (same size as the kernel)
@@ -4799,8 +4798,8 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   }
 
   
-/** ======================================================================== */
-/** accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
+/* ======================================================================== */
+/* accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
   synchronized void  accumulateSquareTile(
 		  float [] pixels, //  float pixels array to accumulate tile
 		  double []  tile, // data to accumulate to the pixels array
@@ -4848,7 +4847,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 	  }
   }
 
-/** ======================================================================== */
+/* ======================================================================== */
   double [] getSlidingMask(int size) {
     double [] mask = new double [size*size];
     double [] maskLine=new double [size];
@@ -4859,9 +4858,9 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     for (i=0;i<size;i++) for (j=0;j<size;j++) mask[index++]=maskLine[i]*maskLine[j];
     return mask;
   }
-/** ======================================================================== */
+/* ======================================================================== */
 
- /** Adds zero pixels around the image, "extending canvas" */
+ /* Adds zero pixels around the image, "extending canvas" */
 
   public double [][] extendFFTInputTo (double[][] input_pixels,
                                               int newSize) {
@@ -4909,7 +4908,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
     return pixels;
   }
 
-/** ======================================================================== */
+/* ======================================================================== */
   public double[][] normalizeAndWindow (double [][] pixels, double [] windowFunction) {
     return normalizeAndWindow (pixels, windowFunction, true);
   }
@@ -4939,7 +4938,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
   }
 
 
-/** ======================================================================== */
+/* ======================================================================== */
   public void  YPrPbToRGB(ImageStack stack,
                                  double Kr,        // 0.299;
                                  double Kb,        // 0.114;
@@ -4978,9 +4977,9 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
   }
 
 
-/** ======================================================================== */
-/** ======================================================================== */
-/** ============== Dialogs ========================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ============== Dialogs ========================================================== */
   /*
 			true, // crop - crop image to the sensor size
 			true, // jpeg - convert to 8-bit RGB and save jpeg (if save is true)
@@ -5064,7 +5063,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
 	  MASTER_DEBUG_LEVEL=            (int) gd.getNextNumber();
 	  return true;
   }  
-/** ======================================================================== */
+/* ======================================================================== */
   
    public boolean showFilesDialog(
 		   EyesisCorrectionParameters.FilesParameters filesParameters,
@@ -5135,7 +5134,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
 	  return true;
   }
 
-  /** ======================================================================== */
+  /* ======================================================================== */
   
   public boolean showRGBProcessDialog(EyesisCorrectionParameters.RGBParameters rgbParameters) {
     GenericDialog gd = new GenericDialog("RGB conversion parameters");
@@ -5157,7 +5156,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     return true;
   }
 
-/** ======================================================================== */
+/* ======================================================================== */
   public boolean showColorProcessDialog(EyesisCorrectionParameters.ColorProcParameters colorProcParameters) {
 	    GenericDialog gd = new GenericDialog("Color processing parameters");
 	    gd.addNumericField("YCbCr gamma",                             colorProcParameters.gamma,     3); //0.53
@@ -5272,7 +5271,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
 	    MASTER_DEBUG_LEVEL=      (int) gd.getNextNumber();
 	    return true;
 	  }
-  /** ======================================================================== */
+  /* ======================================================================== */
   public boolean showColorCalibDialog(EyesisCorrectionParameters.ColorCalibParameters colorCalibParameters) {
 		int i,j;
 	    GenericDialog gd = new GenericDialog("Individual channels colors/gains");
@@ -5296,7 +5295,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
 	  }
 ///    	showColorCalibDialog(COLOR_CALIB_PARAMETERS);
 
-/** ======================================================================== */
+/* ======================================================================== */
   
   public boolean showCombinePairDialog(EyesisCorrectionParameters.NonlinParameters nonlinParameters, EyesisCorrectionParameters.ProcessParameters processParameters) {
     GenericDialog gd = new GenericDialog("Combining high-re and low-res images");
@@ -5368,7 +5367,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     return true;
   }
 
-/** ======================================================================== */
+/* ======================================================================== */
   public boolean showStackConvolutionDialog() {
     int i;
     GenericDialog gd = new GenericDialog("Stack convolution parameters");
@@ -5380,13 +5379,13 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     gd.showDialog();
     if (gd.wasCanceled()) return false;
     CONVOLVE_FFT_SIZE=1;
-    for (i=(int) gd.getNextNumber(); i >1; i>>=1) CONVOLVE_FFT_SIZE <<=1; /** make it to be power of 2 */
+    for (i=(int) gd.getNextNumber(); i >1; i>>=1) CONVOLVE_FFT_SIZE <<=1; /* make it to be power of 2 */
     UPDATE_STATUS=               gd.getNextBoolean();
     THREADS_MAX=           (int) gd.getNextNumber();    
     MASTER_DEBUG_LEVEL=    (int) gd.getNextNumber();
     return true;
  }  
-/** ======================================================================== */
+/* ======================================================================== */
   public boolean showDeBayerDialog(EyesisCorrectionParameters.DebayerParameters debayerParameters, EyesisCorrectionParameters.ProcessParameters processParameters) {
     int i;
     GenericDialog gd = new GenericDialog("De-bayer parameters");
@@ -5440,7 +5439,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     debayerParameters.polarStep=                   gd.getNextNumber();
 
     debayerParameters.size=1;
-    for (i=(int) gd.getNextNumber(); i >1; i>>=1) debayerParameters.size <<=1; /** make it to be power of 2 */
+    for (i=(int) gd.getNextNumber(); i >1; i>>=1) debayerParameters.size <<=1; /* make it to be power of 2 */
     
     debayerParameters.debug=                gd.getNextBoolean();
     debayerParameters.xDebug=        (int) gd.getNextNumber(); 
@@ -5453,7 +5452,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     MASTER_DEBUG_LEVEL=     (int) gd.getNextNumber();
     return true;
   }
-/** ======================================================================== */
+/* ======================================================================== */
   public boolean showSplitBayerToStackDialog(EyesisCorrectionParameters.SplitParameters splitParameters) {
     GenericDialog gd = new GenericDialog("Interpolate kernels parameters");
     gd.addNumericField("Interpolation step between original kernels",                                  splitParameters.oversample, 0); //2
@@ -5474,12 +5473,12 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     return true;
  }  
 
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** ======================================================================== */
-/** unfinished/not used */
-/** ======================================================================== 
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
+/* unfinished/not used */
+/* ======================================================================== 
  * @param colorProcParameters TODO*/
   
   
@@ -5511,7 +5510,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
       int length=fpixels_r.length;
       int width= stack.getWidth();
       int height=stack.getHeight();
-/** Scale colors, gamma-convert */
+/* Scale colors, gamma-convert */
       int i;
       double gain_red= thisBalanceRed* thisGain/scale;
       double gain_blue=thisBalanceBlue*thisGain/scale;
@@ -5552,13 +5551,13 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
           fpixels_b[i]=(float) linGamma(colorProcParameters.gamma, gamma_a, gamma_linK, colorProcParameters.minLin, blueRemovedRGB[2][i]);
         }
       
-/** Convert to YPbPr */
+/* Convert to YPbPr */
       double Y,Pb,Pr;
       double Kg=1.0-colorProcParameters.kr-colorProcParameters.kb;
       double Sb=0.5/(1.0-colorProcParameters.kb)*colorProcParameters.saturationBlue;
       double Sr=0.5/(1.0-colorProcParameters.kr)*colorProcParameters.saturationRed;
       double Yr,Yg,Yb,Wr,Wg,Wb,S;
-/** coefficients to find Y from Pb, Pr and a color (R,G or B)
+/* coefficients to find Y from Pb, Pr and a color (R,G or B)
  Yr = R- Pr*KPrR
  Yb = B- Pb*KPbB
  Yg = G+ Pr*KPrG  + Pb*KPbG
@@ -5594,7 +5593,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
         fpixels_pr[i] = (float) (Sr*(fpixels_r[i]-Y));
         fpixels_y0[i]=(float) Y;
       }
-/** calculate Y from weighted colors, weights derived from how good each color component predicts signal in each subpixel of Bayer pattern */
+/* calculate Y from weighted colors, weights derived from how good each color component predicts signal in each subpixel of Bayer pattern */
       if (useWeights) {
         fpixels_y=  new float [length];
         for (i=0;i<length;i++) {
@@ -5619,7 +5618,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
           }
         }
       }
-/** Low-pass filter Pb and Pr */
+/* Low-pass filter Pb and Pr */
 	  DoubleGaussianBlur gb=new DoubleGaussianBlur();
       double [] dpixels_pr=new double[fpixels_pr.length];
       double [] dpixels_pb=new double[fpixels_pb.length];
@@ -5695,7 +5694,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
       }
 
   }
-/** ======================================================================== */
+/* ======================================================================== */
   public double linGamma(double gamma, double a, double k, double x0, double x) {
     if (x<0) return 0.0;
 
@@ -5703,8 +5702,8 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     return (1.0+a)*Math.pow(x,gamma)-a;
 //  return x;
   }
-/** ======================================================================== */
-/** ======================================================================== */
+/* ======================================================================== */
+/* ======================================================================== */
 
 }
 

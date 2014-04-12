@@ -61,7 +61,7 @@ public class SimulationPattern {
 			double patternModifier) {
 		    patternGenerator(size,patternNumber,patternModifier);
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public double [] patternGenerator(
 			SimulParameters simulParameters ) {
 		return patternGenerator(
@@ -142,7 +142,7 @@ public class SimulationPattern {
 		return this.bPattern;
 	}
 
-/** ======================================================================== */
+/* ======================================================================== */
 	public void  simulatePatternFullPattern(
 			double freqX1,
 			double freqY1,
@@ -188,7 +188,7 @@ public class SimulationPattern {
 			for (j=0;j<fullSize;j++) {
 				xl=(j-0.5*fullSize)/subdiv-(center_for_g2?0.5:1.0); // center in the middle of Bayer
 
-/** apply second order polynomial correction to x,y
+/* apply second order polynomial correction to x,y
     x=xl+Ax*xl^2+Bx*yl^2+2*Cx*xl*yl;
     y=xl+Ay*xl^2+By*yl^2+2*Cy*xl*yl; */
 				if (corr==null) {
@@ -239,7 +239,7 @@ public class SimulationPattern {
 			if (this.debugLevel>3) SDFA_INSTANCE.showArrays(this.barray, "barray-blured");
 		}
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public double [] recursiveFillPixels ( // invert pattern in the caller, return signed value (-1..1 - pattern is 0..1) 
 			   SimulParameters  simulParameters,
 			   double [] xy,  // top-left corner 
@@ -376,7 +376,7 @@ public class SimulationPattern {
 		}
 		return result;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	/**
 	 * @param cornersXY first index V, second index U, third index:0 - x, 1-y
 	 * @param xy 0-x,1-y of the point, for which UV should be generated
@@ -485,7 +485,7 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 
 		return UV;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	   private boolean isCellValid(
     		   double [][][][] grid,
     		   int [] uv){
@@ -811,7 +811,7 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 		   
 		   return pixels;
 	   }
-		/** Create a Thread[] array as large as the number of processors available.
+		/* Create a Thread[] array as large as the number of processors available.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */
@@ -820,7 +820,7 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 			if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 			return new Thread[n_cpus];
 		}
-	/** Start all given threads and wait on each of them until all are done.
+	/* Start all given threads and wait on each of them until all are done.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */
@@ -842,9 +842,9 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 			}
 		}
 	   
-/** ======================================================================== */
-/** make it faster when outSubdiv =2*n (usually so) */
-/** TODO: cleanup shifts - they seem now to work correctly */
+/* ======================================================================== */
+/* make it faster when outSubdiv =2*n (usually so) */
+/* TODO: cleanup shifts - they seem now to work correctly */
 	public double [][] extractSimulPatterns (
 			SimulParameters  simulParameters,
 			int outSubdiv,  // subdivide output pixels
@@ -904,7 +904,7 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 			}
 		} else { // just reuse available greens
 			if (this.debugLevel>2)System.out.println("Generating combined greens pattern from individual greens");
-/** now combine greens - same as in splitBayer() */
+/* now combine greens - same as in splitBayer() */
 
 			int base, base_b;
 			base_b=0;

@@ -213,7 +213,7 @@ public EyesisTiff(){
         tiffSaver.setWritingSequentially(true);
         tiffSaver.setLittleEndian(false);
         tiffSaver.writeHeader(); 
-//        tiffSaver.writeIFD(ifd,0); //** SHould not write here, some fields are calculated during writeImage, that writes IFD too
+//        tiffSaver.writeIFD(ifd,0); //* SHould not write here, some fields are calculated during writeImage, that writes IFD too
 //        System.out.println("bytes.length="+bytes.length);
         tiffSaver.writeImage(bytes,
         		ifd,
@@ -310,7 +310,7 @@ public EyesisTiff(){
         tiffSaver.setWritingSequentially(true);
         tiffSaver.setLittleEndian(false);
         tiffSaver.writeHeader(); 
-//        tiffSaver.writeIFD(ifd,0); //** SHould not write here, some fields are calculated during writeImage, that writes IFD too
+//        tiffSaver.writeIFD(ifd,0); //* SHould not write here, some fields are calculated during writeImage, that writes IFD too
         System.out.println("bytes.length="+bytes.length);
         tiffSaver.writeImage(bytes,
         		ifd,

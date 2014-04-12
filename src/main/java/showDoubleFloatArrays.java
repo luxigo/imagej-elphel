@@ -17,7 +17,7 @@ import ij.process.*;
 	  
 
 
-/** For square arrays */
+/* For square arrays */
 
   public void showArrays(double[][] pixels,  String title) { showArrays(pixels, false, title);}
   public void showArrays(double[][] pixels,  boolean asStack, String title) {

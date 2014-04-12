@@ -166,11 +166,11 @@ discrRadialMaxFreq=(size*(2* numTargetRings +1)/targetOuterDMin)+1
       }
       size=(int) Math.sqrt(target_kernel.length);
 //target_kernel
-/** Convolve Bayer slices with prepared target template  */
+/* Convolve Bayer slices with prepared target template  */
       convolved_bayer=new float[input_bayer.length][];
       for (i=0; i<input_bayer.length; i++) {
         IJ.showStatus("Convolving Bayer "+i);
-/** Double in convolution works twice faster than float!*/
+/* Double in convolution works twice faster than float!*/
         convolved_bayer[i]=doubleConvolveWithTarget(input_bayer[i], target_kernel, r.width>>1, r.height>>1, size);
 
       }
@@ -178,8 +178,8 @@ discrRadialMaxFreq=(size*(2* numTargetRings +1)/targetOuterDMin)+1
 //
 //    filteredRadius   =(int) gd.getNextNumber();
 //    backgroundRadius =(int) gd.getNextNumber();
-/** normalize convolved Bayer slices   */
-/** prepare pixel mask for the normalization (ring) */
+/* normalize convolved Bayer slices   */
+/* prepare pixel mask for the normalization (ring) */
       int filtSize= (int) filteredRadius;
       boolean [][] mask=new boolean[2*filtSize+1][2*filtSize+1];
       for (i=0;i<(2*filtSize+1);i++) for (j=0;j<(2*filtSize+1);j++) {
@@ -271,14 +271,14 @@ discrRadialMaxFreq=(size*(2* numTargetRings +1)/targetOuterDMin)+1
         }
         showBayers(clusterPixels, r.width>>1, r.height>>1, newTitle+"_"+deconvInvert+"_clusters");
       }
-/** TODO: Verify that all Bayer components have the same targets (build composite table) */
+/* TODO: Verify that all Bayer components have the same targets (build composite table) */
       targets= combineTargets(targetCoordinates, maxChromaticDistance);
       showTargetsLocationTable(targets,  newTitle, 2,  (DEBUG_LEVEL>1));
       return;
     }
   }
 
-/** Combine target locations from 4 Bayer components */
+/* Combine target locations from 4 Bayer components */
   double [][][] combineTargets(double[][][] targetCoord, ///[bayer][number][x,y,q>1]
                                double maxDistance) {     /// maximal distance between the same target in different Bayer components
 
@@ -298,10 +298,10 @@ discrRadialMaxFreq=(size*(2* numTargetRings +1)/targetOuterDMin)+1
         bNum=i;
       }
    }
- /** assign target number according to the component that has most of the targets (does not mean others do not have that this one is missing */
+ /* assign target number according to the component that has most of the targets (does not mean others do not have that this one is missing */
    for (j=0;j<maxLen;j++) targetNumbers[bNum][j]=j+1;
    numTargets=maxLen; // may increase later
- /** compare all other color components with the coordinates in the seslected one (not too many to bother with good guess) */
+ /* compare all other color components with the coordinates in the seslected one (not too many to bother with good guess) */
    for (i=0;i<targetNumbers.length;i++) if (i!=bNum) {
      for (j=0;j<targetNumbers[i].length;j++) if (targetNumbers[i][j]==0){
         for (k=0;k<targetNumbers[bNum].length;k++) {
@@ -313,7 +313,7 @@ discrRadialMaxFreq=(size*(2* numTargetRings +1)/targetOuterDMin)+1
         }
      }
    }
-/** See if any targets are missing, add them */
+/* See if any targets are missing, add them */
    for (i=0;i<targetNumbers.length;i++) if (i!=bNum) {
      for (j=0;j<targetNumbers[i].length;j++) if (targetNumbers[i][j]==0){
        numTargets++;
@@ -343,7 +343,7 @@ discrRadialMaxFreq=(size*(2* numTargetRings +1)/targetOuterDMin)+1
      targets[k][i+1][1]=targetCoord[i][j][1]; // y
      targets[k][i+1][2]=targetCoord[i][j][2]; // quality >1.0
    }
-/** Calculate average values*/
+/* Calculate average values*/
    for (i=0;i<numTargets;i++) {
      avX=0.0;
      avY=0.0;
@@ -399,7 +399,7 @@ discrRadialMaxFreq=(size*(2* numTargetRings +1)/targetOuterDMin)+1
 
 
 
-/** determines if it was likely a target of concentric circles, after convertion to polar coordinates expect nearly horizontal b/w bands */
+/* determines if it was likely a target of concentric circles, after convertion to polar coordinates expect nearly horizontal b/w bands */
 double likelyTarget(float[] pixels, // pixel array
                           int size, // image size (should be square for FFT
                           int hor,  // horizontal selection area (half width)
@@ -529,7 +529,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
                clusterMap[NextIndex]=clusterNumber;
              }
            }
-/** calculate centroid */
+/* calculate centroid */
            cx=0.0; cy=0.0; cm=0.0;
            for (i=0;i<pixelList.size();i++) {
              j=pixelList.get(i);
@@ -568,8 +568,8 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
   }
 ////    System.out.println("measureTargets(), N="+N);
 
-/** Normalize pixels values as ratios of difference to average in the surrounding ring to variation in the ring*/
-/** TODO: don't roll over, limit */
+/* Normalize pixels values as ratios of difference to average in the surrounding ring to variation in the ring*/
+/* TODO: don't roll over, limit */
 /// BUG: Seems something wrong - if convolution kernel had DC component - generated all "1.0"
 
   float [] normalizeAtRing(float [] pixels, int width, int height, boolean[][] mask ) {
@@ -635,7 +635,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
     return result;
   }
 
-/** Convolve image (one Bayer slice) with the inverted target kernel
+/* Convolve image (one Bayer slice) with the inverted target kernel
     Center should be at size/2, size/2 - will convolve only (size-1)*(size-1) */
 /**Which is faster - double or float? Double i TWICE faster!*/
   float [] doubleConvolveWithTarget(float [] pixels, float [] kernel_full, int width, int height, int size) {
@@ -652,7 +652,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
     }
     int i,j;
     double d; // is float faster than double? or opposite (then it makes sesne to convert everything to double first
-/** if kernel has even dimensions - ignore first (0) row and first (0) column */
+/* if kernel has even dimensions - ignore first (0) row and first (0) column */
 
     if ((size & 1)!=0) {
       kernel= new double[size*size];
@@ -674,7 +674,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
     for (i=0;i<pixels.length;i++) dPixels[i]=pixels[i];
     
     if (DEBUG_LEVEL>10) IJ.showMessage("Debug doubleConvolveWithTarget","pixels.length="+pixels.length+"\nwidth="+width+"\nheight="+height+"\nkernel.length="+kernel.length+"\nsize="+size);
-    float [] result=new float [width*height]; /** this is still float - one conversion on tghe output*/
+    float [] result=new float [width*height]; /* this is still float - one conversion on tghe output*/
     int x,y,x1,y1, x2, y2, pre_y,pre_x;
 //    double d;
     boolean yMiddle=false;
@@ -700,7 +700,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
         }
       }
 /**/
-/** now finish beginnings/ends of the middle lines and process complete first/last lines*/
+/* now finish beginnings/ends of the middle lines and process complete first/last lines*/
       pre_y=y+hsize+height; // preparing for "%", making sure it will be positive 
       for (x=0;x<width;x++) if ((x<hsize) || (x>=(width-hsize)) || !yMiddle){
         d=0;
@@ -759,7 +759,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
     if (gd.wasCanceled()) return false;
     jp4_instance.setTitle(gd.getNextString());
     FFTSize=1;
-    for (i=             (int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /** make FFTSize to be power of 2*/
+    for (i=             (int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /* make FFTSize to be power of 2*/
 //    targetOuterDMin =         gd.getNextNumber(); // minimal outer diameter of the target image , in pixels
 //    targetOuterDMax =         gd.getNextNumber(); // maximal outer diameter of the target image , in pixels
 //    numTargetRings  =   (int) gd.getNextNumber();  // number of target black rings (notg counting center black circle)
@@ -795,7 +795,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
     gd.showDialog();
     if (gd.wasCanceled()) return null;
     FFTSize=1;
-    for (i=             (int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /** make FFTSize to be power of 2*/
+    for (i=             (int) gd.getNextNumber(); i >1; i>>=1) FFTSize <<=1; /* make FFTSize to be power of 2*/
     targetOuterDMin =         gd.getNextNumber(); // minimal outer diameter of the target image , in pixels
     targetOuterDMax =         gd.getNextNumber(); // maximal outer diameter of the target image , in pixels
     numTargetRings  =   (int) gd.getNextNumber();  // number of target black rings (notg counting center black circle)
@@ -945,7 +945,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
 
 
 
- /** ignore ROI, use whole image */
+ /* ignore ROI, use whole image */
   public float[][] splitBayer (ImagePlus imp) {
     ImageProcessor ip=imp.getProcessor();
     Rectangle r=new Rectangle(imp.getWidth(),imp.getHeight());
@@ -1014,7 +1014,7 @@ float [] circle2DoubleRect (float [] pixels, int width, int height, int size, do
   }
 
 
-/** converts FHT results (frequency space) to complex numbers of [FFTSize/2+1][FFTSize] */
+/* converts FHT results (frequency space) to complex numbers of [FFTSize/2+1][FFTSize] */
 private double[][][] FHT2FFTHalf (FHT fht) {
    float[] fht_pixels=(float[])fht.getPixels();
    double[][][] fftHalf=new double[(FFTSize>>1)+1][FFTSize][2];
@@ -1031,7 +1031,7 @@ private double[][][] FHT2FFTHalf (FHT fht) {
    return fftHalf;
 }
 
-/** converts FFT arrays of complex numbers of [FFTSize/2+1][FFTSize] to FHT arrays */
+/* converts FFT arrays of complex numbers of [FFTSize/2+1][FFTSize] to FHT arrays */
 private float[] FFTHalf2FHT (double [][][] fft) {
    float[] fht_pixels=new float [FFTSize*FFTSize];
    int row1,row2,col1,col2;
@@ -1039,7 +1039,7 @@ private float[] FFTHalf2FHT (double [][][] fft) {
      row2=(FFTSize-row1) %FFTSize;
      for (col1=0;col1 < FFTSize;col1++) {
        col2=(FFTSize-col1) %FFTSize;
-/** out of bounds */
+/* out of bounds */
        fht_pixels[row1*FFTSize+col1]=(float)(fft[row1][col1][0]+fft[row1][col1][1]);
        fht_pixels[row2*FFTSize+col2]=(float)(fft[row1][col1][0]-fft[row1][col1][1]);
      }

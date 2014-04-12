@@ -1343,7 +1343,7 @@ public class EyesisCorrections {
 		  return result;
 	}
 	
-	 /** ======================================================================== */
+	 /* ======================================================================== */
 	  
 	  
 	  private boolean fixSliceSequence (
@@ -1386,7 +1386,7 @@ public class EyesisCorrections {
 		  }
 		  return true;
 	  }
-	/** ======================================================================== */
+	/* ======================================================================== */
 	  public void swapStackSlices(ImageStack stack,
 	                              int slice1,
 	                              int slice2) {
@@ -1402,7 +1402,7 @@ public class EyesisCorrections {
 	
 	
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	   public ImageStack cropStack32(
 			  ImageStack stack,
 			  EyesisCorrectionParameters.SplitParameters splitParameters) {
@@ -1428,7 +1428,7 @@ public class EyesisCorrections {
 		  return stack_crop;
 	  }
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	  public ImageStack rotateStack32CW(
 			  ImageStack stack) {
 		  int size=stack.getSize();
@@ -1449,7 +1449,7 @@ public class EyesisCorrections {
 		  return stack_rot;
 		  
 	  }
-	  /** ======================================================================== */
+	  /* ======================================================================== */
 	  public ImagePlus cropImage32(
 			  ImagePlus imp,
 			  EyesisCorrectionParameters.SplitParameters splitParameters) {
@@ -1470,7 +1470,7 @@ public class EyesisCorrections {
 		  return imp_crop;
 	 }
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	 public ImagePlus rotateImage32CW(
 			 ImagePlus imp) {
 		  int width=imp.getWidth();
@@ -1487,7 +1487,7 @@ public class EyesisCorrections {
 	 }
 
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	  public CompositeImage convertToComposite( ImagePlus imp) {
 //		  if (imp.isComposite()) return imp;
 		  if (imp.isComposite()) return null;
@@ -1502,7 +1502,7 @@ public class EyesisCorrections {
 		  return ci;
 	  }
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	  public ImageStack convertRGB32toRGB16Stack(
 			  ImageStack stack32,
 			  EyesisCorrectionParameters.RGBParameters rgbParameters) {
@@ -1568,7 +1568,7 @@ public class EyesisCorrections {
 		  return imp;
 	  }
 	
-	/** ======================================================================== */
+	/* ======================================================================== */
 	  public ImagePlus Image32toGreyRGB24(
 			  ImagePlus imp){
 		  int width=imp.getWidth();
@@ -1594,10 +1594,10 @@ public class EyesisCorrections {
 	      ImagePlus imp_rgb=new ImagePlus(imp.getTitle(),cp);
 		  return imp_rgb;
 	  }
-	  /** ======================================================================== */
+	  /* ======================================================================== */
 
 	  
-	  /** Combine 2 stacks and a mask */
+	  /* Combine 2 stacks and a mask */
 	  public ImageStack combineStacksWithMask (ImageStack stack_bg,
 			  ImageStack stack_fg, 
 			  //                                                 float [] mask ) {
@@ -1622,7 +1622,7 @@ public class EyesisCorrections {
 	
 	
 	
- /** ======================================================================== */
+ /* ======================================================================== */
     public double [] getSlidingMask(int size) { // duplicate with DebayerScissors
       double [] mask = new double [size*size];
       double [] maskLine=new double [size];
@@ -1634,13 +1634,13 @@ public class EyesisCorrections {
       return mask;
     }
 
-	/** ======================================================================== */
-	  /** convolve image stack with the kernel stack using FHT. kernels should be (size/2)*(size/2) - currently 64x64, then image will be split into same 
+	/* ======================================================================== */
+	  /* convolve image stack with the kernel stack using FHT. kernels should be (size/2)*(size/2) - currently 64x64, then image will be split into same 
 	      (size/2)*(size/2) overlapping by step=size/4 segments. Both are zero-padded to size x size, so after convolution the result will not roll over, and
 	      processed 128x128 result arrays are accumulated in the output stack.
 	      The input image should be properly extended by size/4 in each direction (and so the kernel arrays should match it) - that would minimize border effects.*/
 	 
-	  /** ======================================================================== */
+	  /* ======================================================================== */
 	  public ImageStack convolveStackWithKernelStack (
 			  final ImageStack  imageStack,  // stack with 3 colors/slices with the image
 			  final ImageStack kernelStack, // stack with 3 colors/slices convolution kernels
@@ -1699,19 +1699,19 @@ public class EyesisCorrections {
 							  kernelPixels=(float[]) kernelStack.getPixels(chn+1);
 							  chn0=chn;
 						  }
-						  /** Read source image tile */
+						  /* Read source image tile */
 						  extractSquareTile( pixels, // source pixel array,
 								  inTile, // will be filled, should have correct size before call
 								  slidingWindow, // window (same size as the kernel)
 								  imgWidth, // width of pixels array
 								  tileX*step, // left corner X
 								  tileY*step); // top corner Y
-						  /** zero pad twice the original size*/
+						  /* zero pad twice the original size*/
 						  outTile=extendFFTInputTo (inTile, size);
-						  /** FHT transform of the source image data*/
+						  /* FHT transform of the source image data*/
 						  fht_instance.swapQuadrants(outTile);
 						  fht_instance.transform(    outTile);
-						  /** read convolution kernel */
+						  /* read convolution kernel */
 						  extractOneKernel(kernelPixels, //  array of combined square kernels, each 
 								  kernel, // will be filled, should have correct size before call
 								  kernelNumHor, // number of kernels in a row
@@ -1719,22 +1719,22 @@ public class EyesisCorrections {
 								  //tileY*kernelSize); // vertical number of kernel to extract
 								  tileX, // horizontal number of kernel to extract
 								  tileY); // vertical number of kernel to extract
-						  /** zero pad twice the original size*/
+						  /* zero pad twice the original size*/
 						  doubleKernel=extendFFTInputTo (kernel, size);
 //						  debug_sum=0;
 //						  for (i=0;i<doubleKernel.length;i++) debug_sum+=doubleKernel[i];
 //						  if (globalDebugLevel>1) System.out.println("kernel sum="+debug_sum);
 						  
 						  //if ((tileY==tilesY/2) && (tileX==tilesX/2))  SDFA_INSTANCE.showArrays(doubleKernel,size,size, "doubleKernel-"+chn);
-						  /** FHT transform of the kernel */
+						  /* FHT transform of the kernel */
 						  fht_instance.swapQuadrants(doubleKernel);
 						  fht_instance.transform(    doubleKernel);
-						  /** multiply in frequency domain */
+						  /* multiply in frequency domain */
 						  outTile=     fht_instance.multiply(outTile, doubleKernel, false);
-						  /** FHT inverse transform of the product - back to space domain */
+						  /* FHT inverse transform of the product - back to space domain */
 						  fht_instance.inverseTransform(outTile);
 						  fht_instance.swapQuadrants(outTile);
-						  /** accumulate result */
+						  /* accumulate result */
 						  //if ((tileY==tilesY/2) && (tileX==tilesX/2))  SDFA_INSTANCE.showArrays(outTile,size,size, "out-"+chn);
 						  /*This is synchronized method. It is possible to make threads to write to non-overlapping regions of the outPixels, but as the accumulation
 						   * takes just small fraction of severtal FHTs, it should be OK - reasonable number of threads will spread and not "stay in line"
@@ -1751,14 +1751,14 @@ public class EyesisCorrections {
 		  startAndJoin(threads);
 		  if (globalDebugLevel > 1) System.out.println("Threads done at "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 
-		  /** prepare result stack to return */
+		  /* prepare result stack to return */
 		  ImageStack outStack=new ImageStack(imgWidth,imgHeight);
 		  for (i=0;i<nChn;i++) {
 			  outStack.addSlice(imageStack.getSliceLabel(i+1), outPixels[i]);
 		  }
 		  return outStack;
 	  }
-	  /** Adds zero pixels around the image, "extending canvas" */
+	  /* Adds zero pixels around the image, "extending canvas" */
 
 	  public double [][] extendFFTInputTo (double[][] input_pixels,
 	                                              int newSize) {
@@ -1810,7 +1810,7 @@ public class EyesisCorrections {
 	  
 // duplicates with DebayerScissors	  
 
-	    /** ======================================================================== */
+	    /* ======================================================================== */
 	    /**extract and multiply by window function (same size as kernel itself) */
 	     void extractSquareTile(float [] pixels, // source pixel array,
 	                             double [] tile, // will be filled, should have correct size before call
@@ -1835,7 +1835,7 @@ public class EyesisCorrections {
 	         }
 	       }
 	     }
-	   /** ======================================================================== */
+	   /* ======================================================================== */
 	     void extractSquareTile(double [] pixels, // source pixel array,
 	   		  double [] tile, // will be filled, should have correct size before call
 	   		  double [] window, // window (same size as the kernel)
@@ -1861,8 +1861,8 @@ public class EyesisCorrections {
 	     }
 
 	     
-	   /** ======================================================================== */
-	   /** accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
+	   /* ======================================================================== */
+	   /* accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
 	     synchronized void  accumulateSquareTile(
 	   		  float [] pixels, //  float pixels array to accumulate tile
 	   		  double []  tile, // data to accumulate to the pixels array
@@ -1911,7 +1911,7 @@ public class EyesisCorrections {
 	     }
 
 // end of duplicates with DebayerScissors	 
-/** Convert source Bayer pattern (GR/BG) image to higher resolution, add margins by duplicating pattern around */
+/* Convert source Bayer pattern (GR/BG) image to higher resolution, add margins by duplicating pattern around */
 	  public ImageStack  bayerToStack(ImagePlus imp, // source bayer image, linearized, 32-bit (float))
 			  EyesisCorrectionParameters.SplitParameters splitParameters){
 
@@ -1933,7 +1933,7 @@ public class EyesisCorrections {
 	    int ovrWidth= inWidth*splitParameters.oversample;
 	    int ovrHeight=inHeight*splitParameters.oversample;
 	    for (chn=0;chn<nChn;chn++) for (i=0;i<outPixels[chn].length;i++) outPixels[chn][i]=0.0f;
-	/** Can be optimized - now it calculate input address for all those 0-es */
+	/* Can be optimized - now it calculate input address for all those 0-es */
 	    for (index=0; index<outLength; index++) {
 	      y=(index / outWidth)-splitParameters.addTop;
 	      x=(index % outWidth)-splitParameters.addLeft;
@@ -1948,7 +1948,7 @@ public class EyesisCorrections {
 	        outPixels[chn][index]=pixels[y*inWidth+x];
 	      }
 	    }
-	/** prepare result stack to return */
+	/* prepare result stack to return */
 	    ImageStack outStack=new ImageStack(outWidth,outHeight);
 	    for (chn=0;chn<nChn;chn++) {
 	      outStack.addSlice(chnNames[chn], outPixels[chn]);
@@ -1961,8 +1961,8 @@ public class EyesisCorrections {
 	
 	
 // TODO: do similar for JP4, using "subcamera" to "use" all channels for it	
-	/** ======================================================================== */ 
-	/** Calculate deconvolution kernel (or difference of the two) noise gain
+	/* ======================================================================== */ 
+	/* Calculate deconvolution kernel (or difference of the two) noise gain
 	 *  to be used when calculating mask that selects between deconvolved with
 	 *  different kernels
 	 */
@@ -2018,13 +2018,13 @@ public class EyesisCorrections {
 							  if (useDiff) kernelPixels2=(float[]) kernelStack2.getPixels(chn+1);
 							  chn0=chn;
 						  }
-						  /** read convolution kernel */
+						  /* read convolution kernel */
 						  extractOneKernel(kernelPixels1, //  array of combined square kernels, each 
 								  kernel1, // will be filled, should have correct size before call
 								  kernelNumHor, // number of kernels in a row
 								  tileX, // horizontal number of kernel to extract
 								  tileY); // vertical number of kernel to extract
-						  /** optionally read the second convolution kernel */
+						  /* optionally read the second convolution kernel */
 						  if (useDiff) {extractOneKernel(kernelPixels2, //  array of combined square kernels, each 
 								  kernel2, // will be filled, should have correct size before call
 								  kernelNumHor, // number of kernels in a row
@@ -2033,7 +2033,7 @@ public class EyesisCorrections {
 						     for (i=0; i<kernel1.length;i++) kernel1[i]-=kernel2[i];
 						  }
 						  if (blurSigma>0) gb.blurDouble(kernel1, kernelSize, kernelSize, blurSigma, blurSigma, 0.01);
-						  /** Calculate sum of squared kernel1  elements */
+						  /* Calculate sum of squared kernel1  elements */
 						  sum=0.0;
 						  for (i=0; i<kernel1.length;i++) sum+=kernel1[i]*kernel1[i];
 						  outPixles[chn][tileY*kernelNumHor+tileX]= (float) (Math.sqrt(sum));
@@ -2044,7 +2044,7 @@ public class EyesisCorrections {
 		  }		      
 		  startAndJoin(threads);
 		  if (globalDebugLevel > 1) System.out.println("Threads done at "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
-		  /** prepare result stack to return */
+		  /* prepare result stack to return */
 		  ImageStack outStack=new ImageStack(kernelNumHor,kernelNumVert);
 		  for (i=0;i<nChn;i++) {
 			  outStack.addSlice(kernelStack1.getSliceLabel(i+1), outPixles[i]);
@@ -2063,7 +2063,7 @@ public class EyesisCorrections {
 		  int pixelsWidth=numHor*size;
 		  int pixelsHeight=pixels.length/pixelsWidth;
 		  int numVert=pixelsHeight/size;
-		  /** limit tile numbers - effectively add margins around the known kernels */
+		  /* limit tile numbers - effectively add margins around the known kernels */
 		  if (xTile<0) xTile=0;
 		  else if (xTile>=numHor) xTile=numHor-1;
 		  if (yTile<0) yTile=0;
@@ -2072,7 +2072,7 @@ public class EyesisCorrections {
 		  for (i=0;i<size;i++) for (j=0;j<size;j++) kernel [i*size+j]=pixels[base+i*pixelsWidth+j];
 	  }
 
-	  /** Extract noise mask (proportional to noise gain of the kernels), the denoise mask should be divided by this
+	  /* Extract noise mask (proportional to noise gain of the kernels), the denoise mask should be divided by this
 	   *  
 	   */
 	   public double [][] extractNoiseMask(
@@ -2102,7 +2102,7 @@ public class EyesisCorrections {
 	 	  }
 	 	  return mask;
 	   }
-	   /** ======================================================================== */
+	   /* ======================================================================== */
 	   private void saveAndShow(
 	 		  ImagePlus             imp,
 			   EyesisCorrectionParameters.CorrectionParameters  correctionsParameters){
@@ -2206,8 +2206,8 @@ public class EyesisCorrections {
 	   }
 
 	 
-		/** ======================================================================== */
-		/** Create a Thread[] array as large as the number of processors available.
+		/* ======================================================================== */
+		/* Create a Thread[] array as large as the number of processors available.
 			 * From Stephan Preibisch's Multithreading.java class. See:
 			 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 			 */
@@ -2216,7 +2216,7 @@ public class EyesisCorrections {
 				if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 				return new Thread[n_cpus];
 			}
-		/** Start all given threads and wait on each of them until all are done.
+		/* Start all given threads and wait on each of them until all are done.
 			 * From Stephan Preibisch's Multithreading.java class. See:
 			 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 			 */

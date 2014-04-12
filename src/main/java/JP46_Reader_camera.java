@@ -52,7 +52,7 @@ import org.xml.sax.SAXException;
 
 
 
-/** This plugin opens images in Elphel JP4/JP46 format (opens as JPEG, reads MakerNote and converts). */
+/* This plugin opens images in Elphel JP4/JP46 format (opens as JPEG, reads MakerNote and converts). */
 public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 
 	/**
@@ -141,10 +141,10 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 	public void actionPerformed(ActionEvent e) {
 		String label = e.getActionCommand();
 
-		/** nothing */
+		/* nothing */
 		if (label==null) return;
 
-		/** button */
+		/* button */
 		if (label.equals("Open JP4/JP46...")) {   
 			read_jp46(arg,true);
 		}else if (label.equals("Open JP4/JP46 (no scale)...")) {
@@ -293,11 +293,11 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 			if (imp == null) {
 				IJ.showMessage("JP46 Reader Error", "Could not open "+directory+"" + fileName + " as JPEG/JP46");
 			} else {
-				if ((imp_src==null)&& showImage) imp.show(); /** Shows before re-ordering*/
-				ElphelMakerNote = readElphelMakerNote(directory, fileName, 16,xtraExif); /** after or 8.2.2 */
-				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNote(directory, fileName, 14,xtraExif); /** after or 8.0.8.32 */
-				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNote(directory, fileName, 12,xtraExif); /** after or 8.0.7.3 */
-				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNote(directory, fileName, 8 ,xtraExif); /** before 8.0.7.3 */
+				if ((imp_src==null)&& showImage) imp.show(); /* Shows before re-ordering*/
+				ElphelMakerNote = readElphelMakerNote(directory, fileName, 16,xtraExif); /* after or 8.2.2 */
+				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNote(directory, fileName, 14,xtraExif); /* after or 8.0.8.32 */
+				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNote(directory, fileName, 12,xtraExif); /* after or 8.0.7.3 */
+				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNote(directory, fileName, 8 ,xtraExif); /* before 8.0.7.3 */
 			}
 		} catch (IOException e) {
 			IJ.showStatus("");
@@ -310,14 +310,14 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 			reuse_imp=jp46Reorder(imp, ElphelMakerNote, scale, imp_src);
 			if (reuse_imp) {
 				imp=imp_src;
-			} else if ((imp_src!=null)&& showImage) { /** tried to reuse, but wrong size */
-				imp.show(); /** never did that before */  
+			} else if ((imp_src!=null)&& showImage) { /* tried to reuse, but wrong size */
+				imp.show(); /* never did that before */  
 			}
 			if ((xtraExif!=null) && !Double.isNaN(xtraExif[0])){
 				imp.setProperty("EXPOSURE",  String.format("%f",xtraExif[0]));
 
 			}
-			if (showImage) imp.updateAndDraw(); /** Redisplays final image*/
+			if (showImage) imp.updateAndDraw(); /* Redisplays final image*/
 
 			if (showDemux) {
 				if (!this.ABSOLUTELY_SILENT) System.out.println("demuxing...");
@@ -366,13 +366,13 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 			} else {
 				if ((imp_src==null) && showImage) {
 //					System.out.println("show() 1");
-					imp.show(); /** Shows before re-ordering*/
+					imp.show(); /* Shows before re-ordering*/
 				}
 				/// get rid of the "/towp/wait" if any - there is a chance to re-read the same image
-				ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 16,xtraExif); /** after or 8.2.2 */
-				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 14,xtraExif); /** after or 8.0.8.32 */
-				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 12,xtraExif); /** after or 8.0.7.3 */
-				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 8 ,xtraExif ); /** before 8.0.7.3 */
+				ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 16,xtraExif); /* after or 8.2.2 */
+				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 14,xtraExif); /* after or 8.0.8.32 */
+				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 12,xtraExif); /* after or 8.0.7.3 */
+				if (ElphelMakerNote==null) ElphelMakerNote = readElphelMakerNoteURL(url.replaceFirst("/towp/wait",""), 8 ,xtraExif ); /* before 8.0.7.3 */
 
 			}
 		} catch (IOException e) {
@@ -387,14 +387,14 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 			reuse_imp=jp46Reorder(imp, ElphelMakerNote, scale, imp_src);
 			if (reuse_imp) {
 				imp=imp_src;
-			} else if ((imp_src!=null) && showImage) { /** tried to reuse, but wrong size */
+			} else if ((imp_src!=null) && showImage) { /* tried to reuse, but wrong size */
 //				System.out.println("show() 2");
-				imp.show(); /** never did that before */  
+				imp.show(); /* never did that before */  
 			}
 			if ((xtraExif!=null) && !Double.isNaN(xtraExif[0])){
 				imp.setProperty("EXPOSURE",  String.format("%f",xtraExif[0]));
 			}
-			if (showImage) imp.updateAndDraw(); /** Redisplays final image*/
+			if (showImage) imp.updateAndDraw(); /* Redisplays final image*/
 			if (showDemux) {
 				if (!this.ABSOLUTELY_SILENT) System.out.println("demuxing...");
 				ImagePlus imp_0 = demuxImage(imp, 0); if (imp_0!=null) imp_0.show();
@@ -428,7 +428,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		double[] blacks= new double[4];
 		double[] blacks256= new double[4];
 		double[] gammas= new double[4];
-		long []   gamma_scales= new long[4]; /** now not used, was scale _after_ gamma is applied, 0x400(default) corersponds to 1.0 */
+		long []   gamma_scales= new long[4]; /* now not used, was scale _after_ gamma is applied, 0x400(default) corersponds to 1.0 */
 		int i;
 		double[][] rgammas=new double[4][];
 		double min_gain;
@@ -456,7 +456,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		long     CORING_INDEX_C=0;
 		double []   satValue={255.0, 255.0, 255.0, 255.0};
 		if  (MakerNote !=null) {
-			for (i=0;i<4;i++) { /** r,g,gb,b */
+			for (i=0;i<4;i++) { /* r,g,gb,b */
 				gains[i]= MakerNote[i]/65536.0;
 				blacks[i]=(MakerNote[i+4]>>24)/256.0;
 				gammas[i]=((MakerNote[i+4]>>16)&0xff)/100.0;
@@ -655,8 +655,8 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 
 
 		ImageProcessor ip = imp.getProcessor();
-		//		if (FLIPH!=0) ip.flipHorizontal(); /** To correct Bayer */
-		//		if (FLIPV!=0) ip.flipVertical(); /** To correct Bayer */
+		//		if (FLIPH!=0) ip.flipHorizontal(); /* To correct Bayer */
+		//		if (FLIPV!=0) ip.flipVertical(); /* To correct Bayer */
 
 		int width = ip.getWidth();
 		int height = ip.getHeight();
@@ -674,7 +674,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 			ip_src=ip;
 			use_imp_src=false;
 		}
-		for (yb=0;yb<(height>>4); yb++) for (xb=0;xb<(width>>4); xb++) { /** iterating macroblocks */
+		for (yb=0;yb<(height>>4); yb++) for (xb=0;xb<(width>>4); xb++) { /* iterating macroblocks */
 			if (IS_JP4) {
 				for (nb=0; nb<4;nb++) {
 					xbyr=nb & 1;
@@ -701,7 +701,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 					}
 				}
 			}
-			/** apply gammas here */
+			/* apply gammas here */
 			if  (MakerNote !=null) {
 
 				if (scale) {
@@ -743,17 +743,17 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 				}
 			}
 		}
-		if (FLIPH!=0) ip_src.flipHorizontal(); /** To correct Bayer */
-		if (FLIPV!=0) ip_src.flipVertical(); /** To correct Bayer */
+		if (FLIPH!=0) ip_src.flipHorizontal(); /* To correct Bayer */
+		if (FLIPV!=0) ip_src.flipVertical(); /* To correct Bayer */
 		
-		/** Is it needed here ? */
-		/**    imp.draw();
+		/* Is it needed here ? */
+		/*    imp.draw();
     imp.show(); **/
 		if (use_imp_src) copyProperties (imp, imp_src); 
 		return use_imp_src;
 	}
 
-	/** reverses gamma calculations in the camera
+	/* reverses gamma calculations in the camera
       returns double[] table , in the range 0.0..255.996
 	 */
 	double [] elphel_gamma_calc (double gamma, double black, long gamma_scale) {
@@ -774,8 +774,8 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 			if (ig > 0xffff) ig=0xffff;
 			gtable[i]=ig;
 		}
-		/** now gtable[] is the same as was used in the camera */
-		/** FPGA was using linear interpolation between elements of the gamma table, so now we'll reverse that process */
+		/* now gtable[] is the same as was used in the camera */
+		/* FPGA was using linear interpolation between elements of the gamma table, so now we'll reverse that process */
 		// double[] rgtable =new  double[256];
 		int indx=0;
 		double outValue;
@@ -791,24 +791,24 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 
 
 	long[] readElphelMakerNote(String directory, String fileName, int len, double [] xtraExif) throws IOException  {
-		byte [] sig=  {(byte) 0x92 ,0x7c, /** MakerNote*/
-				0x00 ,0x04, /** type (long)*/
-				0x00 ,0x00 ,0x00 ,0x08 }; /** number*/
-		/** should always read all MakerNote - verify that format did not change (edit here when it does). */
+		byte [] sig=  {(byte) 0x92 ,0x7c, /* MakerNote*/
+				0x00 ,0x04, /* type (long)*/
+				0x00 ,0x00 ,0x00 ,0x08 }; /* number*/
+		/* should always read all MakerNote - verify that format did not change (edit here when it does). */
 		sig[7]=(byte) (len & 0xff);
 		sig[6]=(byte) ((len>>8) & 0xff);
 		sig[5]=(byte) ((len>>16) & 0xff);
 		sig[4]=(byte) ((len>>24) & 0xff);
 
 		RandomAccessFile in = new RandomAccessFile(directory + fileName, "r");
-		byte[] head = new byte[4096]; /** just read the beginning of the file */
+		byte[] head = new byte[4096]; /* just read the beginning of the file */
 		in.readFully(head);
 		in.close(); // was no close()! -? "too many open files"
 		if ((head[this.ExifOffset]!=0x4d) || (head[this.ExifOffset+1]!=0x4d)) {
 			IJ.showMessage("JP46 Reader", "Exif Header not found in " + directory + fileName);
 			return null;
 		}
-		/** search for MakerNote */
+		/* search for MakerNote */
 		long [] note=getExifData (sig, head, len);
 		if (xtraExif!=null){
 			if (xtraExif.length>0){ // get exposure time
@@ -834,7 +834,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		try {
 			camURL  = new URL(url);
 			urlConn = camURL.openConnection();
-			int contentLength = 4096; /** just read the beginning of the file */ //urlConn.getContentLength();    
+			int contentLength = 4096; /* just read the beginning of the file */ //urlConn.getContentLength();    
 			//inStream = new InputStreamReader(urlConn.getInputStream());
 
 			int bytesRead = 0;
@@ -854,10 +854,10 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		} catch(IOException  e1){
 			System.out.println("Can't read  from the Internet: "+ e1.toString() ); 
 		}
-		byte [] sig=  {(byte) 0x92 ,0x7c, /** MakerNote*/
-				0x00 ,0x04, /** type (long)*/
-				0x00 ,0x00 ,0x00 ,0x08 }; /** number*/
-		/** should always read all MakerNote - verify that format did not change (edit here when it does). */
+		byte [] sig=  {(byte) 0x92 ,0x7c, /* MakerNote*/
+				0x00 ,0x04, /* type (long)*/
+				0x00 ,0x00 ,0x00 ,0x08 }; /* number*/
+		/* should always read all MakerNote - verify that format did not change (edit here when it does). */
 		sig[7]=(byte) (len & 0xff);
 		sig[6]=(byte) ((len>>8) & 0xff);
 		sig[5]=(byte) ((len>>16) & 0xff);
@@ -865,7 +865,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 
 		//in = new RandomAccess(RandomAccessFactory.createRO(camURL), "r");
 
-		byte[] head = new byte[4096]; /** just read the beginning of the file */
+		byte[] head = new byte[4096]; /* just read the beginning of the file */
 		head = data;
 		//in.readFully(head);
 
@@ -873,7 +873,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 			IJ.showMessage("JP46 Reader", "Exif Header not found in " + url);
 			return null;
 		}
-		/** search for MakerNote */
+		/* search for MakerNote */
 //		return getExifData (sig, head, len);
 		long [] note=getExifData (sig, head, len);
 		if (xtraExif!=null){
@@ -895,7 +895,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 	
 	
 	long [] getExifData (byte [] sig, byte [] head, int len){
-		/** search for sig array */
+		/* search for sig array */
 		int i = this.ExifOffset + 2;
 		boolean match=false;
 		for (i = this.ExifOffset + 2; i < (head.length - sig.length); i++ ) {
@@ -908,7 +908,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		}
 		i += sig.length;
 		if (i >= (head.length-4)) {
-			/** IJ.showMessage("JP46 Reader", "MakerNote tag not found in "+directory + fileName+ ", finished at offset="+i); // re-enable with DEBUG_LEVEL*/
+			/* IJ.showMessage("JP46 Reader", "MakerNote tag not found in "+directory + fileName+ ", finished at offset="+i); // re-enable with DEBUG_LEVEL*/
 			return null;
 		}
 
@@ -925,7 +925,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		return note;
 	}
 
-	/** Modified from Opener.java */
+	/* Modified from Opener.java */
 	ImagePlus openJpegOrGif(String dir, String name) {
 		ImagePlus imp = null;
 		Image img = Toolkit.getDefaultToolkit().createImage(dir+name);
@@ -969,7 +969,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		ImagePlus imp = null;
 		Image img = null;
 
-		/** Validate URL */
+		/* Validate URL */
 		try {
 			url = new URL(cameraurl);
 		} catch (MalformedURLException e) {
@@ -1021,8 +1021,8 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		IJ.showStatus("Converting to 32-bits");
 		new ImageConverter(imp).convertToGray32();
 	}
-	/** =====Other methods =================================================================== */
-	/** ======================================================================== */
+	/* =====Other methods =================================================================== */
+	/* ======================================================================== */
 	public void listImageProperties (ImagePlus imp) {
 		listImageProperties (imp,false);
 	}
@@ -1049,7 +1049,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		}
 	}
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public double fracOverExposed(double [] map,   // map of overexposed pixels 0.0 - 0K, >0 (==1.0) - overexposed
 			                      int  mapWidth,   // width of the map
 			                      int        x0,   // X of the top left corner of the selection
@@ -1067,7 +1067,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		return (1.0*over)/width/height;
 	}
 	// returns 1.0 if there is overexposed pixel, 0.0 - if OK
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public double [] overexposedMap (ImagePlus imp) {
 		return overexposedMap (imp, 0.999);
 	}

@@ -845,7 +845,7 @@ public class MatchSimulatedPattern {
 		   return this.correlationSizesUsed;
 	   }
 
-	/** returns array of 3 arrays: first two are 3-element wave vectors (x,y,phase), last - 3-rd order correction coefficients */
+	/* returns array of 3 arrays: first two are 3-element wave vectors (x,y,phase), last - 3-rd order correction coefficients */
 	public double[][] findPatternDistorted(double [][] bayer_pixels, // pixel array to process (no windowing!), two greens will be used
 			PatternDetectParameters patternDetectParameters,
 			boolean                                  greens,  // this is a pattern for combined greens (diagonal), adjust results accordingly
@@ -910,14 +910,14 @@ public class MatchSimulatedPattern {
 						" W1_phase="+IJ.d2s(quarter_patterns[iq][1][2],2));
 			}
 		}
-		/** Filter pattern coefficients to make sure they all match between quadrants (match to the center one)*/
+		/* Filter pattern coefficients to make sure they all match between quadrants (match to the center one)*/
 		boolean patternsMatchedInitially=matchPatterns(quarter_patterns,quarter_patterns[4]);    // use center pattern
 		if (this.debugLevel>2) {
 			System.out.println(patternsMatchedInitially?"All quadrant wave vectors matched initially, no correction needed":"Some quadrant wave vectors were adjusted to match");
 		}
 
 		patternCorr=calcPatternNonLinear(quarter_patterns); // divide results by ,(FFT_SIZE/2)^2 - only first 5 patterns are used
-		if (this.debugLevel>2) { /** increase LEVEL later */
+		if (this.debugLevel>2) { /* increase LEVEL later */
 			System.out.println("Pre- (1000x)   "+
 					" Ax="+     IJ.d2s(1000*patternCorr[0]/(FFT_SIZE/2),5)+
 					" Bx="+     IJ.d2s(1000*patternCorr[1]/(FFT_SIZE/2),5)+
@@ -937,9 +937,9 @@ public class MatchSimulatedPattern {
 
 
 		//    for (i=0;i<patternCorr.length;i++)patternCorr[i]/= hsize;
-		for (i=0;i<6;i++)patternCorr[i]/= hsize; /** Not linear Dx,Ex, Dy,Ey! */
+		for (i=0;i<6;i++)patternCorr[i]/= hsize; /* Not linear Dx,Ex, Dy,Ey! */
 
-		if (this.debugLevel>2) { /** increase LEVEL later */
+		if (this.debugLevel>2) { /* increase LEVEL later */
 			System.out.println("Corr (1000x)   "+
 					" Ax="+     IJ.d2s(1000*patternCorr[0],5)+
 					" Bx="+     IJ.d2s(1000*patternCorr[1],5)+
@@ -959,7 +959,7 @@ public class MatchSimulatedPattern {
 		result[2]=patternCorr.clone();
 		return result;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public  double correlationContrast ( double [] pixels,       // square pixel array
 			double [][] wVectors,   // wave vectors (same units as the pixels array)
 			double ringWidth,       // ring (around r=0.5 dist to opposite corr) width
@@ -971,7 +971,7 @@ public class MatchSimulatedPattern {
 		double [] uv; 
 		double r2,d;
 		int i,j;
-/** opposite sign correlation points in uv are at uv=(0,-0.5),(0,0.5), (-0.5,0) and (0.5,0), with radius of (1/2)
+/* opposite sign correlation points in uv are at uv=(0,-0.5),(0,0.5), (-0.5,0) and (0.5,0), with radius of (1/2)
     selecting center circle and a ring from 0.25 to 0.75 of the distance to opposite sign correlations */
 
 		double r2WingsOuter= 0.0625*(1.0+ringWidth)*(1.0+ringWidth);
@@ -1037,7 +1037,7 @@ public class MatchSimulatedPattern {
 		}
 		return contrast;
 	}
-/** ======================================================================== */
+/* ======================================================================== */
 	public  double[] correlateWithModel (double [] imagePixels,  // measured pixel array
 			double [] modelPixels,  // simulated (model) pixel array)
 			double sigma,   // Sigma for high pass filtering TODO: implement!
@@ -1055,7 +1055,7 @@ public class MatchSimulatedPattern {
 		double a;
 
 		float [] floatImagePixels=new float[size*size];
-/** convert to float for image processor; */
+/* convert to float for image processor; */
 		for (i=0;i<(size*size); i++) floatImagePixels[i]=(float) imagePixels[i];
 		ip = new FloatProcessor(size,size);
 		ip.setPixels(floatImagePixels);
@@ -1102,7 +1102,7 @@ public class MatchSimulatedPattern {
 			fft_complex[i][j][1]=-fft_complex[i][j][0]*fft_model[i][j][1]+fft_complex[i][j][1]*fft_model[i][j][0]; // already changed Im() sign
 			fft_complex[i][j][0]=a;
 		}   
-/** Add sigma high=pass filtering here */
+/* Add sigma high=pass filtering here */
 		// Convert fft array back to fht array and
 		// set fht_target pixels with new values 
 		fht.setPixels (floatFFTHalf2FHT (fft_complex,size));
@@ -1158,7 +1158,7 @@ public class MatchSimulatedPattern {
 		//probably only wl[4] is needed
 		for (iq=0;iq<9;iq++) for (i=0;i<2;i++) for (j=0;j<2;j++) wp[iq]= waveVectorsToPatternVectors(qp[iq][0], qp[iq][1]);
 
-		if (this.debugLevel>2) { /** increase LEVEL later */
+		if (this.debugLevel>2) { /* increase LEVEL later */
 			for (iq=0;iq<5;iq++){
 				System.out.println(" wp["+iq+"][0][0]="+     IJ.d2s(wp[iq][0][0],4)+
 						" wp["+iq+"][0][1]="+     IJ.d2s(wp[iq][0][1],4)+
@@ -1185,14 +1185,14 @@ public class MatchSimulatedPattern {
 			x1=size*(xq + nonlin[0]*xq*xq+ nonlin[1]*yq*yq+ 2* nonlin[2]*xq*yq +nonlin[6]*xq+ nonlin[7]*yq); // in pixels
 			y1=size*(yq + nonlin[3]*xq*xq+ nonlin[4]*yq*yq+ 2* nonlin[5]*xq*yq +nonlin[8]*xq+ nonlin[9]*yq); // in pixels
 
-			/** convert x1,y1 into wp vector coordiantes */
+			/* convert x1,y1 into wp vector coordiantes */
 			uv[0]=(wp[4][1][1]*x1-wp[4][1][0]*y1)/(wp[4][0][0]*wp[4][1][1]-wp[4][0][1]*wp[4][1][0]); // wl in center vectors, not local !
 			uv[1]=(wp[4][0][0]*y1-wp[4][0][1]*x1)/(wp[4][0][0]*wp[4][1][1]-wp[4][0][1]*wp[4][1][0]);
-			/** Actually phases seem to be the same? */
+			/* Actually phases seem to be the same? */
 			duv[0]=uv[0]-Math.round(uv[0])- (wp[iq][0][2]-wp[4][0][2])/(Math.PI*2);
 			duv[1]=uv[1]-Math.round(uv[1])- (wp[iq][1][2]-wp[4][1][2])/(Math.PI*2);
 
-			if (this.debugLevel>2) { /** increase LEVEL later */
+			if (this.debugLevel>2) { /* increase LEVEL later */
 				System.out.println("iq=  "+ iq+
 						" x1="+     IJ.d2s(x1,4)+
 						" y1="+     IJ.d2s(y1,4)+
@@ -1201,16 +1201,16 @@ public class MatchSimulatedPattern {
 						" duv[0]"+   IJ.d2s(duv[0],4)+
 						" duv[1]"+   IJ.d2s(duv[1],4));
 			}
-			/** re-normalize phases to be +/- 0.5 (+/-PI) range */
+			/* re-normalize phases to be +/- 0.5 (+/-PI) range */
 			duv[0]=duv[0]-Math.round(duv[0]);
 			duv[1]=duv[1]-Math.round(duv[1]);
-			if (this.debugLevel>2) { /** increase LEVEL later */
+			if (this.debugLevel>2) { /* increase LEVEL later */
 				System.out.println("iq=  "+ iq+" ------- "+
-						" duv[0]"+   IJ.d2s(duv[0],4)+	/** ======================================================================== */
+						" duv[0]"+   IJ.d2s(duv[0],4)+	/* ======================================================================== */
 
 						" duv[1]"+   IJ.d2s(duv[1],4));
 			}
-			/** Fix half period vertical/half period horizontal shift - is that needed?*/
+			/* Fix half period vertical/half period horizontal shift - is that needed?*/
 			if (Math.abs(duv[0])>0.25) {
 				duv[0]+=0.5;
 				duv[1]+=0.5;
@@ -1223,7 +1223,7 @@ public class MatchSimulatedPattern {
 				}
 			}
 
-			/** Verify here that phase adjustment is within range, fail otherwise */
+			/* Verify here that phase adjustment is within range, fail otherwise */
 			if ((Math.abs(duv[0])>0.5) || (Math.abs(duv[1])>0.5)) {
 				if (this.debugLevel>0) {
 					System.out.println("Error: in quadrant "+ iq+" - attempted to adjust phase too much (>+/- pi/2), keeping initial parematers");
@@ -1231,20 +1231,20 @@ public class MatchSimulatedPattern {
 				return nonlin;
 			}
 
-			/** convert duv to x,y */
+			/* convert duv to x,y */
 			xy[iq][0]=x1-wp[4][0][0]*duv[0]-wp[4][1][0]*duv[1];
 			xy[iq][1]=y1-wp[4][0][1]*duv[0]-wp[4][1][1]*duv[1];
 
 
-			if (this.debugLevel>2) { /** increase LEVEL later */
+			if (this.debugLevel>2) { /* increase LEVEL later */
 				System.out.println(" xy["+iq+"][0]="+   IJ.d2s(xy[iq][0],4)+
 						" xy["+iq+"][1]="+   IJ.d2s(xy[iq][1],4));
 			}
-			/** convert xy to non-linear differences, remove pixels dimensions - quadrats +/- 1.0 */
+			/* convert xy to non-linear differences, remove pixels dimensions - quadrats +/- 1.0 */
 			xy[iq][0]=(xy[iq][0]-size*xq)/size;
 			xy[iq][1]=(xy[iq][1]-size*yq)/size;
 
-			if (this.debugLevel>2) { /** increase LEVEL later */
+			if (this.debugLevel>2) { /* increase LEVEL later */
 				System.out.println("Quadrant "+iq+": Original non-linear difference was"+
 						" x="+   IJ.d2s(nonlin[0]*xq*xq+ nonlin[1]*yq*yq+ nonlin[2]*xq*yq,4)+
 						" y="+   IJ.d2s(nonlin[3]*xq*xq+ nonlin[4]*yq*yq+ nonlin[5]*xq*yq,4));
@@ -1255,7 +1255,7 @@ public class MatchSimulatedPattern {
 
 		}
 
-		/** Do the refinement itself - recalculate coefficients minimizing errors in 5 points */
+		/* Do the refinement itself - recalculate coefficients minimizing errors in 5 points */
 		/**
 
 	    x1=size*(xq + nonlin[0]*xq*xq+ nonlin[1]*yq*yq+ 2* nonlin[2]*xq*yq +nonlin[6]*xq+ nonlin[7]*yq); // in pixels
@@ -1349,7 +1349,7 @@ public class MatchSimulatedPattern {
 
 		return rslt; // temporary
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public double[][] findPattern(double [] input_pixels, // pixel array to process
 			int size, // FFT size
 			PatternDetectParameters patternDetectParameters,
@@ -1412,7 +1412,7 @@ public class MatchSimulatedPattern {
 			}
 		}
 
-		/** TODO:  maybe it is better to find the pattern frequencies just here, without converting back.
+		/* TODO:  maybe it is better to find the pattern frequencies just here, without converting back.
     After rejecting low frequencies, there seem to be just 2 nice maximums - easy to extract*/
 		// now perform direct FFT of gamma(power spectrum)  
 		ip1 = new FloatProcessor(size,size);
@@ -1441,7 +1441,7 @@ public class MatchSimulatedPattern {
 
 		// Convert fft array back to fht array and
 		// set fht_target pixels with new values 
-		fht1.setPixels (floatFFTHalf2FHT (fft_corr,size));   /** FIXME: - done, there is no difference as Im()==0 */
+		fht1.setPixels (floatFFTHalf2FHT (fft_corr,size));   /* FIXME: - done, there is no difference as Im()==0 */
 		/// optionally show the result
 		if (this.debugLevel>7) {
 			ImageProcessor ip_fht2 = new FloatProcessor(size,size);
@@ -1487,7 +1487,7 @@ public class MatchSimulatedPattern {
 			}
 			return null;
 		}
-		/** Trying to filter out unreasonable maximums (if there is no pattern at all) */
+		/* Trying to filter out unreasonable maximums (if there is no pattern at all) */
 		double maxFrequency=0.25*fft_complex.length;
 		if ((Math.abs(max2OnSpectrum[0][0])>maxFrequency) ||
 				(Math.abs(max2OnSpectrum[0][1])>maxFrequency) ||
@@ -1507,7 +1507,7 @@ public class MatchSimulatedPattern {
 
 		int [][] startPoints={{max2OnSpectrum[0][0]+max2OnSpectrum[1][0], max2OnSpectrum[0][1]+max2OnSpectrum[1][1]},
 				{max2OnSpectrum[0][0]-max2OnSpectrum[1][0], max2OnSpectrum[0][1]-max2OnSpectrum[1][1]}};
-		if (startPoints[1][1] <0) { /** startPoints[1][1] > 0 anyway */
+		if (startPoints[1][1] <0) { /* startPoints[1][1] > 0 anyway */
 			startPoints[1][0]= -startPoints[1][0];
 			startPoints[1][1]= -startPoints[1][1];
 		}
@@ -1533,7 +1533,7 @@ public class MatchSimulatedPattern {
 			}
 			return null;
 		}
-		/** these are combined greens, convert vectors to original pixel space) */
+		/* these are combined greens, convert vectors to original pixel space) */
 		if (greens) { 
 			double [][] rotMatrix= {{1.0,-1.0},{1.0,1.0}};
 			double [][] max2orig= matrix2x2_mul(max2,rotMatrix);
@@ -1545,10 +1545,10 @@ public class MatchSimulatedPattern {
 		} else {
 			for (i=0;i<2;i++) for (j=0;j<2;j++) result[i][j]=max2[i][j]; // result is [2][3], max2 is [2][2]
 		}
-		/** Calculate locations of the maximums on FFT (corresponding to the diagonals of the checkerboard pattern) */
+		/* Calculate locations of the maximums on FFT (corresponding to the diagonals of the checkerboard pattern) */
 		double [][] maxOnFFT = {{2*size*(max2[0][0]-max2[1][0]),2*size*(max2[0][1]-max2[1][1])},
 				{2*size*(max2[0][0]+max2[1][0]),2*size*(max2[0][1]+max2[1][1])}};
-		/**  We have only one half of the FFT data  so rotate 180-degrees around the center if the point is in the bottom half*/
+		/*  We have only one half of the FFT data  so rotate 180-degrees around the center if the point is in the bottom half*/
 		double [] maxPhases=new double[2];
 		boolean [] invertPhaseSign={false,false};
 		int maxIndex; // iterate through the two maximums on FFT for phase measurement
@@ -1613,38 +1613,38 @@ public class MatchSimulatedPattern {
 				System.out.println("maxIndex="+maxIndex+" phase="+IJ.d2s(maxPhases[maxIndex],4));
 			}
 		}
-		double [] checkerPhases= findCheckerPhases(max2, maxPhases); /** may be different for greens==true . No, the same */
+		double [] checkerPhases= findCheckerPhases(max2, maxPhases); /* may be different for greens==true . No, the same */
 		for (i=0;i<2;i++) result[i][2]=checkerPhases[i];
 		if (this.debugLevel>2)  System.out.println();
 		return result;
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	private	int [][] findFirst2MaxOnSpectrum (double [][][] pixels, // complex, top half, starting from 0,0
-			/** May need to reduce the skip_around to be able to handle smaller number of pattern periods? Or re-try if failed? Guess somehow?*/
+			/* May need to reduce the skip_around to be able to handle smaller number of pattern periods? Or re-try if failed? Guess somehow?*/
 			int skip_around, // skip +- from (0,0) and previous max 
 			double minOrtho) { // 0.5 - 30deg. orthogonality of 2 vectors - 1.0 - perpendicular, 0.0 - parallel
 		int [][] max2={{0,0},{0,0}};
 		double thisMax=0.0;
 		int x,y,sx1,sx2;
 		double p,a;
-		/** find first point */
+		/* find first point */
 		for (y=0;y<pixels.length;y++) for (x=0;x<pixels[0].length; x++ ) {
 			p=pixels[y][x][0]*pixels[y][x][0]+pixels[y][x][1]*pixels[y][x][1];
 			if (p>thisMax) {
-				if ((y<=skip_around) && ((x<=skip_around) || (x>=pixels[0].length-skip_around))) continue; /** too close to [0,0] */
+				if ((y<=skip_around) && ((x<=skip_around) || (x>=pixels[0].length-skip_around))) continue; /* too close to [0,0] */
 				max2[0][0]=x;
 				max2[0][1]=y;
 				thisMax=p;
 			}
 		}
 		thisMax=0.0;
-		sx1=(max2[0][0]>(pixels[0].length/2))?(max2[0][0]-pixels[0].length):max2[0][0]; /** y is always positive here */
-		/** find second point */
+		sx1=(max2[0][0]>(pixels[0].length/2))?(max2[0][0]-pixels[0].length):max2[0][0]; /* y is always positive here */
+		/* find second point */
 		// Maybe also check if it is a local maximum (not on the border with protected area (0, first point, y=0, ...) ?
 		for (y=0;y<pixels.length;y++) for (x=0;x<pixels[0].length; x++ ) {
 			p=pixels[y][x][0]*pixels[y][x][0]+pixels[y][x][1]*pixels[y][x][1];
 			if (p>thisMax) {
-				/** Is this a local maximum? */
+				/* Is this a local maximum? */
 				if (y>0) {
 					if (                             p< (pixels[y-1][x  ][0]*pixels[y-1][x  ][0]+pixels[y-1][x  ][1]*pixels[y-1][x  ][1]))  continue;
 					if ((x>0) &&                    (p< (pixels[y-1][x-1][0]*pixels[y-1][x-1][0]+pixels[y-1][x-1][1]*pixels[y-1][x-1][1]))) continue;
@@ -1661,14 +1661,14 @@ public class MatchSimulatedPattern {
 					if (this.debugLevel>5) {
 						System.out.println("rejecting point ["+x+","+y+"] it is too close to [0,0]");
 					}
-					continue; /** too close to [0,0] */
+					continue; /* too close to [0,0] */
 				}
 
 				if ((y<=skip_around) && ((x<=skip_around) || (x>=pixels[0].length-skip_around))) {
 					if (this.debugLevel>5) {
 						System.out.println("rejecting point ["+x+","+y+"] it is too close to [0,0]");
 					}
-					continue; /** too close to [0,0] */
+					continue; /* too close to [0,0] */
 				}
 				if (((y<=(max2[0][1]+skip_around)) && (y>=(max2[0][1]-skip_around))) &&
 						(((x<=(max2[0][0]+skip_around)) && (x>=(max2[0][0]-skip_around))) ||
@@ -1677,12 +1677,12 @@ public class MatchSimulatedPattern {
 					if (this.debugLevel>5) {
 						System.out.println("rejecting point ["+x+","+y+"] as it is too close to the first one - ["+max2[0][0]+"("+sx1+"),"+max2[0][1]+"]");
 					}
-					continue; /** too close to first maximum */
+					continue; /* too close to first maximum */
 				}
 				sx2=(x>(pixels[0].length/2))?(x-pixels[0].length):x;
 				a=(sx1*y -max2[0][1]*sx2);
 				a=a*a/(sx1*sx1+max2[0][1]*max2[0][1])/(sx2*sx2+y*y);
-				if (a < (minOrtho*minOrtho)) { /** vectors are too close to parallel */
+				if (a < (minOrtho*minOrtho)) { /* vectors are too close to parallel */
 					if (this.debugLevel>5) {
 						System.out.println("rejecting point ["+x+"("+sx2+"),"+y+"] as the vector is too close to the first one - ["+max2[0][0]+"("+sx1+"),"+max2[0][1]+"]");
 						System.out.println("pixels.length="+pixels.length+" pixels[0].length="+pixels[0].length);
@@ -1703,8 +1703,8 @@ public class MatchSimulatedPattern {
 		if (max2[1][0]>(pixels[0].length/2)) max2[1][0]-=pixels[0].length;
 		return max2;
 	}
-	/** ======================================================================== */
-	/** Can it handle negative y if the refined maximum goes there? (maximal value on positive Y) */
+	/* ======================================================================== */
+	/* Can it handle negative y if the refined maximum goes there? (maximal value on positive Y) */
 	private double[][] findFirst2MaxOnCorrelation(double [] pixels,
 			int [][] startPoints,
 			PatternDetectParameters patternDetectParameters
@@ -1733,7 +1733,7 @@ public class MatchSimulatedPattern {
 		boolean tooFar=false;
 		int numVect;
 
-		/** Look for the maximal values around startPoints (+/-diff_spectr_corr )*/
+		/* Look for the maximal values around startPoints (+/-diff_spectr_corr )*/
 		for (nmax=0; nmax<startPoints.length; nmax++) {
 			ymn=imax[nmax][1]-patternDetectParameters.diffSpectrCorr;
 			ymx=imax[nmax][1]+patternDetectParameters.diffSpectrCorr; 
@@ -1756,7 +1756,7 @@ public class MatchSimulatedPattern {
 			for (y=ymn;y<=ymx;y++) for (x=xmn;x<=xmx; x++) {
 				indx=(size+1)*size/2 + y *size+x;
 				if (pixels[indx]>maxValues[nmax]) {
-					/** Make sure it is closer to this point than to any other or [0,0] */
+					/* Make sure it is closer to this point than to any other or [0,0] */
 					tooFar=false;
 					for (numVect=0;numVect<startPoints.length;numVect++) {
 						if (Math.abs((x-imax[nmax][0])*imax[numVect][0]+(y-imax[nmax][1])*imax[numVect][1])>0.5*vlengths[nmax]*vlengths[numVect]) {
@@ -1776,7 +1776,7 @@ public class MatchSimulatedPattern {
 					imax[nmax][1]=y;
 				}
 			}
-			/** Make sure the maximum in the scanned area is also a local maximum */
+			/* Make sure the maximum in the scanned area is also a local maximum */
 			isMax=true;
 			indx=(size+1)*size/2 + imax[nmax][1] *size+imax[nmax][0];
 			for (j=0;j<7;j++) if (pixels[indx]<pixels[indx+dirs[j]]) {
@@ -1789,7 +1789,7 @@ public class MatchSimulatedPattern {
 					System.out.println("Maximum is not a local maximum - BUG or consider changing patternDetectParameters.diffSpectrCorr="+patternDetectParameters.diffSpectrCorr);
 					System.out.println("point #"+(nmax+1)+" (of 2), x0="+startPoints[nmax][0]+" y0="+startPoints[nmax][1]+ " x="+imax[nmax][0]+" y="+imax[nmax][1]);
 				}
-				/** Maybe return from here with null?*/
+				/* Maybe return from here with null?*/
 				while (!isMax && (indx>0) && (indx>pixels.length)) {
 					isMax=true;
 					for (j=0;j<7;j++) if (pixels[indx]<pixels[indx+dirs[j]]) {
@@ -1814,7 +1814,7 @@ public class MatchSimulatedPattern {
 
 			}
 		}
-		/** Sort maximums so first vector to second vector will be clockwise (positive y is downwards) */
+		/* Sort maximums so first vector to second vector will be clockwise (positive y is downwards) */
 		j=0; k=1;
 		if ((imax[j][0]*imax[k][1]-imax[k][0]*imax[j][1])<0) {
 			j=1;k=0;
@@ -1825,7 +1825,7 @@ public class MatchSimulatedPattern {
 		imax2[1][1]=imax[k][1];
 
 
-		/** Now define maximal radius of cluster (~0.7 of the average distance from 0,0 to the 2 start points */
+		/* Now define maximal radius of cluster (~0.7 of the average distance from 0,0 to the 2 start points */
 		int maxX2Y2=0;
 		for (i=0;i<2;i++) for (j=0;j<2;j++) maxX2Y2+=imax2[i][j]*imax2[i][j];
 		maxX2Y2/=4;
@@ -1833,7 +1833,7 @@ public class MatchSimulatedPattern {
 
 		for (i=0;i<2*patternDetectParameters.multiplesToTry;i++)  maxDefined[i]=(i<2);
 
-		nmax=2*patternDetectParameters.multiplesToTry; /** but only the first two are known by now */
+		nmax=2*patternDetectParameters.multiplesToTry; /* but only the first two are known by now */
 		for (i=0;i<2;i++) {
 			if (this.debugLevel>5) System.out.println("i="+i+" x="+imax2[i][0]+" y="+imax2[i][1]+" value="+max2Values[i]);
 		}
@@ -1853,12 +1853,12 @@ public class MatchSimulatedPattern {
 		for (clusterNumber=0;clusterNumber<nmax;clusterNumber++) {
 			pair=clusterNumber/2+1;
 			if (!maxDefined[clusterNumber] && maxDefined[clusterNumber-2]) {
-				/** We do not know the seed for this maximum, but the previous (of the same direction) may be known */
+				/* We do not know the seed for this maximum, but the previous (of the same direction) may be known */
 				x= (int) (max2[clusterNumber-2][0]*pair)/(pair-1);
 				y= (int) (max2[clusterNumber-2][1]*pair)/(pair-1);
 				if ((x>(-lim+1)) && (x<(lim-1)) && (y>(-lim+1)) && (y<(lim-1))) {
 					Index=(y+halfSize)*size + x+halfSize;
-					/** there should be local maximum not more than "deviationSteps" steps from the x,y */
+					/* there should be local maximum not more than "deviationSteps" steps from the x,y */
 					isLocalMax=false;
 					i=patternDetectParameters.deviationSteps;
 					while ((i>0) && !isLocalMax) {
@@ -1882,7 +1882,7 @@ public class MatchSimulatedPattern {
 				}
 			}
 			if (maxDefined[clusterNumber]) { // skip if seed for the cluster is not defined
-				/** Grow cluster around maximum, find centroid */
+				/* Grow cluster around maximum, find centroid */
 				Index=(imax2[clusterNumber][1]+halfSize)*size + imax2[clusterNumber][0]+halfSize;
 				pixelList.clear();
 				pixelList.add (Index);
@@ -1893,12 +1893,12 @@ public class MatchSimulatedPattern {
 					for (j=0;j<dirs.length;j++) {
 						NewIndex=Index+dirs[j];
 						if ((NewIndex>=0) && (NewIndex<clusterMap.length) && (clusterMap[NewIndex]==0) && (pixels[NewIndex]<pixels[Index])) {
-							/** did we get too far?*/           
+							/* did we get too far?*/           
 							y=(NewIndex/size) - halfSize - imax2[clusterNumber][1];
 							x=(NewIndex % size) - halfSize - imax2[clusterNumber][0];
 							//System.out.println(" dy="+y+" dx="+x+" dx*dx+dy*dy="+(x*x+y*y));
 							if ((x*x+y*y) <= maxX2Y2) {
-								/** See if there is any neighbor of the new pixel that is higher and not yet marked (prevent rivers flowing between hills) */
+								/* See if there is any neighbor of the new pixel that is higher and not yet marked (prevent rivers flowing between hills) */
 								noHills=true;
 								for (k=0;k<dirs.length;k++) {
 									HillIndex=NewIndex+dirs[k];
@@ -1916,7 +1916,7 @@ public class MatchSimulatedPattern {
 						}
 					}
 				}
-				/** Shrink clusters to a fraction of initial size */
+				/* Shrink clusters to a fraction of initial size */
 				// TODO: shring to a value (between min and max) if there is a sharp maximum??
 				//, double patternDetectParameters.shrinkClusters
 				if (patternDetectParameters.shrinkClusters==0.0) { // use "smart" size
@@ -1940,7 +1940,7 @@ public class MatchSimulatedPattern {
 
 
 
-				/** now find centroid of the cluster */
+				/* now find centroid of the cluster */
 				minInCluster=pixels[pixelList.get(0)];
 				for (i=1;i<pixelList.size();i++) if (minInCluster>pixels[pixelList.get(i)]) minInCluster = pixels[pixelList.get(i)];
 				cx=0.0; cy=0.0; cm=0.0;
@@ -1962,20 +1962,20 @@ public class MatchSimulatedPattern {
 					cx=max2[clusterNumber-2][0]*pair/(pair-1)-max2[clusterNumber][0];
 					cy=max2[clusterNumber-2][1]*pair/(pair-1)-max2[clusterNumber][1];
 					f=Math.sqrt(cx*cx+cy*cy);
-					/** Verify deviation here */
+					/* Verify deviation here */
 					if (f>patternDetectParameters.deviation) maxDefined[clusterNumber]=false;
 				}
 				if (this.debugLevel>6) System.out.println("pixelList.size()="+pixelList.size()+" centroid sum="+cm);
 				if (this.debugLevel>5) System.out.println("clusterNumber="+clusterNumber+" x="+max2[clusterNumber][0]+" y="+max2[clusterNumber][1] + " x0="+(max2[clusterNumber][0]/pair)+" y0="+(max2[clusterNumber][1]/pair)+" deviat="+f);
 				if ((cm==0.0) || (pixelList.size()<3)) maxDefined[clusterNumber]=false;
-				/** Filter out unreasonably low frequencies*/
+				/* Filter out unreasonably low frequencies*/
 				if ((max2[clusterNumber][0]*max2[clusterNumber][0]+max2[clusterNumber][1]*max2[clusterNumber][1])<(reasonbleFrequency*reasonbleFrequency)) {
 					if (this.debugLevel>2) System.out.println("Frequency too low:clusterNumber="+clusterNumber+" x="+max2[clusterNumber][0]+" y="+max2[clusterNumber][1]+ ", minimal allowed frequency is "+reasonbleFrequency);
 					maxDefined[clusterNumber]=false;
 				}
 			}
 		}
-		/** Average (or just use farthest?) multiple maximums */
+		/* Average (or just use farthest?) multiple maximums */
 		if (this.debugLevel>2){
 			float [] dbg_pixels=new float[clusterMap.length];
 			for (j=0;j<dbg_pixels.length;j++) dbg_pixels[j]=(float)clusterMap[j];
@@ -2007,7 +2007,7 @@ public class MatchSimulatedPattern {
 			maxFinal[i][0]/=j;
 			maxFinal[i][1]/=j;
 			if (j==0) definedFinal[i]=false;
-			/** These two vectors correspond to checker diagonals and they are calculated for the correlation space.
+			/* These two vectors correspond to checker diagonals and they are calculated for the correlation space.
  Actual frequencies for the checker board will be 1/4 of these, also divide by FFT size so the result will be in cycles per pixel */
 			maxFinal[i][0]/=size*4;
 			maxFinal[i][1]/=size*4;
@@ -2025,7 +2025,7 @@ public class MatchSimulatedPattern {
 		}
 		return maxFinal;
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	private double [] findCheckerPhases(double [][] WVectors, double [] P) {
 		double [][] DWVectors = {{WVectors[0][0]-WVectors[1][0],WVectors[0][1]-WVectors[1][1]},
 				{WVectors[0][0]+WVectors[1][0],WVectors[0][1]+WVectors[1][1]}};
@@ -2052,7 +2052,7 @@ public class MatchSimulatedPattern {
 		if (this.debugLevel>2)  System.out.println("phases[0]="+IJ.d2s(phases[0],4)+"  phases[1]="+IJ.d2s(phases[1],4));
 		return phases;
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	private	boolean matchPatterns(double [][][] patterns, double [][] targetPattern) {
 		int n,i,j;
 		double [][] sp=new double[2][2];
@@ -2072,7 +2072,7 @@ public class MatchSimulatedPattern {
 			for (i=0;i<2;i++) for (j=0;j<2;j++){
 				sp[i][j]=    (patterns[n][i][0]*targetPattern[j][0]+patterns[n][i][1]*targetPattern[j][1])/current_lengths[i]/ target_lengths[j];
 			}
-			/** Swap vectors regardless of sign (parallel/anti-parallel)*/
+			/* Swap vectors regardless of sign (parallel/anti-parallel)*/
 			if ((Math.abs(sp[0][0])<Math.abs(sp[0][1])) || (Math.abs(sp[0][0])<Math.abs(sp[1][0]))) {
 				noCorrectionWasNeeded=false;
 				if (this.debugLevel>0) System.out.println("Swapped wave vectors in quadrant "+n);
@@ -2080,7 +2080,7 @@ public class MatchSimulatedPattern {
 				swap=sp[0][0];            sp[0][0]=sp[1][0];             sp[1][0]=swap;
 				swap=sp[0][1];            sp[0][1]=sp[1][1];             sp[1][1]=swap;
 			}
-			/** Now correct vector signs if needed */
+			/* Now correct vector signs if needed */
 			for (i=0;i<2;i++) {
 				if (sp[i][i] <0) {
 					noCorrectionWasNeeded=false;
@@ -2108,7 +2108,7 @@ public class MatchSimulatedPattern {
 
 		v[0][2]=wv0[2];
 		v[1][2]=wv1[2];
-		/** "white square" center had coordinates
+		/* "white square" center had coordinates
 	-wv0[0]
 		 */
 		return v;
@@ -2123,7 +2123,7 @@ public class MatchSimulatedPattern {
 	 */
 	private	double [] calcPatternNonLinear(double [][][] qp) {
 		int iq;
-		/** Calculate center WV */
+		/* Calculate center WV */
 
 		double [][][] mCorners=    new double [4][][] ; // only two 2x2 are needed, other two - just for debugging
 		mCorners[0]= matrixToConvertTwoPairs(qp[0][0], qp[0][1], qp[4][0], qp[4][1]);
@@ -2241,7 +2241,7 @@ public class MatchSimulatedPattern {
 				( M[0][1][1]+M[1][1][1]+M[2][1][1]+M[3][1][1])/4-1  // Ey
 		};
 
-		if (this.debugLevel>2) { /** increase LEVEL later */
+		if (this.debugLevel>2) { /* increase LEVEL later */
 			/*          System.out.println("Center   "+
 	                           " W0x="+     IJ.d2s(centerWV[0][0],4)+
 	                           " W0y="+     IJ.d2s(centerWV[0][1],4)+
@@ -2261,7 +2261,7 @@ public class MatchSimulatedPattern {
 						" M["+iq+"][1][1]="+  IJ.d2s(M[iq][1][1],4));
 			}
 		}
-		if (this.debugLevel>2) { /** increase LEVEL later */
+		if (this.debugLevel>2) { /* increase LEVEL later */
 			System.out.println("Corr   "+
 					" Ax="+     IJ.d2s(rslt[0],5)+
 					" Bx="+     IJ.d2s(rslt[1],5)+
@@ -2276,9 +2276,9 @@ public class MatchSimulatedPattern {
 		}
 		return rslt;
 	};
-	/** ======================================================================== */
-	/** TODO: REPLACE doubleFHT  */
-	/** converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
+	/* ======================================================================== */
+	/* TODO: REPLACE doubleFHT  */
+	/* converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
 	private double[][][] FHT2FFTHalf (FHT fht, int fftsize) {
 		float[] fht_pixels=(float[])fht.getPixels();
 		double[][][] fftHalf=new double[(fftsize>>1)+1][fftsize][2];
@@ -2294,7 +2294,7 @@ public class MatchSimulatedPattern {
 		}
 		return fftHalf;
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public double[][][] FHT2FFTHalf (double [] fht_pixels, int fftsize) {
 		double[][][] fftHalf=new double[(fftsize>>1)+1][fftsize][2];
 		int row1,row2,col1,col2;
@@ -2309,8 +2309,8 @@ public class MatchSimulatedPattern {
 		}
 		return fftHalf;
 	}
-	/** ======================================================================== */
-	/** converts FFT arrays of complex numbers of [fftsize/2+1][fftsize] to FHT arrays */
+	/* ======================================================================== */
+	/* converts FFT arrays of complex numbers of [fftsize/2+1][fftsize] to FHT arrays */
 	private float[] floatFFTHalf2FHT (double [][][] fft, int fftsize) {
 		float[] fht_pixels=new float [fftsize*fftsize];
 		int row1,row2,col1,col2;
@@ -2324,7 +2324,7 @@ public class MatchSimulatedPattern {
 		}
 		return fht_pixels;
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public	 double[][] normalizeAndWindow (double [][] pixels, double [] windowFunction) {
 		return normalizeAndWindow (pixels, windowFunction, true);
 	}
@@ -2351,7 +2351,7 @@ public class MatchSimulatedPattern {
 		for (j=0;j<pixels.length;j++) pixels[j]=(pixels[j]-s)*windowFunction[j];
 		return pixels;
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public	double [][] matrix2x2_invert(double [][] m ){
 		double det=m[0][0]*m[1][1]-m[0][1]*m[1][0];
 		double [][] rslt= {{ m[1][1]/det,  -m[0][1]/det},
@@ -2389,7 +2389,7 @@ public class MatchSimulatedPattern {
 		for (i=0;i<rslt.length;i++) rslt[i]=a[i]+b[i];
 		return rslt;
 	}
-	/** calculates 2x2 matrix that converts two pairs of vectors: u2=M*u1, v2=M*v1*/
+	/* calculates 2x2 matrix that converts two pairs of vectors: u2=M*u1, v2=M*v1*/
 	private	double [][] matrixToConvertTwoPairs(double [] u1, double [] v1, double [] u2, double [] v2) {
 		double [][] rslt= {{(u2[0]*v1[1]-v2[0]*u1[1])/(u1[0]*v1[1]-v1[0]*u1[1]),
 			(v2[0]*u1[0]-u2[0]*v1[0])/(u1[0]*v1[1]-v1[0]*u1[1])},
@@ -2426,7 +2426,7 @@ public class MatchSimulatedPattern {
 		return rslt;
 	}
 	
-	/** ======================================================================== */
+	/* ======================================================================== */
 	private	 double [] combineDiagonalGreens (double [] green0, double []green3, int half_width, int half_height) {
 		int y,x,base;
 		int base_b=0;
@@ -2448,7 +2448,7 @@ public class MatchSimulatedPattern {
 		}
 		return result;
 	}
-	/** ======================================================================== */
+	/* ======================================================================== */
 	public double[] initWindowFunction(int size, double gaussWidth) {
 		return initWindowFunction(size, gaussWidth, 0);
 	}
@@ -2482,7 +2482,7 @@ public class MatchSimulatedPattern {
 		}
 		return windowFunction;
 	}
-/** ============================= Distortions ===================================*/
+/* ============================= Distortions ===================================*/
 	   public void distortionsTest (
 			   final DistortionParameters distortionParameters, //
 			   final MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -2729,7 +2729,7 @@ public class MatchSimulatedPattern {
 			double [][] node = {centerXY,pattern[0],pattern[1]};	 
 			return node;
 	   }
-/** ================================================================*/
+/* ================================================================*/
 // Optionally remove the outer (possibly corrupted) layer of the detected pattern nodes, extrapolate new layers of the nodes
 // without pattern matching
 	   
@@ -2830,7 +2830,7 @@ public class MatchSimulatedPattern {
 		   
 		   return null;
 	   }
-/** ================================================================*/
+/* ================================================================*/
 // it now can start with non-empty Grid
 // 	public boolean [] focusMask=null; // array matching image pixels, used with focusing (false outside sample areas)
 	   
@@ -3049,7 +3049,7 @@ public class MatchSimulatedPattern {
 				   return 0;
 			   }
 			   double [] centerXY=node[0];
-			   /** TODO null pointrer in next line  - DONE?*/		 
+			   /* TODO null pointrer in next line  - DONE?*/		 
 			   if (debugLevel>1) System.out.println("*** distortions: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
 
 			   debugLevel=debug_level;
@@ -3136,7 +3136,7 @@ public class MatchSimulatedPattern {
 					   }
 					// TODO: find how it could get negative coordinates
 					   if ((ix<0) || (iy<0) || (ix>=distortionParameters.gridSize) || (iy>=distortionParameters.gridSize)) hasNeededNeighbor=false; //???
-					   else hasNeededNeighbor=focusMask[iy*getImageWidth()+ix]; //** OOB -1624 java.lang.ArrayIndexOutOfBoundsException: -1624,  at MatchSimulatedPattern.distortions(MatchSimulatedPattern.java:3063),  at LensAdjustment.updateFocusGrid(LensAdjustment.java:121),  at Aberration_Calibration.measurePSFMetrics(Aberration_Calibration.java:5994)
+					   else hasNeededNeighbor=focusMask[iy*getImageWidth()+ix]; //* OOB -1624 java.lang.ArrayIndexOutOfBoundsException: -1624,  at MatchSimulatedPattern.distortions(MatchSimulatedPattern.java:3063),  at LensAdjustment.updateFocusGrid(LensAdjustment.java:121),  at Aberration_Calibration.measurePSFMetrics(Aberration_Calibration.java:5994)
 /*
 Image timestamp=1330935278.115151
 distortions(): this.PATTERN_GRID[0][45][0][0]=1617.777509046684
@@ -3585,7 +3585,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   return nodeRef[0];
 	   }
 	   
-/** ================================================================*/
+/* ================================================================*/
 	   public double refineDistortionCorrelation (
 			   final DistortionParameters distortionParameters, //
 			   final MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -3900,7 +3900,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
           public double getMax() {return max;}
           public boolean isDefined() {return defined;}
       }
-/** ================================================================*/
+/* ================================================================*/
 /*
         public boolean flatFieldCorrection=true; // compensate grid uneven intensity (vignetting, illumination)
         public double flatFieldExtarpolate=1.0;  // extrapolate flat field intensity map (relative to the average grid period)
@@ -4118,7 +4118,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   startAndJoin(threads);
 		   return gridIntensity;
 	   }
-/** ======================================================================== */
+/* ======================================================================== */
 
 	   public double localGridContrast(
 			   ImagePlus imp,
@@ -4197,7 +4197,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   return diff/sum;
 	   }
 
-/** ======================================================================== */
+/* ======================================================================== */
 	   public double averageGridPeriod(
 			   double [][][][] patternGrid){
 		   int n=0;
@@ -4222,7 +4222,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   return Math.sqrt (sum);
 	   }
 
-/** ======================================================================== */
+/* ======================================================================== */
 	   public double [] calcFlatFieldForGrid(
 			   double [][] gridIntensity,
 			   double [][][][] patternGrid,
@@ -4372,7 +4372,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 			}
 			return fffg;
 	   }
-/** ======================================================================== */
+/* ======================================================================== */
 
 	   /**
 	    *  Extrapolates flat-field correction
@@ -4631,7 +4631,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 
 
 	   
-/** ======================================================================== */
+/* ======================================================================== */
 	   private double [][] calcNeibLocsWeights (
 			   DistortionParameters distortionParameters,
 			   boolean useNeib){
@@ -4662,7 +4662,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		    }
 		    return locsNeib;
 	   }
-/** ======================================================================== */
+/* ======================================================================== */
 
 	   public double[][][][] recalculateWaveVectors (
 //			   double[][][][] patternGrid,
@@ -4731,7 +4731,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   return this.PATTERN_GRID;
 	   }
 	   
-/** ======================================================================== */
+/* ======================================================================== */
 	   private double [][] waveVectorsFromNeib(double [][][] vectors){
 /*
  * 		   vectors: [num_vector][0][0] - U
@@ -4827,7 +4827,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 	   }
 	   
 	
-/** ======================================================================== */
+/* ======================================================================== */
 	// set XY coordinates and (optionally) wave vectors of the pattern grid cell
 	/*	   
 		   cell==null - new cell, not yet defined
@@ -4964,7 +4964,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   }
 		   public int gridUVWidth(){return ((this.PATTERN_GRID==null) || (this.PATTERN_GRID.length==0l) ||(this.PATTERN_GRID[0]==null))?0:this.PATTERN_GRID[0].length;}		   
 		   public int gridUVHeight(){return ((this.PATTERN_GRID==null) || (this.PATTERN_GRID.length==0l) ||(this.PATTERN_GRID[0]==null))?0:this.PATTERN_GRID.length;}		   
-/** ======================================================================== */
+/* ======================================================================== */
 		   /**
 		    * returns number of laser pointers matched
 		    * if (this.flatFieldForGrid!=null) it should already be applied !!
@@ -5406,7 +5406,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				noNew=true;
 				while ((pixelList.size()>0) &&
 						((clusterSize<minArea) || (cluster_energy<theresholdEnergy))) { // will break from the loop if  (psf[Index] <theresholdLevel)
-		/** Find maximal new neighbor */
+		/* Find maximal new neighbor */
 					maxValue=0.0;
 					listIndex=0;
 					while (listIndex<pixelList.size()) {
@@ -5431,7 +5431,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 					}
 					if (maxValue==0.0) 	break; // no positive points left 
 					if ((clusterSize>=minArea) && (psf[IndexMax]<theresholdLevel)) break; // level is below thershold, minimal size condition met 
-		/** Add this new point to the list */
+		/* Add this new point to the list */
 					pixelList.add (IndexMax);
 					clusterSize++;
 					clusterMap[IndexMax]=1.0;
@@ -5461,7 +5461,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 			}
 		   
 		   
-/** ======================================================================== */
+/* ======================================================================== */
 		   /**
 		    * Mask (assignes zero) to the flat-field array outside of the sample squares,]
 		    * Clears grid nodes that do not have neighbors inside the sample squares.
@@ -5534,7 +5534,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   
 			   }			   
 		   }
-/** ======================================================================== */
+/* ======================================================================== */
 		   
 		   public double[][] getPointersXY(ImagePlus imp, int numPointers){
 			   // try absolute grid calibratrion
@@ -5557,7 +5557,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 			   if (numPointerDetected>0) return pointersXY;
 			   else return null;
 		   }
-/** ======================================================================== */
+/* ======================================================================== */
 
 		   public String getChannel(ImagePlus imp){
 			   // read image info to properties (if it was not done yet - should it?
@@ -5569,7 +5569,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 			   return (String) imp.getProperty("channel");
 		   }
 
-/** ======================================================================== */
+/* ======================================================================== */
 		   public void showFlatFieldForGrid(){
 			  if (this.flatFieldForGrid!=null) this.SDFA_INSTANCE.showArrays(this.flatFieldForGrid, getImageWidth(), getImageHeight(), "Flat_field_for_grid");
 		   }
@@ -5908,7 +5908,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
            public void invalidateFocusMask(){
                this.focusMask=null;
            }
-           /** get height and width of the measured pattern array applies to PATTERN_GRID, targetUV and pixelsUV */
+           /* get height and width of the measured pattern array applies to PATTERN_GRID, targetUV and pixelsUV */
  
 		   public int getHeight(){
 			   if (this.pixelsUV==null) return 0;
@@ -5918,13 +5918,13 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			   if (this.pixelsUV==null) return 0;
 			   return this.pixelsUV[0].length;
 		   }
-		   /** Get physical target UV pair from measured pattern. Requires absolute mapping (by laser spots)
+		   /* Get physical target UV pair from measured pattern. Requires absolute mapping (by laser spots)
 		    *  Pair may be null if no pattern is detected for this node in the image
 		    */
            public int [][][] getTargetUV(){
         	   return this.targetUV;
            }
-           /** Get pixel X,Y pair for each node in the measured pattern. Calculated during absolute mapping (by laser spots)
+           /* Get pixel X,Y pair for each node in the measured pattern. Calculated during absolute mapping (by laser spots)
             *  Pair may be null if no pattern is detected for this node in the image
             */
            public double [][][] getPixelsUV(){
@@ -6232,7 +6232,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   
            }
            
-           /** Get calibrated pattern as a 8-slice image (can be saved as TIFF)
+           /* Get calibrated pattern as a 8-slice image (can be saved as TIFF)
             * first   slice - pixel X or -1 for undefined
             * second  slice - pixel Y or -1 for undefined
             * third   slice - target U (may be negative)
@@ -6937,13 +6937,13 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			   return result;
 		   }
 		   
-/** ======================================================================== */
+/* ======================================================================== */
 /*
     public static MatchSimulatedPattern.LaserPointer LASER_POINTERS= new MatchSimulatedPattern.LaserPointer (
 		   
  */
 //		   
-/** ======================================================================== */
+/* ======================================================================== */
 		   private  double [] correctedPatternCrossLocation(
 					double [] beforeXY, // initial coordinates of the pattern cross point
 					double wv0x,
@@ -7525,7 +7525,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			  return result;		
 			}
 
-/** ======= Debugging only - returns 2-d array of x,y as a function of initial estimation =================== */
+/* ======= Debugging only - returns 2-d array of x,y as a function of initial estimation =================== */
 	   public  double [][][] scanPatternCrossLocation( 
 			    double range, // size of the scanning square
 			    int    size,  // number of scan points in each direction (total size*size)
@@ -7669,7 +7669,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 	   
  */
 
-/** ======================================================================== */
+/* ======================================================================== */
 /**
  * Interpolate maximum on a square correlation array, return vector from the center 
  */
@@ -8201,7 +8201,7 @@ d()/dy=C*x+2*B*y+E=0
   	   	}
 	   
 	   
-/** ======================================================================== */
+/* ======================================================================== */
 	   public Rectangle correlationSelection(
 				double [] beforeXY, // initial coordinates of the pattern cross point
 				int size){
@@ -8212,7 +8212,7 @@ d()/dy=C*x+2*B*y+E=0
 		          2*size,2*size);       
            return centerCross;
 	   }
-/** ======================================================================== */
+/* ======================================================================== */
 // Estimate center xy and wave vectors from the neigbors
 // returns {{x,y},{wv1x,wv1y},{wv2x,wv2y}}
 	   
@@ -8569,7 +8569,7 @@ d()/dy=C*x+2*B*y+E=0
  
  */
 	   
-/** ======================================================================== */
+/* ======================================================================== */
 		/*
 	   public double [][] quadraticApproximation(
 			   double [][][] data,
@@ -8772,7 +8772,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		return norm;
 	}
 	*/
-/** ======================================================================== */
+/* ======================================================================== */
 	public double[][][][] setPatternGridArray(int size) {
 		return setPatternGridArray(size,size);
 	}
@@ -8866,7 +8866,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		
 	}
 
-	/** ======================================================================== */
+	/* ======================================================================== */
 	
 	public static class DistortionParameters {
 		public int   correlationSize;
@@ -9265,8 +9265,8 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			}
 	}
 ///===================================
-	/** Use ROI */
-	/** Supply rectangle */
+	/* Use ROI */
+	/* Supply rectangle */
 	// Now accepts rectangles not completely contained in the image, pixels will be copied from the image edge
 //	private double[][] splitBayer (ImagePlus imp, Rectangle r, boolean equalize_greens) {
 	public double[][] splitBayer (ImagePlus imp, Rectangle r, boolean equalize_greens) {
@@ -9564,7 +9564,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			   return bayer_pixels;
 	}
 
-		/** Create a Thread[] array as large as the number of processors available.
+		/* Create a Thread[] array as large as the number of processors available.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */
@@ -9573,7 +9573,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 			return new Thread[n_cpus];
 		}
-	/** Start all given threads and wait on each of them until all are done.
+	/* Start all given threads and wait on each of them until all are done.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */

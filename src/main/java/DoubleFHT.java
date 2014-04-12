@@ -106,20 +106,20 @@ public class DoubleFHT  {
 	}
 
 
-	/** Performs a forward transform, converting this image into the frequency domain. 
+	/* Performs a forward transform, converting this image into the frequency domain. 
 		The image contained in data must be square and its width must be a power of 2. */
 	public boolean transform(double [] data) {
 		return transform(data, false);
 	}
 
-	/** Performs an inverse transform, converting this image into the space domain. 
+	/* Performs an inverse transform, converting this image into the space domain. 
 		The image contained in data must be square and its width must be a power of 2. */
 	public boolean inverseTransform(double [] data) {
 		return transform(data, true);
 	}
 	
 
-	/** Returns an inverse transform of this image, which is assumed to be in the frequency domain. */ 
+	/* Returns an inverse transform of this image, which is assumed to be in the frequency domain. */ 
 	public boolean transform(double [] data, boolean inverse) {
 		//IJ.log("transform: "+maxN+" "+inverse);
 		updateMaxN(data);
@@ -703,7 +703,7 @@ public class DoubleFHT  {
 			bitrev[i] = bitRevX(i, nLog2);
 	}
 
-	/** Performs a 2D FHT (Fast Hartley Transform). */
+	/* Performs a 2D FHT (Fast Hartley Transform). */
 	public void rc2DFHT(double[] x, boolean inverse, int maxN) {
 		//IJ.write("FFT: rc2DFHT (row-column Fast Hartley Transform)");
 		for (int row=0; row<maxN; row++)
@@ -742,7 +742,7 @@ public class DoubleFHT  {
 			IJ.showProgress(percent);
 	}
 	
-	/** Performs an optimized 1D FHT. */
+	/* Performs an optimized 1D FHT. */
 	public void dfht3 (double[] x, int base, boolean inverse, int maxN) {
 		int i, stage, gpNum, gpSize, numGps, Nlog2;
 		int bfNum, numBfs;
@@ -2058,8 +2058,8 @@ public class DoubleFHT  {
 	}
 	
 	
-/** nothing to prevent division by small values */
-	/** Returns the image resulting from the point by point Hartley division
+/* nothing to prevent division by small values */
+	/* Returns the image resulting from the point by point Hartley division
 		of this image by the specified image. Both images are assumed to be in
 		the frequency domain. Division in the frequency domain is equivalent 
 		to deconvolution in the space domain. */
@@ -2102,7 +2102,7 @@ public class DoubleFHT  {
 	    swapQuadrants(amp);
 	    return amp;
 	  }
-/** Amplitude of one row from 2D Hartley Transform. */
+/* Amplitude of one row from 2D Hartley Transform. */
   void amplitude(int row, int size, double[] fht, double[] amplitude) {
     int base = row*size;
     int l;
@@ -2112,7 +2112,7 @@ public class DoubleFHT  {
     }
   }
 
-  /** Squared amplitude of one row from 2D Hartley Transform. */
+  /* Squared amplitude of one row from 2D Hartley Transform. */
   void amplitude2(int row, int size, double[] fht, double[] amplitude) {
     int base = row*size;
     int l;
@@ -2122,7 +2122,7 @@ public class DoubleFHT  {
     }
   }
 // Other FHT-related methods moved here
-  /** converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
+  /* converts FHT results (frequency space) to complex numbers of [fftsize/2+1][fftsize] */
   public double[][][] FHT2FFTHalf (FHT fht, int fftsize) {
      float[] fht_pixels=(float[])fht.getPixels();
      double[][][] fftHalf=new double[(fftsize>>1)+1][fftsize][2];
@@ -2156,7 +2156,7 @@ public class DoubleFHT  {
      return fftHalf;
   }
 
-  /** converts FFT arrays of complex numbers of [fftsize/2+1][fftsize] to FHT arrays */
+  /* converts FFT arrays of complex numbers of [fftsize/2+1][fftsize] to FHT arrays */
   public float[] floatFFTHalf2FHT (double [][][] fft, int fftsize) {
      float[] fht_pixels=new float [fftsize*fftsize];
      int row1,row2,col1,col2;
@@ -2202,7 +2202,7 @@ public class DoubleFHT  {
   
   
   
-  /** Amplitude/phase related methods */
+  /* Amplitude/phase related methods */
   public double [] interpolateFHT (double [] fht0,    // first FHT array
 		  double [] fht1,    // second FHT array
 		  double   ratio){   // array of interpolation points - 0.0 - fht0, 1.0 - fht1
@@ -2214,7 +2214,7 @@ public class DoubleFHT  {
 	  return results[0];
   }
 
-  /** returns array of interpolated FHTs between fht0 and fht1, endpoints if present (0.0, 1.0) are referenced, not cloned */
+  /* returns array of interpolated FHTs between fht0 and fht1, endpoints if present (0.0, 1.0) are referenced, not cloned */
   public double [][] interpolateFHT (
 		  double []   fht0,    // first FHT array
 		  double []   fht1,    // second FHT array
@@ -2232,14 +2232,14 @@ public class DoubleFHT  {
      int size=(int) Math.sqrt(fht0.length);
      int hsize=size/2;
      double [][][] aphase= new double[hsize+1][size][2];
-     double [][][] amp01=  new double[hsize+1][size][2]; /** squared amplitudes of fht0 and fht1 */
-     double [][]   phase=  new double[hsize+1][size]; /** +/-pi phase of the first array */
+     double [][][] amp01=  new double[hsize+1][size][2]; /* squared amplitudes of fht0 and fht1 */
+     double [][]   phase=  new double[hsize+1][size]; /* +/-pi phase of the first array */
      double[][][]fft0=    FHT2FFTHalf (fht0, size);
      double[][][]fft1=    FHT2FFTHalf (fht1, size);
      double[][][]fft_div= FHT2FFTHalf (fht_div, size);
      int i,j,k;
      double a,c,p;
- /** use mul for amplitudes, div - for phases */
+ /* use mul for amplitudes, div - for phases */
      for (i=0;i<=hsize;i++) for (j=0;j<size;j++) {
        amp01[i][j][0]= fft0[i][j][0]*fft0[i][j][0]+fft0[i][j][1]*fft0[i][j][1];
        amp01[i][j][1]= fft1[i][j][0]*fft1[i][j][0]+fft1[i][j][1]*fft1[i][j][1];
@@ -2251,18 +2251,18 @@ public class DoubleFHT  {
        else aphase[i][j][1]=0.0;
      }
      aphase[0][0][1]=0.0;
- /** calculate full phases */    
+ /* calculate full phases */    
      fullPhase(aphase);
      double [][]result=new double[points.length][];
      for (k=0;k<result.length;k++) {
         if      (points[k]==0.0) result[k]=cloneTrivial?fht0.clone():fht0;
         else if (points[k]==1.0) result[k]=cloneTrivial?fht1.clone():fht1;
-        else { /** interpolate */
+        else { /* interpolate */
           c=points[k];
           for (i=0;i<=hsize;i++) for (j=0;j<size;j++) {
             if ((amp01[i][j][0]==0.0) || (amp01[i][j][1]==0.0)) a=0.0;
- /** Extrapolation is defined here only in the direction of decreasing of the spectral amplitudes (outside, to the wider PSF), so additional limit to prevent division of small values */
- /** Seems to work, possible improvements: 1-filter spectrum in high-freq areas. 2 - use farther inner points for farther approximation */
+ /* Extrapolation is defined here only in the direction of decreasing of the spectral amplitudes (outside, to the wider PSF), so additional limit to prevent division of small values */
+ /* Seems to work, possible improvements: 1-filter spectrum in high-freq areas. 2 - use farther inner points for farther approximation */
 
             else if ((c<0.0) && (amp01[i][j][0]>amp01[i][j][1])) a=Math.sqrt(amp01[i][j][0]);
             else if ((c>1.0) && (amp01[i][j][0]<amp01[i][j][1])) a=Math.sqrt(amp01[i][j][1]);
@@ -2328,7 +2328,7 @@ public class DoubleFHT  {
 	     return reIm;
 }
 
-  /** replace +/-pi  phase with the full phase, using amplitude to guide grouth of the covered area, so amplitude and phase does not need to be a pair from the same FFT array */
+  /* replace +/-pi  phase with the full phase, using amplitude to guide grouth of the covered area, so amplitude and phase does not need to be a pair from the same FFT array */
   public void fullPhase(double [][][] aphase) {
     int size = aphase[0].length;
     int hsize=aphase.length-1;
@@ -2359,7 +2359,7 @@ public class DoubleFHT  {
     double maxValue=-1.0;
 
     while (pixelList.size()>0) {
-  /** Find maximal new neighbor */
+  /* Find maximal new neighbor */
       maxValue=-1.0;
       listIndex=0;
       while (listIndex<pixelList.size()) {
@@ -2373,7 +2373,7 @@ public class DoubleFHT  {
           if ((iy1>hsize) || (((iy1==0) || (iy1==hsize)) && (ix1> hsize))) {
             ix1n=(size-ix1)%size;
             iy1n=(size-iy1)%size;
-          } else { /** But phase will be opposite sign */
+          } else { /* But phase will be opposite sign */
             ix1n=ix1;
             iy1n=iy1;
           }
@@ -2393,7 +2393,7 @@ public class DoubleFHT  {
 
 
       if (pixelList.size()==0) break;
-  /** To calculate the phase - find already processed neighbor with the highest amplitude */
+  /* To calculate the phase - find already processed neighbor with the highest amplitude */
       maxValue=-1.0;
       for (j=0;j<8;j++) {
         ix1=(maxX+dirs[j][0]+size) % size;
@@ -2401,7 +2401,7 @@ public class DoubleFHT  {
         if ((iy1>hsize) || (((iy1==0) || (iy1==hsize)) && (ix1> hsize))) {
           ix1n=(size-ix1)%size;
           iy1n=(size-iy1)%size;
-        } else { /** But phase will be opposite sign */
+        } else { /* But phase will be opposite sign */
           ix1n=ix1;
           iy1n=iy1;
         }
@@ -2416,7 +2416,7 @@ public class DoubleFHT  {
         }
       }
 
-  /** Calculate the phase from the closest neighbor */
+  /* Calculate the phase from the closest neighbor */
       oldPhase=(oldConj?-1:1)*aphase[oldY][oldX][1];
       fullCyclesPhase=2*Math.PI*Math.floor(oldPhase/(2*Math.PI)+0.5);
       oldPhase-=fullCyclesPhase; // +/- pi
@@ -2430,13 +2430,13 @@ public class DoubleFHT  {
                                        " Diff="+IJ.d2s((aphase[maxY][maxX][1]-(oldConj?-1:1)*aphase[oldY][oldX][1]),2));
       }
 */
-  /** Add this new point to the list */
+  /* Add this new point to the list */
       Index=maxY*size + maxX;
       pixelList.add (Index);
       clusterSize++;
       map[maxY][maxX]=true;
     } // end of while (pixelList.size()>0)
-  /** Fix remaining phases for y=0 and y=hsize */
+  /* Fix remaining phases for y=0 and y=hsize */
     for (i=1;i<hsize;i++) {
       aphase[0][size-i][1]=-aphase[0][i][1];
       aphase[hsize][size-i][1]=-aphase[hsize][i][1];

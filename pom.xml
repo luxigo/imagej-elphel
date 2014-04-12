@@ -65,6 +65,7 @@
 			</testResource>
 		</testResources>
 		<plugins>
+<!-- 		
 			<plugin>
 				<groupId>com.elphel</groupId>
 				<artifactId>imagej-elphel</artifactId>
@@ -76,10 +77,46 @@
 					</execution>
 				</executions>
 				<configuration>
-					<mainClass>Process_Pixels</mainClass>
+					<mainClass>Aberration_Calibration</mainClass>
 				</configuration>
 			</plugin>
+ -->
+           <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-plugin-plugin</artifactId>
+                <version>3.2</version>
+                <configuration>
+                    <!-- see http://jira.codehaus.org/browse/MNG-5346 -->
+                    <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
+                </configuration>
+
+                <executions>
+                    <execution>
+                        <id>mojo-descriptor</id>
+                        <goals>
+                            <goal>descriptor</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+  			
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>java</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<mainClass>Aberration_Calibration</mainClass>
+				</configuration>
+			</plugin>
+ 			
 		</plugins>
+		
 	</build>
 
 	<developers>
@@ -104,13 +141,18 @@
 			<id>imagej.public</id>
 			<url>http://maven.imagej.net/content/groups/public</url>
 		</repository>
+		<repository>
+			<id>elphel.imagej-elphel</id>
+			<url>https://github.com/Elphel/imagej-elphel</url>
+		</repository>
+		
 	</repositories>
 
 	<scm>
 		<connection>scm:git:git://github.com/Elphel/imagej-elphel</connection>
 		<developerConnection>sscm:git:https://github.com/Elphel/imagej-elphel</developerConnection>
 		<tag>HEAD</tag>
-		<url>https://github.com/Elphel/imagej-elpheln</url>
+		<url>https://github.com/Elphel/imagej-elphel</url>
 	</scm>
 
 	<dependencyManagement>
@@ -123,4 +165,5 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
+	<packaging>maven-plugin</packaging>
 </project>

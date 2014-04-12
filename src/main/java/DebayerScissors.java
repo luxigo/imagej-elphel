@@ -76,7 +76,7 @@ public class DebayerScissors {
   	  final int tilesY=imgHeight/step-1; // vertical number of overlapping tiles in the source image (should be expanded from the registerd one by "step" in each direction)
   	  final int nChn=imageStack.getSize();
   	  int i,chn; //tileX,tileY;
-  	  /** find number of the green channel - should be called "green", if none - use last */
+  	  /* find number of the green channel - should be called "green", if none - use last */
   	  i=nChn-1;
   	  for (chn=0;chn<nChn;chn++) if (imageStack.getSliceLabel(chn+1).equals("green")){
   		  i=chn;
@@ -134,7 +134,7 @@ public class DebayerScissors {
   								  tileY*step); // top corner Y
   					  }
 
-  					  /** Scale green channel x0.5 as there are twice more pixels there as in red or blue. Or move it somewhere else and multiply to original range ? */
+  					  /* Scale green channel x0.5 as there are twice more pixels there as in red or blue. Or move it somewhere else and multiply to original range ? */
   					  for (i=0;i<tile[greenChn].length;i++) tile[greenChn][i]*=0.5;
   					  if ((tileY==yTileDebug) && (tileX==xTileDebug)) {
   						  if (SDFA_instance==null) SDFA_instance=      new showDoubleFloatArrays();
@@ -165,7 +165,7 @@ public class DebayerScissors {
   						  tile[chn]=fht_instance.multiply(tile[chn],both_masks[(chn==greenChn)?0:1],false);
   						  fht_instance.inverseTransform(tile[chn]);
   						  fht_instance.swapQuadrants(tile[chn]);
-  						  /** accumulate result */
+  						  /* accumulate result */
   						  /*This is synchronized method. It is possible to make threads to write to non-overlapping regions of the outPixles, but as the accumulation
   						   * takes just small fraction of severtal FHTs, it should be OK - reasonable number of threads will spread and not "stay in line"
   						   */
@@ -184,7 +184,7 @@ public class DebayerScissors {
   	  }		      
   	  startAndJoin(threads);
  // 	  this.debugLevel=wasDebugLevel;
-  	  /** prepare result stack to return */
+  	  /* prepare result stack to return */
   	  ImageStack outStack=new ImageStack(imgWidth,imgHeight);
   	  for (chn=0;chn<nChn;chn++) {
   		  outStack.addSlice(imageStack.getSliceLabel(chn+1), outPixles[chn]);
@@ -197,7 +197,7 @@ public class DebayerScissors {
   	  return outStack;
     }
 
-    /** ======================================================================== */
+    /* ======================================================================== */
     /**extract and multiply by window function (same size as kernel itself) */
      void extractSquareTile(float [] pixels, // source pixel array,
                              double [] tile, // will be filled, should have correct size before call
@@ -222,7 +222,7 @@ public class DebayerScissors {
          }
        }
      }
-   /** ======================================================================== */
+   /* ======================================================================== */
      void extractSquareTile(double [] pixels, // source pixel array,
    		  double [] tile, // will be filled, should have correct size before call
    		  double [] window, // window (same size as the kernel)
@@ -248,8 +248,8 @@ public class DebayerScissors {
      }
 
      
-   /** ======================================================================== */
-   /** accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
+   /* ======================================================================== */
+   /* accumulate square tile to the pixel array (tile may extend beyond the array, will be cropped) */
      synchronized void  accumulateSquareTile(
    		  float [] pixels, //  float pixels array to accumulate tile
    		  double []  tile, // data to accumulate to the pixels array
@@ -297,7 +297,7 @@ public class DebayerScissors {
    	  }
      }
 
-   /** ======================================================================== */
+   /* ======================================================================== */
      public double [] getSlidingMask(int size) {
        double [] mask = new double [size*size];
        double [] maskLine=new double [size];
@@ -308,13 +308,13 @@ public class DebayerScissors {
        for (i=0;i<size;i++) for (j=0;j<size;j++) mask[index++]=maskLine[i]*maskLine[j];
        return mask;
      }
-   /** ======================================================================== */
+   /* ======================================================================== */
     
     
     
     
-	/** ======================================================================== */
-	/** Create a Thread[] array as large as the number of processors available.
+	/* ======================================================================== */
+	/* Create a Thread[] array as large as the number of processors available.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */
@@ -323,7 +323,7 @@ public class DebayerScissors {
 			if (n_cpus>maxCPUs)n_cpus=maxCPUs;
 			return new Thread[n_cpus];
 		}
-	/** Start all given threads and wait on each of them until all are done.
+	/* Start all given threads and wait on each of them until all are done.
 		 * From Stephan Preibisch's Multithreading.java class. See:
 		 * http://repo.or.cz/w/trakem2.git?a=blob;f=mpi/fruitfly/general/MultiThreading.java;hb=HEAD
 		 */
