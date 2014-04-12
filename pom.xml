@@ -12,18 +12,30 @@
 		<relativePath />
 	</parent>
 
-	<groupId>sc.fiji</groupId>
-	<artifactId>Process_Pixels</artifactId>
+	<groupId>com.elphel</groupId>
+	<artifactId>imagej-elphel</artifactId>
 	<version>1.0.0</version>
 
-	<name>plugins/Process_Pixels.jar</name>
-	<description>A Maven project implementing an ImageJ 1.x plugin</description>
+	<name>plugins/ImageJ_Elphel.jar</name>
+	<description>A Maven project implementing imagej-elphel plugin</description>
 
 	<dependencies>
 		<dependency>
 			<groupId>net.imagej</groupId>
 			<artifactId>ij</artifactId>
 			<version>${imagej1.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.kie.modules</groupId>
+			<artifactId>
+				org-apache-commons-configuration-main
+			</artifactId>
+			<version>6.1.0.Beta2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.kie.modules</groupId>
+			<artifactId>org-apache-commons-lang-main</artifactId>
+			<version>6.1.0.Beta2</version>
 		</dependency>
 	</dependencies>
 
@@ -46,8 +58,8 @@
 		</testResources>
 		<plugins>
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
+				<groupId>com.elphel</groupId>
+				<artifactId>imagej-elphel</artifactId>
 				<executions>
 					<execution>
 						<goals>
@@ -64,12 +76,12 @@
 
 	<developers>
 		<developer>
-			<id>dscho</id>
-			<name>Johannes Schindelin</name>
-			<email>johannes.schindelin@gmx.de</email>
-			<url>http://loci.wisc.edu/people/johannes-schindelin</url>
-			<organization>UW-Madison LOCI</organization>
-			<organizationUrl>http://loci.wisc.edu/</organizationUrl>
+			<id>AndreyFilippov</id>
+			<name>Andrey Filippov</name>
+			<email>andrey@elphel.com</email>
+			<url>http://blog.elphel.com/andrey</url>
+			<organization>Elphel, Inc.</organization>
+			<organizationUrl>http://www3.elphel.com</organizationUrl>
 			<roles>
 				<role>architect</role>
 				<role>developer</role>
@@ -87,10 +99,10 @@
 	</repositories>
 
 	<scm>
-		<connection>scm:git:git://github.com/imagej/minimal-ij1-plugin</connection>
-		<developerConnection>scm:git:git@github.com:imagej/minimal-ij1-plugin</developerConnection>
+		<connection>scm:git:git://github.com/Elphel/imagej-elphel</connection>
+		<developerConnection>sscm:git:https://github.com/Elphel/imagej-elphel</developerConnection>
 		<tag>HEAD</tag>
-		<url>https://github.com/imagej/minimal-ij1-plugin</url>
+		<url>https://github.com/Elphel/imagej-elpheln</url>
 	</scm>
 
 </project>
