@@ -31,24 +31,24 @@ import ij.process.*;
 import ij.gui.*;
 
 import java.awt.*;
-
 import java.awt.event.*;
 import java.io.*;
+
 import ij.plugin.frame.*;
-
-
 import ij.text.*;
-
-// read XML file from motor driver
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.DocumentBuilder;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
+
 //import java.io.File;
 import java.net.*;
+
 import org.xml.sax.SAXException;
+
 import javax.xml.parsers.ParserConfigurationException;
 
 import java.lang.Integer;
@@ -2292,11 +2292,6 @@ double [][][][]calcMaxScanTargetOrientColor(double[][][][][] scanData, int wnd, 
    double [][][][]rslt= new double[scanData[0].length][scanData[0][0].length][2][3];
    double [] arrayToMax=new double [scanData.length]; // number of samples
    int scan,t,n,orient;
-   if (scanData==null) {
-        IJ.showMessage("ERROR in calcMaxScanTargetOrientColor","scanData==null");
-        return null;
-
-   }
    for (scan=0; scan<rslt.length; scan++) for (t=0; t<rslt[0].length;t++) for (orient=0;orient<2;orient++) { 
         for (n=0;n<scanData.length;n++) arrayToMax[n]=scanData[n][0][t][orient][1]; // red
         rslt[scan][t][orient][0]=findMaxInWndArray(arrayToMax, wnd, calibMaxSlopes);
@@ -4079,6 +4074,25 @@ double calcGoalDiff(double[][]resolutions, // resolutions for one target [v.h][G
       }
       return motorPositions;
     }
+ 	/**
+	 * Main method for debugging.
+	 *
+	 * For debugging, it is convenient to have a method that starts ImageJ, loads an
+	 * image and calls the plugin, e.g. after setting breakpoints.
+	 * Grabbed from https://github.com/imagej/minimal-ij1-plugin
+	 * @param args unused
+	 */
+	public static void main(String[] args) {
+		// set the plugins.dir property to make the plugin appear in the Plugins menu
+		Class<?> clazz = Aberration_Calibration.class;
+		String url = clazz.getResource("/" + clazz.getName().replace('.', '/') + ".class").toString();
+		String pluginsDir = url.substring(5, url.length() - clazz.getName().length() - 6);
+		System.setProperty("plugins.dir", pluginsDir);
+		// start ImageJ
+		new ImageJ();
+		// run the plugin
+		IJ.runPlugIn(clazz.getName(), "");
+	}
 
 }
 

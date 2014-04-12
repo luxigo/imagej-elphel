@@ -5,10 +5,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -26,15 +23,15 @@ public class DenseCorrespondence {
 	private int tilesX;
 	private int tilesY;
 	public String title;
-	private float [][] pixels=null; 
+//	private float [][] pixels=null; 
 	private float [] centerPixels=null; // disparity arrays combined for the center virtual image
-	private float [][] syntheticPixels=null; // disparity arrays for individual images restored from the centerPixels
+//	private float [][] syntheticPixels=null; // disparity arrays for individual images restored from the centerPixels
 	private BitSet innerMask=null; // will be provided to zMap instances to quickly find that there are no inner (sans padding) pixels
 	private int  []   borderMask=null; // will be provided to zMap +1:top+2:bottom+8:left+16:right (to prevent roll over when iterating around
-	private double centerPixelsFatZero=0.0; 
+//	private double centerPixelsFatZero=0.0; 
 	//	private int [][] imagePairs=null;
 	private int [][] imagePairIndices=null;
-	private double [] doubleTileWindow=null;
+//	private double [] doubleTileWindow=null;
 	private CyclopeanTile [][] cyclopeanMap=null;
 	private Rectangle zMapWOI=null; // full: 0,0,tilesX,tilesY
 	public  Photometric photometric=null;

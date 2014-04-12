@@ -46,7 +46,6 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
-
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -1312,7 +1311,25 @@ Exception in thread "Thread-3564" java.lang.ArrayIndexOutOfBoundsException: 8970
 		
 		return true;
 	}
-	
+	/**
+	 * Main method for debugging.
+	 *
+	 * For debugging, it is convenient to have a method that starts ImageJ, loads an
+	 * image and calls the plugin, e.g. after setting breakpoints.
+	 * Grabbed from https://github.com/imagej/minimal-ij1-plugin
+	 * @param args unused
+	 */
+	public static void main(String[] args) {
+		// set the plugins.dir property to make the plugin appear in the Plugins menu
+		Class<?> clazz = Aberration_Calibration.class;
+		String url = clazz.getResource("/" + clazz.getName().replace('.', '/') + ".class").toString();
+		String pluginsDir = url.substring(5, url.length() - clazz.getName().length() - 6);
+		System.setProperty("plugins.dir", pluginsDir);
+		// start ImageJ
+		new ImageJ();
+		// run the plugin
+		IJ.runPlugIn(clazz.getName(), "");
+	}
     
 }
 

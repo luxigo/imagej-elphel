@@ -106,12 +106,6 @@ public class PostProcessing {
 			this.channels[iFile]=postProcessingParameters.getChannelFromSourceTiff(path);
 			if (debugLevel>0) System.out.println(iFile+": processing "+path+", channel="+this.channels[iFile]);
 			  ImagePlus imp_src=new ImagePlus(path);
-			  if (imp_src==null){
-				  String msg="Failed to open source image file "+path;
-				  System.out.println("Error "+msg);
-				  IJ.showMessage("Error",msg);
-				  return;
-			  }
 			  aYCbCr=argb24ToAYCbCr(imp_src);
 			  for (int i=0;i<aYCbCr.length;i++){
 				  interSensor.overlapImages[4*this.channels[iFile]+i]=aYCbCr[i];

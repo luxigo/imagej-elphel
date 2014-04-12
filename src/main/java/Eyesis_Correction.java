@@ -1263,7 +1263,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		"-PC"+((""+POST_PROCESSING.disparityCorrelationParameters.corrPhaseFraction).replace('.','_')),
 		titles1);
 
-		double [][] corr_average=new double [numLayers][length];
+//		double [][] corr_average=new double [numLayers][length];
 
 		for (int numLayer=0;numLayer<numLayers;numLayer++){
 			for (int index=0;index<length;index++){
@@ -2988,10 +2988,6 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
    	 IJ.showMessage("Error","Failed to open configuration file: "+path);
 	 return;
 	}
-     if (os==null) {
-    	 IJ.showMessage("Error","Failed to open configuration file for writing: "+path);
-    	 return;
-     }
      if (useXML) {
          try {
      		properties.storeToXML(os,
@@ -3277,10 +3273,6 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 			  continue;
 		  }
 		  imp_kernels=new ImagePlus(kernelPath);
-		  if (imp_kernels==null) {
-			  System.out.println("Failed to open kernel stack "+kernelPath);
-			  continue;
-		  }
 		  if (imp_kernels.getStackSize()<3) {
 			  System.out.println("Need a 3-layer stack with kernels");
 			  continue;
@@ -3296,10 +3288,6 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 				  continue;
 			  }
 			  imp_kernels2=new ImagePlus(kernelPath);
-			  if (imp_kernels2==null) {
-				  System.out.println("Failed to open gaussian stack "+kernelPath);
-				  continue;
-			  }
 			  if (imp_kernels.getStackSize()<3) {
 				  System.out.println("Need a 3-layer stack with gaussian kernels");
 				  continue;
@@ -3446,15 +3434,6 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 						  }
 					  }
 					  imp_kernels=new ImagePlus(kernelPath);
-					  if (imp_kernels==null) {
-						  System.out.println("Failed to open kernel stack "+kernelPath);
-						  if(!saveResult) {
-							  result[nFile][nChn][nSubChn]=null; // erase results to save memory
-							  runtime.gc();
-							  if (DEBUG_LEVEL>1) System.out.println("--- Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")");
-						  }
-						  continue;
-					  }
 					  if (imp_kernels.getStackSize()<3) {
 						  System.out.println("Need a 3-layer stack with kernels");
 						  if(!saveResult) {
@@ -3487,15 +3466,6 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 							  continue;
 						  }
 						  imp_kernels=new ImagePlus(kernelPath);
-						  if (imp_kernels==null) {
-							  System.out.println("Failed to open gaussian stack "+kernelPath);
-							  if(!saveResult) {
-								  result[nFile][nChn][nSubChn]=null; // erase results to save memory
-								  runtime.gc();
-								  if (DEBUG_LEVEL>1) System.out.println("--- Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")");
-							  }
-							  continue;
-						  }
 						  if (imp_kernels.getStackSize()<3) {
 							  System.out.println("Need a 3-layer stack with gaussian kernels");
 							  if(!saveResult)  result[nFile][nChn][nSubChn]=null; // erase results to save memory
@@ -3592,15 +3562,6 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 						  continue;
 					  }
 					  imp_kernels=new ImagePlus(kernelPath);
-					  if (imp_kernels==null) {
-						  System.out.println("Failed to open gaussian stack "+kernelPath);
-						  if(!saveResult) {
-							  result[nFile][nChn][nSubChn]=null; // erase results to save memory
-							  runtime.gc();
-							  if (DEBUG_LEVEL>1) System.out.println("--- Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")");
-						  }
-						  continue;
-					  }
 					  if (imp_kernels.getStackSize()<3) {
 						  System.out.println("Need a 3-layer stack with gaussian kernels");
 						  if(!saveResult) {
@@ -5702,8 +5663,25 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
     return (1.0+a)*Math.pow(x,gamma)-a;
 //  return x;
   }
-/* ======================================================================== */
-/* ======================================================================== */
+ 	/**
+	 * Main method for debugging.
+	 *
+	 * For debugging, it is convenient to have a method that starts ImageJ, loads an
+	 * image and calls the plugin, e.g. after setting breakpoints.
+	 * Grabbed from https://github.com/imagej/minimal-ij1-plugin
+	 * @param args unused
+	 */
+	public static void main(String[] args) {
+		// set the plugins.dir property to make the plugin appear in the Plugins menu
+		Class<?> clazz = Aberration_Calibration.class;
+		String url = clazz.getResource("/" + clazz.getName().replace('.', '/') + ".class").toString();
+		String pluginsDir = url.substring(5, url.length() - clazz.getName().length() - 6);
+		System.setProperty("plugins.dir", pluginsDir);
+		// start ImageJ
+		new ImageJ();
+		// run the plugin
+		IJ.runPlugIn(clazz.getName(), "");
+	}
 
 }
 

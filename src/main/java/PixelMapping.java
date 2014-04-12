@@ -1043,11 +1043,6 @@ public class PixelMapping {
     	(new JP46_Reader_camera(false)).decodeProperiesFromInfo(impMap);
     	InterSensor interSensor=new InterSensor(impMap,debugLevel);
     	this.lastUsedInterSensor=interSensor;
-    	if (interSensor==null){
-    		String msg="Failed to create inter-sensor map from "+path;
-    		IJ.showMessage("Error",msg);
-    		throw new IllegalArgumentException (msg);
-    	}
     	double [][] aYCbCr=convertToDouble?(new double [8][]):null;
     	for (int iChn=0;iChn<2;iChn++){
     		int channel=interSensor.channel[iChn];
@@ -1135,11 +1130,6 @@ public class PixelMapping {
     	(new JP46_Reader_camera(false)).decodeProperiesFromInfo(impMap);
     	InterSensor interSensor=new InterSensor(impMap,debugLevel);
     	this.lastUsedInterSensor=interSensor;
-    	if (interSensor==null){
-    		String msg="Failed to create inter-sensor map from "+path;
-    		IJ.showMessage("Error",msg);
-    		throw new IllegalArgumentException (msg);
-    	}
     	for (int iChn=0;iChn<interSensor.channel.length;iChn++){
     		int channel=interSensor.channel[iChn];
     		if (this.sensors[channel]==null){
@@ -9803,7 +9793,7 @@ public class PixelMapping {
         				double sigma){
         			if (sigma<=0) return;
         			
-        			double min=this.valueLimits[chn][0];
+//        			double min=this.valueLimits[chn][0];
         			double step=(this.valueLimits[chn][1]-this.valueLimits[chn][0])/(this.subdivAverage-1);
         			
        				(new DoubleGaussianBlur()).blurDouble(

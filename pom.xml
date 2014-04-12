@@ -13,11 +13,15 @@
 	</parent>
 
 	<groupId>com.elphel</groupId>
-	<artifactId>imagej-elphel</artifactId>
+ 	<artifactId>imagej-elphel</artifactId>
+<!-- 	<artifactId>Aberration_Calibration</artifactId> -->
+	
 	<version>1.0.0</version>
 
-	<name>plugins/ImageJ_Elphel.jar</name>
-	<description>A Maven project implementing imagej-elphel plugin</description>
+ 	<name>plugins/ImageJ_Elphel.jar</name>
+<!-- 	<name>plugins/Aberration_Calibration.jar</name> -->
+    <description>A Maven project implementing imagej-elphel plugin</description>
+
 
 	<dependencies>
 		<dependency>
@@ -94,7 +98,8 @@
 					</execution>
 				</executions>
 				<configuration>
-					<mainClass>Aberration_Calibration</mainClass>
+<!-- 					<mainClass>Aberration_Calibration</mainClass>  -->   
+					<mainClass>Eyesis_Correction</mainClass>   
 				</configuration>
 			</plugin>
  			

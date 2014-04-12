@@ -1343,8 +1343,7 @@ public class EyesisAberrations {
     	}
 	
 		showDoubleFloatArrays sdfa_instance=new showDoubleFloatArrays();
-		if (fileList==null) return false;
-		
+	
 		
 		ImagePlus              impShow=new ImagePlus("CombinedKernels");              // just to show in the same window?
 		long 	  startTime=System.nanoTime();

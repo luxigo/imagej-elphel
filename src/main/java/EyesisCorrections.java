@@ -30,7 +30,6 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.Prefs;
-import ij.gui.GenericDialog;
 import ij.io.FileInfo;
 import ij.io.FileSaver;
 import ij.process.ColorProcessor;
@@ -135,12 +134,6 @@ public class EyesisCorrections {
 							false); // do not show
 				} else {
 					imp=new ImagePlus(paths[nFile]);
-					if (imp==null){
-						String msg="Failed to open source image file "+paths[nFile];
-						System.out.println("Error "+msg);
-						IJ.showMessage("Error",msg);
-						break;
-					}
 					//				  (new JP46_Reader_camera(false)).decodeProperiesFromInfo(imp_src); // decode existent properties from info
 					JP4_INSTANCE.decodeProperiesFromInfo(imp); // decode existent properties from info
 				}
@@ -344,11 +337,6 @@ public class EyesisCorrections {
 						(!this.smoothKernelPaths[chn].equals((String) this.imageNoiseGains[chn].getProperty("smoothKernelPath")))){
 
 					ImagePlus imp_kernel_sharp=new ImagePlus(this.sharpKernelPaths[chn]);
-					  if (imp_kernel_sharp==null) {
-						  System.out.println("Failed to open (sharp) kernel stack "+this.sharpKernelPaths[chn]);
-						  this.sharpKernelPaths[chn]=null;
-						  continue;
-					  }
 					  if (imp_kernel_sharp.getStackSize()<3) {
 						  System.out.println("Need a 3-layer stack with kernels");
 						  this.sharpKernelPaths[chn]=null;
@@ -358,11 +346,6 @@ public class EyesisCorrections {
 					  ImageStack kernel_smooth_stack=null; 
 					  if (nonlinParameters.useDiffNoiseGains) {
 							ImagePlus imp_kernel_smooth=new ImagePlus(this.smoothKernelPaths[chn]);
-							  if (imp_kernel_smooth==null) {
-								  System.out.println("Failed to open (smooth) kernel stack "+this.smoothKernelPaths[chn]);
-								  this.smoothKernelPaths[chn]=null;
-								  continue;
-							  }
 							  if (imp_kernel_smooth.getStackSize()<3) {
 								  System.out.println("Need a 3-layer stack with kernels");
 								  this.smoothKernelPaths[chn]=null;
@@ -941,10 +924,7 @@ public class EyesisCorrections {
 			}
 			// Read deconvolution kernels
 			ImagePlus imp_sharp_kernels=new ImagePlus(this.sharpKernelPaths[channel]);
-			if (imp_sharp_kernels==null) {
-				System.out.println("Failed to open (sharp) kernel stack "+this.sharpKernelPaths[channel]);
-				return null;
-			} else if (imp_sharp_kernels.getStackSize()<3) {
+			if (imp_sharp_kernels.getStackSize()<3) {
 				System.out.println("Need a 3-layer stack with kernels - file "+this.sharpKernelPaths[channel]);
 				return null;
 			}
@@ -974,10 +954,7 @@ public class EyesisCorrections {
 					return null;
 				}
 				ImagePlus imp_smooth_kernels=new ImagePlus(this.smoothKernelPaths[channel]);
-				if (imp_smooth_kernels==null) {
-					System.out.println("Failed to open (smooth) kernel stack "+this.smoothKernelPaths[channel]);
-					return null;
-				} else if (imp_smooth_kernels.getStackSize()<3) {
+				if (imp_smooth_kernels.getStackSize()<3) {
 					System.out.println("Need a 3-layer stack with kernels - file "+this.smoothKernelPaths[channel]);
 					return null;
 				}
@@ -1078,10 +1055,7 @@ public class EyesisCorrections {
 				return null;
 			}
 			ImagePlus imp_smooth_kernels=new ImagePlus(this.smoothKernelPaths[channel]);
-			if (imp_smooth_kernels==null) {
-				System.out.println("Failed to open (smooth) kernel stack "+this.smoothKernelPaths[channel]);
-				return null;
-			} else if (imp_smooth_kernels.getStackSize()<3) {
+			if (imp_smooth_kernels.getStackSize()<3) {
 				System.out.println("Need a 3-layer stack with kernels - file "+this.smoothKernelPaths[channel]);
 				return null;
 			}

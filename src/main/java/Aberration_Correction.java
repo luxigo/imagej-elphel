@@ -33,6 +33,7 @@ import ij.io.FileSaver;
 import ij.io.OpenDialog;
 import ij.io.Opener;
 import ij.plugin.frame.*;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -46,6 +47,7 @@ import java.io.OutputStream;
 //import java.io.FilenameFilter;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 
@@ -4723,7 +4725,25 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
 	}
 
 /* ======================================================================== */
-
+ 	/**
+	 * Main method for debugging.
+	 *
+	 * For debugging, it is convenient to have a method that starts ImageJ, loads an
+	 * image and calls the plugin, e.g. after setting breakpoints.
+	 * Grabbed from https://github.com/imagej/minimal-ij1-plugin
+	 * @param args unused
+	 */
+	public static void main(String[] args) {
+		// set the plugins.dir property to make the plugin appear in the Plugins menu
+		Class<?> clazz = Aberration_Calibration.class;
+		String url = clazz.getResource("/" + clazz.getName().replace('.', '/') + ".class").toString();
+		String pluginsDir = url.substring(5, url.length() - clazz.getName().length() - 6);
+		System.setProperty("plugins.dir", pluginsDir);
+		// start ImageJ
+		new ImageJ();
+		// run the plugin
+		IJ.runPlugIn(clazz.getName(), "");
+	}
 
 }
 
