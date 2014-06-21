@@ -82,14 +82,14 @@ public class JP46_Reader_camera implements PlugIn, ActionListener {
 	}
 
 	public JP46_Reader_camera(Boolean showGui) {
-		initGui(showGui);
+		if (showGui) initGui();
 	}
 
 	public JP46_Reader_camera() {
-		initGui(true);
+		initGui();
 	}
 
-	private void initGui(Boolean showGui) {
+	private void initGui() {
 		if (headless) return;
 
 		if (IJ.versionLessThan("1.39t")) return;
@@ -1308,6 +1308,7 @@ Exception in thread "Thread-3564" java.lang.ArrayIndexOutOfBoundsException: 8970
 	 * image and calls the plugin, e.g. after setting breakpoints.
 	 * Grabbed from https://github.com/imagej/minimal-ij1-plugin
 	 * @param args unused
+	 */
 	public static void main(String[] args) {
 		// set the plugins.dir property to make the plugin appear in the Plugins menu
 		Class<?> clazz = JP46_Reader_camera.class;
@@ -1319,7 +1320,7 @@ Exception in thread "Thread-3564" java.lang.ArrayIndexOutOfBoundsException: 8970
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");
 	}
-*/
+
 }
 
 
