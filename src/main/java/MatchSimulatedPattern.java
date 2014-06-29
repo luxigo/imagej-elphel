@@ -5332,6 +5332,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   if (mask[i]<maskCutOff) mask[i]=0.0;
 			   int size = (int) Math.sqrt(psf.length);
 			   int hsize=size/2;
+//			   int nn=0;
 			   double S0=0.0, SR=0.0, ST=0.0,SR2=0.0,ST2=0.0; //,SRT=0.0;
 			   for (int i=0;i<mask.length;i++)  if (mask[i]>0.0) {
 				   double x=(i % size) - hsize;
@@ -5344,10 +5345,12 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   ST+=d*tc;
 				   SR2+=d*rc*rc;
 				   ST2+=d*tc*tc;
-//				   SRT+=d*rc*tc;
+//				   nn++;
 			   }
 			   if (S0==0.0) return null; // make sure it is OK
 			   double  [] result={ Math.sqrt(ST2*S0 - ST*ST)/S0, Math.sqrt(SR2*S0 - SR*SR)/S0};
+//			   System.out.println(" mask.length="+mask.length+" nn="+nn+" S0="+S0+" SR="+SR+" ST="+ST+" SR2="+SR2+" ST2="+ST2+
+//					   " result={"+result[0]+","+result[1]+"}");
 			   return result;
 		   }
 

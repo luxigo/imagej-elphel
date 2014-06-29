@@ -31,9 +31,12 @@ import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.text.TextWindow;
 
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -50,6 +53,8 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.XMLConfiguration;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
@@ -2513,7 +2518,7 @@ public class CalibrationHardwareInterface {
     public FocusingSharpness focusingSharpness=new FocusingSharpness(1000);
     public int debugLevel=1;
     public String motorsStatePath="lensAdjustmentMotorPosition.xml"; // will be saved in ~/.imagej/
-    public String prefsDirectory=Prefs.getPrefsDir()+Prefs.getFileSeparator(); // "~/.imagej/" 
+    public String prefsDirectory=null; // prefs.getPrefsDir()+Prefs.getFileSeparator(); // "~/.imagej/" - too early !!! 
     private Properties motorProperties=new Properties();
     public boolean interactiveRestore=true; // ask for confirmation to restore motor position
     public boolean stateValid=false;
@@ -2528,6 +2533,12 @@ public class CalibrationHardwareInterface {
     public double getMicronsPerStep(){return  1000.0*this.threadPitch*this.linearReductionRatio/stepsPerRevolution;}
     public void   setLinearReductionRatio(double lrr){this.linearReductionRatio=lrr;}
     
+    public String getPrefsDir(){
+    	if (prefsDirectory==null) prefsDirectory=Prefs.getPrefsDir();
+    	if (prefsDirectory!=null) prefsDirectory+=Prefs.getFileSeparator(); // "~/.imagej/"
+    	return prefsDirectory;
+    }
+
     public boolean isInitialized(){
     	return this.stateValid;
     }
@@ -2568,7 +2579,7 @@ public class CalibrationHardwareInterface {
     public void saveMotorState() throws IOException{
     	if (!this.stateValid) return; // do not save until allowed 
     	for (int i=0;i<curpos.length;i++) this.motorProperties.setProperty("motor"+(i+1),this.curpos[i]+"");
-    	String path=this.prefsDirectory+this.motorsStatePath;
+    	String path=this.getPrefsDir()+this.motorsStatePath;
     	OutputStream os;
     	try {
     		os = new FileOutputStream(path);
@@ -2600,7 +2611,7 @@ public class CalibrationHardwareInterface {
     }
     
     public int [] loadMotorState() throws IOException{
-    	String path=this.prefsDirectory+this.motorsStatePath;
+    	String path=this.getPrefsDir()+this.motorsStatePath;
     	InputStream is;
     	try {
     		is = new FileInputStream(path);
@@ -2756,7 +2767,7 @@ public class CalibrationHardwareInterface {
         	if (this.debugLevel>2) System.out.println("--savedPosition="+((savedPosition==null)?"null":("{"+savedPosition[0]+","+savedPosition[1]+","+savedPosition[2]+"}")));
 			if (this.interactiveRestore){
 	    		gd = new GenericDialog("Missing motor position file");
-	    		gd.addMessage("No motor position file ("+this.prefsDirectory+this.motorsStatePath+") found.");
+	    		gd.addMessage("No motor position file ("+this.getPrefsDir()+this.motorsStatePath+") found.");
 	    		gd.addMessage("If you run the program for the first time it is normal, you may click \"OK\" and the new file will be created");
 	    		gd.addMessage("If you select \"Cancel\" the current command will be aborted, you may check the file and restart the program.");
 	    	    gd.showDialog();
@@ -3056,6 +3067,28 @@ public class CalibrationHardwareInterface {
     			result_lastKT,
     			result_allHistoryKT);
     }
+	public void saveHistoryXML(
+			String path,
+    		String serialNumber,
+			String lensSerial, // if null - do not add average
+    		String comment,
+			double pX0,
+			double pY0,
+			double [][][] sampleCoord){ // x,y,r
+		this.focusingHistory.saveXML(
+    			path,
+        		serialNumber,
+    			lensSerial, // if null - do not add average
+        		comment,
+    			pX0,
+    			pY0,
+    			sampleCoord);
+	}
+    
+	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
+		this.focusingHistory.addCurrentHistory(focusingField);
+	}
+	
     public int historySize(){
     	return this.focusingHistory.history.size();
     }
@@ -5436,8 +5469,95 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     				Double.NaN,
     				Double.NaN);
     	}
-     	
-     	
+    	
+    	public void addCurrentHistory(
+    			FocusingField focusingField)
+    	{
+    		for (int i=0;i<this.history.size();i++){
+    			FocusingState focusingState=this.history.get(i);
+    			focusingField.addSample(
+    					focusingState.getTimestamp(),
+    					focusingState.getTemperature(),
+    					focusingState.motorsPos,
+    					focusingState.getSamples());
+    		}        	 
+
+    	}
+
+    	public void saveXML(
+    			String path,
+        		String serialNumber,
+    			String lensSerial, // if null - do not add average
+        		String comment,
+    			double pX0,
+    			double pY0,
+    			double [][][] sampleCoord){ // x,y,r
+    		String sep=" "; //",";
+    		ArrayList<String> nodeList=new ArrayList<String>(); 
+        	XMLConfiguration hConfig=new XMLConfiguration();
+        	hConfig.setRootElementName("focusingHistory");
+        	if (comment!=null)      hConfig.addProperty("comment",comment);
+        	if (serialNumber!=null) hConfig.addProperty("serialNumber",serialNumber);
+        	if (lensSerial!=null)   hConfig.addProperty("lensSerial",lensSerial);
+        	 hConfig.addProperty("lens_center_x",pX0);
+        	 hConfig.addProperty("lens_center_y",pY0);
+        	 if ((sampleCoord!=null) && (sampleCoord.length>0) && (sampleCoord[0] != null) && (sampleCoord[0].length>0)){
+        		 hConfig.addProperty("samples_x",sampleCoord[0].length);
+        		 hConfig.addProperty("samples_y",sampleCoord.length);
+        		 for (int i=0;i<sampleCoord.length;i++)
+        			 for (int j=0;j<sampleCoord[i].length;j++){
+//                		 double coord[] = {sampleCoord[i][j][0],sampleCoord[i][j][1]};
+                		 hConfig.addProperty("sample_"+i+"_"+j,sampleCoord[i][j][0]+sep+sampleCoord[i][j][1]);
+        			 }
+        	 }
+        	 hConfig.addProperty("measurements",this.history.size());
+        	 for (int i=0;i<this.history.size();i++){
+        		 FocusingState focusingState=this.history.get(i);
+        		 String prefix="measurement_"+i+".";
+        		 if (focusingState.getTimestamp()!=null)
+        			 hConfig.addProperty(prefix+"timestamp",focusingState.getTimestamp());
+        		 hConfig.addProperty(prefix+"temperature",focusingState.getTemperature());
+        		 hConfig.addProperty(prefix+"motors",focusingState.motorsPos[0]+sep+focusingState.motorsPos[1]+sep+focusingState.motorsPos[2]); // array of 3
+        		 double [][][][] samples=focusingState.getSamples();
+        		 nodeList.clear();
+        		 if ((samples!=null) && (samples.length>0) && (samples[0]!=null) && (samples[0].length>0)){
+        			 for (int ii=0;ii<samples.length;ii++) for (int jj=0;jj<samples[ii].length;jj++){
+        				 if ((samples[ii][jj]!=null) && (samples[ii][jj].length>0)) {
+        					 String sdata=ii+sep+jj;
+        					 for (int cc=0;cc<samples[ii][jj].length;cc++) {
+        						 double rt=samples[ii][jj][cc][0]/Math.sqrt((1+samples[ii][jj][cc][1]*samples[ii][jj][cc][1])/2.0); // tangential;
+        						 double rs=rt*samples[ii][jj][cc][1]; // saggital
+        						 sdata += sep+rs+ // saggital
+        								  sep+rt; // tangential
+//        						 double [] samples_st={
+//        								 samples[ii][jj][cc][0], // saggital
+//        								 samples[ii][jj][cc][0]/samples[ii][jj][cc][1] // tangential (was ratio)
+//        						 };
+        						 if ((samples[ii][jj]!=null) && (samples[ii][jj][cc]!=null)) {
+//        							 hConfig.addProperty(prefix+"y"+ii+".x"+jj+".c"+cc,samples_st); // array of 2
+//        							 nodeList.add(sdata);
+        						 }
+        					 }
+							 nodeList.add(sdata);
+        				 }
+        			 }
+					 hConfig.addProperty(prefix+"sample",nodeList);
+        		 }        	 
+        	 }
+         	File file=new File (path);
+         	BufferedWriter writer;
+ 			try {
+ 				writer = new BufferedWriter(new FileWriter(file));
+ 	        	hConfig.save(writer);
+ 			} catch (IOException e) {
+ 				// TODO Auto-generated catch block
+ 				e.printStackTrace();
+ 			} catch (ConfigurationException e) {
+ 				// TODO Auto-generated catch block
+ 				e.printStackTrace();
+ 			}
+        	 
+    	}
      	public void list(
     			String path,
         		String serialNumber,

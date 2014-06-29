@@ -34,26 +34,18 @@ import ij.text.TextWindow;
 
 import java.awt.*;
 import java.awt.event.*;
-
 import java.io.*; // FIle
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Properties;
 
-
 import javax.swing.*; // TODO: modify methods that depend on it, use class CalibrationFileManagement
+
 import java.util.*; 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+//import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
 
 public class Aberration_Calibration extends PlugInFrame implements ActionListener {
@@ -530,7 +522,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 	
 	public static LensAdjustment.FocusMeasurementParameters FOCUS_MEASUREMENT_PARAMETERS= new LensAdjustment.FocusMeasurementParameters(MOTORS.curpos);
 	public static CalibrationHardwareInterface.GoniometerMotors GONIOMETER_MOTORS= new CalibrationHardwareInterface.GoniometerMotors();
-	
+	public static FocusingField FOCUSING_FIELD=null;
 	//GoniometerParameters
 	public static Goniometer.GoniometerParameters GONIOMETER_PARAMETERS= new Goniometer.GoniometerParameters(GONIOMETER_MOTORS);
 	
@@ -767,9 +759,13 @@ if (MORE_BUTTONS) {
 		panelFocusing = new Panel();
 		panelFocusing.setLayout(new GridLayout(1, 0, 5, 5));
 		addButton("Configure Focusing",panelFocusing,color_configure);
-		addButton("Head Orientation",panelFocusing);
+		if (MORE_BUTTONS) {		
+			addButton("Head Orientation",panelFocusing);
+		}
 		addButton("Lens Center",panelFocusing,color_process);
-        addButton("Find Grid",panelFocusing,color_lenses);
+		if (MORE_BUTTONS) {		
+			addButton("Find Grid",panelFocusing,color_lenses);
+		}
         addButton("Select WOI",panelFocusing,color_lenses);
         addButton("Reset Histories",panelFocusing,color_lenses);
         addButton("Motors Home",panelFocusing,color_lenses);
@@ -781,6 +777,12 @@ if (MORE_BUTTONS) {
 		addButton("Temp. Scan",panelFocusing,color_process);
 		//
 		addButton("List History",panelFocusing,color_report);
+		addButton("Save History",panelFocusing,color_debug);
+		addButton("Restore History",panelFocusing,color_debug);
+		addButton("Modify LMA",panelFocusing,color_debug);
+		addButton("LMA History",panelFocusing,color_debug);
+		addButton("List curv pars",panelFocusing,color_debug);
+		addButton("List curv data",panelFocusing,color_debug);
 		addButton("Show PSF",panelFocusing,color_report);
 		add(panelFocusing);
 	//panelGoniometer
@@ -2643,7 +2645,7 @@ if (MORE_BUTTONS) {
             	// /getPointersXY(ImagePlus imp, int numPointers){               if
             	// calculate distortion grid for it
 
-            	matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Filed calibration - different image. 
+            	matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Field calibration - different image. 
             	matchSimulatedPattern.invalidateFocusMask();
             	int numAbsolutePoints=matchSimulatedPattern.calculateDistortions(
             			DISTORTION, //
@@ -3577,7 +3579,7 @@ if (MORE_BUTTONS) {
 			// reset matchSimulatedPattern, so it will start from scratch
 			matchSimulatedPattern= new MatchSimulatedPattern(DISTORTION.FFTSize); // new instance, all reset
 			// next 2 lines are not needed for the new instance, but can be used alternatively if keeipg it
-			   matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Filed calibration - different image. 
+			   matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Field calibration - different image. 
 			   matchSimulatedPattern.invalidateFocusMask();
 
 			
@@ -4252,6 +4254,90 @@ if (MORE_BUTTONS) {
 					);
 			return;
 		}
+/* ======================================================================== */
+		if       (label.equals("Save History")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+			double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates( //{x,y,r}
+					pX0,   // lens center on the sensor
+					pY0);
+			// set file path
+			String path=null;
+			String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
+			File dFile=new File(dir);
+			if (!dFile.isDirectory() &&  !dFile.mkdirs()) {
+				String msg="Failed to create directory "+dir;
+				IJ.showMessage(msg);
+				throw new IllegalArgumentException (msg);
+			}
+
+			String lensPrefix="";
+			if (FOCUS_MEASUREMENT_PARAMETERS.includeLensSerial && (FOCUS_MEASUREMENT_PARAMETERS.lensSerial.length()>0)){
+				lensPrefix=String.format("LENS%S-S%02d-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial,FOCUS_MEASUREMENT_PARAMETERS.manufacturingState);
+			}
+			path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
+			FOCUSING_FIELD= new FocusingField(
+					FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+					FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+					FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+					pX0,
+					pY0,
+					sampleCoord,
+					this.SYNC_COMMAND.stopRequested);
+
+			System.out.println("Saving measurement history to "+path);
+			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
+			FOCUSING_FIELD.saveXML(path);
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Restore History")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			FOCUSING_FIELD=new FocusingField(
+					true, // boolean smart,       // do not open dialog if default matches 
+					"",//); //String defaultPath); //			AtomicInteger stopRequested
+					this.SYNC_COMMAND.stopRequested);
+			System.out.println("Loaded FocusingField");
+			FOCUSING_FIELD.configureDataVector("Configure curvature",true);
+			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
+			double []focusing_fx=FOCUSING_FIELD.createFXandJacobian(true);
+			double rms= FOCUSING_FIELD.getRMS(focusing_fx);
+			System.out.println("rms="+rms);
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Modify LMA")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false);
+			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("LMA History")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.LevenbergMarquardt(true, DEBUG_LEVEL); //boolean openDialog, int debugLevel){
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("List curv pars")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.listParameters("Field curvature measurement parameters",null); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("List curv data")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.listData("Field curvature measurement data",null); // to screen
+			return;
+		}
+
+//"LMA History"		
+		
 /* ======================================================================== */
 		if       (label.equals("Show PSF")) {
 			
@@ -8010,7 +8096,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
 			
 			
-			GenericDialog gd=new GenericDialog("Pattern Flat Filed parameters");
+			GenericDialog gd=new GenericDialog("Pattern Flat Field parameters");
 			gd.addNumericField("Fitting series number (to select images), negative - use all enabled images", -1,0);
 			gd.addNumericField("Reference station number (unity target brightness)", 0,0);
 			gd.addNumericField("Shrink sensor mask",    100.0, 1,6,"sensor pix");
@@ -10100,7 +10186,7 @@ if (MORE_BUTTONS) {
 				for (int jj=0;jj<sampleCoord[0].length;jj++){
 					int index=ii*sampleCoord[0].length+jj;
 					imp_psf.setProperty("pX_"+index, ""+sampleCoord[ii][jj][0]);
-					imp_psf.setProperty("pX_"+index, ""+sampleCoord[ii][jj][0]);
+					imp_psf.setProperty("pY_"+index, ""+sampleCoord[ii][jj][1]);
 					if (fullResults[ii][jj]!=null){
 						for (int cc=0;cc<fullResults[ii][jj].length;cc++) if (fullResults[ii][jj][cc]!=null){
 							imp_psf.setProperty("R50_"+cc+"_"+index, ""+fullResults[ii][jj][cc][0]);
@@ -10196,6 +10282,11 @@ if (MORE_BUTTONS) {
 					double r=Math.sqrt(x*x+y*y);			
 					double ca=(sampleCoord[i][j][0]-x0)/r;
 					double sa=(sampleCoord[i][j][1]-y0)/r;
+//					System.out.println("extractPSFMetrics.. color="+color+" i="+i+" j="+j+" cos="+ca+" sin="+sa+
+//							" psf_cutoffEnergy="+focusMeasurementParameters.psf_cutoffEnergy+
+//							" psf_cutoffLevel="+focusMeasurementParameters.psf_cutoffLevel+
+//							" psf_minArea="+focusMeasurementParameters.psf_minArea+
+//							" psf_blurSigma="+focusMeasurementParameters.psf_blurSigma);
 					double [] tanRad=		   matchSimulatedPattern.tangetRadialSizes(
 							   ca, // cosine of the center to sample vector
 							   sa, // sine of the center to sample vector
@@ -11739,7 +11830,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
     }
 // images cap[ture in portrait mode, opened in landscape mode (rotated CCW90 from original)
 // returns valid images for sub-bands: top, middle and bottom:   mask bits 1- top (left) valid, 2 - middle valid, 4 - bottom (right) vlaid     
-    private int calcValidFlatFiledMask(FlatFieldParameters flatFieldParameters, int [] ranges, ImagePlus imp){
+    private int calcValidFlatFieldMask(FlatFieldParameters flatFieldParameters, int [] ranges, ImagePlus imp){
     	int mask=0, maskO=0, maskU=0;
     	int [] mranges=ranges.clone();
     	mranges[0]=flatFieldParameters.margins[0];
@@ -11864,7 +11955,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
           		ip=imp_single.getChannelProcessor();
 // currently all images in all channels should be the same width          		
         	    if (weightMasks[0]==null)initFlatFieldArrays (imp_single.getWidth(), weightMasks, ranges, weights);
-        	    int diagMask= calcValidFlatFiledMask(flatFieldParameters, ranges,  imp_single);
+        	    int diagMask= calcValidFlatFieldMask(flatFieldParameters, ranges,  imp_single);
         	    int validBandsMask = diagMask & 7;
         	    String imageExpStatus="";
         	    for (int n=0;n<3;n++) {
