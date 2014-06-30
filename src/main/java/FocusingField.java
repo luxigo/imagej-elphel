@@ -59,9 +59,11 @@ public class FocusingField {
 	public double pY0;
 	public double [][][] sampleCoord;
 	public ArrayList<FocusingFieldMeasurement> measurements;
+	boolean sagittalMaster=false; // center data is the same, when true sagittal fitting only may change r=0 coefficients,
+	                              // when false - tangential is master
 	double [] minMeas=      {1.0,1.0,1.0,1.0,1.0,1.0}; // pixels
 	double [] maxMeas=      {4.5,4.5,4.5,4.5,4.5,4.5}; // pixels
-	double [] thresholdMax= {3.0,3.0,3.0,3.0,3.0,3.0}; // pixels
+	double [] thresholdMax= {3.0,3.0,3.0,3.0,4.0,3.0}; // pixels
 	double [] weightReference=null;
 	boolean useMinMeas=     true;
 	boolean useMaxMeas=     true;
@@ -179,6 +181,9 @@ public class FocusingField {
     	int [] numCurvPars=tmpFieldFitting.getNumCurvars();
     	GenericDialog gd = new GenericDialog(title+(forcenew?" RESETTING DATA":""));
     	gd.addMessage("=== Setting minimal measured PSF radius for different colors/directions ===");
+    	gd.addCheckbox("Sagittal channels are master channels (false - tangential are masters)",sagittalMaster);
+
+    	
     	for (int i=0;i<minMeas.length;i++){
     		gd.addNumericField(tmpFieldFitting.getDescription(i),this.minMeas[i],3,5,"pix");
     	}
@@ -207,6 +212,7 @@ public class FocusingField {
 	    WindowTools.addScrollBars(gd);
     	gd.showDialog();
     	if (gd.wasCanceled()) return false;
+    	sagittalMaster=                                                gd.getNextBoolean();
     	for (int i=0;i<minMeas.length;i++)this.minMeas[i]=             gd.getNextNumber();
     	useMinMeas=                                                    gd.getNextBoolean();
     	for (int i=0;i<maxMeas.length;i++) this.maxMeas[i]=            gd.getNextNumber();
@@ -232,7 +238,7 @@ public class FocusingField {
     	}
     	if (setupMasks) this.fieldFitting.maskSetDialog("Setup parameter masks");
     	if (setupParameters) this.fieldFitting.showModifyParameterValues("Setup parameter values",showDisabled);
-    	this.savedVector=this.fieldFitting.createParameterVector();
+    	this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
 //    	initialVector    	
     	return true;
     }
@@ -276,7 +282,7 @@ public class FocusingField {
     
 // for compatibility with Distortions class    
     public double [] createFXandJacobian( double [] vector, boolean createJacobian){
-    	fieldFitting.commitParameterVector(vector);
+    	fieldFitting.commitParameterVector(vector,sagittalMaster);
     	return createFXandJacobian(createJacobian);
     }
 
@@ -291,7 +297,7 @@ public class FocusingField {
     	for (int i=1;i<selChanIndices.length;i++){
     		selChanIndices[i]= selChanIndices[i-1]+(selChannels[i-1]?1:0);
     	}
-    	int numPars=fieldFitting.getNumberOfParameters();
+    	int numPars=fieldFitting.getNumberOfParameters(sagittalMaster);
     	if (createJacobian) {
     		jacobian=new double [numPars][dataVector.length];
     		derivs=new double [fieldFitting.getNumberOfChannels()][];
@@ -302,6 +308,7 @@ public class FocusingField {
     		MeasuredSample ms=dataVector[n];
     		if (!ms.timestamp.equals(prevTimeStamp) || (ms.px!=prevPx) || (ms.py!=prevPy)){
     			subData=fieldFitting.getValsDerivatives(
+    					sagittalMaster,
     					ms.motors, // 3 motor coordinates
     					ms.px, // pixel x 
     					ms.py, // pixel y
@@ -896,6 +903,7 @@ public class FocusingField {
     			for (int i=0;i<sampleCoord.length;i++)
     				for (int j=0;j<sampleCoord[0].length;j++) {
     					double [] subData=fieldFitting.getValsDerivatives(
+    							sagittalMaster, // dependent channel does not have center parameters, but that is only used for derivs.
     							ffm.motors, // 3 motor coordinates
     							sampleCoord[i][j][0], // pixel x 
     							sampleCoord[i][j][1], // pixel y
@@ -1049,8 +1057,8 @@ public class FocusingField {
     	if (openDialog && !selectLMAParameters()) return false;
     	this.startTime=System.nanoTime();
 // create savedVector (it depends on parameter masks), restore from it if aborted     	
-    	this.savedVector=this.fieldFitting.createParameterVector();
-   	
+    	this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
+    	this.iterationStepNumber=0;
     	this.firstRMS=-1; //undefined
 //    	while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
     		this.currentVector=null; // invalidate for the new series
@@ -1062,7 +1070,7 @@ public class FocusingField {
     				String msg="Calculation aborted by user request, restoring saved parameter vector";
     				IJ.showMessage(msg);
     				System.out.println(msg);
-    				this.fieldFitting.commitParameterVector(this.savedVector);
+    				this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster);
     				return false; 
     			}
     			
@@ -1113,13 +1121,13 @@ public class FocusingField {
 //						updateCameraParametersFromCalculated(false); // update camera parameters from enabled only images (may overwrite some of the above)
 					}
 					// if RMS was decreased. this.saveSeries==false after dialogLMAStep(state) only if "cancel" was pressed 
-					this.fieldFitting.commitParameterVector(this.savedVector); // either new or original
+					this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster); // either new or original
 					return this.saveSeries; // TODO: Maybe change result?
 				}
 //stepLevenbergMarquardtAction();    			
     			if (state[1]) {
     				if (!state[0]) {
-    					this.fieldFitting.commitParameterVector(this.savedVector);
+    					this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster);
     					return false; // sequence failed
     				}
 					this.savedVector=this.currentVector.clone();
@@ -1134,11 +1142,12 @@ public class FocusingField {
 //    		if (wasLastSeries) break;
 //    	} // while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
 		if (debugLevel>0) System.out.println("LevenbergMarquardt(): all done"+
+                ", step="+    	this.iterationStepNumber+
 				", RMS="+this.currentRMS+
 				" ("+this.firstRMS+") "+
 				" at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3));
 		this.savedVector=this.currentVector.clone();
-		this.fieldFitting.commitParameterVector(this.savedVector);
+		this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster);
     	return true; // all series done
     	
     }
@@ -1495,14 +1504,28 @@ public class FocusingField {
 				}
 			}
 			for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+				boolean isMasterDir=(n%2) == (sagittalMaster?0:1);
 				parList.add("\t ===== Curvature model parameters for \""+ getDescription(n)+"\"=====\t\t");
+				int n1= n ^ 1;
 	    		int index=0;
 				for (int i=0;i<curvatureModel[n].modelParams.length;i++) for (int j=0;j<curvatureModel[n].modelParams[0].length;j++){
 					String name=curvatureModel[n].getZDescription(i)+", "+curvatureModel[n].getRadialDecription(j);
-					if ((curvatureSelect[n]==null) || curvatureSelect[n][index] ) {
-						parList.add("\t"+name+":\t"+curvatureModel[n].modelParams[i][j]+"\t");
-					} else if (showDisabled) {
-						parList.add("(disabled)\t"+name+":\t"+curvatureModel[n].modelParams[i][j]+"\t");
+					if ((j==0) && !isMasterDir){ // dependent, copy center coefficients from the master
+						if ((curvatureSelect[n1]==null) || curvatureSelect[n1][index] ) {
+							parList.add("(master)\t"+name+":\t"+curvatureModel[n1].modelParams[i][j]+"\t");
+							// debugging
+							parList.add("(this)\t"+name+":\t"+curvatureModel[n].modelParams[i][j]+"\t");
+						} else if (showDisabled) {
+							parList.add("(master_disabled)\t"+name+":\t"+curvatureModel[n1].modelParams[i][j]+"\t");
+							// debugging
+							parList.add("(this_disabled)\t"+name+":\t"+curvatureModel[n1].modelParams[i][j]+"\t");
+						}
+					} else {
+						if ((curvatureSelect[n]==null) || curvatureSelect[n][index] ) {
+							parList.add("\t"+name+":\t"+curvatureModel[n].modelParams[i][j]+"\t");
+						} else if (showDisabled) {
+							parList.add("(disabled)\t"+name+":\t"+curvatureModel[n].modelParams[i][j]+"\t");
+						}
 					}
 					index++;
 				}
@@ -1523,14 +1546,25 @@ public class FocusingField {
 				}
 			}
 			for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+				boolean isMasterDir=(n%2) == (sagittalMaster?0:1);
+				int n1= n ^ 1;
+
 		    	gd.addMessage("===== Curvature model parameters for \""+ getDescription(n)+"\"=====");
 	    		int index=0;
 				for (int i=0;i<curvatureModel[n].modelParams.length;i++) for (int j=0;j<curvatureModel[n].modelParams[0].length;j++){
 					String name=curvatureModel[n].getZDescription(i)+", "+curvatureModel[n].getRadialDecription(j);
-					if ((curvatureSelect[n]==null) || curvatureSelect[n][index] ) {
-						gd.addNumericField(name,curvatureModel[n].modelParams[i][j],5,8,"");
-					} else if (showDisabled) {
-						gd.addNumericField("(disabled) "+name,curvatureModel[n].modelParams[i][j],5,8,"");
+					if ((j==0) && !isMasterDir){ // dependent, copy center coefficients from the master
+						if ((curvatureSelect[n1]==null) || curvatureSelect[n1][index] ) {
+							gd.addNumericField("(copied from master) "+name,curvatureModel[n1].modelParams[i][j],5,8,"");
+						} else if (showDisabled) {
+							gd.addNumericField("(copied from disabled master) "+name,curvatureModel[n1].modelParams[i][j],5,8,"");
+						}
+					} else {
+						if ((curvatureSelect[n]==null) || curvatureSelect[n][index] ) {
+							gd.addNumericField(name,curvatureModel[n].modelParams[i][j],5,8,"");
+						} else if (showDisabled) {
+							gd.addNumericField("(disabled) "+name,curvatureModel[n].modelParams[i][j],5,8,"");
+						}
 					}
 					index++;
 				}
@@ -1562,15 +1596,16 @@ public class FocusingField {
 		/**
 		 * @return number of selected parameters (including mechanical and each selected - up to 6 - curvature)
 		 */
-		public int getNumberOfParameters(){
+		public int getNumberOfParameters(boolean sagittalMaster){
 			int np=0;
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) np++;
 			}
 			for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+				boolean isMasterDir=(n%2) == (sagittalMaster?0:1);
 	    		int index=0;
 				for (int i=0;i<curvatureModel[n].modelParams.length;i++) for (int j=0;j<curvatureModel[n].modelParams[0].length;j++){
-					if ((curvatureSelect[n]==null) || curvatureSelect[n][index] ) np++;
+					if ((isMasterDir || (j!=0)) && ((curvatureSelect[n]==null) || curvatureSelect[n][index] )) np++;
 					index++;
 				}
 			}
@@ -1589,20 +1624,22 @@ public class FocusingField {
 		/**
 		 * @return vector of the current selected parameters values
 		 */
-		public double [] createParameterVector(){
-			double [] pars = new double [getNumberOfParameters()];
+		public double [] createParameterVector(boolean sagittalMaster){
+			double [] pars = new double [getNumberOfParameters(sagittalMaster)];
 			int np=0;
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) pars[np++]=mechanicalFocusingModel.paramValues[i];
 			}
 			for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+				boolean isMasterDir=(n%2) == (sagittalMaster?0:1);
 	    		int index=0;
 				for (int i=0;i<curvatureModel[n].modelParams.length;i++) for (int j=0;j<curvatureModel[n].modelParams[0].length;j++){
-					if ((curvatureSelect[n]==null) || curvatureSelect[n][index] ) pars[np++]=curvatureModel[n].modelParams[i][j];
+					if ((isMasterDir || (j!=0)) && ((curvatureSelect[n]==null) || curvatureSelect[n][index] )) {
+						pars[np++]=curvatureModel[n].modelParams[i][j];
+					}
 					index++;
 				}
 			}
-			
 			return pars;
 		}
 		
@@ -1610,18 +1647,30 @@ public class FocusingField {
 		 * Apply (modified) parameter values to selected ones
 		 * @param pars vector corresponding to selected parameters
 		 */
-		public void commitParameterVector(double [] pars){
+		public void commitParameterVector(double [] pars, boolean sagittalMaster){
 			int np=0;
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) mechanicalFocusingModel.paramValues[i] = pars[np++];;
 			}
 			for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+				boolean isMasterDir=(n%2) == (sagittalMaster?0:1);
 	    		int index=0;
 				for (int i=0;i<curvatureModel[n].modelParams.length;i++) for (int j=0;j<curvatureModel[n].modelParams[0].length;j++){
-					if ((curvatureSelect[n]==null) || curvatureSelect[n][index] ) curvatureModel[n].modelParams[i][j]=pars[np++];
+					if ((isMasterDir || (j!=0)) && ((curvatureSelect[n]==null) || curvatureSelect[n][index] )) {
+						curvatureModel[n].modelParams[i][j]=pars[np++];
+					}
 					index++;
 				}
 			}
+// copy center parameters to dependent
+// copy if master is selected, regardless of is dependent selected or not			
+			for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+				boolean isMasterDir = (n%2) == (sagittalMaster?0:1);
+				if (isMasterDir){
+					curvatureModel[n ^ 1].setCenterVector(curvatureModel[n].getCenterVector());
+				}
+			}			
+			
 			
 		}
 		public double getMotorsZ(
@@ -1653,6 +1702,64 @@ public class FocusingField {
 		 * @return array of [getNumberOfChannels()] calculated function values
 		 */
 		public double [] getValsDerivatives(
+				boolean sagittalMaster, // false - tangential master, true - sagittal master (for center coefficients)
+				int [] motors, // 3 motor coordinates
+				double px, // pixel x 
+				double py, // pixel y
+				double [][] deriv // array of (1..6[][], matching getNumberOfChannels) or null if derivatives are not required
+				){
+			double [] motorDerivs=(deriv==null)? null:(new double [mechanicalFocusingModel.getNumPars()]);
+			double [] chnValues=new double [getNumberOfChannels()];
+			double mot_z=mechanicalFocusingModel.calc_ZdZ(
+					motors,
+					px,
+					py,
+					motorDerivs);
+			int nChn=0;
+			double [][] deriv_curv = new double [channelSelect.length][];
+			for (int c=0;c<channelSelect.length;c++) deriv_curv[c]=null; 
+			for (int c=0;c<channelSelect.length;c++) if (channelSelect[c]){
+				deriv_curv[c]=(deriv==null)?null:(new double [curvatureModel[c].getSize()]);
+				chnValues[nChn++]=curvatureModel[c].getFdF(
+						px,
+						py,
+						mot_z,
+						deriv_curv[c]);
+			}
+			if (deriv!=null){
+				nChn=0;
+				for (int c=0;c<channelSelect.length;c++) if (channelSelect[c]){
+					boolean isMasterDir=(c%2) == (sagittalMaster?0:1);
+					int otherChannel= c ^ 1;
+					deriv[nChn]=new double [getNumberOfParameters(sagittalMaster)];
+					int np=0;
+					// For dependent/master channels no difference for mechanical parameters
+					// TOSO: verify they are the same?
+
+					for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
+						if ((mechanicalSelect==null) || mechanicalSelect[i] ) {
+							deriv[nChn][np++]=-motorDerivs[i]*deriv_curv[c][0]; // minus d/dz0 const part 
+						}
+					}
+					// other parameters - for dependent - skip center (j==0), for master add dependent
+					for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+						int [] ncp=curvatureModel[n].getNumPars(); // {(z),(r)}
+						boolean isDependMasterDir=(n%2) == (sagittalMaster?0:1);
+						for (int i=0;i<curvatureSelect[n].length; i++) if (curvatureSelect[n][i] ){
+							if (((i%ncp[1])!=0) || isDependMasterDir) {
+								int dependOnChannel=(((i%ncp[1])==0) && !isMasterDir)?otherChannel:c;
+								deriv[nChn][np++]=(n==dependOnChannel)?(deriv_curv[n][i]):0.0;
+							}
+						}
+					}
+					nChn++;
+				}
+			}
+			return chnValues;
+		}
+
+		public double [] getValsDerivativesOld(
+				boolean sagittalMaster,
 				int [] motors, // 3 motor coordinates
 				double px, // pixel x 
 				double py, // pixel y
@@ -1674,12 +1781,13 @@ public class FocusingField {
 						mot_z,
 						deriv_curv);
 				if (deriv!=null){
-					deriv[nChn]=new double [getNumberOfParameters()];
+					deriv[nChn]=new double [getNumberOfParameters(sagittalMaster)];
 					int np=0;
 
 					for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 						if ((mechanicalSelect==null) || mechanicalSelect[i] ) deriv[nChn][np++]=-motorDerivs[i]*deriv_curv[0]; // minus d/dz0 const part 
 					}
+					
 					for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
 						for (int i=0;i<curvatureSelect[n].length; i++) if (curvatureSelect[n][i] ){
 							deriv[nChn][np++]=(n==c)?(deriv_curv[i]):0.0;
@@ -1690,7 +1798,9 @@ public class FocusingField {
 			}
 			return chnValues;
 		}
-
+		
+		
+		
 	}
 	
 	public class MechanicalFocusingModel{
@@ -1990,6 +2100,19 @@ public class FocusingField {
 			this.modelParams[1][0]=dflt_na;
 			this.modelParams[2][0]=dflt_r0;
 		}
+		public double [] getCenterVector(){
+			double [] vector=new double [this.modelParams.length];
+			for (int i=0;i<this.modelParams.length;i++){
+				vector[i]=this.modelParams[i][0];
+			}
+			return vector;
+		}
+		public void setCenterVector(double [] vector){
+			for (int i=0;i<this.modelParams.length;i++){
+				this.modelParams[i][0]=vector[i];
+			}
+		}
+
 		public double [] getVector(){
 			double [] vector=new double [this.modelParams.length*this.modelParams[0].length];
 			int index=0;
@@ -2036,6 +2159,11 @@ modified parameters, r0 - PSF FWHM at z=0, k (instead of a0), so that old r0 now
 r0*exp(-k), old a0= r0*(1-exp(-k)).  
 
 f=sqrt((a*(zin-z0))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ a1*(zin-z0)+...aN*(zin-z0)^N
+z0 -  ar[0]
+a -   ar[1]
+r0 -  ar[2]
+k  -  ar[3]
+ar1 - ar[4]
 
 */
 			double r=Math.sqrt((pX-pX0)*(pX-pX0)+(pY-pY0)*(pY-pY0))*PIXEL_SIZE; // in mm
@@ -2050,13 +2178,24 @@ f=sqrt((a*(zin-z0))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ a1*(zin-z0)+...aN*(zin-
 				}
 			}
 			double z=z_in-ar[0];
-			double sqrt=Math.sqrt((ar[1]*z)*(ar[1]*z) + ar[2]*ar[2]);
-			double f=sqrt;
+			double exp=Math.exp(-ar[3]);
+			double reff=ar[2]*exp;
+//			double sqrt=Math.sqrt((ar[1]*z)*(ar[1]*z) + ar[2]*ar[2]);
+			double sqrt=Math.sqrt((ar[1]*z)*(ar[1]*z) + reff*reff);
+			
+			double f=sqrt+ar[2]*(1-exp);
 			double zp=1.0;
+/*			
 			for (int i=3;i<ar.length;i++){
 				f+=ar[i]*zp;
 				zp*=z;
 			}
+*/			
+			for (int i=4;i<ar.length;i++){
+				zp*=z;
+				f+=ar[i]*zp;
+			}
+
 			if (deriv==null) return f; // only value, no derivatives
 			double [] df_da=new double[this.modelParams.length]; // last element - derivative for dz
 			// derivative for z0 (shift) - ar[0]
@@ -2069,12 +2208,23 @@ f=sqrt((a*(zin-z0))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ a1*(zin-z0)+...aN*(zin-
 			// derivative for a (related to numeric aperture) - ar[1]
 			df_da[1]=1.0/sqrt*ar[1]*z*z;
 			// derivative for a (related to lowest PSF radius) - ar[2]
-			df_da[2]=1.0/sqrt*ar[2];
+//			df_da[2]=1.0/sqrt*ar[2];
+			df_da[2]=1.0/sqrt*reff*exp + (1-exp); // * exp(-k)
+			// derivative for k (ar[3]
+			
+			df_da[3]=1.0/sqrt*reff*ar[2]*exp*(-1) + ar[2]*exp;
+			
 			// derivatives for rest (polynomial) coefficients
 			zp=1.0;
+/*			
 			for (int i=3;i<this.modelParams.length;i++){
 				df_da[i]=zp;
 				zp*=z;
+			}
+*/			
+			for (int i=4;i<this.modelParams.length;i++){
+				zp*=z;
+				df_da[i]=zp;
 			}
 			// derivative for z (to be combined with mechanical is just negative of derivative for z0, no need to calcualate separately
 			// calculate even powers of radius
@@ -2178,15 +2328,20 @@ f=sqrt((a*(zin-z0))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ a1*(zin-z0)+...aN*(zin-
 			return mask;
 		}
 		
-		public boolean showModifyParameterValues(String title, boolean showDisabled, boolean [] mask){
+		public boolean showModifyParameterValues(String title, boolean showDisabled, boolean [] mask, boolean isMaster){
 	    	GenericDialog gd = new GenericDialog(title);
     		int index=0;
 			for (int i=0;i<this.modelParams.length;i++) for (int j=0;j<this.modelParams[0].length;j++){
 				String name=getZDescription(i)+", "+getRadialDecription(j);
-				if ((mask==null) || mask[index] ) {
+				boolean dependent=!isMaster && (j==0);
+				if (((mask==null) || mask[index] ) && !dependent) {
 					gd.addNumericField(name,this.modelParams[i][j],5,8,"");
 				} else if (showDisabled) {
-					gd.addNumericField("(disabled) "+name,this.modelParams[i][j],5,8,"");
+					if (dependent) {
+						gd.addNumericField("(from master) "+name,this.modelParams[i][j],5,8,"");
+					} else {
+						gd.addNumericField("(disabled) "+name,this.modelParams[i][j],5,8,"");
+					}
 //					gd.addMessage(name +":   "+this.modelParams[i][j]);
 				}
 				index++;
