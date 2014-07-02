@@ -5525,18 +5525,19 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
         				 if ((samples[ii][jj]!=null) && (samples[ii][jj].length>0)) {
         					 String sdata=ii+sep+jj;
         					 for (int cc=0;cc<samples[ii][jj].length;cc++) {
+/*        						 
         						 double rt=samples[ii][jj][cc][0]/Math.sqrt((1+samples[ii][jj][cc][1]*samples[ii][jj][cc][1])/2.0); // tangential;
         						 double rs=rt*samples[ii][jj][cc][1]; // saggital
         						 sdata += sep+rs+ // saggital
         								  sep+rt; // tangential
+*/        						 
+        						 sdata += sep+samples[ii][jj][cc][0]+ // x2
+        								 sep+samples[ii][jj][cc][1]+  // y2
+        								 sep+samples[ii][jj][cc][2];  // xy
 //        						 double [] samples_st={
 //        								 samples[ii][jj][cc][0], // saggital
 //        								 samples[ii][jj][cc][0]/samples[ii][jj][cc][1] // tangential (was ratio)
 //        						 };
-        						 if ((samples[ii][jj]!=null) && (samples[ii][jj][cc]!=null)) {
-//        							 hConfig.addProperty(prefix+"y"+ii+".x"+jj+".c"+cc,samples_st); // array of 2
-//        							 nodeList.add(sdata);
-        						 }
         					 }
 							 nodeList.add(sdata);
         				 }
@@ -5599,14 +5600,18 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     		if (showIndividualSamples){
     			if (showIndividualComponents) { // additional 3 per-color rows
     				for (int i=0;i<sampleRows;i++) for (int j=0;j<sampleColumns;j++){
-    					header+="\tY"+i+"X"+j+"_R"+"\tY"+i+"X"+j+"_R/T";
+//    					header+="\tY"+i+"X"+j+"_R"+"\tY"+i+"X"+j+"_R/T";
+    					header+="\tY"+i+"X"+j+"_X2"+"\tY"+i+"X"+j+"_Y2"+"\tY"+i+"X"+j+"_XY";
     				}
 
     			} else {
     				for (int i=0;i<sampleRows;i++) for (int j=0;j<sampleColumns;j++){ // single row fro all colors
-    					header+="\tY"+i+"X"+j+"_Red_R"+"\tY"+i+"X"+j+"_Red_R/T"+
-    					"\tY"+i+"X"+j+"_Green_R"+"\tY"+i+"X"+j+"_Green_R/T"+
-    					"\tY"+i+"X"+j+"_Blue_R"+"\tY"+i+"X"+j+"_Blue_R/T";
+//    					header+="\tY"+i+"X"+j+"_Red_R"+"\tY"+i+"X"+j+"_Red_R/T"+
+//    					"\tY"+i+"X"+j+"_Green_R"+"\tY"+i+"X"+j+"_Green_R/T"+
+//    					"\tY"+i+"X"+j+"_Blue_R"+"\tY"+i+"X"+j+"_Blue_R/T";
+    					header+="\tY"+i+"X"+j+"_Red_X2"+"\tY"+i+"X"+j+"_Red_Y2"+"\tY"+i+"X"+j+"_Red_XY"+
+    					"\tY"+i+"X"+j+"_Green_X2"+"\tY"+i+"X"+j+"_Green_Y2"+"\tY"+i+"X"+j+"_Green_XY"+
+    					"\tY"+i+"X"+j+"_Blue_X2"+"\tY"+i+"X"+j+"_Blue_Y2"+"\tY"+i+"X"+j+"_Blue_XY";
     				}
     			}
     		}
@@ -5675,8 +5680,9 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
         						if ((samples[ii][jj]!=null) && (samples[ii][jj][c]!=null)) {
         							sb.append(  "\t"+IJ.d2s(samples[ii][jj][c][0],3));
         							sb.append(  "\t"+IJ.d2s(samples[ii][jj][c][1],3));
+        							sb.append(  "\t"+IJ.d2s(samples[ii][jj][c][2],3));
         						} else {
-        							sb.append(  "\t---\t---");
+        							sb.append(  "\t---\t---\t---");
         						}
         					}
         				}
@@ -5755,8 +5761,9 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
         	    					if ((samples[ii][jj]!=null) && (samples[ii][jj][cc]!=null)) {
         	        					sb.append(  "\t"+IJ.d2s(samples[ii][jj][cc][0],3));
         	        					sb.append(  "\t"+IJ.d2s(samples[ii][jj][cc][1],3));
+        	        					sb.append(  "\t"+IJ.d2s(samples[ii][jj][cc][2],3));
         	    					} else {
-        	    						sb.append(  "\t---\t---");
+        	    						sb.append(  "\t---\t---\t---");
         	    					}
         	    				}
         	    			}

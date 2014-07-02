@@ -10147,6 +10147,9 @@ if (MORE_BUTTONS) {
 			}
 		}
 		boolean showPSF=debugLevel>1;
+		
+		if (metrics==null) return null;
+		
 		if (showPSF || (focusMeasurementParameters.saveResults)){
 			double [][][][] psfRGB=new double [psf_kernels.length][psf_kernels[0].length][][];
 			// reorder and assign names to kernel color channels
@@ -10189,8 +10192,11 @@ if (MORE_BUTTONS) {
 					imp_psf.setProperty("pY_"+index, ""+sampleCoord[ii][jj][1]);
 					if (fullResults[ii][jj]!=null){
 						for (int cc=0;cc<fullResults[ii][jj].length;cc++) if (fullResults[ii][jj][cc]!=null){
-							imp_psf.setProperty("R50_"+cc+"_"+index, ""+fullResults[ii][jj][cc][0]);
-							imp_psf.setProperty("RTratio_"+cc+"_"+index, ""+fullResults[ii][jj][cc][1]);
+//							imp_psf.setProperty("R50_"+cc+"_"+index, ""+fullResults[ii][jj][cc][0]);
+//							imp_psf.setProperty("RTratio_"+cc+"_"+index, ""+fullResults[ii][jj][cc][1]);
+							imp_psf.setProperty("R50_x2_"+cc+"_"+index, ""+fullResults[ii][jj][cc][0]);
+							imp_psf.setProperty("R50_y2_"+cc+"_"+index, ""+fullResults[ii][jj][cc][1]);
+							imp_psf.setProperty("R50_xy_"+cc+"_"+index, ""+fullResults[ii][jj][cc][2]);
 						}
 					}
 				}
@@ -10276,7 +10282,7 @@ if (MORE_BUTTONS) {
 						fullResults[i][j]=new double [numColors][];
 						for (int cc=0;cc<numColors;cc++) fullResults[i][j][cc]=null;
 					}
-					if (fullResults!=null) fullResults[i][j][color]=new double[2];
+//					if (fullResults!=null) fullResults[i][j][color]=new double[2];
 					double x=(sampleCoord[i][j][0]-x0);
 					double y=(sampleCoord[i][j][1]-y0);
 					double r=Math.sqrt(x*x+y*y);			
@@ -10287,6 +10293,7 @@ if (MORE_BUTTONS) {
 //							" psf_cutoffLevel="+focusMeasurementParameters.psf_cutoffLevel+
 //							" psf_minArea="+focusMeasurementParameters.psf_minArea+
 //							" psf_blurSigma="+focusMeasurementParameters.psf_blurSigma);
+/*					
 					double [] tanRad=		   matchSimulatedPattern.tangetRadialSizes(
 							   ca, // cosine of the center to sample vector
 							   sa, // sine of the center to sample vector
@@ -10302,9 +10309,50 @@ if (MORE_BUTTONS) {
 						tanRad=new double[2];
 						tanRad[0]=Double.NaN;
 						tanRad[1]=Double.NaN;
+					} else {
+					
+// debug calculations
+						double [] x2y2xy= matchSimulatedPattern.x2y2xySizes(
+									psf[i][j][color],     // PSF function, square array, nominally positive
+									focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
+									focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
+									focusMeasurementParameters.psf_minArea,      // minimal selected area in pixels
+									focusMeasurementParameters.psf_blurSigma,    // optionally blur the selection
+									0.1, //maskCutOff,
+									debugLevel-2, // debug level
+									i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+						double [] tanRad1={
+								Math.sqrt(sa*sa*x2y2xy[0]+ca*ca*x2y2xy[1]-2*ca*sa*x2y2xy[2]), 
+								Math.sqrt(ca*ca*x2y2xy[0]+sa*sa*x2y2xy[1]+2*ca*sa*x2y2xy[2])};
+						
+						System.out.println("i="+i+" j="+j+" tanRad[0]="+tanRad[0]+ "("+tanRad1[0]+")"+
+						" tanRad[1]="+tanRad[1]+ "("+tanRad1[1]+") ### "+x2y2xy[0]+", "+x2y2xy[1]+", "+x2y2xy[2]);
+						
 					}
-					tanRad[0]/=(focusMeasurementParameters.subdiv/2); // to sesnor pixels
-					tanRad[1]/=(focusMeasurementParameters.subdiv/2);
+*/
+					double [] x2y2xy= matchSimulatedPattern.x2y2xySizes(
+							psf[i][j][color],     // PSF function, square array, nominally positive
+							focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
+							focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
+							focusMeasurementParameters.psf_minArea,      // minimal selected area in pixels
+							focusMeasurementParameters.psf_blurSigma,    // optionally blur the selection
+							0.1, //maskCutOff,
+							debugLevel-2, // debug level
+							i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+					if (x2y2xy==null){
+						x2y2xy=new double[3];
+						for (int ii=0;ii<3;ii++) x2y2xy[ii]=Double.NaN;
+					} else {
+						for (int ii=0;ii<x2y2xy.length;ii++) x2y2xy[ii]/=focusMeasurementParameters.subdiv*focusMeasurementParameters.subdiv/4;
+					}
+/*					
+					double [] tanRad={
+							Math.sqrt(sa*sa*x2y2xy[0]+ca*ca*x2y2xy[1]-2*ca*sa*x2y2xy[2]), 
+							Math.sqrt(ca*ca*x2y2xy[0]+sa*sa*x2y2xy[1]+2*ca*sa*x2y2xy[2])};
+*/
+					// tanRad[0]/=(focusMeasurementParameters.subdiv/2); // to sesnor pixels
+					// tanRad[1]/=(focusMeasurementParameters.subdiv/2);
+
 
 					double [][]quadCoeff=matchSimulatedPattern.approximatePSFQuadratic(
 							psf[i][j][color],     // PSF function, square array, nominally positive
@@ -10411,13 +10459,10 @@ Reff=sqrt(1/sqrt(Ar*Br-(Cr/2)^2))
 						SFcenter+=R50; // only center samples
 					}
 					if (fullResults!=null){
-//						fullResults[i][j][color][0]=R50/(focusMeasurementParameters.subdiv/2); // pixels
-//						fullResults[i][j][color][1]=BA; // radial-to-tangential ratio - was fullResults[i][j][color][0] ???
 						
-						fullResults[i][j][color][0]=Math.sqrt((tanRad[0]*tanRad[0]+tanRad[1]*tanRad[1])/2); // sensor pixels
-						fullResults[i][j][color][1]=tanRad[1]/tanRad[0]; // radial-to-tangential ratio
-						
-						
+//						fullResults[i][j][color][0]=Math.sqrt((tanRad[0]*tanRad[0]+tanRad[1]*tanRad[1])/2); // sensor pixels
+//						fullResults[i][j][color][1]=tanRad[1]/tanRad[0]; // radial-to-tangential ratio
+						fullResults[i][j][color]=x2y2xy.clone();
 						
 					}
 
@@ -10426,7 +10471,8 @@ Reff=sqrt(1/sqrt(Ar*Br-(Cr/2)^2))
 						for (int k=0;k<quadCoeff[0].length;k++) debugStr+=" "+quadCoeff[0][k];
 						if (debugLevel>3)System.out.println(debugStr);
 						System.out.println(i+":"+j+"["+color+"] x="+IJ.d2s(x,1)+" y="+IJ.d2s(y,1)+" xc="+IJ.d2s(xc,2)+" yc="+IJ.d2s(yc,2)+
-								" tan="+IJ.d2s(tanRad[0],3)+" rad="+IJ.d2s(tanRad[1],3)+
+//								" tan="+IJ.d2s(tanRad[0],3)+" rad="+IJ.d2s(tanRad[1],3)+
+								"x2="+IJ.d2s(x2y2xy[0],3)+"y2="+IJ.d2s(x2y2xy[1],3)+"xy="+IJ.d2s(x2y2xy[2],3)+
 								" Ar="+IJ.d2s(Ar,3)+" Br="+IJ.d2s(Br,3)+" Cr="+IJ.d2s(Cr,3)+ " **** Br/Ar="+IJ.d2s(Br/Ar,3)+" R50="+IJ.d2s(R50,3)+" subpixels" +" A50="+IJ.d2s(Math.sqrt(A50),2)+" subpixels" +" B50=" + IJ.d2s(Math.sqrt(B50),3)+" subpixels");
 					}
 				}
@@ -14959,6 +15005,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 						false,  // use linear approximation (instead of quadratic)
 						1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
 						1.0E-20);  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
+				if (distPatPars==null) return null;
 				int [] iUV={(int) Math.floor(distPatPars[0][2]),(int) Math.floor(distPatPars[1][2])};
 				boolean negative=((iUV[0]^iUV[1])&1)!=0;
 				double [] simCorr={

@@ -55,8 +55,10 @@ public class FocusingField {
 	public String serialNumber;
 	public String lensSerial; // if null - do not add average
 	public String comment;
-	public double pX0;
-	public double pY0;
+	public double pX0_distortions;
+	public double pY0_distortions;
+	public double currentPX0;
+	public double currentPY0;
 	public double [][][] sampleCoord;
 	public ArrayList<FocusingFieldMeasurement> measurements;
 	boolean sagittalMaster=false; // center data is the same, when true sagittal fitting only may change r=0 coefficients,
@@ -111,6 +113,7 @@ public class FocusingField {
     private boolean    showAllSamples = true;
     private boolean    showIgnoredData= false;
     private boolean showRad = true;
+    private boolean [][][][] sampleMask=null; 
 
 	
     public class LMAArrays { // reuse from Distortions?
@@ -153,6 +156,8 @@ public class FocusingField {
     	public double py;
     	public int channel;
     	public double value;
+    	public double [] dPxyc=new double[2]; // derivative of the value by optical (aberration) center pixel X,Y
+
     	//    	public double weight;
 //    	public MeasuredSample(){}
     	public MeasuredSample(
@@ -161,7 +166,9 @@ public class FocusingField {
     			double px,
     			double py,
     			int channel,
-    			double value
+    			double value,
+    			double dPxc,
+    			double dPyc
     			){
     		this.motors = motors;
     		this.timestamp=timestamp;
@@ -169,6 +176,8 @@ public class FocusingField {
     		this.py = py;
     		this.channel = channel;
     		this.value = value;
+    		this.dPxyc[0]=dPxc;
+    		this.dPxyc[1]=dPyc;
     	}
     }
     public boolean configureDataVector(String title, boolean forcenew){
@@ -200,7 +209,7 @@ public class FocusingField {
     	gd.addCheckbox("Discard measurements with PSF radius above specified above threshold",useThresholdMax);
     	if (forcenew) {
     		gd.addMessage("=== Setting number of parameters for approximation of the PSF dimensions ===");
-    		gd.addNumericField("Number of parameters for pzf(z) approximation (>=3)",numCurvPars[0],0);
+    		gd.addNumericField("Number of parameters for psf(z) approximation (>=3)",numCurvPars[0],0);
     		gd.addNumericField("Number of parameters for radial dependence of PSF curves (>=1)",numCurvPars[1],0);
     	}
 		gd.addMessage("");
@@ -231,14 +240,17 @@ public class FocusingField {
     	showDisabled=                                                  gd.getNextBoolean();
     	if (forcenew) {
     		this.fieldFitting= new FieldFitting(
-    				pX0,
-    				pY0,
+    				currentPX0,
+    				currentPY0,
     				numCurvPars[0],
     				numCurvPars[1]);
     	}
-    	if (setupMasks) this.fieldFitting.maskSetDialog("Setup parameter masks");
-    	if (setupParameters) this.fieldFitting.showModifyParameterValues("Setup parameter values",showDisabled);
-    	this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
+    	if (setupMasks) fieldFitting.maskSetDialog("Setup parameter masks");
+    	if (setupParameters) fieldFitting.showModifyParameterValues("Setup parameter values",showDisabled);
+    	double [] centerXY=fieldFitting.getCenterXY();
+    	currentPX0=centerXY[0];
+    	currentPY0=centerXY[1];
+    	this.savedVector=fieldFitting.createParameterVector(sagittalMaster);
 //    	initialVector    	
     	return true;
     }
@@ -273,16 +285,34 @@ public class FocusingField {
     		default: dataWeights[i]=1.0;
     		}
     		if (weightRadius>0.0){
-    			double r2=(ms.px-pX0)*(ms.px-pX0)+(ms.py-pY0)*(ms.py-pY0);
+    			double r2=(ms.px-currentPX0)*(ms.px-currentPX0)+(ms.py-currentPY0)*(ms.py-currentPY0);
     			dataWeights[i]*=Math.exp(kw*r2);
     		}
 //    		sumWeights+=dataWeights[i];
     	}
     }
     
-// for compatibility with Distortions class    
-    public double [] createFXandJacobian( double [] vector, boolean createJacobian){
+// for compatibility with Distortions class\
+    
+    public void commitParameterVector(double [] vector){
     	fieldFitting.commitParameterVector(vector,sagittalMaster);
+    	// recalculate measured S,T (depend on center) if center is among fitted parameters
+    	boolean [] centerSelect=fieldFitting.getCenterSelect();
+    	if (centerSelect[0] ||centerSelect[1]){ // do not do that if XC, YC are not modified
+    		// recalculate data vector
+    		double [] pXY=fieldFitting.getCenterXY();
+        	currentPX0=pXY[0];
+        	currentPY0=pXY[1];
+    		setDataVector(createDataVector(
+    		 		false, // boolean updateSelection,
+    	    		pXY[0], //double centerPX,
+    	    		pXY[1])); //double centerPY
+
+    	}
+    }
+    
+    public double [] createFXandJacobian( double [] vector, boolean createJacobian){
+    	commitParameterVector(vector);
     	return createFXandJacobian(createJacobian);
     }
 
@@ -322,8 +352,15 @@ public class FocusingField {
         		for (int i=0;i<numPars;i++){
         			jacobian[i][n]=derivs[selChanIndices[ms.channel]][i];
         		}
-        	}    		
-    		
+        		//TODO: correct /dpx, /dpy to compensate for measured S,T calcualtion
+        		boolean [] centerSelect=fieldFitting.getCenterSelect();
+        		if (centerSelect[0] || centerSelect[1]){ // do not do that if both X and Y are disabled
+        			int np=0;
+        			for (int i=0;i<2;i++) if (centerSelect[i]){
+        				jacobian[np++][n]-=ms.dPxyc[i]; // subtract, as effect is opposite to fX
+        			}
+        		}
+        	}
     	}
     	return fx;
     }
@@ -341,9 +378,21 @@ public class FocusingField {
     	}
     	return Math.sqrt(sum);
     }
-    
-    public MeasuredSample [] createDataVector(){ // use this data
+    public MeasuredSample [] createDataVector(){
+    	return createDataVector(
+    			true, // boolean updateSelection,
+    			currentPX0,  // double centerPX,
+    			currentPY0); //double centerPY
+    }
+    public MeasuredSample [] createDataVector(
+    		boolean updateSelection,
+    		double centerPX,
+    		double centerPY
+    		){ // use this data
         return createDataVector(
+        		updateSelection,
+        		centerPX,
+        		centerPY,
         		(this.useMinMeas?this.minMeas:null), // pixels
         		(this.useMaxMeas?this.maxMeas:null), // pixels
         		(this.useThresholdMax?this.thresholdMax:null)); // pixels
@@ -354,18 +403,115 @@ public class FocusingField {
      * @param minMeas minimal measurement PSF radius (in pixels) - correction that increases result
      * resolution in "sharp" areas (to compensate for measurement error). Individual for each of
      *  the 6 color/direction components.
+     * @param updateSelection when true - updates selection of "good" samples, when false - reuses existent one
      * @param maxMeas maximal measurement PSF radius (in pixels) - correction that decreases result
      * resolution out-of-focus areas to compensate for the limited size of the PSF window.
      * Individual for each of the 6 color/direction components.
      * @param thresholdMax maximal PSF radius to consider data usable
      * @return array of the MeasuredSample instances, including motors, PSF radius, channel and value
      */
+/*
+Need to find partial derivatives of each of the 3 coefficients: c2, s2 and cs for both px0 and py0
+r2 = (x-x0)^2+ (y-y0)^2
+
+c2=(x-x0)^2/r2
+s2=(y-y0)^2/r2
+cs=(x-x0)*(y-y0)/r2
+(p/q)'=(p'*q-q'*p)/q^2
+
+d_r2/d_x0=-2*(x-x0)
+d_r2/d_y0=-2*(y-y0)
+
+d_c2/d_x0=(2*(x-x0)*(-1)*r2 - ((d_r2/d_x0)*(x-x0)^2))/r2^2=
+(-2*(x-x0)*r2 + (2*(x-x0)*(x-x0)^2))/r2^2=
+2*delta_x*(delta_x^2 - r2)/r2^2
+
+d_c2/d_y0= (0-((d_r2/d_y0)*(x-x0)^2))/r2^2=
+((2*(y-y0))*(x-x0)^2)/r2^2=
+2*delta_y*delta_x^2/r2^2
+
+d_cs/dx0=(-(y-y0)*r2- ((d_r2/d_x0)*(x-x0)*(y-y0)))/r2^2=
+(-(y-y0)*r2 + 2*(x-x0)*(x-x0)*(y-y0))/r2^2=
+(-delta_y*r2 + 2*delta_x^2*delta_y)/r2^2=
+delta_y*(2*delta_x^2-r2)/r2^2
+
+
+d_c2/d_x0= 2*delta_x*(delta_x^2 - r2)/r2^2
+d_c2/d_y0= 2*delta_y*delta_x^2/r2^2
+
+d_s2/d_y0= 2*delta_y*(delta_y^2 - r2)/r2^2
+d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
+
+d_cs/dx0=    delta_y*(2*delta_x^2-r2)/r2^2
+d_cs/dy0=    delta_x*(2*delta_y^2-r2)/r2^2
+    
+ */
     public MeasuredSample [] createDataVector(
+    		boolean updateSelection,
+    		double centerPX,
+    		double centerPY,
     		double [] minMeas, // pixels
     		double [] maxMeas, // pixels
     		double [] thresholdMax){ // pixels
+    	currentPX0=centerPX;
+    	currentPY0=centerPY;
     	final int numColors=3;
     	final int numDirs=2;
+    	if (sampleMask== null) updateSelection=true;
+    	if (updateSelection){
+    		sampleMask= new boolean[sampleCoord.length][sampleCoord[0].length][numColors][numDirs];
+    		for (int i=0;i<sampleMask.length;i++)
+    			for (int j=0;j<sampleMask[i].length;j++)
+    				for (int c=0;c<numColors;c++)
+    					for (int d=0;d<numDirs;d++) sampleMask[i][j][c][d]=false;
+    		
+    	}
+/*
+d_c2/d_x0= 2*delta_x*(delta_x^2 - r2)/r2^2
+d_c2/d_y0= 2*delta_y*delta_x^2/r2^2
+
+d_s2/d_y0= 2*delta_y*(delta_y^2 - r2)/r2^2
+d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
+
+2*d_cs/dx0=   2*delta_y*(2*delta_x^2-r2)/r2^2
+2*d_cs/dy0=   2*delta_x*(2*delta_y^2-r2)/r2^2
+ */
+    	double [][][] cosSin2Tab=new double[sampleCoord.length][sampleCoord[0].length][3];
+    	double [][][] cosSin2Tab_dx0=new double[sampleCoord.length][sampleCoord[0].length][3];
+    	double [][][] cosSin2Tab_dy0=new double[sampleCoord.length][sampleCoord[0].length][3];
+		for (int i=0;i<sampleMask.length;i++) for (int j=0;j<sampleMask[i].length;j++){
+			double delta_x=sampleCoord[i][j][0]-currentPX0;
+			double delta_y=sampleCoord[i][j][1]-currentPY0;
+			double r2=delta_x*delta_x+delta_y*delta_y;
+			double r4=r2*r2;
+			if (r2>0.0) {
+				cosSin2Tab[i][j][0]=  delta_x*delta_x/r2; // cos^2
+				cosSin2Tab[i][j][1]=  delta_y*delta_y/r2; // sin^2
+				cosSin2Tab[i][j][2]=2*delta_x*delta_y/r2; // 2*cos*sin
+				
+				cosSin2Tab_dx0[i][j][0]=  2*delta_x*(delta_x*delta_x - r2)/r4; // d(cos^2)/d(x0)
+				cosSin2Tab_dx0[i][j][1]=  2*delta_x*delta_y*delta_y/r4;        // d(sin^2)/d(x0)
+				cosSin2Tab_dx0[i][j][2]=  2*delta_y*(2*delta_x*delta_x-r2)/r4; // d(2*cos*sin)/d(x0)
+				
+				cosSin2Tab_dy0[i][j][0]=  2*delta_y*delta_x*delta_x/r4;        // d(cos^2)/d(y0)
+				cosSin2Tab_dy0[i][j][1]=  2*delta_y*(delta_y*delta_y - r2)/r4; // d(sin^2)/d(y0)
+				cosSin2Tab_dy0[i][j][2]=  2*delta_x*(2*delta_y*delta_y-r2)/r4; // d(2*cos*sin)/d(y0)
+
+			} else {
+				cosSin2Tab[i][j][0]=1.0;
+				cosSin2Tab[i][j][1]=0.0;
+				cosSin2Tab[i][j][2]=0.0;
+
+				cosSin2Tab_dx0[i][j][0]=0.0;
+				cosSin2Tab_dx0[i][j][1]=0.0;
+				cosSin2Tab_dx0[i][j][2]=0.0;
+
+				cosSin2Tab_dy0[i][j][0]=0.0;
+				cosSin2Tab_dy0[i][j][1]=0.0;
+				cosSin2Tab_dy0[i][j][2]=0.0;
+			}
+		}
+    	
     	ArrayList<MeasuredSample> sampleList=new ArrayList<MeasuredSample>();
 		if (thresholdMax != null){
 	    	weightReference=thresholdMax.clone();
@@ -392,6 +538,7 @@ public class FocusingField {
 				}
 				// convert to microns from pixels
 				weightReference[c]*=getPixelUM();
+				System.out.println("==== weightReference["+c+"]="+weightReference[c]);
 	    	}
 		} else {
 			thresholdMax=null;
@@ -401,44 +548,103 @@ public class FocusingField {
     		if (samples!=null) for (int i=0;i<sampleCoord.length;i++){
     			if ((i<samples.length) && (samples[i]!=null)) for (int j=0;j<sampleCoord[i].length;j++){
     				if ((j<samples[i].length) && (samples[i][j]!=null)) for (int c=0;c<numColors;c++){
-        				if ((c<samples[i][j].length) && (samples[i][j][c]!=null)) for (int d=0;d<numDirs;d++){
-        					int chn=d+numDirs*c;
-//        					System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
-        					// saved values are PSF radius, convert to FWHM by multiplying by 2.0
-        					double value=samples[i][j][c][d]*2.0;
-        					// discard above threshold (in pixels, raw FWHM data)
-        					if (Double.isNaN(value)) {
-        						System.out.println("samples["+i+"]["+j+"]["+c+"]["+d+"] = Double.NaN, motors[0]="+ffm.motors[0]);
-        						continue; // bad measurement
+
+        				if ((c<samples[i][j].length) && (samples[i][j][c]!=null)){
+    						double sagTan[] = {
+    								Math.sqrt(
+    										cosSin2Tab[i][j][0]*samples[i][j][c][0]+
+    										cosSin2Tab[i][j][1]*samples[i][j][c][1]+
+    										cosSin2Tab[i][j][2]*samples[i][j][c][2]),
+    								Math.sqrt(
+    										cosSin2Tab[i][j][1]*samples[i][j][c][0]+
+    										cosSin2Tab[i][j][0]*samples[i][j][c][1]-
+    										cosSin2Tab[i][j][2]*samples[i][j][c][2])};
+    						
+    						double sagTan_dx0[] = {
+    								(0.5*(
+    										cosSin2Tab_dx0[i][j][0]*samples[i][j][c][0]+
+    										cosSin2Tab_dx0[i][j][1]*samples[i][j][c][1]+
+    										cosSin2Tab_dx0[i][j][2]*samples[i][j][c][2])/sagTan[0]),
+									(0.5*(
+											cosSin2Tab_dx0[i][j][1]*samples[i][j][c][0]+
+											cosSin2Tab_dx0[i][j][0]*samples[i][j][c][1]-
+											cosSin2Tab_dx0[i][j][2]*samples[i][j][c][2])/sagTan[1])
+    						};
+
+    						double sagTan_dy0[] = {
+    								(0.5*(
+    										cosSin2Tab_dy0[i][j][0]*samples[i][j][c][0]+
+    										cosSin2Tab_dy0[i][j][1]*samples[i][j][c][1]+
+    										cosSin2Tab_dy0[i][j][2]*samples[i][j][c][2])/sagTan[0]),
+									(0.5*(
+											cosSin2Tab_dy0[i][j][1]*samples[i][j][c][0]+
+											cosSin2Tab_dy0[i][j][0]*samples[i][j][c][1]-
+											cosSin2Tab_dy0[i][j][2]*samples[i][j][c][2])/sagTan[1])
+    						};
+
+    						System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
+    						for (int d=0;d<numDirs;d++){
+        						System.out.print(" d= "+d+" ");
+
+        						if (!updateSelection && !sampleMask[i][j][c][d]) continue;
+        						int chn=d+numDirs*c;
+        						//        					System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
+        						// saved values are PSF radius, convert to FWHM by multiplying by 2.0
+        						double value=sagTan[d]*2.0;
+        						double value_dx0=sagTan_dx0[d]*2.0;
+        						double value_dy0=sagTan_dy0[d]*2.0;
+        						// discard above threshold (in pixels, raw FWHM data)
+        						if (Double.isNaN(value)) {
+        							System.out.println("samples["+i+"]["+j+"]["+c+"]["+d+"] = Double.NaN, motors[0]="+ffm.motors[0]);
+        							continue; // bad measurement
+        						}
+        						System.out.print(" A "+value);
+        						if (thresholdMax != null){
+        							if (value >= thresholdMax[chn]) {
+                						System.out.print(" > "+thresholdMax[chn]);
+        								continue; // bad measurement (above threshold)
+        							}
+        						}
+        						System.out.print(" B "+value);
+        						// correct for for minimal measurement; 
+        						if (minMeas != null){
+        							if (value<minMeas[chn]) continue; // bad measurement (smaller than correction)
+        							double f=value;
+        							value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
+        							value_dx0*=f/value;
+        							value_dy0*=f/value;
+        						}
+        						System.out.print(" C "+value);
+        						// correct for for maximal measurement; 
+        						if (maxMeas != null) {
+        							if (value >= maxMeas[chn]) continue; // bad measurement (larger than correction)
+        							double f=value;
+        							value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
+        							value_dx0*=1.0/(value*f*f*f);
+        							value_dy0*=1.0/(value*f*f*f);
+        						}
+        						System.out.print(" D "+value);
+        						// convert to microns from pixels
+        						value*=getPixelUM();
+        						sampleList.add(new MeasuredSample(
+        								ffm.motors,
+        								ffm.timestamp,
+        								sampleCoord[i][j][0], // px,
+        								sampleCoord[i][j][1], // py,
+        								chn,
+        								value,
+        								value_dx0, //double dPxc; // derivative of the value by optical (aberration) center pixel X
+        								value_dy0 //double dPyc; // derivative of the value by optical (aberration) center pixel Y
+        								));
+        						System.out.print(" E "+value);
+        						if (updateSelection) sampleMask[i][j][c][d]=true;
         					}
-        					if (thresholdMax != null){
-        						if (value >= thresholdMax[chn]) continue; // bad measurement (above threshold)
-        					}
-        					// correct for for minimal measurement; 
-        					if (minMeas != null){
-        						if (value<minMeas[chn]) continue; // bad measurement (smaller than correction)
-        						value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
-        					}
-        					// correct for for maximal measurement; 
-        					if (maxMeas != null) {
-        						if (value >= maxMeas[chn]) continue; // bad measurement (larger than correction)
-        						value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
-        					}
-        					// convert to microns from pixels
-        					value*=getPixelUM();
-        					sampleList.add(new MeasuredSample(
-        							ffm.motors,
-        							ffm.timestamp,
-        							sampleCoord[i][j][0], // px,
-        							sampleCoord[i][j][1], // py,
-        							chn,
-        							value
-        							));
-        				}    					
+        				}
     				}
     			}
     		}
     	}
+		System.out.println();
     	System.out.println("createDataVector -> "+sampleList.size()+" elements");
     	return sampleList.toArray(new MeasuredSample[0]);
     }
@@ -616,9 +822,9 @@ public class FocusingField {
 //        this.savedJacobian=this.jacobian;
         this.savedLMAArrays=lMAArrays.clone();
         this.jacobian=null; // not needed, just to catch bugs
-	    	this.nextfX=createFXandJacobian(this.nextVector,true);
-			this.lMAArrays=calculateJacobianArrays(this.nextfX);
-  		this.nextRMS= calcErrorDiffY(this.nextfX);
+        this.nextfX=createFXandJacobian(this.nextVector,true);
+        this.lMAArrays=calculateJacobianArrays(this.nextfX);
+        this.nextRMS= calcErrorDiffY(this.nextfX);
 		this.lastImprovements[1]=this.lastImprovements[0];
 		this.lastImprovements[0]=this.currentRMS-this.nextRMS;
 		if (debugLevel>2) {
@@ -832,6 +1038,21 @@ public class FocusingField {
     	for (int i=1;i<selChanIndices.length;i++){
     		selChanIndices[i]= selChanIndices[i-1]+(selChannels[i-1]?1:0);
     	}
+    	double [][][] cosSin2Tab=new double[sampleCoord.length][sampleCoord[0].length][3];
+		for (int i=0;i<sampleMask.length;i++) for (int j=0;j<sampleMask[i].length;j++){
+			double delta_x=sampleCoord[i][j][0]-currentPX0;
+			double delta_y=sampleCoord[i][j][1]-currentPY0;
+			double r2=delta_x*delta_x+delta_y*delta_y;
+			if (r2>0.0) {
+				cosSin2Tab[i][j][0]=  delta_x*delta_x/r2; // cos^2
+				cosSin2Tab[i][j][1]=  delta_y*delta_y/r2; // sin^2
+				cosSin2Tab[i][j][2]=2*delta_x*delta_y/r2; // 2*cos*sin
+			} else {
+				cosSin2Tab[i][j][0]=1.0;
+				cosSin2Tab[i][j][1]=0.0;
+				cosSin2Tab[i][j][2]=0.0;
+			}
+		}
 
  		StringBuffer sb = new StringBuffer();
     	if (showMotors) header +="M1\tM2\tM3\t";
@@ -871,30 +1092,51 @@ public class FocusingField {
     		if (showMeasCalc[0] && (samples!=null)) for (int i=0;i<sampleCoord.length;i++){
     			if ((i<samples.length) && (samples[i]!=null)) for (int j=0;j<sampleCoord[i].length;j++){
     				if ((j<samples[i].length) && (samples[i][j]!=null)) for (int c=0;c<numColors;c++){
-        				if ((c<samples[i][j].length) && (samples[i][j][c]!=null)) for (int d=0;d<numDirs;d++){
-        					int chn=d+numDirs*c;
-//        					System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
-        					// saved values are PSF radius, convert to FWHM by multiplying by 2.0
-        					double value=samples[i][j][c][d]*2.0;
-        					// discard above threshold (in pixels, raw FWHM data)
-        					if (Double.isNaN(value)) continue; // bad measurement
-        					if (!showIgnoredData && (thresholdMax != null)){
-        						if (value >= thresholdMax[chn]) continue; // bad measurement (above threshold)
-        					}
-        					// correct for for minimal measurement; 
-        					if (useMinMeas && (minMeas != null)){
-        						if (value<minMeas[chn]) continue; // bad measurement (smaller than correction)
-        						value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
-        					}
-        					// correct for for maximal measurement; 
-        					if (useMaxMeas && (maxMeas != null)) {
-        						if (value >= maxMeas[chn]) continue; // bad measurement (larger than correction)
-        						value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
-        					}
-        					// convert to microns from pixels
-        					value*=getPixelUM();
-        					samplesFull[i][j][c][d]=value;
-        				}
+    					if ((c<samples[i][j].length) && (samples[i][j][c]!=null)) {
+    						double sagTan[] = {
+    								Math.sqrt(
+    										cosSin2Tab[i][j][0]*samples[i][j][c][0]+
+    										cosSin2Tab[i][j][1]*samples[i][j][c][1]+
+    										cosSin2Tab[i][j][2]*samples[i][j][c][2]),
+    								Math.sqrt(
+    										cosSin2Tab[i][j][1]*samples[i][j][c][0]+
+    										cosSin2Tab[i][j][0]*samples[i][j][c][1]-
+    										cosSin2Tab[i][j][2]*samples[i][j][c][2])};
+     						System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
+    						for (int d=0;d<numDirs;d++){
+        						System.out.print(" d= "+d+" ");
+    							int chn=d+numDirs*c;
+    							//        					System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
+    							// saved values are PSF radius, convert to FWHM by multiplying by 2.0
+    							double value=sagTan[d]*2.0;
+    							// discard above threshold (in pixels, raw FWHM data)
+    							if (Double.isNaN(value)) continue; // bad measurement
+        						System.out.print(" A "+value);
+    							if (!showIgnoredData && (thresholdMax != null)){
+    								if (value >= thresholdMax[chn]){
+                						System.out.print(" > "+thresholdMax[chn]);
+    									continue; // bad measurement (above threshold)
+    								}
+    							}
+        						System.out.print(" B "+value);
+    							// correct for for minimal measurement; 
+    							if (useMinMeas && (minMeas != null)){
+    								if (value<minMeas[chn]) continue; // bad measurement (smaller than correction)
+    								value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
+    							}
+        						System.out.print(" C "+value);
+    							// correct for for maximal measurement; 
+    							if (useMaxMeas && (maxMeas != null)) {
+    								if (value >= maxMeas[chn]) continue; // bad measurement (larger than correction)
+    								value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
+    							}
+        						System.out.print(" D "+value);
+    							// convert to microns from pixels
+    							value*=getPixelUM();
+    							samplesFull[i][j][c][d]=value;
+        						System.out.print(" E "+value);
+    						}
+    					}
     				}
     			}
     		}
@@ -949,6 +1191,9 @@ public class FocusingField {
         	}
         	sb.append("\n");
     	}
+    	
+    	System.out.println();
+    	
     	if (showRad){
     		sb.append(header+"\n");
         	if (showMotors) sb.append("Sample\tradius\t(mm)\t");
@@ -1070,7 +1315,7 @@ public class FocusingField {
     				String msg="Calculation aborted by user request, restoring saved parameter vector";
     				IJ.showMessage(msg);
     				System.out.println(msg);
-    				this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster);
+    				commitParameterVector(this.savedVector);
     				return false; 
     			}
     			
@@ -1121,13 +1366,13 @@ public class FocusingField {
 //						updateCameraParametersFromCalculated(false); // update camera parameters from enabled only images (may overwrite some of the above)
 					}
 					// if RMS was decreased. this.saveSeries==false after dialogLMAStep(state) only if "cancel" was pressed 
-					this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster); // either new or original
+					commitParameterVector(this.savedVector); // either new or original
 					return this.saveSeries; // TODO: Maybe change result?
 				}
 //stepLevenbergMarquardtAction();    			
     			if (state[1]) {
     				if (!state[0]) {
-    					this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster);
+    					commitParameterVector(this.savedVector);
     					return false; // sequence failed
     				}
 					this.savedVector=this.currentVector.clone();
@@ -1147,7 +1392,7 @@ public class FocusingField {
 				" ("+this.firstRMS+") "+
 				" at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3));
 		this.savedVector=this.currentVector.clone();
-		this.fieldFitting.commitParameterVector(this.savedVector,sagittalMaster);
+		commitParameterVector(this.savedVector);
     	return true; // all series done
     	
     }
@@ -1163,7 +1408,7 @@ public class FocusingField {
 		public String timestamp;
 		public double temperature;
 		public int [] motors;
-		double [][][][] samples = null;
+		double [][][][] samples = null; // last - psf radius in pixels: {x2,y2, xy}
 		
 		public FocusingFieldMeasurement(
 				String timestamp,
@@ -1176,16 +1421,21 @@ public class FocusingField {
 			this.motors = new int[motors.length];
 			for (int i=0;i<motors.length;i++) this.motors[i]= motors[i];
 			if (samples !=null) {
-				this.samples=new double[samples.length][samples[0].length][samples[0][0].length][2];
+//				this.samples=new double[samples.length][samples[0].length][samples[0][0].length][2];
+				try {
+					this.samples=new double[samples.length][samples[0].length][samples[0][0].length][3];
+				} catch (Exception e){
+					return;
+				}
 				for (int i=0;i<this.samples.length;i++) for (int j=0;j<this.samples[i].length;j++) for (int c=0;c<this.samples[i][j].length;c++){
 					try {
-						double rt=samples[i][j][c][0]/Math.sqrt((1+samples[i][j][c][1]*samples[i][j][c][1])/2.0); // tangential;
-						double rs=rt*samples[i][j][c][1]; // sagittal
-						this.samples[i][j][c][0]=rs;
-						this.samples[i][j][c][1]=rt;
+//						double rt=samples[i][j][c][0]/Math.sqrt((1+samples[i][j][c][1]*samples[i][j][c][1])/2.0); // tangential;
+//						double rs=rt*samples[i][j][c][1]; // sagittal
+//						this.samples[i][j][c][0]=rs;
+//						this.samples[i][j][c][1]=rt;
+						this.samples[i][j][c]=samples[i][j][c].clone();
 					} catch (Exception e){
-						this.samples[i][j][c][0]=Double.NaN;
-						this.samples[i][j][c][1]=Double.NaN;
+						for (int ii=0;ii<this.samples[i][j][c].length;ii++) this.samples[i][j][c][ii]=Double.NaN;
 					}
 				}
 			}
@@ -1219,11 +1469,14 @@ public class FocusingField {
 					String [] ps=s.split(regSep);
 					int i=Integer.parseInt(ps[0]);
 					int j=Integer.parseInt(ps[1]);
-					int colors=(ps.length-2)/2;
-					this.samples[i][j]=new double [colors][2];
+					int colors=(ps.length-2)/3; // 2;
+					this.samples[i][j]=new double [colors][3]; //[2];
 					for (int c=0;c<colors;c++){
-						this.samples[i][j][c][0]=Double.parseDouble(ps[2*c+2]);
-						this.samples[i][j][c][1]=Double.parseDouble(ps[2*c+3]);
+//						this.samples[i][j][c][0]=Double.parseDouble(ps[2*c+2]);
+//						this.samples[i][j][c][1]=Double.parseDouble(ps[2*c+3]);
+						this.samples[i][j][c][0]=Double.parseDouble(ps[3*c+2]);
+						this.samples[i][j][c][1]=Double.parseDouble(ps[3*c+3]);
+						this.samples[i][j][c][2]=Double.parseDouble(ps[3*c+4]);
 					}
 				}				
 			}
@@ -1235,8 +1488,11 @@ public class FocusingField {
     			for (int i=0;i<this.samples.length;i++) for (int j=0;j<this.samples[i].length;j++){
 					 String sdata=i+sep+j;
 					 for (int c=0;c<samples[i][j].length;c++) {
-						 sdata += sep+this.samples[i][j][c][0]+ // sagittal
-								  sep+this.samples[i][j][c][1]; // tangential
+//						 sdata += sep+this.samples[i][j][c][0]+ // sagittal
+//								  sep+this.samples[i][j][c][1]; // tangential
+						 sdata += sep+this.samples[i][j][c][0]+ // x2
+								  sep+this.samples[i][j][c][1]+ // y2
+								  sep+this.samples[i][j][c][2]; // xy
 					 }
 					 nodeList.add(sdata);
     			}
@@ -1255,8 +1511,11 @@ public class FocusingField {
 		this.serialNumber=serialNumber;
 		this.lensSerial=lensSerial;
 		this.comment=comment;
-		this.pX0=pX0;
-		this.pY0=pY0;
+		this.pX0_distortions=pX0;
+		this.pY0_distortions=pY0;
+		// copy distortions to current PX0/PY0
+		this.currentPX0=pX0_distortions;
+		this.currentPY0=pY0_distortions;
 		this.sampleCoord=sampleCoord;
 		this.measurements=new ArrayList<FocusingFieldMeasurement>();
 		this.stopRequested=stopRequested;
@@ -1306,8 +1565,11 @@ public class FocusingField {
 		comment=      hConfig.getString("comment","no comments");
 		serialNumber= hConfig.getString("serialNumber","???");
 		lensSerial=   hConfig.getString("lensSerial","???");
-		pX0=Double.parseDouble(hConfig.getString("lens_center_x","0.0"));
-		pY0=Double.parseDouble(hConfig.getString("lens_center_y","0.0"));
+		pX0_distortions=Double.parseDouble(hConfig.getString("lens_center_x","0.0"));
+		pY0_distortions=Double.parseDouble(hConfig.getString("lens_center_y","0.0"));
+		// copy distortions to current PX0/PY0
+		this.currentPX0=pX0_distortions;
+		this.currentPY0=pY0_distortions;
 		int rows=Integer.parseInt(hConfig.getString("samples_y","0"));
 		int cols=Integer.parseInt(hConfig.getString("samples_x","0"));
 		sampleCoord=new double [rows][cols][2];
@@ -1342,8 +1604,8 @@ public class FocusingField {
     	if (comment!=null)      hConfig.addProperty("comment",comment);
     	if (serialNumber!=null) hConfig.addProperty("serialNumber",serialNumber);
     	if (lensSerial!=null)   hConfig.addProperty("lensSerial",lensSerial);
-    	 hConfig.addProperty("lens_center_x",pX0);
-    	 hConfig.addProperty("lens_center_y",pY0);
+    	 hConfig.addProperty("lens_center_x",pX0_distortions); // distortions center, not aberrations!
+    	 hConfig.addProperty("lens_center_y",pY0_distortions);
     	 if ((sampleCoord!=null) && (sampleCoord.length>0) && (sampleCoord[0] != null) && (sampleCoord[0].length>0)){
     		 hConfig.addProperty("samples_x",sampleCoord[0].length);
     		 hConfig.addProperty("samples_y",sampleCoord.length);
@@ -1376,6 +1638,9 @@ public class FocusingField {
     	 }
 	}
 	public class FieldFitting{
+		public double [] pXY=null;
+		public boolean [] centerSelect=null;
+		public boolean [] centerSelectDefault={true,true};
 		MechanicalFocusingModel mechanicalFocusingModel;
 		CurvatureModel [] curvatureModel=new CurvatureModel[6]; // 3 colors, sagittal+tangential each
 		boolean [] channelSelect=null;
@@ -1389,6 +1654,13 @@ public class FocusingField {
 			return channelDescriptions[i];
 		}
 
+		public boolean [] getCenterSelect(){
+			return centerSelect;
+		}
+		public double[] getCenterXY(){
+			return pXY;
+		}
+		
 		public boolean[] getDefaultMask(){
 			boolean [] mask = {true,true,true,true,true,true};
 			return mask;
@@ -1401,9 +1673,13 @@ public class FocusingField {
 				int distanceParametersNumber,
 				int radialParametersNumber)
 		{
+			pXY=new double [2];
+			pXY[0]=pX0;
+			pXY[1]=pY0;
 			channelSelect=getDefaultMask();
 			mechanicalFocusingModel=new MechanicalFocusingModel();
 			mechanicalSelect=mechanicalFocusingModel.getDefaultMask();
+			centerSelect=centerSelectDefault.clone();
 			for (int i=0;i<curvatureModel.length;i++){
 				curvatureModel[i]= new CurvatureModel(
 						pX0,
@@ -1432,6 +1708,9 @@ public class FocusingField {
     		boolean editCurvMask=false;
     		boolean commonCurvMask=true;
     		boolean detailedCurvMask=false;
+    		if (centerSelect==null) centerSelect=centerSelectDefault.clone();
+			gd.addCheckbox("Adjust aberration center (pX0)", centerSelect[0]);
+			gd.addCheckbox("Adjust aberration center (pY0)", centerSelect[1]);
 	    	
 	    	if (channelSelect==null) channelSelect=getDefaultMask();
     		for (int i=0;i<channelSelect.length;i++) {
@@ -1445,6 +1724,8 @@ public class FocusingField {
 //	    	gd.enableYesNoCancel("Keep","Apply"); // default OK (on enter) - "Keep"
         	gd.showDialog();
 	    	if (gd.wasCanceled()) return false;
+			centerSelect[0]=gd.getNextBoolean();
+			centerSelect[1]=gd.getNextBoolean();
     		for (int i=0;i<channelSelect.length;i++) {
     			channelSelect[i]=gd.getNextBoolean();
     		}
@@ -1493,6 +1774,15 @@ public class FocusingField {
 		}
 		ArrayList<String> getParameterValueStrings(boolean showDisabled){
 			ArrayList<String> parList=new ArrayList<String>();
+			parList.add("\t ===== Aberrations center =====\t\t");
+			String [] centerDescriptions={"Aberrations center X","Aberrations center Y"};
+			for (int i=0;i<2;i++){
+				if (centerSelect[i] ) {
+					parList.add("\t"+centerDescriptions[i]+":\t"+pXY[i]+"\tpix");
+				} else if (showDisabled){
+					parList.add("(disabled)\t"+centerDescriptions[i]+":\t"+pXY[i]+"\tpix");
+				}
+			}
 			parList.add("\t ===== Mechanical model parameters =====\t\t");
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) {
@@ -1535,6 +1825,16 @@ public class FocusingField {
 		// Show/modify all parameters in a single window.
 		public boolean showModifyParameterValues(String title, boolean showDisabled){
 	    	GenericDialog gd = new GenericDialog(title);
+	    	gd.addMessage("===== Aberrations center =====");
+			String [] centerDescriptions={"Aberrations center X","Aberrations center Y"};
+			for (int i=0;i<2;i++){
+				if (centerSelect[i] ) {
+					gd.addNumericField(centerDescriptions[i],pXY[i],5,10,"pix");
+				} else if (showDisabled){
+					gd.addNumericField("(disabled) "+centerDescriptions[i],pXY[i],5,10,"pix");
+				}
+			}
+	    	
 	    	gd.addMessage("===== Mechanical model parameters =====");
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) {
@@ -1575,6 +1875,11 @@ public class FocusingField {
         	gd.showDialog();
 	    	if (gd.wasCanceled()) return false;
 	    	if (!gd.wasOKed()) { // selected non-default "Apply"
+				for (int i=0;i<2;i++){
+					if (centerSelect[i]  || showDisabled) {
+						pXY[i]=gd.getNextNumber();
+					}
+				}
 				for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 					if ((mechanicalSelect==null) || mechanicalSelect[i]  || showDisabled) {
 						mechanicalFocusingModel.paramValues[i]=gd.getNextNumber();
@@ -1594,10 +1899,13 @@ public class FocusingField {
 		}
 		
 		/**
-		 * @return number of selected parameters (including mechanical and each selected - up to 6 - curvature)
+		 * @return number of selected parameters (including center, mechanical and each selected - up to 6 - curvature)
 		 */
 		public int getNumberOfParameters(boolean sagittalMaster){
 			int np=0;
+			for (int i=0;i<2;i++){
+				if ( centerSelect[i]) np++;
+			}
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) np++;
 			}
@@ -1627,6 +1935,10 @@ public class FocusingField {
 		public double [] createParameterVector(boolean sagittalMaster){
 			double [] pars = new double [getNumberOfParameters(sagittalMaster)];
 			int np=0;
+			for (int i=0;i<2;i++){
+				if ( centerSelect[i]) pars[np++]=pXY[i];
+			}
+
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) pars[np++]=mechanicalFocusingModel.paramValues[i];
 			}
@@ -1649,6 +1961,9 @@ public class FocusingField {
 		 */
 		public void commitParameterVector(double [] pars, boolean sagittalMaster){
 			int np=0;
+			for (int i=0;i<2;i++){
+				if ( centerSelect[i]) pXY[i]=pars[np++];
+			}
 			for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 				if ((mechanicalSelect==null) || mechanicalSelect[i] ) mechanicalFocusingModel.paramValues[i] = pars[np++];;
 			}
@@ -1669,9 +1984,11 @@ public class FocusingField {
 				if (isMasterDir){
 					curvatureModel[n ^ 1].setCenterVector(curvatureModel[n].getCenterVector());
 				}
-			}			
-			
-			
+			}
+// propagate pXY to each channel (even disabled)			
+			for (int n=0;n<curvatureModel.length;n++){
+				curvatureModel[n].setCenter(pXY[0],pXY[1]);
+			}
 		}
 		public double getMotorsZ(
 				int [] motors, // 3 motor coordinates
@@ -1687,9 +2004,16 @@ public class FocusingField {
 		public double getRadiusMM(
 				double px, // pixel x 
 				double py) {// pixel y
-			double pd=Math.sqrt((px-pX0)*(px-pX0)+(py-pY0)*(py-pY0));
+			double pd=Math.sqrt((px-currentPX0)*(px-currentPX0)+(py-currentPY0)*(py-currentPY0));
 			return pd*getPixelMM();
 			
+		}
+
+		public double getRadiusMM_distortions(
+				double px, // pixel x 
+				double py) {// pixel y
+			double pd=Math.sqrt((px-pX0_distortions)*(px-pX0_distortions)+(py-pY0_distortions)*(py-pY0_distortions));
+			return pd*getPixelMM();
 		}
 		/**
 		 * Generate vector of function values (up to 6 - 1 per selected channel), corresponding to motor positions and pixel
@@ -1727,14 +2051,29 @@ public class FocusingField {
 						deriv_curv[c]);
 			}
 			if (deriv!=null){
+				double dX=px-pXY[0];
+				double dY=py-pXY[1];
+				double r=Math.sqrt(dX*dX+dY*dY);
+				double [] dr_dxy={1.0,1.0};
+				if (r>0.0){
+					dr_dxy[0]=-dX/r;
+					dr_dxy[1]=-dY/r;
+				}
 				nChn=0;
 				for (int c=0;c<channelSelect.length;c++) if (channelSelect[c]){
 					boolean isMasterDir=(c%2) == (sagittalMaster?0:1);
 					int otherChannel= c ^ 1;
 					deriv[nChn]=new double [getNumberOfParameters(sagittalMaster)];
 					int np=0;
+					for (int i=0;i<2;i++){
+						if (centerSelect[i] ) {
+							deriv[nChn][np++]=dr_dxy[i]*deriv_curv[c][deriv_curv[c].length-1]; // needs correction from measurement conversion
+						}
+					}
 					// For dependent/master channels no difference for mechanical parameters
-					// TOSO: verify they are the same?
+					// TODO: verify they are the same?
+					// calculate derivatives for the center variations (/dXc, /dYc). Will need to be modified for Y vector too as 
+					// Y-vector two values (S,T) are calculated from 3 (X2,Y2,XY) and depend on the center position. 
 
 					for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
 						if ((mechanicalSelect==null) || mechanicalSelect[i] ) {
@@ -2071,9 +2410,9 @@ public class FocusingField {
 		private double dflt_na=0.15; // um/um
 		private double dflt_r0=4.0; //3.3; // um (1.5 pix)
 		private double [][] modelParams=null;
-		public static final int dflt_distanceParametersNumber=4;
+		public static final int dflt_distanceParametersNumber=5;
 		public static final int dflt_radialParametersNumber=3;
-		private static final int min_distanceParametersNumber=3;
+		private static final int min_distanceParametersNumber=4;
 		private static final int min_radialParametersNumber=1;
 		private double pX0,pY0;
 		public CurvatureModel(
@@ -2087,6 +2426,10 @@ public class FocusingField {
 			if (radialParametersNumber<min_radialParametersNumber) radialParametersNumber=min_radialParametersNumber;
 			this.modelParams=new double [distanceParametersNumber][radialParametersNumber];
 			setDefaults();
+		}
+		public void setCenter(double pX, double pY){
+			pX0=pX;
+			pY0=pY;
 		}
 		public int [] getNumPars(){
 			if (modelParams==null) return null;
@@ -2129,7 +2472,7 @@ public class FocusingField {
 		}
 		public int getSize(){
 			try {
-				return this.modelParams.length*this.modelParams[0].length;
+				return this.modelParams.length*this.modelParams[0].length+1; // last element df/dr
 			} catch (Exception e){
 				return 0;
 			}
@@ -2142,7 +2485,7 @@ public class FocusingField {
 		 * @param pX - sample pixel x coordinate (currently just for radius calculation)
 		 * @param pY - sample pixel y coordinate  (currently just for radius calculation)
 		 * @param z_in - z (from mechanical) before subtracting of  z0
-		 * @param deriv array to accommodate all partial derivatives or null
+		 * @param deriv array to accommodate all partial derivatives or null (should have modelParams.length*modelParams[0].length+1
 		 * @return function value
 		 */
 		public double getFdF(
@@ -2167,13 +2510,15 @@ ar1 - ar[4]
 
 */
 			double r=Math.sqrt((pX-pX0)*(pX-pX0)+(pY-pY0)*(pY-pY0))*PIXEL_SIZE; // in mm
-			double r2=r*r;
+//			double r2=r*r;
 			double [] ar= new double [this.modelParams.length];
 			for (int i=0;i<this.modelParams.length;i++){
 				ar[i]=this.modelParams[i][0];
-				double rp=1.0;
+//				double rp=1.0;
+				double rp=r;
 				for (int j=1;j<this.modelParams[i].length;j++){
-					rp*=r2;
+//					rp*=r2;
+					rp*=r;
 					ar[i]+=this.modelParams[i][j]*rp;
 				}
 			}
@@ -2231,20 +2576,34 @@ ar1 - ar[4]
 			double [] dar= new double [this.modelParams[0].length];
 			dar[0]=1;
 			for (int j=1;j<dar.length;j++){
-				dar[j]=dar[j-1]*r2;
+//				dar[j]=dar[j-1]*r2;
+				dar[j]=dar[j-1]*r;
+				if (j==1) dar[j]*=r; // 0,2,3,4,5...
 			}
 			int index=0;
 			for (int i=0;i<this.modelParams.length;i++) for (int j=0;j<this.modelParams[0].length;j++){
 				deriv[index++]=df_da[i]*dar[j];
 			}
+//			calculate d(f)/d(r)
+			double df_dr=0.0;
+			for (int i=0;i<this.modelParams.length;i++){
+				double da_dr=0.0;
+				double rp=1.0;
+				for (int j=1; j<this.modelParams[0].length;j++) {
+					rp*=r;
+					da_dr+=this.modelParams[i][j]*(j+1)*rp;
+				}
+				df_dr+=df_da[i]*da_dr;
+			}
+			deriv[this.modelParams.length*this.modelParams[0].length]=df_dr; // last element
 			return f; // function value
 		}
 		public String getRadialName(int i){
-			return "ar_"+(2*i);
+			return "ar_"+(i+1);
 		}
 		public String getRadialDecription(int i){
 			if (i==0) return "Radial constant coefficient";
-			return "Radial polynomial coefficient for r^"+(2*i);
+			return "Radial polynomial coefficient for r^"+(i+1);
 		}
 		public String getZName(int i){
 			if (i==0) return "z0";
