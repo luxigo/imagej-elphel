@@ -67,7 +67,9 @@ public final class WindowTools {
 
   /* Adds AWT scroll bars to the given container. */
   @SuppressWarnings("serial")
-public static void addScrollBars(Container pane) {
+public static void addScrollBars(GenericDialog gd) {
+    if (!(gd instanceof Container)) return; // headless mode
+    Container pane = (Container) gd;
     GridBagLayout layout = (GridBagLayout) pane.getLayout();
 
     // extract components

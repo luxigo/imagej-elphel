@@ -11,14 +11,18 @@
 		<version>1.135</version>
 		<relativePath />
 	</parent>
-
+<!-- 	
+	<properties>
+		<imagej.app.directory>/data/ImageJ/ImageJ</imagej.app.directory>
+	</properties>
+ -->
 	<groupId>com.elphel</groupId>
  	<artifactId>imagej-elphel</artifactId>
 <!-- 	<artifactId>Aberration_Calibration</artifactId> -->
 	
 	<version>1.0.0</version>
 
- 	<name>plugins/ImageJ_Elphel.jar</name>
+ 	<name>plugins/imagej_elphel.jar</name>
 <!-- 	<name>plugins/Aberration_Calibration.jar</name> -->
     <description>A Maven project implementing imagej-elphel plugin</description>
 
