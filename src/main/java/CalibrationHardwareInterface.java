@@ -4721,6 +4721,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     					if ((x<xMin) || (x>xMax)) continue; // out of range point
     					data[i][0]= scale*(x - x0); // interval center
     					double [][] metrics= this.history.get(i).getMetrics(0.0,0.0,0.0); // average is not used, any scales
+    					if (metrics==null) continue;
     					double l2=
     						1.0/metrics[0][indexR50]/metrics[0][indexR50]+
     						1.0/metrics[1][indexR50]/metrics[1][indexR50]+
@@ -6129,8 +6130,12 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			double w=0.0;
     			for (int i=0;i<weights.length;i++) w+=weights[i];
     			for (int i=0;i<weights.length;i++) weights[i]/=w;
-    			metrics[3]=new double[this.psfMetricses[this.indices[0]].length];
-    			for (int c=0;c<3;c++) metrics[c]= this.psfMetricses[this.indices[c]];
+    			try {
+    				metrics[3]=new double[this.psfMetricses[this.indices[0]].length];
+    				for (int c=0;c<3;c++) metrics[c]= this.psfMetricses[this.indices[c]];
+    			} catch (Exception e){
+    				return null;
+    			}
     			for (int i=0; i<metrics[3].length;i++) {
     				metrics[3][i]=0.0;
     				if (squared[i]){
