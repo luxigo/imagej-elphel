@@ -65,13 +65,13 @@ public class FocusingField {
 	                              // when false - tangential is master
 	double [] minMeas=      {1.0,1.0,1.0,1.0,1.0,1.0}; // pixels
 	double [] maxMeas=      {4.5,4.5,4.5,4.5,4.5,4.5}; // pixels
-	double [] thresholdMax= {3.0,3.0,3.0,3.0,4.0,3.0}; // pixels
+	double [] thresholdMax= {2.4,3.0,2.6,3.0,3.1,3.0}; // pixels
 	double [] weightReference=null;
 	boolean useMinMeas=     true;
 	boolean useMaxMeas=     true;
 	boolean useThresholdMax=true;
 	FieldFitting fieldFitting=null;
-	int weighMode=0; // 0 - same weight, 1 - linear threshold difference, 2 - quadratic thershold difference
+	int weighMode=2; // 0; // 0 - same weight, 1 - linear threshold difference, 2 - quadratic thershold difference
 	double weightRadius=2.0; // Gaussian sigma in mm
 	MeasuredSample [] dataVector;
 	double [] dataValues;
@@ -113,9 +113,18 @@ public class FocusingField {
     private boolean    showAllSamples = true;
     private boolean    showIgnoredData= false;
     private boolean showRad = true;
-    private boolean [][][][] sampleMask=null; 
+    private boolean [][][][][] sampleMask=null;
+    
+    private boolean correct_measurement_ST=true;
+    private boolean updateWeightWhileFitting=false;
+    
+    public int debugLevel;
+    public boolean debugDerivatives;
+    public boolean debugDerivativesFxDxDy=false;
 
-	
+	public void setDebugLevel(int debugLevel){
+		this.debugLevel=debugLevel;
+	}
     public class LMAArrays { // reuse from Distortions?
         public double [][] jTByJ=  null; // jacobian multiplied by Jacobian transposed
         public double []   jTByDiff=null; // jacobian multiplied difference vector
@@ -218,6 +227,9 @@ public class FocusingField {
     	gd.addCheckbox("Setup parameter masks?",setupMasks);
     	gd.addCheckbox("Setup parameter values?",setupParameters);
     	gd.addCheckbox("Show/modify disabled for auto-adjustment parameters?",showDisabled);
+    	gd.addCheckbox("Debug feature: update measurements and /dxc, /dyc if center is being fitted",correct_measurement_ST);
+    	gd.addCheckbox("Debug feature: update sample weights during fitting",updateWeightWhileFitting);
+    	
 	    WindowTools.addScrollBars(gd);
     	gd.showDialog();
     	if (gd.wasCanceled()) return false;
@@ -238,6 +250,8 @@ public class FocusingField {
     	setupMasks=                                                    gd.getNextBoolean();
     	setupParameters=                                               gd.getNextBoolean();
     	showDisabled=                                                  gd.getNextBoolean();
+    	correct_measurement_ST=                                        gd.getNextBoolean();
+    	updateWeightWhileFitting=                                      gd.getNextBoolean();
     	if (forcenew) {
     		this.fieldFitting= new FieldFitting(
     				currentPX0,
@@ -260,6 +274,7 @@ public class FocusingField {
     
     // includes deselected channels
     public void setDataVector(MeasuredSample [] vector){ // remove unused channels if any
+    	if (debugLevel>1) System.out.println("+++++ (Re)calculating sample weights +++++");
     	boolean [] chanSel=fieldFitting.getSelectedChannels();
     	int numSamples=0;
     	for (int i=0;i<vector.length;i++) if (chanSel[vector[i].channel]) numSamples++;
@@ -303,10 +318,13 @@ public class FocusingField {
     		double [] pXY=fieldFitting.getCenterXY();
         	currentPX0=pXY[0];
         	currentPY0=pXY[1];
-    		setDataVector(createDataVector(
-    		 		false, // boolean updateSelection,
-    	    		pXY[0], //double centerPX,
-    	    		pXY[1])); //double centerPY
+    		if (debugLevel>1) System.out.println("Updated currentPX0="+currentPX0+", currentPY0="+currentPY0);
+        	if (correct_measurement_ST && updateWeightWhileFitting) {
+        		setDataVector(createDataVector(
+        				false, // boolean updateSelection,
+        				pXY[0], //double centerPX,
+        				pXY[1])); //double centerPY
+        	}
 
     	}
     }
@@ -354,7 +372,7 @@ public class FocusingField {
         		}
         		//TODO: correct /dpx, /dpy to compensate for measured S,T calcualtion
         		boolean [] centerSelect=fieldFitting.getCenterSelect();
-        		if (centerSelect[0] || centerSelect[1]){ // do not do that if both X and Y are disabled
+        		if (correct_measurement_ST && (centerSelect[0] || centerSelect[1])){ // do not do that if both X and Y are disabled
         			int np=0;
         			for (int i=0;i<2;i++) if (centerSelect[i]){
         				jacobian[np++][n]-=ms.dPxyc[i]; // subtract, as effect is opposite to fX
@@ -453,17 +471,20 @@ d_cs/dy0=    delta_x*(2*delta_y^2-r2)/r2^2
     		double [] minMeas, // pixels
     		double [] maxMeas, // pixels
     		double [] thresholdMax){ // pixels
+    	debugDerivatives=debugLevel==3;
     	currentPX0=centerPX;
     	currentPY0=centerPY;
     	final int numColors=3;
     	final int numDirs=2;
     	if (sampleMask== null) updateSelection=true;
     	if (updateSelection){
-    		sampleMask= new boolean[sampleCoord.length][sampleCoord[0].length][numColors][numDirs];
-    		for (int i=0;i<sampleMask.length;i++)
-    			for (int j=0;j<sampleMask[i].length;j++)
+    		if (debugLevel>1) System.out.println("createDataVector(true,"+centerPX+","+centerPY+"...)");
+    		sampleMask= new boolean[measurements.size()] [sampleCoord.length][sampleCoord[0].length][numColors][numDirs];
+    		for (int n=0;n<sampleMask.length;n++)
+    		for (int i=0;i<sampleMask[n].length;i++)
+    			for (int j=0;j<sampleMask[n][i].length;j++)
     				for (int c=0;c<numColors;c++)
-    					for (int d=0;d<numDirs;d++) sampleMask[i][j][c][d]=false;
+    					for (int d=0;d<numDirs;d++) sampleMask[n][i][j][c][d]=false;
     		
     	}
 /*
@@ -477,13 +498,28 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 2*d_cs/dy0=   2*delta_x*(2*delta_y^2-r2)/r2^2
  */
     	double [][][] cosSin2Tab=new double[sampleCoord.length][sampleCoord[0].length][3];
+    	double [][][] debugCosSin2Tab_dx=null;
+    	double [][][] debugCosSin2Tab_dy=null;
+    	double debugDelta_x_dx=0,debugDelta_y_dy=0,debugR2_dx=0,debugR2_dy=0;
+    	if (debugDerivatives){
+        	debugCosSin2Tab_dx=new double[sampleCoord.length][sampleCoord[0].length][3];
+        	debugCosSin2Tab_dy=new double[sampleCoord.length][sampleCoord[0].length][3];
+    		
+    	}
     	double [][][] cosSin2Tab_dx0=new double[sampleCoord.length][sampleCoord[0].length][3];
     	double [][][] cosSin2Tab_dy0=new double[sampleCoord.length][sampleCoord[0].length][3];
-		for (int i=0;i<sampleMask.length;i++) for (int j=0;j<sampleMask[i].length;j++){
+		for (int i=0;i<sampleCoord.length;i++) for (int j=0;j<sampleCoord[i].length;j++){
 			double delta_x=sampleCoord[i][j][0]-currentPX0;
 			double delta_y=sampleCoord[i][j][1]-currentPY0;
 			double r2=delta_x*delta_x+delta_y*delta_y;
 			double r4=r2*r2;
+	    	if (debugDerivatives){
+	    		debugDelta_x_dx=sampleCoord[i][j][0]-currentPX0-1;
+	    		debugDelta_y_dy=sampleCoord[i][j][1]-currentPY0-1;
+	    		debugR2_dx=debugDelta_x_dx*debugDelta_x_dx+delta_y*delta_y;
+	    		debugR2_dy=delta_x*delta_x+debugDelta_y_dy*debugDelta_y_dy;
+	    		
+	    	}
 			if (r2>0.0) {
 				cosSin2Tab[i][j][0]=  delta_x*delta_x/r2; // cos^2
 				cosSin2Tab[i][j][1]=  delta_y*delta_y/r2; // sin^2
@@ -496,6 +532,15 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 				cosSin2Tab_dy0[i][j][0]=  2*delta_y*delta_x*delta_x/r4;        // d(cos^2)/d(y0)
 				cosSin2Tab_dy0[i][j][1]=  2*delta_y*(delta_y*delta_y - r2)/r4; // d(sin^2)/d(y0)
 				cosSin2Tab_dy0[i][j][2]=  2*delta_x*(2*delta_y*delta_y-r2)/r4; // d(2*cos*sin)/d(y0)
+		    	if (debugDerivatives){
+		    		debugCosSin2Tab_dx[i][j][0]=  debugDelta_x_dx*debugDelta_x_dx/debugR2_dx; // cos^2
+		    		debugCosSin2Tab_dx[i][j][1]=  delta_y*delta_y/debugR2_dx; // sin^2
+		    		debugCosSin2Tab_dx[i][j][2]=2*debugDelta_x_dx*delta_y/debugR2_dx; // 2*cos*sin
+
+		    		debugCosSin2Tab_dy[i][j][0]=  delta_x*delta_x/debugR2_dy; // cos^2
+		    		debugCosSin2Tab_dy[i][j][1]=  debugDelta_y_dy*debugDelta_y_dy/debugR2_dy; // sin^2
+		    		debugCosSin2Tab_dy[i][j][2]=2*delta_x*debugDelta_y_dy/debugR2_dy; // 2*cos*sin
+		    	}
 
 			} else {
 				cosSin2Tab[i][j][0]=1.0;
@@ -509,6 +554,15 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 				cosSin2Tab_dy0[i][j][0]=0.0;
 				cosSin2Tab_dy0[i][j][1]=0.0;
 				cosSin2Tab_dy0[i][j][2]=0.0;
+		    	if (debugDerivatives){
+		    		debugCosSin2Tab_dx[i][j][0]=  0.0;
+		    		debugCosSin2Tab_dx[i][j][1]=  0.0;
+		    		debugCosSin2Tab_dx[i][j][2]=  0.0;
+
+		    		debugCosSin2Tab_dy[i][j][0]=  0.0;
+		    		debugCosSin2Tab_dy[i][j][1]=  0.0;
+		    		debugCosSin2Tab_dy[i][j][2]=  0.0;
+		    	}
 			}
 		}
     	
@@ -543,6 +597,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 		} else {
 			thresholdMax=null;
 		}
+		int nMeas=0;
     	for (FocusingFieldMeasurement ffm:measurements){
     		double [][][][] samples=ffm.samples;
     		if (samples!=null) for (int i=0;i<sampleCoord.length;i++){
@@ -550,7 +605,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     				if ((j<samples[i].length) && (samples[i][j]!=null)) for (int c=0;c<numColors;c++){
 
         				if ((c<samples[i][j].length) && (samples[i][j][c]!=null)){
-    						double sagTan[] = {
+    						double [] sagTan = {
     								Math.sqrt(
     										cosSin2Tab[i][j][0]*samples[i][j][c][0]+
     										cosSin2Tab[i][j][1]*samples[i][j][c][1]+
@@ -559,8 +614,26 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     										cosSin2Tab[i][j][1]*samples[i][j][c][0]+
     										cosSin2Tab[i][j][0]*samples[i][j][c][1]-
     										cosSin2Tab[i][j][2]*samples[i][j][c][2])};
-    						
-    						double sagTan_dx0[] = {
+    						double [] debugSagTan_dx={0.0,0.0},debugSagTan_dy={0.0,0.0};
+    						if (debugDerivatives){
+    							debugSagTan_dx[0]= Math.sqrt(
+    									debugCosSin2Tab_dx[i][j][0]*samples[i][j][c][0]+
+    									debugCosSin2Tab_dx[i][j][1]*samples[i][j][c][1]+
+    									debugCosSin2Tab_dx[i][j][2]*samples[i][j][c][2]);
+    							debugSagTan_dx[1]= Math.sqrt(
+    									debugCosSin2Tab_dx[i][j][1]*samples[i][j][c][0]+
+    									debugCosSin2Tab_dx[i][j][0]*samples[i][j][c][1]-
+    									debugCosSin2Tab_dx[i][j][2]*samples[i][j][c][2]);
+    							debugSagTan_dy[0]= Math.sqrt(
+    									debugCosSin2Tab_dy[i][j][0]*samples[i][j][c][0]+
+    									debugCosSin2Tab_dy[i][j][1]*samples[i][j][c][1]+
+    									debugCosSin2Tab_dy[i][j][2]*samples[i][j][c][2]);
+    							debugSagTan_dy[1]= Math.sqrt(
+    									debugCosSin2Tab_dy[i][j][1]*samples[i][j][c][0]+
+    									debugCosSin2Tab_dy[i][j][0]*samples[i][j][c][1]-
+    									debugCosSin2Tab_dy[i][j][2]*samples[i][j][c][2]);
+    				    	}
+    						double [] sagTan_dx0 = {
     								(0.5*(
     										cosSin2Tab_dx0[i][j][0]*samples[i][j][c][0]+
     										cosSin2Tab_dx0[i][j][1]*samples[i][j][c][1]+
@@ -571,7 +644,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 											cosSin2Tab_dx0[i][j][2]*samples[i][j][c][2])/sagTan[1])
     						};
 
-    						double sagTan_dy0[] = {
+    						double [] sagTan_dy0 = {
     								(0.5*(
     										cosSin2Tab_dy0[i][j][0]*samples[i][j][c][0]+
     										cosSin2Tab_dy0[i][j][1]*samples[i][j][c][1]+
@@ -582,50 +655,105 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 											cosSin2Tab_dy0[i][j][2]*samples[i][j][c][2])/sagTan[1])
     						};
 
-    						System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
+    						if (debugLevel>3) System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
     						for (int d=0;d<numDirs;d++){
-        						System.out.print(" d= "+d+" ");
+    							if (debugLevel>3) System.out.print(" d= "+d+" ");
 
-        						if (!updateSelection && !sampleMask[i][j][c][d]) continue;
+        						if (!updateSelection && !sampleMask[nMeas][i][j][c][d]) continue;
         						int chn=d+numDirs*c;
         						//        					System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
         						// saved values are PSF radius, convert to FWHM by multiplying by 2.0
         						double value=sagTan[d]*2.0;
         						double value_dx0=sagTan_dx0[d]*2.0;
         						double value_dy0=sagTan_dy0[d]*2.0;
+        						double debugValue_dx0=0.0,debugValue_dy0=0.0;
+        				    	if (debugDerivatives){
+        				    		debugValue_dx0=debugSagTan_dx[d]*2.0;
+        				    		debugValue_dy0=debugSagTan_dy[d]*2.0;
+        				    	}
+        						
+        						boolean dbg=(debugLevel==3) && (i==1) && (j==3);
+        						double dbg_delta_x=sampleCoord[i][j][0]-currentPX0;
+        						double dbg_delta_y=sampleCoord[i][j][1]-currentPY0;
+
+        						if (dbg) System.out.print("mot="+ffm.motors[2]+" dx="+dbg_delta_x+" dy="+dbg_delta_y);
+        						if (dbg) System.out.println(" value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+        						if (dbg) System.out.println(" value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+        								" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
         						// discard above threshold (in pixels, raw FWHM data)
         						if (Double.isNaN(value)) {
-        							System.out.println("samples["+i+"]["+j+"]["+c+"]["+d+"] = Double.NaN, motors[0]="+ffm.motors[0]);
-        							continue; // bad measurement
+        							if (debugLevel>3) System.out.println("samples["+i+"]["+j+"]["+c+"]["+d+"] = Double.NaN, motors[0]="+ffm.motors[0]);
+        							if (updateSelection) continue; // bad measurement
         						}
-        						System.out.print(" A "+value);
+        						if (debugLevel>3) System.out.print(" A "+value);
         						if (thresholdMax != null){
         							if (value >= thresholdMax[chn]) {
-                						System.out.print(" > "+thresholdMax[chn]);
-        								continue; // bad measurement (above threshold)
+        								if (debugLevel>3) System.out.print(" > "+thresholdMax[chn]);
+        								if (updateSelection) continue; // bad measurement (above threshold)
         							}
         						}
-        						System.out.print(" B "+value);
+        						if (debugLevel>3) System.out.print(" B "+value);
         						// correct for for minimal measurement; 
         						if (minMeas != null){
-        							if (value<minMeas[chn]) continue; // bad measurement (smaller than correction)
+        							if (value<minMeas[chn]) {
+        								if (debugLevel>3) System.out.print(" < "+minMeas[chn]);
+        								if (updateSelection) continue; // bad measurement (smaller than correction)
+        							}
         							double f=value;
         							value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
         							value_dx0*=f/value;
         							value_dy0*=f/value;
+            						if (dbg) {
+            							System.out.println("2. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+                				    	if (debugDerivatives){
+                							debugValue_dx0=Math.sqrt(debugValue_dx0*debugValue_dx0-minMeas[chn]*minMeas[chn]);
+                							debugValue_dy0=Math.sqrt(debugValue_dy0*debugValue_dy0-minMeas[chn]*minMeas[chn]);
+                    						if (dbg) System.out.println("2. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+                    								" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
+                				    	}
+            						}
         						}
-        						System.out.print(" C "+value);
+        						if (debugLevel>3) System.out.print(" C "+value);
         						// correct for for maximal measurement; 
         						if (maxMeas != null) {
-        							if (value >= maxMeas[chn]) continue; // bad measurement (larger than correction)
+        							if (value >= maxMeas[chn]){
+        								if (debugLevel>3) System.out.print(" > "+maxMeas[chn]);
+        								if (updateSelection) continue; // bad measurement (larger than correction)
+        							}
         							double f=value;
         							value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
-        							value_dx0*=1.0/(value*f*f*f);
-        							value_dy0*=1.0/(value*f*f*f);
+//        							value_dx0*=1.0/(value*f*f*f);
+//        							value_dy0*=1.0/(value*f*f*f);
+        							f=value/f;
+        							f*=f*f;
+        							value_dx0*=f;
+        							value_dy0*=f;
+        							
+            						if (dbg) {
+            							System.out.println("3. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+                				    	if (debugDerivatives){
+                				    		debugValue_dx0 = 1.0/Math.sqrt(1.0/(debugValue_dx0*debugValue_dx0)-1.0/(maxMeas[chn]*maxMeas[chn]));
+                				    		debugValue_dy0 = 1.0/Math.sqrt(1.0/(debugValue_dy0*debugValue_dy0)-1.0/(maxMeas[chn]*maxMeas[chn]));
+                    						if (dbg) System.out.println("3. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+                    								" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
+                				    	}
+            						}
         						}
-        						System.out.print(" D "+value);
+        						if (debugLevel>3) System.out.print(" D "+value);
         						// convert to microns from pixels
         						value*=getPixelUM();
+        						value_dx0*=getPixelUM();
+        						value_dy0*=getPixelUM();
+        						if (dbg) {
+        							System.out.println("4. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+            				    	if (debugDerivatives){
+            							debugValue_dx0*=getPixelUM();
+            							debugValue_dy0*=getPixelUM();
+                						if (dbg) System.out.println("4. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+                								" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
+            				    	}
+        						}
+
         						sampleList.add(new MeasuredSample(
         								ffm.motors,
         								ffm.timestamp,
@@ -636,16 +764,17 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
         								value_dx0, //double dPxc; // derivative of the value by optical (aberration) center pixel X
         								value_dy0 //double dPyc; // derivative of the value by optical (aberration) center pixel Y
         								));
-        						System.out.print(" E "+value);
-        						if (updateSelection) sampleMask[i][j][c][d]=true;
+        						if (debugLevel>3) System.out.print(" E "+value);
+        						if (updateSelection) sampleMask[nMeas][i][j][c][d]=true;
         					}
         				}
     				}
     			}
     		}
+    		nMeas++;
     	}
-		System.out.println();
-    	System.out.println("createDataVector -> "+sampleList.size()+" elements");
+    	if (debugLevel>3) System.out.println();
+    	if (debugLevel>0) System.out.println("createDataVector -> "+sampleList.size()+" elements");
     	return sampleList.toArray(new MeasuredSample[0]);
     }
 	/**
@@ -664,7 +793,8 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 		if (this.dataWeights!=null) {
 			for (int i=0;i<fX.length;i++){
 				double diff=this.dataValues[i]-fX[i];
-				result+=diff*diff*this.dataWeights[i]; System.out.println(""+i+"fx="+fX[i]+" data="+this.dataValues[i]+" diff="+diff+" w="+this.dataWeights[i]);
+				result+=diff*diff*this.dataWeights[i];
+				if (debugLevel>2) System.out.println(""+i+"fx="+fX[i]+" data="+this.dataValues[i]+" diff="+diff+" w="+this.dataWeights[i]);
 				sumWeights+=this.dataWeights[i];
 			}
 			if (sumWeights>0) result/=sumWeights;
@@ -715,6 +845,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 			LMAArrays lMAArrays,
 			double lambda,
 			int debugLevel){
+		this.debugLevel=debugLevel;
 		double [][] JtByJmod= lMAArrays.jTByJ.clone();
 		int numPars=JtByJmod.length;
 		for (int i=0;i<numPars;i++){
@@ -750,6 +881,27 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 	    return Ma.getColumnPackedCopy();
 	}
 
+	public void compareDrDerivatives(double [] vector){
+		boolean [] centerSelect=fieldFitting.getCenterSelect();
+		if (!centerSelect[0] || !centerSelect[1]){
+			System.out.println("compareDrDerivatives(): Both px0 and px1 parameters should be enabled, aborting");
+			return;
+		}
+		double [] vector_dx=vector.clone();
+		double [] vector_dy=vector.clone();
+		vector_dx[0]+=1.0;
+		vector_dy[1]+=1.0;
+	    double [] fx_dx=createFXandJacobian(vector_dx,false);
+	    double [] fx_dy=createFXandJacobian(vector_dy,false);
+	    double [] fx=   createFXandJacobian(vector,true);
+	    for (int i=0;i<fx.length;i++){
+	    	System.out.println(i+" fx= "+fx[i]+" delta_fx= "+(fx_dx[i]-fx[i])+" delta_fy= "+(fx_dy[i]-fx[i]));
+	    	System.out.println("            df/dx= "+jacobian[0][i]+" df/dy= "+jacobian[1][i]);
+	    	
+	    }
+	}
+	
+	
 	/**
 	 * Calculates  next parameters vector, holds some arrays
 	 * @param numSeries
@@ -766,6 +918,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 			lastImprovements[0]=-1.0;
 			lastImprovements[1]=-1.0;
 		}
+		this.debugLevel=debugLevel;
 		// calculate  this.currentfX, this.jacobian if needed
 		if (debugLevel>2) {
 			System.out.println("this.currentVector");
@@ -786,7 +939,9 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 						". Calculating next Jacobian. Points:"+this.dataValues.length+" Parameters:"+this.currentVector.length);
 			}
 		} else {
-			this.currentRMS= calcErrorDiffY(this.currentfX);
+			// continuing, but need to re-build Y vector to match this.currentVector
+			commitParameterVector(this.currentVector); // may be extra job?
+			this.currentRMS= calcErrorDiffY(this.currentfX); // Verify - currentfX is correct, but Y vector is modified! Yes, it is so
     	}
     	if (this.firstRMS<0) {
     		this.firstRMS=this.currentRMS;
@@ -801,7 +956,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     		for (int i=0;i<deltas.length;i++) deltas[i]=0.0;
     		matrixNonSingular=false;
     	}
-		if (debugLevel>2) {
+		if (debugLevel>1) {
 			System.out.println("deltas");
 			for (int i=0;i<deltas.length;i++){
 				System.out.println(i+": "+ deltas[i]);
@@ -901,6 +1056,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     public boolean selectLMAParameters(){
 //    	int numSeries=fittingStrategy.getNumSeries();
 	    GenericDialog gd = new GenericDialog("Levenberg-Marquardt algorithm parameters for cameras distortions/locations");
+		gd.addCheckbox("Debug df/dX0, df/dY0",   false);
 //		gd.addNumericField("Iteration number to start (0.."+(numSeries-1)+")", this.seriesNumber, 0);
 		gd.addNumericField("Initial LMA Lambda ",            this.lambda, 5);
 		gd.addNumericField("Multiply lambda on success",     this.lambdaStepDown, 5);
@@ -923,6 +1079,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 //		gd.addCheckbox("Use memory-saving/multithreaded version", this.threadedLMA);
 	    gd.showDialog();
 	    if (gd.wasCanceled()) return false;
+	    this.debugDerivativesFxDxDy=gd.getNextBoolean();
 //	    this.seriesNumber=     (int) gd.getNextNumber();
 		this.lambda=                 gd.getNextNumber();
 		this.lambdaStepDown=         gd.getNextNumber();
@@ -1039,7 +1196,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     		selChanIndices[i]= selChanIndices[i-1]+(selChannels[i-1]?1:0);
     	}
     	double [][][] cosSin2Tab=new double[sampleCoord.length][sampleCoord[0].length][3];
-		for (int i=0;i<sampleMask.length;i++) for (int j=0;j<sampleMask[i].length;j++){
+		for (int i=0;i<sampleCoord.length;i++) for (int j=0;j<sampleCoord[i].length;j++){
 			double delta_x=sampleCoord[i][j][0]-currentPX0;
 			double delta_y=sampleCoord[i][j][1]-currentPY0;
 			double r2=delta_x*delta_x+delta_y*delta_y;
@@ -1102,39 +1259,45 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     										cosSin2Tab[i][j][1]*samples[i][j][c][0]+
     										cosSin2Tab[i][j][0]*samples[i][j][c][1]-
     										cosSin2Tab[i][j][2]*samples[i][j][c][2])};
-     						System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
+    						if (debugLevel>3) System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
     						for (int d=0;d<numDirs;d++){
-        						System.out.print(" d= "+d+" ");
+    							if (debugLevel>3) System.out.print(" d= "+d+" ");
     							int chn=d+numDirs*c;
     							//        					System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
     							// saved values are PSF radius, convert to FWHM by multiplying by 2.0
     							double value=sagTan[d]*2.0;
     							// discard above threshold (in pixels, raw FWHM data)
     							if (Double.isNaN(value)) continue; // bad measurement
-        						System.out.print(" A "+value);
+    							if (debugLevel>3) System.out.print(" A "+value);
     							if (!showIgnoredData && (thresholdMax != null)){
     								if (value >= thresholdMax[chn]){
-                						System.out.print(" > "+thresholdMax[chn]);
+    									if (debugLevel>3) System.out.print(" > "+thresholdMax[chn]);
     									continue; // bad measurement (above threshold)
     								}
     							}
-        						System.out.print(" B "+value);
+    							if (debugLevel>3) System.out.print(" B "+value);
     							// correct for for minimal measurement; 
     							if (useMinMeas && (minMeas != null)){
-    								if (value<minMeas[chn]) continue; // bad measurement (smaller than correction)
+    								if (value<minMeas[chn]) {
+    									if (debugLevel>3) System.out.print(" < "+minMeas[chn]);
+    									continue; // bad measurement (smaller than correction)
+    								}
     								value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
     							}
-        						System.out.print(" C "+value);
+    							if (debugLevel>3) System.out.print(" C "+value);
     							// correct for for maximal measurement; 
     							if (useMaxMeas && (maxMeas != null)) {
-    								if (value >= maxMeas[chn]) continue; // bad measurement (larger than correction)
+    								if (value >= maxMeas[chn]) {
+    									if (debugLevel>3) System.out.print(" > "+maxMeas[chn]);
+    									continue; // bad measurement (larger than correction)
+    								}
     								value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
     							}
-        						System.out.print(" D "+value);
+    							if (debugLevel>3) System.out.print(" D "+value);
     							// convert to microns from pixels
     							value*=getPixelUM();
     							samplesFull[i][j][c][d]=value;
-        						System.out.print(" E "+value);
+    							if (debugLevel>3) System.out.print(" E "+value);
     						}
     					}
     				}
@@ -1192,7 +1355,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
         	sb.append("\n");
     	}
     	
-    	System.out.println();
+    	if (debugLevel>3) System.out.println();
     	
     	if (showRad){
     		sb.append(header+"\n");
@@ -1299,10 +1462,15 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     
     
     public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
+    	double savedLambda=this.lambda;
+    	this.debugLevel=debugLevel;
     	if (openDialog && !selectLMAParameters()) return false;
     	this.startTime=System.nanoTime();
 // create savedVector (it depends on parameter masks), restore from it if aborted     	
     	this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
+    	if (debugDerivativesFxDxDy){
+    		compareDrDerivatives(this.savedVector);
+    	}
     	this.iterationStepNumber=0;
     	this.firstRMS=-1; //undefined
 //    	while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
@@ -1316,6 +1484,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     				IJ.showMessage(msg);
     				System.out.println(msg);
     				commitParameterVector(this.savedVector);
+    				this.lambda=savedLambda;
     				return false; 
     			}
     			
@@ -1360,6 +1529,8 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 */				
 				if (!cont){
 					if (this.saveSeries) {
+	    				savedLambda=this.lambda;
+
 						this.savedVector=this.currentVector.clone();
 //						saveFittingSeries(); // will save series even if it ended in failure, vector will be only updated
 //						updateCameraParametersFromCalculated(true); // update camera parameters from all (even disabled) images
@@ -1367,12 +1538,14 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 					}
 					// if RMS was decreased. this.saveSeries==false after dialogLMAStep(state) only if "cancel" was pressed 
 					commitParameterVector(this.savedVector); // either new or original
+    				this.lambda=savedLambda;
 					return this.saveSeries; // TODO: Maybe change result?
 				}
 //stepLevenbergMarquardtAction();    			
     			if (state[1]) {
     				if (!state[0]) {
     					commitParameterVector(this.savedVector);
+        				this.lambda=savedLambda;
     					return false; // sequence failed
     				}
 					this.savedVector=this.currentVector.clone();
@@ -2060,6 +2233,10 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 					dr_dxy[1]=-dY/r;
 				}
 				nChn=0;
+				for (int i=0;i<2;i++){
+					dr_dxy[i]*=getPixelMM(); // radius in mm, dx, dy - in pixels
+//					dr_dxy[i]*=2; //?????
+				}
 				for (int c=0;c<channelSelect.length;c++) if (channelSelect[c]){
 					boolean isMasterDir=(c%2) == (sagittalMaster?0:1);
 					int otherChannel= c ^ 1;
