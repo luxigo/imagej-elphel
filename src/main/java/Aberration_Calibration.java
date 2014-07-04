@@ -9940,7 +9940,7 @@ if (MORE_BUTTONS) {
 		focusingMotors.addToHistory(ts,focusMeasurementParameters.sensorTemperature,metrics,rFullResults[0]);
 //		System.out.println("focusMeasurementParameters.lensDistanceWeightK="+focusMeasurementParameters.lensDistanceWeightK);
 //		System.out.println("focusMeasurementParameters.lensDistanceWeightY="+focusMeasurementParameters.lensDistanceWeightY);
-		if (debugLevel>0){
+		if ((debugLevel>0) && (metrics!=null)){
 			// see if lens is calibrated
 			double [] resolutions={1.0/metrics[1][6],1.0/metrics[5][6],1.0/metrics[2][6]}; // R,G,B
 			double fDistance=focusingMotors.focusingHistory.getLensDistance(
