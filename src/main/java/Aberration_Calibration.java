@@ -4298,6 +4298,7 @@ if (MORE_BUTTONS) {
 					true, // boolean smart,       // do not open dialog if default matches 
 					"",//); //String defaultPath); //			AtomicInteger stopRequested
 					this.SYNC_COMMAND.stopRequested);
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			System.out.println("Loaded FocusingField");
 			FOCUSING_FIELD.configureDataVector("Configure curvature",true);
 			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
@@ -4310,6 +4311,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("Modify LMA")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false);
 			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
 			return;
@@ -4318,6 +4320,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("LMA History")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.LevenbergMarquardt(true, DEBUG_LEVEL); //boolean openDialog, int debugLevel){
 			return;
 		}
@@ -4325,6 +4328,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("List curv pars")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.listParameters("Field curvature measurement parameters",null); // to screen
 			return;
 		}
@@ -4332,6 +4336,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("List curv data")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.listData("Field curvature measurement data",null); // to screen
 			return;
 		}
