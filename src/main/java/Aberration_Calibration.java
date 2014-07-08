@@ -55,6 +55,7 @@ public class Aberration_Calibration extends PlugInFrame implements ActionListene
 	private Panel panelConf1,panelConf2,panelRun, panelDistortions, panelFitDistortions, panelProcessDistortions,panelAberrations ;
 	private Panel panelCorrectGrid;
 	private Panel panelFocusing,panelFocusing1;
+	private Panel panelCurvature;
 	private Panel panelGoniometer;
 	private Panel panelPixelMapping, panelStereo,panelStereo1;
 	
@@ -556,7 +557,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		addKeyListener(IJ.getInstance());
 //		setLayout(new GridLayout(ADVANCED_MODE?8:5, 1));
 //		setLayout(new GridLayout(ADVANCED_MODE?9:6, 1));
-		setLayout(new GridLayout(ADVANCED_MODE?19:19, 1));
+		setLayout(new GridLayout(ADVANCED_MODE?20:20, 1));
 		Color color_configure=     new Color(200, 200,160);
 		Color color_process=       new Color(180, 180, 240);
 		Color color_conf_process=  new Color(180, 240, 240);
@@ -777,14 +778,23 @@ if (MORE_BUTTONS) {
 		addButton("Temp. Scan",panelFocusing,color_process);
 		//
 		addButton("List History",panelFocusing,color_report);
-		addButton("Save History",panelFocusing,color_debug);
-		addButton("Restore History",panelFocusing,color_debug);
-		addButton("Modify LMA",panelFocusing,color_debug);
-		addButton("LMA History",panelFocusing,color_debug);
-		addButton("List curv pars",panelFocusing,color_debug);
-		addButton("List curv data",panelFocusing,color_debug);
 		addButton("Show PSF",panelFocusing,color_report);
 		add(panelFocusing);
+		
+// panelCurvature		
+		panelCurvature=new Panel();
+		panelCurvature.setLayout(new GridLayout(1, 0, 5, 5));
+		addButton("Save History",   panelCurvature,color_debug);
+		addButton("Restore History",panelCurvature,color_debug);
+		addButton("Modify LMA",     panelCurvature,color_debug);
+		addButton("LMA History",    panelCurvature,color_process);
+		addButton("List curv pars", panelCurvature,color_debug);
+		addButton("List curv data", panelCurvature,color_debug);
+		addButton("List qualB",     panelCurvature,color_report);
+		addButton("List curv",      panelCurvature,color_report);
+		addButton("Show curv corr", panelCurvature,color_report);
+		add(panelCurvature);
+		
 	//panelGoniometer
 		
 		panelGoniometer = new Panel();
@@ -4300,10 +4310,10 @@ if (MORE_BUTTONS) {
 					this.SYNC_COMMAND.stopRequested);
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			System.out.println("Loaded FocusingField");
-			FOCUSING_FIELD.configureDataVector("Configure curvature",true);
+			if (!FOCUSING_FIELD.configureDataVector("Configure curvature",true)) return;
 			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
 			double []focusing_fx=FOCUSING_FIELD.createFXandJacobian(true);
-			double rms= FOCUSING_FIELD.getRMS(focusing_fx);
+			double rms= FOCUSING_FIELD.getRMS(focusing_fx,false);
 			System.out.println("rms="+rms);
 			return;
 		}
@@ -4312,7 +4322,7 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-			FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false);
+			if (!FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false)) return;
 			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
 			return;
 		}
@@ -4341,8 +4351,31 @@ if (MORE_BUTTONS) {
 			return;
 		}
 
-//"LMA History"		
-		
+/* ======================================================================== */
+		if       (label.equals("List qualB")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.listScanQB(); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("List curv")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.listCombinedResults(); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Show curv corr")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.showCurvCorr(); // to screen
+			return;
+		}
+//		
 /* ======================================================================== */
 		if       (label.equals("Show PSF")) {
 			
