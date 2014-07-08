@@ -9631,7 +9631,7 @@ if (MORE_BUTTONS) {
 					scanPos[1]=centerMotorPos[1]-delta;
 					scanPos[2]=centerMotorPos[2]+delta;
 					if (debugLevel>0) System.out.println("Scanning tilt in X direction, step#"+(numStep+1)+" (of "+
-					(focusMeasurementParameters.scanTiltStepsX-1)+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					focusMeasurementParameters.scanTiltStepsX+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 					allOK &=moveAndMaybeProbe(
 							true,
 							scanPos, // null OK
@@ -9671,7 +9671,7 @@ if (MORE_BUTTONS) {
 					scanPos[1]=centerMotorPos[1]-delta;
 					scanPos[2]=centerMotorPos[2]+0;
 					if (debugLevel>0) System.out.println("Scanning tilt in Y direction, step#"+(numStep+1)+" (of "+
-					(focusMeasurementParameters.scanTiltStepsY-1)+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					focusMeasurementParameters.scanTiltStepsY+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 					allOK &=moveAndMaybeProbe(
 							true,
 							scanPos, // null OK
@@ -10238,7 +10238,7 @@ if (MORE_BUTTONS) {
 				0.0, //double sleep,
 				true, //boolean showStatus,
 				"",   //String message,
-				false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
+				!noHysteresis); //false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
 		focusMeasurementParameters.sensorTemperature=camerasInterface.getSensorTemperature(0,focusMeasurementParameters.EEPROM_channel);
 		ImagePlus imp= camerasInterface.acquireSingleImage (
 				false, //boolean useLasers,
