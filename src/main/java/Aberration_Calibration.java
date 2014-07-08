@@ -9620,9 +9620,9 @@ if (MORE_BUTTONS) {
 				for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsX;numStep++){
 					int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeX*
 							(1.0*numStep/(focusMeasurementParameters.scanTiltStepsX-1) -0.5));
-					scanPos[0]=centerMotorPos[0]-delta;
+					scanPos[0]=centerMotorPos[0]+delta;
 					scanPos[1]=centerMotorPos[1]-delta;
-					scanPos[2]=centerMotorPos[2]+delta;
+					scanPos[2]=centerMotorPos[2]+0;
 					if (debugLevel>0) System.out.println("Scanning tilt in X direction, step#"+(numStep+1)+" (of "+
 					(focusMeasurementParameters.scanTiltStepsX-1)+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 					allOK &=moveAndMaybeProbe(
