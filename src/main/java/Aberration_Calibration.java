@@ -772,6 +772,7 @@ if (MORE_BUTTONS) {
         addButton("Motors Home",panelFocusing,color_lenses);
 		addButton("Auto Pre-focus",panelFocusing,color_process);
 		addButton("Scan Calib",panelFocusing,color_process);
+		
 		addButton("Auto Focus/Tilt",panelFocusing,color_process);
 //		addButton("List Pre-focus",panelFocusing);
 		addButton("Focus Average",panelFocusing,color_report);
@@ -784,6 +785,7 @@ if (MORE_BUTTONS) {
 // panelCurvature		
 		panelCurvature=new Panel();
 		panelCurvature.setLayout(new GridLayout(1, 0, 5, 5));
+		addButton("Scan Calib LMA", panelCurvature,color_process);
 		addButton("Save History",   panelCurvature,color_debug);
 		addButton("Restore History",panelCurvature,color_debug);
 		addButton("Modify LMA",     panelCurvature,color_debug);
@@ -3907,7 +3909,9 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Scan Calib")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			checkSerialAndRestore(); // returns true if did not change or was restored 
+			checkSerialAndRestore(); // returns true if did not change or was restored
+			if (FOCUS_MEASUREMENT_PARAMETERS.showScanningSetup("Setup scanning parameters")) return;
+			MOTORS.setHysteresis(FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis);
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 //			int historyFrom=MOTORS.historySize()-1; // before scanning
 			int historyFrom=MOTORS.historySize();  // first during scanning (not yet exist)
@@ -3997,6 +4001,76 @@ if (MORE_BUTTONS) {
 			saveCurrentConfig();
 			return;
 		}
+/* ======================================================================== */
+		if       (label.equals("Scan Calib LMA")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			checkSerialAndRestore(); // returns true if did not change or was restored
+			if (FOCUS_MEASUREMENT_PARAMETERS.showScanningSetup("Setup scanning parameters for LMA")) return;
+			MOTORS.setHysteresis(FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis);
+			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
+			double[] range= ScanFocusTilt(
+					null, // center at current position
+					MOTORS,
+					CAMERAS,
+					LENS_DISTORTION_PARAMETERS,
+					matchSimulatedPattern, // should not bee null
+					FOCUS_MEASUREMENT_PARAMETERS,
+					PATTERN_DETECT,
+					DISTORTION,
+					SIMUL,
+					COMPONENTS,
+					OTF_FILTER,
+					PSF_PARS,
+					THREADS_MAX,
+					UPDATE_STATUS,
+					MASTER_DEBUG_LEVEL,
+					DISTORTION.loop_debug_level);
+			if (range==null ){
+				String msg="Scanning failed";
+				System.out.println(msg);
+				IJ.showMessage(msg);
+				return;
+			}
+
+			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+			double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates( //{x,y,r}
+					pX0,   // lens center on the sensor
+					pY0);
+			// set file path
+			String path=null;
+			String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
+			File dFile=new File(dir);
+			if (!dFile.isDirectory() &&  !dFile.mkdirs()) {
+				String msg="Failed to create directory "+dir;
+				IJ.showMessage(msg);
+				throw new IllegalArgumentException (msg);
+			}
+
+			String lensPrefix="";
+			if (FOCUS_MEASUREMENT_PARAMETERS.includeLensSerial && (FOCUS_MEASUREMENT_PARAMETERS.lensSerial.length()>0)){
+				lensPrefix=String.format("LENS%S-S%02d-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial,FOCUS_MEASUREMENT_PARAMETERS.manufacturingState);
+			}
+			path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
+			FOCUSING_FIELD= new FocusingField(
+					FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+					FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+					FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+					pX0,
+					pY0,
+					sampleCoord,
+					this.SYNC_COMMAND.stopRequested);
+
+			System.out.println("Saving measurement history to "+path);
+			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
+			FOCUSING_FIELD.saveXML(path);
+			
+			saveCurrentConfig();
+			return;
+		}
+		
+		
+		
 /* ======================================================================== */
 		if       ((label.equals("Manual Focus/Tilt")) || (label.equals("Auto Focus/Tilt"))|| (label.equals("Fine Focus"))) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -9472,6 +9546,209 @@ if (MORE_BUTTONS) {
 	}
 	
 	// returns {Xmin-1,Xmax+1} - average motors
+
+	
+	public double[] ScanFocusTilt(
+			//			boolean scanHysteresis, // after scanning forward, go in reverse (different number of steps to measure hysteresis
+			int [] centerMotorPos, // null OK
+			CalibrationHardwareInterface.FocusingMotors focusingMotors,
+			CalibrationHardwareInterface.CamerasInterface camerasInterface,
+			Distortions.LensDistortionParameters lensDistortionParameters,
+			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
+			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
+			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
+			MatchSimulatedPattern.DistortionParameters distortionParameters,
+			SimulationPattern.SimulParameters  simulParameters,
+			EyesisAberrations.ColorComponents colorComponents,
+			EyesisAberrations.OTFFilterParameters otfFilterParameters,
+			EyesisAberrations.PSFParameters psfParameters,
+			int       threadsMax,
+			boolean   updateStatus,
+			int       debugLevel,
+			int       loopDebugLevel){
+		if (centerMotorPos==null) centerMotorPos=focusingMotors.readElphel10364Motors().clone();
+
+		boolean allOK=true;
+		long 	  startTime=System.nanoTime();
+		if (debugLevel>0) System.out.println("Starting scanning focus in the center, number of steps="+ focusMeasurementParameters.scanNumber+
+				", of them "+focusMeasurementParameters.scanNumberNegative+" in negative direction"+
+				", step size="+focusMeasurementParameters.scanStep);
+		int scanNegative=focusMeasurementParameters.scanNumberNegative;
+		int scanPositive=focusMeasurementParameters.scanNumber-focusMeasurementParameters.scanNumberNegative-1; // not including zero
+		int [] scanPos={
+				centerMotorPos[0]-scanNegative * focusMeasurementParameters.scanStep,
+				centerMotorPos[1]-scanNegative * focusMeasurementParameters.scanStep,
+				centerMotorPos[2]-scanNegative * focusMeasurementParameters.scanStep
+		};
+		double centerAverage=(centerMotorPos[0]+centerMotorPos[1]+centerMotorPos[2])/3.0;
+		double [] range={
+				Math.floor(centerAverage- scanNegative * focusMeasurementParameters.scanStep)-1.0,
+				Math.ceil(centerAverage+ scanPositive * focusMeasurementParameters.scanStep)+1.0
+		};
+		int [] scanPosLast=null;
+		for (int numStep=0;numStep<focusMeasurementParameters.scanNumber;numStep++){
+			if (debugLevel>0) System.out.println("Scanning focus in the center, step#"+(numStep+1)+" (of "+ focusMeasurementParameters.scanNumber+
+					") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+			allOK &=moveAndMaybeProbe(
+					true,
+					scanPos, // null OK
+					focusingMotors,
+					camerasInterface,
+					lensDistortionParameters,
+					matchSimulatedPattern, // should not bee null
+					focusMeasurementParameters,
+					patternDetectParameters,
+					distortionParameters,
+					simulParameters,
+					colorComponents,
+					otfFilterParameters,
+					psfParameters,
+					threadsMax,
+					updateStatus,
+					debugLevel,
+					loopDebugLevel);
+			// do not advance position after last measurement
+			if (numStep<(focusMeasurementParameters.scanNumber-1)) for (int nm=0;nm<3;nm++) scanPos[nm]+=focusMeasurementParameters.scanStep;
+			scanPosLast=scanPos.clone();
+			if (!allOK) break; // failed 
+		}
+		if (focusMeasurementParameters.scanTiltEnable) {
+			if (focusMeasurementParameters.scanTiltStepsX >1 ) { // 0 or 1 STOPS - do not scan
+				double scanStepX=1.0*focusMeasurementParameters.scanTiltRangeX/(focusMeasurementParameters.scanTiltStepsX-1);
+				if (debugLevel>0) System.out.println("Starting scanning tilt in X direction, number of stops="+ focusMeasurementParameters.scanTiltStepsX+
+						", step size="+IJ.d2s(scanStepX,0));
+				for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsX;numStep++){
+					int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeX*
+							(1.0*numStep/(focusMeasurementParameters.scanTiltStepsX-1) -0.5));
+					scanPos[0]=centerMotorPos[0]-delta;
+					scanPos[1]=centerMotorPos[1]-delta;
+					scanPos[2]=centerMotorPos[2]+delta;
+					if (debugLevel>0) System.out.println("Scanning tilt in X direction, step#"+(numStep+1)+" (of "+
+					(focusMeasurementParameters.scanTiltStepsX-1)+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					allOK &=moveAndMaybeProbe(
+							true,
+							scanPos, // null OK
+							focusingMotors,
+							camerasInterface,
+							lensDistortionParameters,
+							matchSimulatedPattern, // should not bee null
+							focusMeasurementParameters,
+							patternDetectParameters,
+							distortionParameters,
+							simulParameters,
+							colorComponents,
+							otfFilterParameters,
+							psfParameters,
+							threadsMax,
+							updateStatus,
+							debugLevel,
+							loopDebugLevel);
+					if (!allOK) break; // failed 
+				}
+
+			}
+			if (focusMeasurementParameters.scanTiltStepsY >1 ) { // 0 or 1 STOPS - do not scan
+				double scanStepY=1.0*focusMeasurementParameters.scanTiltRangeY/(focusMeasurementParameters.scanTiltStepsY-1);
+				if (debugLevel>0) System.out.println("Starting scanning tilt in Y direction, number of stops="+ focusMeasurementParameters.scanTiltStepsY+
+						", step size="+IJ.d2s(scanStepY,0));
+				for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsY;numStep++){
+					int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeY*
+							(1.0*numStep/(focusMeasurementParameters.scanTiltStepsY-1) -0.5));
+					scanPos[0]=centerMotorPos[0]-delta;
+					scanPos[1]=centerMotorPos[1]-delta;
+					scanPos[2]=centerMotorPos[2]+delta;
+					if (debugLevel>0) System.out.println("Scanning tilt in Y direction, step#"+(numStep+1)+" (of "+
+					(focusMeasurementParameters.scanTiltStepsY-1)+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					allOK &=moveAndMaybeProbe(
+							true,
+							scanPos, // null OK
+							focusingMotors,
+							camerasInterface,
+							lensDistortionParameters,
+							matchSimulatedPattern, // should not bee null
+							focusMeasurementParameters,
+							patternDetectParameters,
+							distortionParameters,
+							simulParameters,
+							colorComponents,
+							otfFilterParameters,
+							psfParameters,
+							threadsMax,
+							updateStatus,
+							debugLevel,
+							loopDebugLevel);
+					if (!allOK) break; // failed 
+				}
+
+			}
+
+		}
+
+		if (focusMeasurementParameters.scanHysteresis && (scanPosLast!=null)){
+			focusingMotors.moveElphel10364Motors( // return to last direct scan position
+					true, //boolean wait,
+					scanPosLast,
+					0.0, //double sleep,
+					true, //boolean showStatus,
+					"",   //String message,
+					false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
+
+			double hystStep=((double) focusMeasurementParameters.scanStep*(focusMeasurementParameters.scanNumber-1))/focusMeasurementParameters.scanHysteresisNumber; // errors will accumulate, but that's OK
+			for (int numStep=0;numStep<focusMeasurementParameters.scanHysteresisNumber;numStep++){
+				if (debugLevel>0) System.out.println("Scanning focus in reverse direction for hysteresis estimation, step#"+(numStep+1)+" (of "+ focusMeasurementParameters.scanHysteresisNumber+
+						") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+				int [] revPosition=new int[scanPos.length];
+				for (int nm=0;nm<3;nm++) revPosition[nm]=scanPosLast[nm]-(int) Math.round(hystStep*(numStep+1));
+				allOK &=moveAndMaybeProbe(
+						true, // boolean noHysteresis,
+						true,
+						revPosition, // null OK
+						focusingMotors,
+						camerasInterface,
+						lensDistortionParameters,
+						matchSimulatedPattern, // should not bee null
+						focusMeasurementParameters,
+						patternDetectParameters,
+						distortionParameters,
+						simulParameters,
+						colorComponents,
+						otfFilterParameters,
+						psfParameters,
+						threadsMax,
+						updateStatus,
+						debugLevel,
+						loopDebugLevel);
+				if (!allOK) break; // failed 
+			}		
+		}
+		allOK &= moveAndMaybeProbe(
+				true,
+				centerMotorPos, // null OK
+				focusingMotors,
+				camerasInterface,
+				lensDistortionParameters,
+				matchSimulatedPattern, // should not bee null
+				focusMeasurementParameters,
+				patternDetectParameters,
+				distortionParameters,
+				simulParameters,
+				colorComponents,
+				otfFilterParameters,
+				psfParameters,
+				threadsMax,
+				updateStatus,
+				debugLevel,
+				loopDebugLevel);
+
+
+		if (debugLevel>0) System.out.println("Scanning focus in the center, number of steps="+ focusMeasurementParameters.scanNumber+
+				", step size="+focusMeasurementParameters.scanStep+" finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+		// focusMeasurementParameters.scanStep	
+		// focusMeasurementParameters.scanNumber
+		return allOK?range:null;
+	}	
+
+	
 	
 	public double[] ScanFocus(
 //			boolean scanHysteresis, // after scanning forward, go in reverse (different number of steps to measure hysteresis

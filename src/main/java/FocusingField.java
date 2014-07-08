@@ -1599,8 +1599,8 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     	    boolean freq_mode){
     	String [] chnNames={"RS","RT","GS","GT","BS","BT"};
 
-//    	double k=this.fwhm_to_mtf50; //TODO: correct psf fwhm to mtf50 conversion
-    	double k=2*Math.log(2.0)/Math.PI*1000;
+    	double k=this.fwhm_to_mtf50; //TODO: correct psf fwhm to mtf50 conversion
+//    	double k=2*Math.log(2.0)/Math.PI*1000;
 //    	String header="Z(um)\tComposite\tRed\tGreen\tBlue";
     	String header="radius(mm)";
     	if (show_z_axial){
@@ -2209,7 +2209,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 		private double [] sampleCorr=null;
 		private int [][] sampleCorrChnParIndex=null;
 		private boolean [] dflt_sampleCorrSelect= {false,false,false,false}; 
-		private double [] dflt_sampleCorrCost=    {0.2,100.0,2.0,1.0};
+		private double [] dflt_sampleCorrCost=    {0.2,50.0,1.0,1.0};
 		private double dflt_sampleCorrSigma=      1.0; // mm
 		private double dflt_sampleCorrPullZero=   0.25; // fraction
 		public final String [] channelDescriptions={

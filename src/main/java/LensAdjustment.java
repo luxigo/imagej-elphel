@@ -303,6 +303,13 @@ public class LensAdjustment {
         public boolean scanHysteresis=true;  // scan both ways
         public int scanHysteresisNumber=5;   // number of test points for the Hysteresis measurement
         
+        public boolean scanTiltEnable=true;  // enable scanning tilt
+        public int scanTiltRangeX=14336;    // 4 periods
+        public int scanTiltRangeY=14336;    // 4 periods
+        public int scanTiltStepsX=24;
+        public int scanTiltStepsY=24;
+        
+        
         public int motorHysteresis=300;
         public double measuredHysteresis=0; // actually measured (will be saved/restored)
         public double motorCalm=2; // wait (seconds) after motors reached final position (for the first time) before acquiring image   
@@ -509,6 +516,14 @@ public class LensAdjustment {
                 int scanNumberNegative,    // of them negative
                 boolean scanHysteresis,  // scan both ways
                 int scanHysteresisNumber,   // number of test points for the Hysteresis measurement
+                
+                boolean scanTiltEnable, //=true;  // enable scanning tilt
+                int scanTiltRangeX, //=14336;    // 4 periods
+                int scanTiltRangeY, //=14336;    // 4 periods
+                int scanTiltStepsX, //=24;
+                int scanTiltStepsY, //=24;
+
+                
                 int motorHysteresis,
                 double measuredHysteresis, // actually measured (will be saved/restored)
                 double motorCalm, // wait (seconds) after motors reached final position (for the first time) before acquiring image   
@@ -643,6 +658,13 @@ public class LensAdjustment {
             this.scanNumberNegative=scanNumberNegative;    // of them negative
 			this.scanHysteresis=scanHysteresis;       // scan both ways
 			this.scanHysteresisNumber=scanHysteresisNumber; // number of test points for the Hysteresis measurement
+			
+			this.scanTiltEnable=scanTiltEnable; //=true;  // enable scanning tilt
+			this.scanTiltRangeX=scanTiltRangeX; //, //=14336;    // 4 periods
+			this.scanTiltRangeY=scanTiltRangeY; //, //=14336;    // 4 periods
+			this.scanTiltStepsX=scanTiltStepsX; //=24;
+			this.scanTiltStepsY=scanTiltStepsY; //=24;
+			
 			this.motorHysteresis=motorHysteresis;
 			this.measuredHysteresis=measuredHysteresis; // actually measured (will be saved/restored)
 			this.motorCalm=motorCalm; // wait (seconds) after motors reached final position (for the first time) before acquiring image   
@@ -779,7 +801,14 @@ public class LensAdjustment {
     	            this.scanNumberNegative,    // of them negative
     				this.scanHysteresis,         // scan both ways
     				this.scanHysteresisNumber,   // number of test points for the Hysteresis measurement
+    				
+    				this.scanTiltEnable,  // enable scanning tilt
+    	    		this.scanTiltRangeX,    // 4 periods
+    	    		this.scanTiltRangeY,    // 4 periods
+    	    		this.scanTiltStepsX,
+    	    		this.scanTiltStepsY,
     				this.motorHysteresis,
+    				
     				this.measuredHysteresis,     // actually measured (will be saved/restored)
     				this.motorCalm,              // wait (seconds) after motors reached final position (for the first time) before acquiring image   
     				this.linearReductionRatio,   // sensor travel to motors travel (all 3 together), By design it is 4/38~=0.105
@@ -922,6 +951,13 @@ public class LensAdjustment {
 
 			properties.setProperty(prefix+"scanHysteresis",this.scanHysteresis+"");
 			properties.setProperty(prefix+"scanHysteresisNumber",this.scanHysteresisNumber+"");
+			
+			properties.setProperty(prefix+"scanTiltEnable",this.scanTiltEnable+"");  // enable scanning tilt
+			properties.setProperty(prefix+"scanTiltRangeX",this.scanTiltRangeX+"");    // 4 periods
+			properties.setProperty(prefix+"scanTiltRangeY",this.scanTiltRangeY+"");    // 4 periods
+			properties.setProperty(prefix+"scanTiltStepsX",this.scanTiltStepsX+"");
+			properties.setProperty(prefix+"scanTiltStepsY",this.scanTiltStepsY+"");
+			
 			
 			properties.setProperty(prefix+"motorHysteresis",this.motorHysteresis+"");
 			properties.setProperty(prefix+"measuredHysteresis",this.measuredHysteresis+"");
@@ -1168,6 +1204,18 @@ public class LensAdjustment {
 				this.scanHysteresis=Boolean.parseBoolean(properties.getProperty(prefix+"scanHysteresis"));
 			if (properties.getProperty(prefix+"scanHysteresisNumber")!=null)
 				this.scanHysteresisNumber=Integer.parseInt(properties.getProperty(prefix+"scanHysteresisNumber"));
+
+			if (properties.getProperty(prefix+"scanTiltEnable")!=null)
+				this.scanTiltEnable=Boolean.parseBoolean(properties.getProperty(prefix+"scanTiltEnable"));
+			if (properties.getProperty(prefix+"scanTiltRangeX")!=null)
+				this.scanTiltRangeX=Integer.parseInt(properties.getProperty(prefix+"scanTiltRangeX"));
+			if (properties.getProperty(prefix+"scanTiltRangeY")!=null)
+				this.scanTiltRangeY=Integer.parseInt(properties.getProperty(prefix+"scanTiltRangeY"));
+			if (properties.getProperty(prefix+"scanTiltStepsX")!=null)
+				this.scanTiltStepsX=Integer.parseInt(properties.getProperty(prefix+"scanTiltStepsX"));
+			if (properties.getProperty(prefix+"scanTiltStepsY")!=null)
+				this.scanTiltStepsY=Integer.parseInt(properties.getProperty(prefix+"scanTiltStepsY"));
+			
 			if (properties.getProperty(prefix+"motorHysteresis")!=null)
 				this.motorHysteresis=Integer.parseInt(properties.getProperty(prefix+"motorHysteresis"));
 			if (properties.getProperty(prefix+"measuredHysteresis")!=null)
@@ -1294,6 +1342,45 @@ public class LensAdjustment {
 				}
 			}
 		}
+// subset of showDialog() - only set parameters realated to scanning		
+	   	public boolean showScanningSetup(String title) {
+    		GenericDialog gd = new GenericDialog(title);
+    		gd.addNumericField("Motor single movement (all 3 motors) in scan focus mode (signed value)",         this.scanStep, 0,7,"motors steps");
+    		gd.addNumericField("Number of scan steps during (center) focus scanning",                            this.scanNumber,        0);
+    		gd.addNumericField("... of them - in the negative direction (closer lens to sensor)",                this.scanNumberNegative,        0);
+
+    		gd.addCheckbox    ("Scan focus in 2 directions, after the calibration estimate hysteresis (play)",   this.scanHysteresis);
+    		gd.addNumericField("Number of scan steps during hysteresis (play) measurement",                      this.scanHysteresisNumber, 0);
+
+    		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
+    		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
+    		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
+    		gd.addNumericField("Number of stops measurements when tilting in X-deirection",                      this.scanTiltStepsX, 0);
+    		gd.addNumericField("Number of stops measurements when tilting in Y-deirection",                      this.scanTiltStepsY, 0);
+    		gd.addMessage("");
+    		gd.addNumericField("Motor anti-hysteresis travel (last measured was "+IJ.d2s(this.measuredHysteresis,0)+")", this.motorHysteresis, 0,7,"motors steps");
+
+
+    		WindowTools.addScrollBars(gd);
+    		gd.showDialog();
+    		if (gd.wasCanceled()) return false;
+
+			this.scanStep=             (int) gd.getNextNumber();
+			this.scanNumber=           (int) gd.getNextNumber();
+            this.scanNumberNegative=   (int) gd.getNextNumber();
+			this.scanHysteresis=             gd.getNextBoolean();
+			this.scanHysteresisNumber= (int) gd.getNextNumber();
+
+    		this.scanTiltEnable=             gd.getNextBoolean();
+    		this.scanTiltRangeX=       (int) gd.getNextNumber();
+    		this.scanTiltRangeY=       (int) gd.getNextNumber();
+    		this.scanTiltStepsX=       (int) gd.getNextNumber();
+    		this.scanTiltStepsY=       (int) gd.getNextNumber();
+    		this.compensateHysteresis=       gd.getNextBoolean();
+    		return true;
+    	}
+
+		
     	public boolean showDialog(String title) { 
     		GenericDialog gd = new GenericDialog(title);
     		//	    		this.serialNumber, // camera serial number string
@@ -1414,6 +1501,13 @@ public class LensAdjustment {
    		
     		gd.addCheckbox    ("Scan focus in 2 directions, after the calibration estimate hysteresis (play)",   this.scanHysteresis);
     		gd.addNumericField("Number of scan steps during hysteresis (play) measurement",                      this.scanHysteresisNumber, 0);
+
+    		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
+    		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
+    		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
+    		gd.addNumericField("Number of stops measurements when tilting in X-deirection",                      this.scanTiltStepsX, 0);
+    		gd.addNumericField("Number of stops measurements when tilting in Y-deirection",                      this.scanTiltStepsY, 0);
+    		
     		gd.addMessage     ("The following parameters overwrite some defined for aberration measurements in other dialogs");
     		gd.addNumericField("Smallest fraction to subdivide pixels at simulation", this.smallestSubPix, 3,5,"sensor pix");
     		gd.addNumericField("Maximal difference of the pattern value in the corners that triggers subdivision", this.bitmapNonuniforityThreshold, 3);
@@ -1571,6 +1665,14 @@ public class LensAdjustment {
             this.scanNumberNegative=   (int) gd.getNextNumber();
 			this.scanHysteresis=             gd.getNextBoolean();
 			this.scanHysteresisNumber= (int) gd.getNextNumber();
+			
+    		this.scanTiltEnable=             gd.getNextBoolean();
+    		this.scanTiltRangeX=       (int) gd.getNextNumber();
+    		this.scanTiltRangeY=       (int) gd.getNextNumber();
+    		this.scanTiltStepsX=       (int) gd.getNextNumber();
+    		this.scanTiltStepsY=       (int) gd.getNextNumber();
+			
+			
     		this.smallestSubPix=             gd.getNextNumber();
     		this.bitmapNonuniforityThreshold=gd.getNextNumber();
     		this.subdiv=               (int) gd.getNextNumber();
