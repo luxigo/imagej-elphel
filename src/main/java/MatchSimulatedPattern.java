@@ -5432,7 +5432,8 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				}
 				if (maxValue<=0.0){
 	    		  String msg="psf array does not contain any positive values";
-	    		  IJ.showMessage("Error",msg);
+//	    		  IJ.showMessage("Error",msg);
+	    		  System.out.println("Error"+msg);
 	    		  throw new IllegalArgumentException (msg);
 				}
 				ix=Index % size;

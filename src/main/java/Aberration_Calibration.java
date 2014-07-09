@@ -10683,7 +10683,9 @@ if (MORE_BUTTONS) {
 						
 					}
 */
-					double [] x2y2xy= matchSimulatedPattern.x2y2xySizes(
+					double [] x2y2xy=null;
+					try{
+					x2y2xy= matchSimulatedPattern.x2y2xySizes(
 							psf[i][j][color],     // PSF function, square array, nominally positive
 							focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
 							focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
@@ -10692,6 +10694,9 @@ if (MORE_BUTTONS) {
 							0.1, //maskCutOff,
 							debugLevel-2, // debug level
 							i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+					} catch (Exception e){
+						System.out.println("Failed to get PSF size for i="+i+", j="+j);
+					}
 					if (x2y2xy==null){
 						x2y2xy=new double[3];
 						for (int ii=0;ii<3;ii++) x2y2xy[ii]=Double.NaN;
