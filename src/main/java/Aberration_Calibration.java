@@ -4005,7 +4005,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("Scan Calib LMA")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			checkSerialAndRestore(); // returns true if did not change or was restored
-			if (FOCUS_MEASUREMENT_PARAMETERS.showScanningSetup("Setup scanning parameters for LMA")) return;
+			if (!FOCUS_MEASUREMENT_PARAMETERS.showScanningSetup("Setup scanning parameters for LMA")) return;
 			MOTORS.setHysteresis(FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis);
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 			double[] range= ScanFocusTilt(

@@ -1376,8 +1376,8 @@ public class LensAdjustment {
     		this.scanTiltRangeY=       (int) gd.getNextNumber();
     		this.scanTiltStepsX=       (int) gd.getNextNumber();
     		this.scanTiltStepsY=       (int) gd.getNextNumber();
-    		this.compensateHysteresis=       gd.getNextBoolean();
-    		return true;
+    		this.motorHysteresis=      (int) gd.getNextNumber();
+    		return true;  
     	}
 
 		
