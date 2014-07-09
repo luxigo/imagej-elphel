@@ -15374,7 +15374,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 				}
 				if (distPatPars==null) return null;
 				if ((distPatPars[0].length<6) || (distPatPars[1].length<6)){
-					System.out.println("Failure: findPatternFromGrid("+x0+","+y0+",...) returned only linear coeffitients");
+					System.out.println("Failure: findPatternFromGrid("+x0+","+y0+",...) returned only linear coefficients");
 					return null;
 				}
 				int [] iUV={(int) Math.floor(distPatPars[0][2]),(int) Math.floor(distPatPars[1][2])};
