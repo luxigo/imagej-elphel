@@ -15355,7 +15355,9 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 				wVectors[1][0]=2.0*distortedPattern[1][0]/subpixel;
 				wVectors[1][1]=2.0*distortedPattern[1][1]/subpixel;
 			} else { // approximate pattern grid and simulate it
-				double[][] distPatPars= matchSimulatedPattern.findPatternFromGrid(
+				double[][] distPatPars=null;
+				try {
+				distPatPars= matchSimulatedPattern.findPatternFromGrid(
 						x0, // top-left pixel of the square WOI
 						y0,
 						size, // size of square (pixels)
@@ -15363,7 +15365,14 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 						false,  // use linear approximation (instead of quadratic)
 						1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
 						1.0E-20);  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
+				} catch (Exception e){
+					System.out.println("Failed findPatternFromGrid("+x0+","+y0+",...)");
+				}
 				if (distPatPars==null) return null;
+				if ((distPatPars[0].length<6) || (distPatPars[1].length<6)){
+					System.out.println("Failure: findPatternFromGrid("+x0+","+y0+",...) returned only linear coeffitients");
+					return null;
+				}
 				int [] iUV={(int) Math.floor(distPatPars[0][2]),(int) Math.floor(distPatPars[1][2])};
 				boolean negative=((iUV[0]^iUV[1])&1)!=0;
 				double [] simCorr={
