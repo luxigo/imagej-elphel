@@ -10710,17 +10710,21 @@ if (MORE_BUTTONS) {
 */
 					// tanRad[0]/=(focusMeasurementParameters.subdiv/2); // to sesnor pixels
 					// tanRad[1]/=(focusMeasurementParameters.subdiv/2);
-
-
-					double [][]quadCoeff=matchSimulatedPattern.approximatePSFQuadratic(
-							psf[i][j][color],     // PSF function, square array, nominally positive
-							focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
-							focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
-							focusMeasurementParameters.psf_minArea,      // minimal selected area in pixels
-							focusMeasurementParameters.psf_blurSigma,    // optionally blur the selection
-							0.1, //maskCutOff,
-							debugLevel-2, // debug level
-							i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+					double [][]quadCoeff=null;
+					try {
+						quadCoeff=matchSimulatedPattern.approximatePSFQuadratic(
+								psf[i][j][color],     // PSF function, square array, nominally positive
+								focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
+								focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
+								focusMeasurementParameters.psf_minArea,      // minimal selected area in pixels
+								focusMeasurementParameters.psf_blurSigma,    // optionally blur the selection
+								0.1, //maskCutOff,
+								debugLevel-2, // debug level
+								i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+					} catch (Exception e) {
+						System.out.println("Failed to get approximatePSFQuadratic(...) for i="+i+", j="+j);
+						continue;
+					}
 /*
  *  f(x,y)=A*x^2+B*y^2+C*x*y+D*x+E*y+F
  *  
