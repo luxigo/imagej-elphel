@@ -4060,7 +4060,7 @@ if (MORE_BUTTONS) {
 					pY0,
 					sampleCoord,
 					this.SYNC_COMMAND.stopRequested);
-
+			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
 			System.out.println("Saving measurement history to "+path);
 			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
 			FOCUSING_FIELD.saveXML(path);
@@ -4383,6 +4383,7 @@ if (MORE_BUTTONS) {
 					"",//); //String defaultPath); //			AtomicInteger stopRequested
 					this.SYNC_COMMAND.stopRequested);
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
 			System.out.println("Loaded FocusingField");
 			if (!FOCUSING_FIELD.configureDataVector("Configure curvature",true)) return;
 			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
@@ -12862,6 +12863,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
         MOTORS.focusingHistory.setProperties("FOCUSING_HISTORY.", properties);
         GONIOMETER_PARAMETERS.setProperties("GONIOMETER_PARAMETERS.", properties);
         ABERRATIONS_PARAMETERS.setProperties("ABERRATIONS_PARAMETERS.", properties);
+        if (FOCUSING_FIELD!=null) FOCUSING_FIELD.setProperties("FOCUSING_FIELD.", properties);
     }
 /* ======================================================================== */
     public void getAllProperties(Properties properties){
@@ -12900,6 +12902,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
        MOTORS.focusingHistory.getProperties("FOCUSING_HISTORY.", properties);
        GONIOMETER_PARAMETERS.getProperties("GONIOMETER_PARAMETERS.", properties);
        ABERRATIONS_PARAMETERS.getProperties("ABERRATIONS_PARAMETERS.", properties);
+       if (FOCUSING_FIELD!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", properties);
     }
 	
 	

@@ -53,122 +53,236 @@ import Jama.Matrix;
 
 public class FocusingField {
 //    public String path;
-    public static final double PIXEL_SIZE=0.0022; // mm
-    public static final String sep = " ";
-    public static final String regSep = "\\s";
-    public String serialNumber;
-    public String lensSerial; // if null - do not add average
-    public String comment;
-    public double pX0_distortions;
-    public double pY0_distortions;
-    public double currentPX0;
-    public double currentPY0;
-    public double [][][] sampleCoord;
-    public ArrayList<FocusingFieldMeasurement> measurements;
-    boolean sagittalMaster=false; // center data is the same, when true sagittal fitting only may change r=0 coefficients,
-     // when false - tangential is master
-    double [] minMeas= {1.0,1.0,1.0,1.0,1.0,1.0}; // pixels
-    double [] maxMeas= {4.5,4.5,4.5,4.5,4.5,4.5}; // pixels
-    double [] thresholdMax= {2.4,3.0,2.6,3.0,3.1,3.0}; // pixels
-    double [] weightReference=null;
-    boolean useMinMeas= true;
-    boolean useMaxMeas= true;
-    boolean useThresholdMax=true;
-    FieldFitting fieldFitting=null;
-    int weighMode=1; // 0; // 0 - same weight, 1 - linear threshold difference, 2 - quadratic thershold difference
-    double weightRadius=0.0; //2.0; // Gaussian sigma in mm
-    MeasuredSample [] dataVector;
-    double [] dataValues;
-    double [] dataWeights;
-//    double sumWeights=0.0;
-    double [][] jacobian=null; // rows - parameters, columns - samples
-    double [] currentVector=null;
-    double [] nextVector=null;
-    double [] savedVector=null;
-private LMAArrays lMAArrays=null;
-private LMAArrays savedLMAArrays=null;
-private double [] currentfX=null; // array of "f(x)" - simulated data for all images, combining pixel-X and pixel-Y (odd/even)
-private double [] nextfX=null; // array of "f(x)" - simulated data for all images, combining pixel-X and pixel-Y (odd/even)
-private double currentRMS=-1.0; // calculated RMS for the currentVector->currentfX
-private double currentRMSPure=-1.0; // calculated RMS for the currentVector->currentfX
-private double nextRMS=-1.0; // calculated RMS for the nextVector->nextfX
-private double nextRMSPure=-1.0; // calculated RMS for the nextVector->nextfX
+// restored from properties	
+	FieldFitting fieldFitting=null;
+	public double pX0_distortions;
+	public double pY0_distortions;
+	public double currentPX0;
+	public double currentPY0;
+	boolean sagittalMaster=false; // center data is the same, when true sagittal fitting only may change r=0 coefficients,
+	// when false - tangential is master
+	double [] minMeas= {1.0,1.0,1.0,1.0,1.0,1.0}; // pixels
+	double [] maxMeas= {4.5,4.5,4.5,4.5,4.5,4.5}; // pixels
+	double [] thresholdMax= {2.4,3.0,2.6,3.0,3.1,3.0}; // pixels
+	boolean useMinMeas= true;
+	boolean useMaxMeas= true;
+	boolean useThresholdMax=true;
+	int weightMode=1; // 0; // 0 - same weight, 1 - linear threshold difference, 2 - quadratic thershold difference
+	double weightRadius=0.0; //2.0; // Gaussian sigma in mm
+	private double k_red=0.7;
+	private double k_blue=0.4;
 
-private double firstRMS=-1.0; // RMS before current series of LMA started
-private double firstRMSPure=-1.0; // RMS before current series of LMA started
-private double lambdaStepUp= 8.0; // multiply lambda by this if result is worse
-private double lambdaStepDown= 0.5; // multiply lambda by this if result is better
-private double thresholdFinish=0.001; // (copied from series) stop iterations if 2 last steps had less improvement (but not worsening )
-private int numIterations= 100; // maximal number of iterations
-private double maxLambda= 100.0; // max lambda to fail
+	private double qb_scan_below=-20.0; // um
+	private double qb_scan_above= 60.0; // um
+	private double qb_scan_step= 0.5; // um
 
-private double lambda=0.001; // copied from series
-private double [] lastImprovements= {-1.0,-1.0}; // {last improvement, previous improvement}. If both >0 and < thresholdFinish - done
-private int iterationStepNumber=0;
-private boolean stopEachStep= true; // open dialog after each fitting step
-private boolean stopOnFailure= true; // open dialog when fitting series failed
-private boolean showParams= false; // show modified parameters
-private boolean showDisabledParams = false;
-private boolean showCorrectionParams = false;
-private boolean keepCorrectionParameters = true;
-private long startTime=0;
-private AtomicInteger stopRequested=null; // 1 - stop now, 2 - when convenient
-private boolean saveSeries=false; // just for the dialog
+	private boolean qb_use_corrected=true;
+	private boolean qb_invert=true;
 
-private boolean showMotors = true;
-private boolean [] showMeasCalc = {true,true,true};
-private boolean [] showColors = {true,true,true};
-private boolean [] showDirs = {true,true};
-private boolean [] showSamples = null;
-private boolean showAllSamples = true;
-private boolean showIgnoredData= false;
-private boolean showRad = true;
-private boolean [][][][][] sampleMask=null;
+	private boolean rslt_show_z_axial=true;
+	private boolean rslt_show_z_individual=true;
+	private boolean rslt_show_f_axial=true;
+	private boolean rslt_show_f_individual=true;
+	private double rslt_scan_below=-10.0;
+	private double rslt_scan_above= 10.0;
+	private double rslt_scan_step= 5.0;
+	private boolean rslt_mtf50_mode= true;
+	private boolean [] rslt_show_chn={true,true,true,true,true,true};
 
-private boolean correct_measurement_ST=true;
-private boolean updateWeightWhileFitting=false;
+// not saved/restored
+	public static final double PIXEL_SIZE=0.0022; // mm
+	public static final String sep = " ";
+	public static final String regSep = "\\s";
+	public String serialNumber;
+	public String lensSerial; // if null - do not add average
+	public String comment;
+	
+	public double [][][] sampleCoord;
+	public ArrayList<FocusingFieldMeasurement> measurements;
+	double [] weightReference=null;
+	MeasuredSample [] dataVector;
+	double [] dataValues;
+	double [] dataWeights;
+	//    double sumWeights=0.0;
+	double [][] jacobian=null; // rows - parameters, columns - samples
+	double [] currentVector=null;
+	double [] nextVector=null;
+	double [] savedVector=null;
+	
+	private LMAArrays lMAArrays=null;
+	private LMAArrays savedLMAArrays=null;
+	private double [] currentfX=null; // array of "f(x)" - simulated data for all images, combining pixel-X and pixel-Y (odd/even)
+	private double [] nextfX=null; // array of "f(x)" - simulated data for all images, combining pixel-X and pixel-Y (odd/even)
+	private double currentRMS=-1.0; // calculated RMS for the currentVector->currentfX
+	private double currentRMSPure=-1.0; // calculated RMS for the currentVector->currentfX
+	private double nextRMS=-1.0; // calculated RMS for the nextVector->nextfX
+	private double nextRMSPure=-1.0; // calculated RMS for the nextVector->nextfX
 
-public int debugLevel;
-public boolean debugDerivatives;
-public boolean debugDerivativesFxDxDy=false;
+	private double firstRMS=-1.0; // RMS before current series of LMA started
+	private double firstRMSPure=-1.0; // RMS before current series of LMA started
+	private double lambdaStepUp= 8.0; // multiply lambda by this if result is worse
+	private double lambdaStepDown= 0.5; // multiply lambda by this if result is better
+	private double thresholdFinish=0.001; // (copied from series) stop iterations if 2 last steps had less improvement (but not worsening )
+	private int numIterations= 100; // maximal number of iterations
+	private double maxLambda= 100.0; // max lambda to fail
 
-private double k_red=0.7;
-private double k_blue=0.4;
+	private double lambda=0.001; // copied from series
+	private double [] lastImprovements= {-1.0,-1.0}; // {last improvement, previous improvement}. If both >0 and < thresholdFinish - done
+	private int iterationStepNumber=0;
+	private boolean stopEachStep= true; // open dialog after each fitting step
+	private boolean stopOnFailure= true; // open dialog when fitting series failed
+	private boolean showParams= false; // show modified parameters
+	private boolean showDisabledParams = false;
+	private boolean showCorrectionParams = false;
+	private boolean keepCorrectionParameters = true;
+	private long startTime=0;
+	private AtomicInteger stopRequested=null; // 1 - stop now, 2 - when convenient
+	private boolean saveSeries=false; // just for the dialog
 
-private double qb_scan_below=-20.0; // um
-private double qb_scan_above= 60.0; // um
-private double qb_scan_step= 0.5; // um
+	private boolean showMotors = true;
+	private boolean [] showMeasCalc = {true,true,true};
+	private boolean [] showColors = {true,true,true};
+	private boolean [] showDirs = {true,true};
+	private boolean [] showSamples = null;
+	private boolean showAllSamples = true;
+	private boolean showIgnoredData= false;
+	private boolean showRad = true;
+	private boolean [][][][][] sampleMask=null;
 
-private boolean qb_use_corrected=true;
-private boolean qb_invert=true;
+	private boolean correct_measurement_ST=true;
+	private boolean updateWeightWhileFitting=false;
 
-private boolean rslt_show_z_axial=true;
-private boolean rslt_show_z_individual=true;
-private boolean rslt_show_f_axial=true;
-private boolean rslt_show_f_individual=true;
-private double rslt_scan_below=-10.0;
-private double rslt_scan_above= 10.0;
-private double rslt_scan_step= 5.0;
-private boolean rslt_mtf50_mode= true;
-private boolean [] rslt_show_chn={true,true,true,true,true,true};
-// public double fwhm_to_mtf50=500.0; // put actual number
-public double fwhm_to_mtf50=2*Math.log(2.0)/Math.PI*1000; //pi/0.004
+	public int debugLevel;
+	public boolean debugDerivatives;
+	public boolean debugDerivativesFxDxDy=false;
+	private Properties savedProperties=null; // to-be applied
+	private String propertiesPrefix=null;
 
+	// public double fwhm_to_mtf50=500.0; // put actual number
+	public double fwhm_to_mtf50=2*Math.log(2.0)/Math.PI*1000; //pi/0.004
 
-    public void setDebugLevel(int debugLevel){
-        this.debugLevel=debugLevel;
-    }
-public class LMAArrays { // reuse from Distortions?
-public double [][] jTByJ= null; // jacobian multiplied by Jacobian transposed
-public double [] jTByDiff=null; // jacobian multiplied difference vector
-public LMAArrays clone() {
-    LMAArrays lma=new LMAArrays();
-    lma.jTByJ = this.jTByJ.clone();
-    for (int i=0;i<this.jTByJ.length;i++) lma.jTByJ[i]=this.jTByJ[i].clone();
-    lma.jTByDiff=this.jTByDiff.clone();
-    return lma;
-}
-}
+	public void setProperties(String prefix,Properties properties){
+		System.out.println("FocusingField: setProperties()");
+		if (fieldFitting == null) {
+			System.out.println("fieldFitting is not initioalized, nothing to save");
+			return;
+		}
+
+		fieldFitting.setProperties(prefix+"fieldFitting.",properties);
+		properties.setProperty(prefix+"pX0_distortions",pX0_distortions+"");
+		properties.setProperty(prefix+"pY0_distortions",pY0_distortions+"");
+		properties.setProperty(prefix+"currentPX0",currentPX0+"");
+		properties.setProperty(prefix+"currentPY0",currentPY0+"");
+		properties.setProperty(prefix+"sagittalMaster",sagittalMaster+"");
+		for (int chn=0; chn<minMeas.length; chn++) properties.setProperty(prefix+"minMeas_"+chn,minMeas[chn]+"");
+		for (int chn=0; chn<maxMeas.length; chn++) properties.setProperty(prefix+"maxMeas_"+chn,maxMeas[chn]+"");
+		for (int chn=0; chn<thresholdMax.length; chn++) properties.setProperty(prefix+"thresholdMax_"+chn,thresholdMax[chn]+"");
+		properties.setProperty(prefix+"useMinMeas",useMinMeas+"");
+		properties.setProperty(prefix+"useMaxMeas",useMaxMeas+"");
+		properties.setProperty(prefix+"useThresholdMax",useThresholdMax+"");
+
+		properties.setProperty(prefix+"weightMode",weightMode+"");
+		properties.setProperty(prefix+"weightRadius",weightRadius+"");
+		properties.setProperty(prefix+"k_red",k_red+"");
+		properties.setProperty(prefix+"k_blue",k_blue+"");
+		properties.setProperty(prefix+"qb_scan_below",qb_scan_below+"");
+		properties.setProperty(prefix+"qb_scan_above",qb_scan_above+"");
+		properties.setProperty(prefix+"qb_scan_step",qb_scan_step+"");
+		properties.setProperty(prefix+"qb_use_corrected",qb_use_corrected+"");
+		properties.setProperty(prefix+"qb_invert",qb_invert+"");
+		properties.setProperty(prefix+"rslt_show_z_axial",rslt_show_z_axial+"");
+		properties.setProperty(prefix+"rslt_show_z_individual",rslt_show_z_individual+"");
+		properties.setProperty(prefix+"rslt_show_f_axial",rslt_show_f_axial+"");
+		properties.setProperty(prefix+"rslt_show_f_individual",rslt_show_f_individual+"");
+		properties.setProperty(prefix+"rslt_scan_below",rslt_scan_below+"");
+		properties.setProperty(prefix+"rslt_scan_above",rslt_scan_above+"");
+		properties.setProperty(prefix+"rslt_scan_step",rslt_scan_step+"");
+		properties.setProperty(prefix+"rslt_mtf50_mode",rslt_mtf50_mode+"");
+		for (int chn=0; chn<rslt_show_chn.length; chn++) properties.setProperty(prefix+"rslt_show_chn_"+chn,rslt_show_chn[chn]+"");
+	}
+
+	public void getProperties(String prefix,Properties properties){
+		savedProperties=properties;
+		propertiesPrefix=prefix;
+		System.out.println("FocusingField: getProperties()");
+		if (fieldFitting == null) {
+			System.out.println("fieldFitting is not initialized, will apply properties later");
+			return; //fieldFitting=new FieldFitting();
+		}
+		fieldFitting.getProperties(prefix+"fieldFitting.",properties);
+
+		if (properties.getProperty(prefix+"pX0_distortions")!=null)
+			pX0_distortions=Double.parseDouble(properties.getProperty(prefix+"pX0_distortions"));
+		if (properties.getProperty(prefix+"pY0_distortions")!=null)
+			pY0_distortions=Double.parseDouble(properties.getProperty(prefix+"pY0_distortions"));
+		if (properties.getProperty(prefix+"currentPX0")!=null)
+			currentPX0=Double.parseDouble(properties.getProperty(prefix+"currentPX0"));
+		if (properties.getProperty(prefix+"currentPY0")!=null)
+			currentPY0=Double.parseDouble(properties.getProperty(prefix+"currentPY0"));
+
+		for (int chn=0; chn<minMeas.length; chn++) if (properties.getProperty(prefix+"minMeas_"+chn)!=null)
+			minMeas[chn]=Double.parseDouble(properties.getProperty(prefix+"minMeas_"+chn));
+		for (int chn=0; chn<maxMeas.length; chn++) if (properties.getProperty(prefix+"maxMeas_"+chn)!=null)
+			maxMeas[chn]=Double.parseDouble(properties.getProperty(prefix+"maxMeas_"+chn));
+		for (int chn=0; chn<thresholdMax.length; chn++) if (properties.getProperty(prefix+"thresholdMax_"+chn)!=null)
+			thresholdMax[chn]=Double.parseDouble(properties.getProperty(prefix+"thresholdMax_"+chn));
+		if (properties.getProperty(prefix+"useMinMeas")!=null)
+			useMinMeas=Boolean.parseBoolean(properties.getProperty(prefix+"useMinMeas"));
+		if (properties.getProperty(prefix+"useMaxMeas")!=null)
+			useMaxMeas=Boolean.parseBoolean(properties.getProperty(prefix+"useMaxMeas"));
+		if (properties.getProperty(prefix+"useThresholdMax")!=null)
+			useThresholdMax=Boolean.parseBoolean(properties.getProperty(prefix+"useThresholdMax"));
+		if (properties.getProperty(prefix+"weightMode")!=null)
+			weightMode=Integer.parseInt(properties.getProperty(prefix+"weightMode"));
+		if (properties.getProperty(prefix+"weightRadius")!=null)
+			weightRadius=Double.parseDouble(properties.getProperty(prefix+"weightRadius"));
+		if (properties.getProperty(prefix+"k_red")!=null)
+			k_red=Double.parseDouble(properties.getProperty(prefix+"k_red"));
+		if (properties.getProperty(prefix+"k_blue")!=null)
+			k_blue=Double.parseDouble(properties.getProperty(prefix+"k_blue"));
+		if (properties.getProperty(prefix+"qb_scan_below")!=null)
+			qb_scan_below=Double.parseDouble(properties.getProperty(prefix+"qb_scan_below"));
+		if (properties.getProperty(prefix+"qb_scan_above")!=null)
+			qb_scan_above=Double.parseDouble(properties.getProperty(prefix+"qb_scan_above"));
+		if (properties.getProperty(prefix+"qb_scan_step")!=null)
+			qb_scan_step=Double.parseDouble(properties.getProperty(prefix+"qb_scan_step"));
+		if (properties.getProperty(prefix+"qb_use_corrected")!=null)
+			qb_use_corrected=Boolean.parseBoolean(properties.getProperty(prefix+"qb_use_corrected"));
+		if (properties.getProperty(prefix+"qb_invert")!=null)
+			qb_invert=Boolean.parseBoolean(properties.getProperty(prefix+"qb_invert"));
+		if (properties.getProperty(prefix+"rslt_show_z_axial")!=null)
+			rslt_show_z_axial=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_z_axial"));
+		if (properties.getProperty(prefix+"rslt_show_z_individual")!=null)
+			rslt_show_z_individual=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_z_individual"));
+		if (properties.getProperty(prefix+"rslt_show_f_axial")!=null)
+			rslt_show_f_axial=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_f_axial"));
+		if (properties.getProperty(prefix+"rslt_show_f_individual")!=null)
+			rslt_show_f_individual=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_f_individual"));
+		if (properties.getProperty(prefix+"rslt_scan_below")!=null)
+			rslt_scan_below=Double.parseDouble(properties.getProperty(prefix+"rslt_scan_below"));
+		if (properties.getProperty(prefix+"rslt_scan_above")!=null)
+			rslt_scan_above=Double.parseDouble(properties.getProperty(prefix+"rslt_scan_above"));
+		if (properties.getProperty(prefix+"rslt_scan_step")!=null)
+			rslt_scan_step=Double.parseDouble(properties.getProperty(prefix+"rslt_scan_step"));
+		if (properties.getProperty(prefix+"rslt_mtf50_mode")!=null)
+			rslt_mtf50_mode=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_mtf50_mode"));
+		for (int chn=0; chn<rslt_show_chn.length; chn++) if (properties.getProperty(prefix+"rslt_show_chn_"+chn)!=null)
+			rslt_show_chn[chn]=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_chn_"+chn));
+	}
+	public void setDebugLevel(int debugLevel){
+		this.debugLevel=debugLevel;
+	}
+	public class LMAArrays { // reuse from Distortions?
+		public double [][] jTByJ= null; // jacobian multiplied by Jacobian transposed
+		public double [] jTByDiff=null; // jacobian multiplied difference vector
+		public LMAArrays clone() {
+			LMAArrays lma=new LMAArrays();
+			lma.jTByJ = this.jTByJ.clone();
+			for (int i=0;i<this.jTByJ.length;i++) lma.jTByJ[i]=this.jTByJ[i].clone();
+			lma.jTByDiff=this.jTByDiff.clone();
+			return lma;
+		}
+	}
 
 public enum MECH_PAR {
         K0, // Average motor center travel","um/step","0.0124"},
@@ -267,7 +381,7 @@ public boolean configureDataVector(String title, boolean forcenew){
         gd.addNumericField("Number of parameters for radial dependence of PSF curves (>=1)",numCurvPars[1],0);
     }
         gd.addMessage("");
-        gd.addNumericField("Data weight mode (0 - equal mode, 1 -linear treshold diff, 2 - quadratic threshold diff)",weighMode,0);
+        gd.addNumericField("Data weight mode (0 - equal mode, 1 -linear treshold diff, 2 - quadratic threshold diff)",weightMode,0);
         gd.addNumericField("Data weight radius (multiply weight by Gaussian), 0 - no dependence on radius",weightRadius,3,5,"mm");
     gd.addCheckbox("Setup parameter masks?",setupMasks);
     gd.addCheckbox("Setup parameter values?",setupParameters);
@@ -289,7 +403,7 @@ public boolean configureDataVector(String title, boolean forcenew){
         numCurvPars[0] = (int) gd.getNextNumber();
         numCurvPars[1] = (int) gd.getNextNumber();
     }
-    weighMode = (int) gd.getNextNumber();
+    weightMode = (int) gd.getNextNumber();
         weightRadius = gd.getNextNumber();
 
     setupMasks= gd.getNextBoolean();
@@ -303,6 +417,10 @@ public boolean configureDataVector(String title, boolean forcenew){
                 currentPY0,
                 numCurvPars[0],
                 numCurvPars[1]);
+        if (savedProperties!=null){
+        	System.out.println("configureDataVector(): Applying properties");
+        	getProperties(propertiesPrefix,savedProperties);
+        }
     }
     if (setupMasks) {
         if (!fieldFitting.maskSetDialog("Setup parameter masks")) return false;
@@ -334,7 +452,7 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
     dataValues = new double [dataVector.length+corrLength];
     dataWeights = new double [dataVector.length+corrLength];
 //     sumWeights=0.0;
-    int mode=weighMode;
+    int mode=weightMode;
     double kw= (weightRadius>0.0)?(-0.5*getPixelMM()*getPixelMM()/(weightRadius*weightRadius)):0;
 //weightRadius     
     if (weightReference==null)mode=0;
@@ -390,87 +508,88 @@ public double [] createFXandJacobian( double [] vector, boolean createJacobian){
 
 
 public double [] createFXandJacobian(boolean createJacobian){
-    int numCorrPar=fieldFitting.getNumberOfCorrParameters();
-    double [] fx=new double[dataVector.length + numCorrPar ];
-    double [][] derivs=null;
-    double [] subData=null;
-    boolean [] selChannels=fieldFitting.getSelectedChannels();
-    int [] selChanIndices= new int[selChannels.length];
-    selChanIndices[0]=0;
-    for (int i=1;i<selChanIndices.length;i++){
-        selChanIndices[i]= selChanIndices[i-1]+(selChannels[i-1]?1:0);
-    }
-    int numPars=fieldFitting.getNumberOfParameters(sagittalMaster);
-    int numRegPars=fieldFitting.getNumberOfRegularParameters(sagittalMaster);
-    if (createJacobian) {
-        jacobian=new double [numPars][dataVector.length+numCorrPar];
-        for (double [] row : jacobian)
-         Arrays.fill(row, 0.0);
-        derivs=new double [fieldFitting.getNumberOfChannels()][];
-    }
-    String prevTimeStamp="";
-    double prevPx=-1,prevPy=-1;
-    for (int n=0;n<dataVector.length;n++){
-        MeasuredSample ms=dataVector[n];
-        if (!ms.timestamp.equals(prevTimeStamp) || (ms.px!=prevPx) || (ms.py!=prevPy)){
-            subData=fieldFitting.getValsDerivatives(
-                    ms.sampleIndex,
-                    sagittalMaster,
-                    ms.motors, // 3 motor coordinates
-                    ms.px, // pixel x
-                    ms.py, // pixel y
-                    derivs);
-            prevTimeStamp=ms.timestamp;
-            prevPx=ms.px;
-            prevPy=ms.py;
-        }
-        fx[n]=subData[selChanIndices[ms.channel]];
-    if (createJacobian) {
-        double [] thisDerivs=derivs[selChanIndices[ms.channel]];
-//         for (int i=0;i<numRegPars;i++){
-        
-        // contains derivatives for normal and correction parameters
-    for (int i=0;i<numPars;i++){
-//             jacobian[i][n]=derivs[selChanIndices[ms.channel]][i];
-            jacobian[i][n]=thisDerivs[i];
-        }
-        //TODO: correct /dpx, /dpy to compensate for measured S,T calcualtion
-        boolean [] centerSelect=fieldFitting.getCenterSelect();
-        if (correct_measurement_ST && (centerSelect[0] || centerSelect[1])){ // do not do that if both X and Y are disabled
-            int np=0;
-            for (int i=0;i<2;i++) if (centerSelect[i]){
-                jacobian[np++][n]-=ms.dPxyc[i]; // subtract, as effect is opposite to fX
-            }
-        }
-    }
-        // add mutual dependence of correction parameters. first - values (fx)
-    int index=dataVector.length; // add to the end of vector
-    if (fieldFitting.sampleCorrChnParIndex!=null){
-        int numSamples=getNumSamples();
-        for (int chn=0;chn<fieldFitting.sampleCorrChnParIndex.length;chn++) if (fieldFitting.sampleCorrChnParIndex[chn]!=null) {
-            for (int np=0;np<fieldFitting.sampleCorrChnParIndex[chn].length;np++){
-                int pindex=fieldFitting.sampleCorrChnParIndex[chn][np];
-                if (pindex>=0) {
-                    for (int i=0;i<numSamples;i++){
-                        double f=0.0;
-                        for (int j=0;j<numSamples;j++){
-                            f+=fieldFitting.sampleCorrVector[pindex+j]*fieldFitting.sampleCorrCrossWeights[chn][np][i][j];
-                        }
-                        fx[index]=f;
-                        //                                 f+=fieldFitting.sampleCorrVector[pindex+i]
-                 if (createJacobian) {
-                     for (int j=0;j<numSamples;j++){
-                         jacobian[numRegPars+pindex+j][index]=fieldFitting.sampleCorrCrossWeights[chn][np][i][j];
-                     }
-                 }                         
-                        index++;
-                    }
-                }
-            }
-        }
-    }
-    }
-    return fx;
+	int numCorrPar=fieldFitting.getNumberOfCorrParameters();
+	double [] fx=new double[dataVector.length + numCorrPar ];
+	double [][] derivs=null;
+	double [] subData=null;
+	boolean [] selChannels=fieldFitting.getSelectedChannels();
+	int [] selChanIndices= new int[selChannels.length];
+	selChanIndices[0]=0;
+	for (int i=1;i<selChanIndices.length;i++){
+		selChanIndices[i]= selChanIndices[i-1]+(selChannels[i-1]?1:0);
+	}
+	int numPars=fieldFitting.getNumberOfParameters(sagittalMaster);
+	int numRegPars=fieldFitting.getNumberOfRegularParameters(sagittalMaster);
+	if (createJacobian) {
+		jacobian=new double [numPars][dataVector.length+numCorrPar];
+		for (double [] row : jacobian)
+			Arrays.fill(row, 0.0);
+		derivs=new double [fieldFitting.getNumberOfChannels()][];
+	}
+	String prevTimeStamp="";
+	double prevPx=-1,prevPy=-1;
+	for (int n=0;n<dataVector.length;n++){
+		MeasuredSample ms=dataVector[n];
+		if (!ms.timestamp.equals(prevTimeStamp) || (ms.px!=prevPx) || (ms.py!=prevPy)){
+			subData=fieldFitting.getValsDerivatives(
+					ms.sampleIndex,
+					sagittalMaster,
+					ms.motors, // 3 motor coordinates
+					ms.px, // pixel x
+					ms.py, // pixel y
+					derivs);
+			prevTimeStamp=ms.timestamp;
+			prevPx=ms.px;
+			prevPy=ms.py;
+		}
+		fx[n]=subData[selChanIndices[ms.channel]];
+		if (createJacobian) {
+			double [] thisDerivs=derivs[selChanIndices[ms.channel]];
+			//         for (int i=0;i<numRegPars;i++){
+
+			// contains derivatives for normal and correction parameters
+			for (int i=0;i<numPars;i++){
+				//             jacobian[i][n]=derivs[selChanIndices[ms.channel]][i];
+				jacobian[i][n]=thisDerivs[i];
+			}
+			//TODO: correct /dpx, /dpy to compensate for measured S,T calcualtion
+			boolean [] centerSelect=fieldFitting.getCenterSelect();
+			if (correct_measurement_ST && (centerSelect[0] || centerSelect[1])){ // do not do that if both X and Y are disabled
+				int np=0;
+				for (int i=0;i<2;i++) if (centerSelect[i]){
+					jacobian[np++][n]-=ms.dPxyc[i]; // subtract, as effect is opposite to fX
+				}
+			}
+		}
+		// add mutual dependence of correction parameters. first - values (fx)
+//		System.out.println("Using sampleCorrVector 1");
+		int index=dataVector.length; // add to the end of vector
+		if (fieldFitting.sampleCorrChnParIndex!=null){
+			int numSamples=getNumSamples();
+			for (int chn=0;chn<fieldFitting.sampleCorrChnParIndex.length;chn++) if (fieldFitting.sampleCorrChnParIndex[chn]!=null) {
+				for (int np=0;np<fieldFitting.sampleCorrChnParIndex[chn].length;np++){
+					int pindex=fieldFitting.sampleCorrChnParIndex[chn][np];
+					if (pindex>=0) {
+						for (int i=0;i<numSamples;i++){
+							double f=0.0;
+							for (int j=0;j<numSamples;j++){
+								f+=fieldFitting.sampleCorrVector[pindex+j]*fieldFitting.sampleCorrCrossWeights[chn][np][i][j];
+							}
+							fx[index]=f;
+							//                                 f+=fieldFitting.sampleCorrVector[pindex+i]
+							if (createJacobian) {
+								for (int j=0;j<numSamples;j++){
+									jacobian[numRegPars+pindex+j][index]=fieldFitting.sampleCorrCrossWeights[chn][np][i][j];
+								}
+							}                         
+							index++;
+						}
+					}
+				}
+			}
+		}
+	}
+	return fx;
 }
 
 public double getRMS(double [] fx, boolean pure){
@@ -1038,7 +1157,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
             this.currentRMS= calcErrorDiffY(this.currentfX,false);
             this.currentRMSPure=calcErrorDiffY(this.currentfX, true);
             if (debugLevel>1) {
-                System.out.println(": initial RMS="+IJ.d2s(this.currentRMS,8)+" (pure RMS"+IJ.d2s(this.currentRMSPure,8)+")"+
+                System.out.println(": initial RMS="+IJ.d2s(this.currentRMS,8)+" (pure RMS="+IJ.d2s(this.currentRMSPure,8)+")"+
                         ". Calculating next Jacobian. Points:"+this.dataValues.length+" Parameters:"+this.currentVector.length);
             }
         } else {
@@ -1167,10 +1286,10 @@ public void stepLevenbergMarquardtAction(int debugLevel){//
 */
 public boolean selectLMAParameters(){
 //     int numSeries=fittingStrategy.getNumSeries();
-    boolean resetCorrections=false;
+//    boolean resetCorrections=false;
      GenericDialog gd = new GenericDialog("Levenberg-Marquardt algorithm parameters for cameras distortions/locations");
         gd.addCheckbox("Debug df/dX0, df/dY0", false);
-        gd.addCheckbox("Keep current correction parameters", this.keepCorrectionParameters);
+        gd.addCheckbox("Keep current correction parameters (do not reset)", this.keepCorrectionParameters);
 //        gd.addNumericField("Iteration number to start (0.."+(numSeries-1)+")", this.seriesNumber, 0);
         gd.addNumericField("Initial LMA Lambda ", this.lambda, 5);
         gd.addNumericField("Multiply lambda on success", this.lambdaStepDown, 5);
@@ -1188,7 +1307,7 @@ public boolean selectLMAParameters(){
         gd.addCheckbox("Show disabled parameters", this.showDisabledParams);
         gd.addCheckbox("Show per-sample correction parameters", this.showCorrectionParams);
 
-        gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
+//        gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
         
 //        gd.addCheckbox("Show debug images before correction",this.showThisImages);
 //        gd.addCheckbox("Show debug images after correction", this.showNextImages);
@@ -1216,8 +1335,8 @@ public boolean selectLMAParameters(){
 //        this.showNextImages= gd.getNextBoolean();
 //        this.threadsMax= (int) gd.getNextNumber();
 //        this.threadedLMA= gd.getNextBoolean();
-        resetCorrections= gd.getNextBoolean();
-    if (resetCorrections) fieldFitting.resetSampleCorr();
+//        resetCorrections= gd.getNextBoolean();
+    if (!keepCorrectionParameters) fieldFitting.resetSampleCorr();
      return true;
 }
 
@@ -1249,7 +1368,7 @@ public void listData(String title, String path){
         gd.addCheckbox("Show RED data", this.showColors[0]);
         gd.addCheckbox("Show GREEN data", this.showColors[1]);
         gd.addCheckbox("Show BLUE data", this.showColors[2]);
-        gd.addCheckbox("Show SAGGITAL data", this.showDirs[0]);
+        gd.addCheckbox("Show SAGITAL data", this.showDirs[0]);
         gd.addCheckbox("Show TANGENTIAL data", this.showDirs[1]);
     gd.addMessage("Select field samples");
     for (int i=0; i<sampleCoord.length;i++) for (int j=0; j<sampleCoord[0].length;j++){
@@ -2197,74 +2316,202 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
      }
     }
     public class FieldFitting{
-        private double [] pXY=null;
-        private boolean [] centerSelect=null;
-        private boolean [] centerSelectDefault={true,true};
-        private MechanicalFocusingModel mechanicalFocusingModel;
-        private CurvatureModel [] curvatureModel=new CurvatureModel[6]; // 3 colors, sagittal+tangential each
-        private boolean [] channelSelect=null;
-        private boolean [] mechanicalSelect=null;
-        private boolean [][] curvatureSelect=new boolean[6][];
-        
-        private boolean [][] sampleCorrSelect= new boolean[6][]; // enable individual (per sample coordinates) correction of parameters
-        private double [][] sampleCorrCost= new double[6][]; // equivalent cost of one unit of parameter value (in result units, um)
-        private double [][] sampleCorrSigma= new double[6][]; // sigma (in mm) for neighbors influence
-        private double [][] sampleCorrPullZero=new double[6][]; // 1.0 - only difference from neighbors matters, 0.0 - only difference from 0
-        private double [] sampleCorrRadius=null;
-        private double [][][][] sampleCorrCrossWeights= new double[6][][][];
-        private double [] sampleCorrVector=null; // currently adjusted per-sample parameters
-     private double [][][] correctionParameters=new double[6][][]; // all
-     public int numberOfLocations=0;
-        
-        private int [][] sampleCorrChnParIndex=null;
-        private boolean [] dflt_sampleCorrSelect= {false,false,false,false};
-        private double [] dflt_sampleCorrCost= {0.2,50.0,1.0,1.0};
-        private double dflt_sampleCorrSigma= 1.0; // mm
-        private double dflt_sampleCorrPullZero= 0.25; // fraction
-        public final String [] channelDescriptions={
-            "Red, sagittal","Red, tangential",
-            "Green, sagittal","Green, tangential",
-            "Blue, sagittal","Blue, tangential"};
+ //   	private Properties savedProperties=null;
+    	private double [] pXY=null;
+    	private boolean [] centerSelect=null;
+    	private boolean [] centerSelectDefault={true,true};
+    	private MechanicalFocusingModel mechanicalFocusingModel;
+    	private CurvatureModel [] curvatureModel=new CurvatureModel[6]; // 3 colors, sagittal+tangential each
+    	private boolean [] channelSelect=null;
+    	private boolean [] mechanicalSelect=null;
+    	private boolean [][] curvatureSelect=new boolean[6][];
 
-         public void setProperties(String prefix,Properties properties){
-                 properties.setProperty(prefix+"centerSelect_X",centerSelect[0]+"");
-                 properties.setProperty(prefix+"centerSelect_Y",centerSelect[1]+"");
-                 
-                 
-                 mechanicalFocusingModel.setProperties(prefix+"mechanicalFocusingModel.",properties);
-                 for (int i=0;i<curvatureModel.length;i++){
-                     if (curvatureModel[i]!=null) curvatureModel[i].setProperties(prefix+"curvatureModel_"+i+".",properties);
-                 }
-                 if (channelSelect!=null) for (int i=0;i<channelSelect.length;i++){
-                     properties.setProperty(prefix+"channelSelect_"+i,channelSelect[i]+"");
-                 }
-                 if (mechanicalSelect!=null) for (int i=0;i<mechanicalSelect.length;i++){
-                     properties.setProperty(prefix+"mechanicalSelect_"+i,mechanicalSelect[i]+"");
-                 }
-                 for (int chn=0;chn<curvatureSelect.length;chn++) if (curvatureSelect[chn]!=null) for (int i=0;i<curvatureSelect[chn].length;i++){
-                     properties.setProperty(prefix+"curvatureSelect_"+chn+"_"+i,curvatureSelect[chn][i]+"");
-                 }
-                 for (int chn=0;chn<sampleCorrSelect.length;chn++) if (sampleCorrSelect[chn]!=null) for (int i=0;i<sampleCorrSelect[chn].length;i++){
-                     properties.setProperty(prefix+"sampleCorrSelect_"+chn+"_"+i,sampleCorrSelect[chn][i]+"");
-                 }
-                 for (int chn=0;chn<sampleCorrCost.length;chn++) if (sampleCorrCost[chn]!=null) for (int i=0;i<sampleCorrCost[chn].length;i++){
-                     properties.setProperty(prefix+"sampleCorrCost_"+chn+"_"+i,sampleCorrCost[chn][i]+"");
-                 }
-                 for (int chn=0;chn<sampleCorrSigma.length;chn++) if (sampleCorrSigma[chn]!=null) for (int i=0;i<sampleCorrSigma[chn].length;i++){
-                     properties.setProperty(prefix+"sampleCorrSigma_"+chn+"_"+i,sampleCorrSigma[chn][i]+"");
-                 }
-                 for (int chn=0;chn<sampleCorrPullZero.length;chn++) if (sampleCorrPullZero[chn]!=null) for (int i=0;i<sampleCorrPullZero[chn].length;i++){
-                     properties.setProperty(prefix+"sampleCorrPullZero_"+chn+"_"+i,sampleCorrPullZero[chn][i]+"");
-                 }
-/*
-        
-        private double [][] sampleCorrCost= new double[6][]; // equivalent cost of one unit of parameter value (in result units, um)
-        private double [][] sampleCorrSigma= new double[6][]; // sigma (in mm) for neighbors influence
-        private double [][] sampleCorrPullZero=new double[6][]; // 1.0 - only difference from neighbors matters, 0.0 - only difference from 0
-                 
-*/
-         }
-        
+    	private boolean [][] sampleCorrSelect= new boolean[6][]; // enable individual (per sample coordinates) correction of parameters
+    	private double [][] sampleCorrCost= new double[6][]; // equivalent cost of one unit of parameter value (in result units, um)
+    	private double [][] sampleCorrSigma= new double[6][]; // sigma (in mm) for neighbors influence
+    	private double [][] sampleCorrPullZero=new double[6][]; // 1.0 - only difference from neighbors matters, 0.0 - only difference from 0
+    	private double [] sampleCorrRadius=null;
+    	private double [][][][] sampleCorrCrossWeights= new double[6][][][];
+    	private double [] sampleCorrVector=null; // currently adjusted per-sample parameters
+    	private double [][][] correctionParameters=new double[6][][]; // all
+    	public int numberOfLocations=0;
+
+    	private int [][] sampleCorrChnParIndex=null;
+    	private boolean [] dflt_sampleCorrSelect= {false,false,false,false};
+    	private double [] dflt_sampleCorrCost= {0.2,50.0,1.0,1.0};
+    	private double dflt_sampleCorrSigma= 1.0; // mm
+    	private double dflt_sampleCorrPullZero= 0.25; // fraction
+    	public final String [] channelDescriptions={
+    			"Red, sagittal","Red, tangential",
+    			"Green, sagittal","Green, tangential",
+    			"Blue, sagittal","Blue, tangential"};
+
+        public void setProperties(String prefix,Properties properties){
+        	if (mechanicalFocusingModel==null){
+        		System.out.println ("Mechanical properties not yet initialized, will save properties later");
+        		return;
+        	}
+        	properties.setProperty(prefix+"numberOfLocations",numberOfLocations+"");
+        	properties.setProperty(prefix+"centerSelect_X",centerSelect[0]+"");
+        	properties.setProperty(prefix+"centerSelect_Y",centerSelect[1]+"");
+        	mechanicalFocusingModel.setProperties(prefix+"mechanicalFocusingModel.",properties);
+        	for (int i=0;i<curvatureModel.length;i++){
+        		if (curvatureModel[i]!=null) curvatureModel[i].setProperties(prefix+"curvatureModel_"+i+".",properties);
+        	}
+        	if (channelSelect!=null) for (int i=0;i<channelSelect.length;i++){
+        		properties.setProperty(prefix+"channelSelect_"+i,channelSelect[i]+"");
+        	}
+        	if (mechanicalSelect!=null) for (int i=0;i<mechanicalSelect.length;i++){
+        		properties.setProperty(prefix+"mechanicalSelect_"+i,mechanicalSelect[i]+"");
+        	}
+        	for (int chn=0;chn<curvatureSelect.length;chn++) if (curvatureSelect[chn]!=null) for (int i=0;i<curvatureSelect[chn].length;i++){
+        		properties.setProperty(prefix+"curvatureSelect_"+chn+"_"+i,curvatureSelect[chn][i]+"");
+        	}
+        	for (int chn=0;chn<sampleCorrSelect.length;chn++) if (sampleCorrSelect[chn]!=null) for (int i=0;i<sampleCorrSelect[chn].length;i++){
+        		properties.setProperty(prefix+"sampleCorrSelect_"+chn+"_"+i,sampleCorrSelect[chn][i]+"");
+        	}
+        	for (int chn=0;chn<sampleCorrCost.length;chn++) if (sampleCorrCost[chn]!=null) for (int i=0;i<sampleCorrCost[chn].length;i++){
+        		properties.setProperty(prefix+"sampleCorrCost_"+chn+"_"+i,sampleCorrCost[chn][i]+"");
+        	}
+        	for (int chn=0;chn<sampleCorrSigma.length;chn++) if (sampleCorrSigma[chn]!=null) for (int i=0;i<sampleCorrSigma[chn].length;i++){
+        		properties.setProperty(prefix+"sampleCorrSigma_"+chn+"_"+i,sampleCorrSigma[chn][i]+"");
+        	}
+        	for (int chn=0;chn<sampleCorrPullZero.length;chn++) if (sampleCorrPullZero[chn]!=null) for (int i=0;i<sampleCorrPullZero[chn].length;i++){
+        		properties.setProperty(prefix+"sampleCorrPullZero_"+chn+"_"+i,sampleCorrPullZero[chn][i]+"");
+        	}
+        	// save correction parameters values
+//        	private double [][][] correctionParameters=new double[6][][]; // all
+        	if (correctionParameters!=null){
+        		for (int chn=0;chn<correctionParameters.length; chn++) if (correctionParameters[chn]!=null){
+        			for (int np=0;np<correctionParameters[chn].length;np++) if (correctionParameters[chn][np]!=null){
+        				for (int i=0;i<correctionParameters[chn][np].length;i++){
+        	        		properties.setProperty(prefix+"correctionParameters_"+chn+"_"+np+"_"+i,correctionParameters[chn][np][i]+"");
+        				}
+        			}
+        		}
+        	}
+        }
+        public void getProperties(String prefix,Properties properties){
+        	if (properties.getProperty(prefix+"numberOfLocations")!=null)
+        		numberOfLocations=Integer.parseInt(properties.getProperty(prefix+"numberOfLocations"));
+
+        	if (properties.getProperty(prefix+"centerSelect_X")!=null)
+        		centerSelect[0]=Boolean.parseBoolean(properties.getProperty(prefix+"centerSelect_X"));
+        	if (properties.getProperty(prefix+"centerSelect_Y")!=null)
+        		centerSelect[1]=Boolean.parseBoolean(properties.getProperty(prefix+"centerSelect_Y"));
+        	if (mechanicalFocusingModel==null){
+        		System.out.println ("Mechanical properties not yet initialized, will apply properties later");
+        		return;
+        	}
+        	mechanicalFocusingModel.getProperties(prefix+"mechanicalFocusingModel.",properties);
+        	for (int i=0;i<curvatureModel.length;i++){
+        		if (curvatureModel[i]!=null) curvatureModel[i].getProperties(prefix+"curvatureModel_"+i+".",properties);
+        	}
+        	if (channelSelect==null) {
+        		channelSelect=new boolean [6];            	 
+        		for (int i=0;i<channelSelect.length;i++)channelSelect[i]=true;
+        	}
+        	for (int i=0;i<channelSelect.length;i++) if (properties.getProperty(prefix+"channelSelect_"+i)!=null) {
+        		channelSelect[i]=Boolean.parseBoolean(properties.getProperty(prefix+"channelSelect_"+i));
+        	}
+        	if ((mechanicalSelect==null) || (mechanicalSelect.length!=mechanicalFocusingModel.getDefaultMask().length)){
+        		mechanicalSelect=mechanicalFocusingModel.getDefaultMask();
+        	}
+        	for (int i=0;i<mechanicalSelect.length;i++) if (properties.getProperty(prefix+"mechanicalSelect_"+i)!=null) {
+        		mechanicalSelect[i]=Boolean.parseBoolean(properties.getProperty(prefix+"mechanicalSelect_"+i));
+        	}
+        	// curvature parameter selection: first index : channel, inner index - parameter number (radial fast, z - outer)
+        	if (curvatureSelect==null) {
+        		curvatureSelect=new boolean [curvatureModel.length][];
+        		for (int i=0;i<curvatureSelect.length;i++) curvatureSelect[i]=null;
+        	}
+        	for (int chn=0;chn<correctionParameters.length; chn++) if (curvatureModel[chn]!=null){
+        		if ((curvatureSelect[chn]==null) || (curvatureSelect[chn].length!=curvatureModel[chn].getDefaultMask().length)){
+        			curvatureSelect[chn]=curvatureModel[chn].getDefaultMask();
+        		}
+        		for (int i=0;i<curvatureSelect[chn].length;i++) if (properties.getProperty(prefix+"curvatureSelect_"+chn+"_"+i)!=null){
+        			curvatureSelect[chn][i]=Boolean.parseBoolean(properties.getProperty(prefix+"curvatureSelect_"+chn+"_"+i));
+        		}
+        	}
+        	
+// get correction setup parameters:
+        	if (sampleCorrSelect==null){
+        		sampleCorrSelect=new boolean [curvatureModel.length][];
+        		for (int i=0;i<sampleCorrSelect.length;i++) sampleCorrSelect[i]=null;
+        	}
+        	for (int chn=0;chn<curvatureModel.length;chn++) if (curvatureModel[chn]!=null){
+        		if ((sampleCorrSelect[chn]==null) || (sampleCorrSelect[chn].length!=getDefaultSampleCorrSelect().length)){
+        			sampleCorrSelect[chn]=getDefaultSampleCorrSelect();
+        		}
+        		for (int i=0;i<sampleCorrSelect[chn].length;i++) if (properties.getProperty(prefix+"sampleCorrSelect_"+chn+"_"+i)!=null){
+        			sampleCorrSelect[chn][i]=Boolean.parseBoolean(properties.getProperty(prefix+"sampleCorrSelect_"+chn+"_"+i));
+        		}
+        	}
+        		
+        	if (sampleCorrCost==null){
+        		sampleCorrCost=new double[curvatureModel.length][];
+        		for (int i=0;i<sampleCorrCost.length;i++) sampleCorrCost[i]=null;
+        	}
+        	for (int chn=0;chn<curvatureModel.length;chn++) if (curvatureModel[chn]!=null){
+        		if ((sampleCorrCost[chn]==null) || (sampleCorrCost[chn].length!=getDefaultSampleCorrCost().length)){
+        			sampleCorrCost[chn]=getDefaultSampleCorrCost();
+        		}
+        		for (int i=0;i<sampleCorrCost[chn].length;i++) if (properties.getProperty(prefix+"sampleCorrCost_"+chn+"_"+i)!=null){
+        			sampleCorrCost[chn][i]=Double.parseDouble(properties.getProperty(prefix+"sampleCorrCost_"+chn+"_"+i));
+        		}
+        	}
+
+        	if (sampleCorrSigma==null){
+        		sampleCorrSigma=new double[curvatureModel.length][];
+        		for (int i=0;i<sampleCorrSigma.length;i++) sampleCorrSigma[i]=null;
+        	}
+        	for (int chn=0;chn<curvatureModel.length;chn++) if (curvatureModel[chn]!=null){
+        		if ((sampleCorrSigma[chn]==null) || (sampleCorrSigma[chn].length!=getDefaultSampleCorrSigma().length)){
+        			sampleCorrSigma[chn]=getDefaultSampleCorrSigma();
+        		}
+        		for (int i=0;i<sampleCorrSigma[chn].length;i++) if (properties.getProperty(prefix+"sampleCorrSigma_"+chn+"_"+i)!=null){
+        			sampleCorrSigma[chn][i]=Double.parseDouble(properties.getProperty(prefix+"sampleCorrSigma_"+chn+"_"+i));
+        		}
+        	}
+
+        	if (sampleCorrPullZero==null){
+        		sampleCorrPullZero=new double[curvatureModel.length][];
+        		for (int i=0;i<sampleCorrPullZero.length;i++) sampleCorrPullZero[i]=null;
+        	}
+        	for (int chn=0;chn<curvatureModel.length;chn++) if (curvatureModel[chn]!=null){
+        		if ((sampleCorrPullZero[chn]==null) || (sampleCorrPullZero[chn].length!=getDefaultCorrPullZero().length)){
+        			sampleCorrPullZero[chn]=getDefaultCorrPullZero();
+        		}
+        		for (int i=0;i<sampleCorrPullZero[chn].length;i++) if (properties.getProperty(prefix+"sampleCorrPullZero_"+chn+"_"+i)!=null){
+        			sampleCorrPullZero[chn][i]=Double.parseDouble(properties.getProperty(prefix+"sampleCorrPullZero_"+chn+"_"+i));
+        		}
+        	}
+        	
+        	//  read/restore correction parameters values
+        	if (correctionParameters==null){
+        		correctionParameters=new double[6][][];
+        		for (int i=0;i<correctionParameters.length;i++) correctionParameters[i]=null;
+        	}
+        	if (numberOfLocations>0) {
+        		for (int chn=0;chn<correctionParameters.length; chn++) if (curvatureModel[chn]!=null){
+        			int numPars=curvatureModel[chn].getNumPars()[0]; // number of Z-parameters
+        			if ((correctionParameters[chn]==null) || (correctionParameters[chn].length!=numPars)){
+        				correctionParameters[chn]=new double [numPars][numberOfLocations]; // numberOfLocations==0 ?
+        				for (int np=0;np<numPars;np++) for (int i=0;i<numberOfLocations;i++)
+        					correctionParameters[chn][np][i]=0.0;
+        			}
+        			for (int np=0;np<numPars;np++) for (int i=0;i<numberOfLocations;i++)
+        				if (properties.getProperty(prefix+"correctionParameters_"+chn+"_"+np+"_"+i)!=null) {
+        					correctionParameters[chn][np][i]=Double.parseDouble(properties.getProperty(prefix+"correctionParameters_"+chn+"_"+np+"_"+i));
+        				}
+        		}
+        	} else {
+        		System.out.println("numberOfLocations==0, can not restore");
+        	}
+
+
+
+        }        
         
         public double [] getSampleRadiuses(){ // distance from the current center to each each sample
             return sampleCorrRadius;
@@ -2311,7 +2558,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             
         }
         /**
-         * Calculate values (saggital and tangential PSF FWHM in um for each of color channels) for specified z
+         * Calculate values (sagital and tangential PSF FWHM in um for each of color channels) for specified z
          * @param z distance from lens (from some zero point), image plane is perpendicular to the axis
          * @param corrected when false - provide averaged (axial model) for radius, if true - with individual correction applied
          * @param allChannels calculate for all (even disabled) channels, false - only for currently selected
@@ -2485,21 +2732,52 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             return pXY;
         }
         public void setDefaultSampleCorr(){
-            int numPars= getNumCurvars()[0]; // number of Z parameters ( [1] - numbnr of radial parameters).
+//            int numPars= getNumCurvars()[0]; // number of Z parameters ( [1] - numbnr of radial parameters).
             for (int n=0;n<channelDescriptions.length;n++){
-                sampleCorrSelect[n]=new boolean[numPars];
-                sampleCorrCost[n]=new double [numPars];
-                sampleCorrSigma[n]=new double [numPars];
-                sampleCorrPullZero[n]=new double [numPars];
-                for (int i=0;i<numPars;i++){
-                    sampleCorrSelect[n][i]=(i<dflt_sampleCorrSelect.length)?dflt_sampleCorrSelect[i]:false;
-                    sampleCorrCost[n][i]=(i<dflt_sampleCorrCost.length)?dflt_sampleCorrCost[i]:1.0;
-                    sampleCorrSigma[n][i]=dflt_sampleCorrSigma;
-                    sampleCorrPullZero[n][i]=dflt_sampleCorrPullZero;
-                }
+                sampleCorrSelect[n]=getDefaultSampleCorrSelect(); //new boolean[numPars];
+                sampleCorrCost[n]=getDefaultSampleCorrCost(); // new double [numPars];
+                sampleCorrSigma[n]=getDefaultSampleCorrSigma(); //new double [numPars];
+                sampleCorrPullZero[n]=getDefaultCorrPullZero(); //new double [numPars];
+//                for (int i=0;i<numPars;i++){
+//                    sampleCorrSelect[n][i]=(i<dflt_sampleCorrSelect.length)?dflt_sampleCorrSelect[i]:false;
+//                    sampleCorrCost[n][i]=(i<dflt_sampleCorrCost.length)?dflt_sampleCorrCost[i]:1.0;
+//                    sampleCorrSigma[n][i]=dflt_sampleCorrSigma;
+//                    sampleCorrPullZero[n][i]=dflt_sampleCorrPullZero;
+//                }
             }
         }
-        /**
+        public boolean [] getDefaultSampleCorrSelect(){
+            boolean [] dflt=new boolean[getNumCurvars()[0]]; // number of Z parameters ( [1] - numbnr of radial parameters).
+            for (int i=0;i<dflt.length;i++){
+            	dflt[i]=(i<dflt_sampleCorrSelect.length)?dflt_sampleCorrSelect[i]:false;
+            }
+        	return dflt;
+        }
+
+        public double [] getDefaultSampleCorrCost(){
+            double [] dflt=new double[getNumCurvars()[0]]; // number of Z parameters ( [1] - numbnr of radial parameters).
+            for (int i=0;i<dflt.length;i++){
+            	dflt[i]=(i<dflt_sampleCorrCost.length)?dflt_sampleCorrCost[i]:1.0;
+            }
+        	return dflt;
+        }
+
+        public double [] getDefaultSampleCorrSigma(){
+            double [] dflt=new double[getNumCurvars()[0]]; // number of Z parameters ( [1] - numbnr of radial parameters).
+            for (int i=0;i<dflt.length;i++){
+            	dflt[i]=dflt_sampleCorrSigma;
+            }
+        	return dflt;
+        }
+
+        public double [] getDefaultCorrPullZero(){
+            double [] dflt=new double[getNumCurvars()[0]]; // number of Z parameters ( [1] - numbnr of radial parameters).
+            for (int i=0;i<dflt.length;i++){
+            	dflt[i]=dflt_sampleCorrPullZero;
+            }
+        	return dflt;
+        }
+/**
          * Dialog to setup per-sample (coordinate) corrections
          * @param title Dialog title
          * @param individualChannels configure each of the six color/dir channels separately (false - apply to all)
@@ -2567,6 +2845,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         }
         // once per data set
         public void resetSampleCorr(){
+        	if (debugLevel>0) System.out.println("---resetSampleCorr()---");
             for (int i=0; i<correctionParameters.length;i++) correctionParameters[i]=null;
         }
         
@@ -2582,16 +2861,21 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                     }
                 }
             }
+    		System.out.println("getCorrVector 1");
             sampleCorrVector=new double [numPars];
             for (int nChn=0; nChn< sampleCorrChnParIndex.length;nChn++) {
                 if (sampleCorrChnParIndex[nChn]!=null){
                     for (int nPar=0;nPar< sampleCorrChnParIndex[nChn].length;nPar++) {
                         if (sampleCorrChnParIndex[nChn][nPar]>=0){
                             for (int i=0;i<numberOfLocations;i++){
-                                if ((correctionParameters[nChn]!=null) && (correctionParameters[nChn][nPar]!=null))
+                                if ((correctionParameters[nChn]!=null) && (correctionParameters[nChn][nPar]!=null) && (correctionParameters[nChn][nPar].length>i))
                                     sampleCorrVector[sampleCorrChnParIndex[nChn][nPar]+i]=correctionParameters[nChn][nPar][i];
-                                else
+                                else {
                                     sampleCorrVector[sampleCorrChnParIndex[nChn][nPar]+i]=0.0;
+                                    if ((correctionParameters[nChn]!=null) && (correctionParameters[nChn][nPar]!=null) && (correctionParameters[nChn][nPar].length<i)){
+                                    	System.out.println("correctionParameters["+nChn+"]["+nPar+"].length < "+i);
+                                    }
+                                }
                             }
                         }
                     }
@@ -2601,6 +2885,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         }
         
         public void commitCorrVector(){
+    		System.out.println("commitCorrVector()");
             commitCorrVector(sampleCorrVector);
         }
         
@@ -2611,8 +2896,11 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                         if (sampleCorrChnParIndex[nChn][nPar]>=0){
                             if(correctionParameters[nChn]==null)
                                 correctionParameters[nChn]=new double [sampleCorrChnParIndex[nChn].length][];
-                            if(correctionParameters[nChn][nPar]==null)
+                            if ((correctionParameters[nChn][nPar]==null) || (correctionParameters[nChn][nPar].length!=numberOfLocations)){
+                                	System.out.println("commitCorrVector(): correctionParameters["+nChn+"]["+nPar+"].length < "+numberOfLocations);
+
                                 correctionParameters[nChn][nPar]=new double [numberOfLocations];
+                            }
                             for (int i=0;i<numberOfLocations;i++){
                                 correctionParameters[nChn][nPar][i]=vector[sampleCorrChnParIndex[nChn][nPar]+i];
                             }
@@ -2687,6 +2975,8 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             }
             // currently all correction parameters are initialized as zeros.
             getCorrVector();
+    		System.out.println("was resetting sampleCorrVector here");
+            
 //            sampleCorrVector=new double [numPars];
 //            for (int i=0;i<numPars;i++)sampleCorrVector[i]=0.0;
             sampleCorrRadius=new double [numberOfLocations];
@@ -2706,10 +2996,15 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                 else corr[i]=sampleCorrVector[sampleCorrChnParIndex[chn][i]+sampleIndex];
             }
 */
+//    		System.out.println("used sampleCorrVector here, now  correctionParameters");
+
             if (correctionParameters[chn]==null) return null;
             double [] corr =new double [correctionParameters[chn].length];
             for (int i=0;i<corr.length;i++){
-                if (correctionParameters[chn][i] !=null) corr[i]=correctionParameters[chn][i][sampleIndex];
+            	if ((correctionParameters[chn][i] !=null) && (correctionParameters[chn][i].length<=i)){
+            		System.out.println("getCorrPar(): correctionParameters["+chn+"]["+i+"].length="+correctionParameters[chn][i].length);
+            	}
+                if ((correctionParameters[chn][i] !=null) && (correctionParameters[chn][i].length>i)) corr[i]=correctionParameters[chn][i][sampleIndex];
                 else corr[i]=0.0;
             }
 
@@ -2905,16 +3200,22 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                     index++;
                 }
             }
-            if (showCorrection && (getNumberOfCorrParameters()>0)){
+//            if (showCorrection && (getNumberOfCorrParameters()>0)){
+            if (showCorrection){
                 parList.add("\t ===== Per-sample correction parameters =====\t\t");
                 for (int n=0;n<correctionParameters.length;n++) if (correctionParameters[n]!=null){
-                    for (int np=0;np<correctionParameters[n].length;np++) if (correctionParameters[n][np]!=null){
-//                        int numSamples=sampleCorrCrossWeights[n][np].length;
-                        parList.add("\t ----- correction parameters for \""+ getDescription(n)+" "+curvatureModel[n].getZDescription(np)+"\" -----\t\t");
-                        for (int i=0;i<numberOfLocations;i++){
-                            parList.add(i+"\t"+curvatureModel[n].getZDescription(np)+":\t"+correctionParameters[n][np][i]+"\t");
-                        }
-                    }
+                	for (int np=0;np<correctionParameters[n].length;np++)
+                		if ((correctionParameters[n][np]!=null) && (correctionParameters[n][np].length==numberOfLocations)){
+                			//                        int numSamples=sampleCorrCrossWeights[n][np].length;
+                			parList.add("\t ----- correction parameters for \""+ getDescription(n)+" "+curvatureModel[n].getZDescription(np)+"\" -----\t\t");
+                			for (int i=0;i<numberOfLocations;i++){
+                				parList.add(i+"\t"+curvatureModel[n].getZDescription(np)+":\t"+correctionParameters[n][np][i]+"\t");
+                			}
+                		} else {
+                			if ((correctionParameters[n][np]!=null) && (correctionParameters[n][np].length!=numberOfLocations)){
+                				System.out.println("getParameterValueStrings(): correctionParameters["+n+"]["+np+"].length="+correctionParameters[n][np].length);
+                			}
+                		}
                 }
             }
             return parList;
@@ -3056,6 +3357,8 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                     index++;
                 }
             }
+       		System.out.println("createParameterVector(): using sampleCorrVector - do we need to create it first?");
+            getCorrVector(); // do we need that?            
             int nCorrPars=getNumberOfCorrParameters();
             for (int i=0;i<nCorrPars;i++) pars[np++]=sampleCorrVector[i];
             return pars;
@@ -3084,6 +3387,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                 }
             }
             // copy correction parameters
+       		System.out.println("commitParameterVector():  Creating and committing sampleCorrVector");
             int nCorrPars=getNumberOfCorrParameters();
             for (int i=0;i<nCorrPars;i++) sampleCorrVector[i]=pars[np++];
             commitCorrVector();
