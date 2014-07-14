@@ -4385,7 +4385,7 @@ if (MORE_BUTTONS) {
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
 			System.out.println("Loaded FocusingField");
-			if (!FOCUSING_FIELD.configureDataVector("Configure curvature",true)) return;
+			if (!FOCUSING_FIELD.configureDataVector("Configure curvature",true,true)) return;
 			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
 			double []focusing_fx=FOCUSING_FIELD.createFXandJacobian(true);
 			double rms= FOCUSING_FIELD.getRMS(focusing_fx,false);
@@ -4397,7 +4397,7 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-			if (!FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false)) return;
+			if (!FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false,true)) return;
 			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
 			return;
 		}
