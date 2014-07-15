@@ -629,6 +629,21 @@ private void maskDataWeights(boolean [] enable){
 		if (!enable[i]) dataWeights[i]=0.0;
 	}
 }
+public double [][] getSeriesWeights(){
+	double [][] seriesWeights=new double [getNumChannels()][getNumSamples()];
+	for (int chn=0;chn<seriesWeights.length;chn++)  for (int sample=0;sample<seriesWeights[chn].length;sample++) seriesWeights[chn][sample]=0.0;
+	for (int index=0;index<dataVector.length;index++) if (dataWeights[index]>0.0){
+		seriesWeights[dataVector[index].channel][dataVector[index].sampleIndex]+=dataWeights[index];
+	}	
+	if (debugLevel>1){
+		System.out.println("==== getSeriesWeights():");
+		for (int chn=0;chn<seriesWeights.length;chn++)  for (int sample=0;sample<seriesWeights[chn].length;sample++){
+			System.out.println("chn="+chn+" sample="+sample+" weight="+IJ.d2s(seriesWeights[chn][sample],3));
+		}
+	}
+	return seriesWeights;
+}
+
 
 private boolean [] filterConcave(
 		double sigma,
@@ -976,13 +991,15 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
     dataValues = new double [dataVector.length+corrLength];
     dataWeights = new double [dataVector.length+corrLength];
 //     sumWeights=0.0;
-    int mode=weightMode;
+//    int mode=weightMode;
     double kw= (weightRadius>0.0)?(-0.5*getPixelMM()*getPixelMM()/(weightRadius*weightRadius)):0;
 //weightRadius     
-    if (weightReference==null)mode=0;
+//    if (weightReference==null) mode=0;
     for (int i=0;i<dataVector.length;i++){
         MeasuredSample ms=dataVector[i];
         dataValues[i]=ms.value;
+        dataWeights[i]=1.0/Math.pow(ms.value,weightMode);
+/*        
         double diff=weightReference[ms.channel]-ms.value;
         if (diff<0.0) diff=0;
         switch (mode){
@@ -991,6 +1008,7 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
         case 2:    dataWeights[i]=diff*diff; break;
         default: dataWeights[i]=1.0;
         }
+ */      
         if (weightRadius>0.0){
             double r2=(ms.px-currentPX0)*(ms.px-currentPX0)+(ms.py-currentPY0)*(ms.py-currentPY0);
             dataWeights[i]*=Math.exp(kw*r2);
@@ -1028,7 +1046,11 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
     	    	filterInputConcaveScale,
     			en);
     	maskDataWeights(en);
+    	
     }
+    fieldFitting.initSampleCorrVector(
+    		flattenSampleCoord(), //double [][] sampleCoordinates,
+    		getSeriesWeights()); //double [][] sampleSeriesWeights);
     
     
 }
@@ -2676,13 +2698,17 @@ public boolean dialogLMAStep(boolean [] state){
 }
 
 
-
 public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
     double savedLambda=this.lambda;
     this.debugLevel=debugLevel;
     if (openDialog && !selectLMAParameters()) return false;
     this.startTime=System.nanoTime();
-// create savedVector (it depends on parameter masks), restore from it if aborted     
+// create savedVector (it depends on parameter masks), restore from it if aborted
+    fieldFitting.initSampleCorrVector(
+    		flattenSampleCoord(), //double [][] sampleCoordinates,
+    		getSeriesWeights()); //double [][] sampleSeriesWeights);
+
+    
     this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
     if (debugDerivativesFxDxDy){
         compareDrDerivatives(this.savedVector);
@@ -3329,7 +3355,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                 if ((curvatureModel[chn]!=null) && (allChannels || channelSelect[chn])){
                     result[chn]=new double [numSamples];
                     for (int sampleIndex=0;sampleIndex<numSamples;sampleIndex++) {
-if ((chn==4) &&  (sampleIndex==3)){
+if ((chn==3) &&  (sampleIndex==23)){
 	System.out.println("getCalcValuesForZ(), chn="+chn+", sampleIndex="+sampleIndex);
 }
                     	
@@ -3754,7 +3780,10 @@ if ((chn==4) &&  (sampleIndex==3)){
          * Run in the beginning of fitting series (zeroes the values)
          */
         // once per fitting series (or parameter change
-        public void initSampleCorrVector(double [][] sampleCoordinates){
+        public void initSampleCorrVector(
+        		double [][] sampleCoordinates,
+        		double [][] sampleSeriesWeights){
+        	System.out.println("initSampleCorrVector()");
             numberOfLocations=sampleCoordinates.length;
             this.sampleCoordinates=new double[sampleCoordinates.length][];
             for (int i=0;i<sampleCoordinates.length;i++) this.sampleCoordinates[i]=sampleCoordinates[i].clone();
@@ -3778,13 +3807,15 @@ if ((chn==4) &&  (sampleIndex==3)){
                                         sw+=a;
                                     }
                                 }
+                                double normalizedCost=sampleCorrCost[nChn][nPar];
+                                if (sampleSeriesWeights!=null) normalizedCost*=sampleSeriesWeights[nChn][i];
                                 if ((sampleCorrPullZero[nChn][nPar]==0) ||(sampleCorrCost[nChn][nPar]==0)) sw=0.0;
-                                else if (sw!=0.0) sw=-sampleCorrCost[nChn][nPar]*sampleCorrPullZero[nChn][nPar]/sw;
+                                else if (sw!=0.0) sw=-normalizedCost*sampleCorrPullZero[nChn][nPar]/sw;
                                 for (int j=0;j<numberOfLocations;j++) {
                                     if (i!=j){
                                         sampleCorrCrossWeights[nChn][nPar][i][j]*=sw;
                                     } else {
-                                        sampleCorrCrossWeights[nChn][nPar][i][j]=sampleCorrCost[nChn][nPar];
+                                        sampleCorrCrossWeights[nChn][nPar][i][j]=normalizedCost;
                                     }
                                 }
                             }
@@ -3796,6 +3827,9 @@ if ((chn==4) &&  (sampleIndex==3)){
                     sampleCorrCrossWeights[nChn]=null;
                 }
             }
+        	getCorrVector();
+
+/*            
             sampleCorrChnParIndex=new int [sampleCorrSelect.length][];
             int numPars=0;
             for (int nChn=0; nChn< sampleCorrCrossWeights.length;nChn++) {
@@ -3816,19 +3850,40 @@ if ((chn==4) &&  (sampleIndex==3)){
             // currently all correction parameters are initialized as zeros.
             getCorrVector();
             if (debugLevel>1) System.out.println("was resetting sampleCorrVector here");
-            
-//            sampleCorrVector=new double [numPars];
-//            for (int i=0;i<numPars;i++)sampleCorrVector[i]=0.0;
-/*            
-            sampleCorrRadius=new double [numberOfLocations];
-            //pXY
-            for (int i=0;i<numberOfLocations;i++){
-                double dx=sampleCoordinates[i][0]-pXY[0];
-                double dy=sampleCoordinates[i][1]-pXY[0];
-                sampleCorrRadius[i]=getPixelMM()*Math.sqrt(dx*dx+dy*dy);
-            }
 */            
         }
+        
+ 
+        public void initSampleCorrChnParIndex(
+        		double [][] sampleCoordinates){
+        	numberOfLocations=sampleCoordinates.length;
+        	this.sampleCoordinates=new double[sampleCoordinates.length][];
+        	for (int i=0;i<sampleCoordinates.length;i++) this.sampleCoordinates[i]=sampleCoordinates[i].clone();
+        	sampleCorrChnParIndex=new int [sampleCorrSelect.length][];
+        	int numPars=0;
+        	for (int nChn=0; nChn< sampleCorrSelect.length;nChn++) {
+        		if (channelSelect[nChn]) {
+        			sampleCorrChnParIndex[nChn]=new int [sampleCorrSelect[nChn].length];
+        			for (int nPar=0;nPar< sampleCorrChnParIndex[nChn].length;nPar++) {
+        				if (sampleCorrSelect[nChn][nPar]) {
+        					sampleCorrChnParIndex[nChn][nPar]=numPars; // pointer to the first sample
+        					numPars+=numberOfLocations;
+        				} else {
+        					sampleCorrChnParIndex[nChn][nPar]=-1;
+        				}
+        			}                
+        		} else {
+        			sampleCorrChnParIndex[nChn]=null;
+        		}
+        	}
+        	System.out.println("initSampleCorrChnParIndex()");
+        	// currently all correction parameters are initialized as zeros.
+        	getCorrVector();
+        }
+        
+        
+        
+        
         public double [][] getSampleCoordinates(){
         	return sampleCoordinates;
         }
@@ -3994,7 +4049,7 @@ if ((chn==4) &&  (sampleIndex==3)){
         		//             initSampleCorr(flattenSampleCoord());
         	}
         	// will modify
-        	initSampleCorrVector(flattenSampleCoord()); // run always regardless of configured or not (to create zero-length array of corr)
+        	initSampleCorrChnParIndex(flattenSampleCoord()); // run always regardless of configured or not (to create zero-length array of corr)
         	return true;
         }
         
