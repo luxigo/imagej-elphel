@@ -96,7 +96,7 @@ public class FocusingField {
 	private boolean [] rslt_show_chn;
 
 // not saved/restored
-	
+	private double [] z0_estimates=null; // initial estimates for z0 from the lowest value on data
 	private double lambdaStepUp; // multiply lambda by this if result is worse
 	private double lambdaStepDown; // multiply lambda by this if result is better
 	private double thresholdFinish; // (copied from series) stop iterations if 2 last steps had less improvement (but not worsening )
@@ -170,6 +170,7 @@ public class FocusingField {
 
 
     public void setDefaults(){
+    	z0_estimates=null;
     	sagittalMaster=false; // center data is the same, when true sagittal fitting only may change r=0 coefficients,
     	parallelOnly = true; // only process measurements for parallel moves
     	filterInput = true;
@@ -666,7 +667,12 @@ private boolean [] filterConcave(
 	int numFilteredInsufficient = 0;
 	int numFiltered = 0;
 	int [][] numPoints=new int [getNumChannels()][getNumSamples()];
-	for (int chn=0;chn<numPoints.length;chn++)  for (int sample=0;sample<numPoints[chn].length;sample++) numPoints[chn][sample]=0;
+	double [][][] z0EstData=new double[getNumChannels()][getNumSamples()][2];
+	for (int chn=0;chn<numPoints.length;chn++)  for (int sample=0;sample<numPoints[chn].length;sample++) {
+		numPoints[chn][sample]=0;
+		z0EstData[chn][sample][0]=0.0;
+		z0EstData[chn][sample][1]=0.0;
+	}
 	for (int index=0;index<dataVector.length;index++) if ((index>=enable_in.length) ||enable_in[index]){
 		numPoints[dataVector[index].channel][dataVector[index].sampleIndex]++;
 	}
@@ -811,13 +817,30 @@ private boolean [] filterConcave(
 							", slope="+ IJ.d2s(100*point_slope[i],3)+ ", concave="+(nonConcave[i]?0.0:1.0));
 				}
 			}
+			// contribute to z0 calculation
+			for (int i=0;i<thisIndices.length;i++) if (!nonConcave[i]){
+				z0EstData[chn][sample][1]+=dataWeights[thisIndices[i]];
+			}
+			z0EstData[chn][sample][0]=point_z[minIndex];
 		}
 	}
 	if (debugLevel>0) System.out.println("filterConcave(): removed for too few points "+numFilteredInsufficient+" samples");
 	if (debugLevel>0) System.out.println("filterConcave(): removed for non-concave "+numFiltered+" samples");
+	
+	//	for (int chn=0;chn<numPoints.length;chn++) for (int sample=0;sample<numPoints[chn].length;sample++){
+	z0_estimates=new double[getNumChannels()];
+	for (int chn=0;chn<z0_estimates.length;chn++){
+		double z=0;
+		double w=0;
+		for (int sample=0;sample<numPoints[chn].length;sample++){
+			z+=z0EstData[chn][sample][0]*z0EstData[chn][sample][1];
+			w+=z0EstData[chn][sample][1];
+		}
+		z0_estimates[chn]= (w>0.0)?z/w:Double.NaN;
+	}
+	
 	return enable_out;
 }
-
 
 private boolean [] filterTooFar(double ratio,boolean [] enable_in){
 	if (enable_in==null) {
@@ -2707,7 +2730,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
     fieldFitting.initSampleCorrVector(
     		flattenSampleCoord(), //double [][] sampleCoordinates,
     		getSeriesWeights()); //double [][] sampleSeriesWeights);
-
+    fieldFitting.setEstimatedZ0( z0_estimates, false); // boolean force)
     
     this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
     if (debugDerivativesFxDxDy){
@@ -3774,6 +3797,18 @@ if ((chn==3) &&  (sampleIndex==23)){
             }
         }
         
+        public void setEstimatedZ0(
+        		double [] z0,
+        		boolean force){
+        	if ((z0==null)|| (curvatureModel==null)) return; // no estimation available
+        	for (int chn=0;chn<curvatureModel.length;chn++){
+        		if (!Double.isNaN(z0[chn]) && (!curvatureModel[chn].z0IsValid() || force)){
+        			curvatureModel[chn].set_z0(z0[chn]);
+        			if (debugLevel>1) System.out.println("Setting initial (estimated) best focal position for channel "+chn+" = "+z0[chn]);
+        		}
+        	}
+        }
+        
         /**
          * create matrix of weights of the other parameters influence
          * @param sampleCoordinates [sample number]{x,y} - flattened array of sample coordinates
@@ -3828,29 +3863,6 @@ if ((chn==3) &&  (sampleIndex==23)){
                 }
             }
         	getCorrVector();
-
-/*            
-            sampleCorrChnParIndex=new int [sampleCorrSelect.length][];
-            int numPars=0;
-            for (int nChn=0; nChn< sampleCorrCrossWeights.length;nChn++) {
-                if (sampleCorrCrossWeights[nChn]!=null){
-                    sampleCorrChnParIndex[nChn]=new int [sampleCorrCrossWeights[nChn].length];
-                    for (int nPar=0;nPar< sampleCorrCrossWeights[nChn].length;nPar++) {
-                        if (sampleCorrCrossWeights[nChn][nPar]!=null){
-                            sampleCorrChnParIndex[nChn][nPar]=numPars; // pointer to the first sample
-                            numPars+=sampleCorrCrossWeights[nChn][nPar].length;
-                        } else {
-                            sampleCorrChnParIndex[nChn][nPar]=-1;
-                        }
-                    }                
-                } else {
-                    sampleCorrChnParIndex[nChn]=null;
-                }
-            }
-            // currently all correction parameters are initialized as zeros.
-            getCorrVector();
-            if (debugLevel>1) System.out.println("was resetting sampleCorrVector here");
-*/            
         }
         
  
@@ -3888,15 +3900,6 @@ if ((chn==3) &&  (sampleIndex==23)){
         	return sampleCoordinates;
         }
         public double [] getCorrPar(int chn, int sampleIndex){
-/*            if ((sampleCorrChnParIndex==null) || (sampleCorrChnParIndex[chn]==null)) return null;
-            double [] corr =new double [sampleCorrChnParIndex[chn].length];
-            for (int i=0;i<corr.length;i++){
-                if (sampleCorrChnParIndex[chn][i]<0) corr[i]=0.0;
-                else corr[i]=sampleCorrVector[sampleCorrChnParIndex[chn][i]+sampleIndex];
-            }
-*/
-//    		System.out.println("used sampleCorrVector here, now  correctionParameters");
-
             if (correctionParameters[chn]==null) return null;
             double [] corr =new double [correctionParameters[chn].length];
             for (int i=0;i<corr.length;i++){
@@ -4859,8 +4862,8 @@ if ((chn==3) &&  (sampleIndex==23)){
     }
     
     public class CurvatureModel{
-        private double dflt_na=0.15; // um/um
-        private double dflt_r0=4.0; //3.3; // um (1.5 pix)
+        private double dflt_na=Math.log(0.15); // um/um
+        private double dflt_r0=Math.log(4.0); //3.3; // um (1.5 pix)
         private double [][] modelParams=null;
         public static final int dflt_distanceParametersNumber=5;
         public static final int dflt_radialParametersNumber=4;
@@ -4934,7 +4937,16 @@ if ((chn==3) &&  (sampleIndex==23)){
             }
             this.modelParams[1][0]=dflt_na;
             this.modelParams[2][0]=dflt_r0;
+            this.modelParams[0][0]=Double.NaN;
         }
+        public boolean z0IsValid(){
+        	return !Double.isNaN(this.modelParams[0][0]);
+        }
+        
+        public void set_z0(double z0){
+            this.modelParams[0][0]=z0;
+        }
+        
         public double [] getCenterVector(){
             double [] vector=new double [this.modelParams.length];
             for (int i=0;i<this.modelParams.length;i++){
@@ -5006,7 +5018,7 @@ if ((chn==3) &&  (sampleIndex==23)){
                 double z_in,
                 double [] deriv){
 /*
-f=sqrt((a*(zin-z0))^2 + r0^2)+a0+ a1*(zin-z0)+...aN*(zin-z0)^N
+f=sqrt(( a*(zin-z0))^2 + r0^2)+a0+ a1*(zin-z0)+...aN*(zin-z0)^N
 each of the z0,z0,a,a[i] is polynomial of even powers of r (r^0, r^2, r^4...)
 z=z_in-z0
 
@@ -5014,11 +5026,23 @@ modified parameters, r0 - PSF FWHM at z=0, k (instead of a0), so that old r0 now
 r0*exp(-k), old a0= r0*(1-exp(-k)).
 
 f=sqrt((a*(zin-z0))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ a1*(zin-z0)+...aN*(zin-z0)^N
+
 z0 - ar[0]
 a - ar[1]
 r0 - ar[2]
 k - ar[3]
 ar1 - ar[4]
+
+modified to avoid zero-crossing for a and r0:
+a=exp(ln_a)
+r0=exp(ln_r0)
+
+z0    - ar[0]
+ln_a  - ar[1]
+ln_r0 - ar[2]
+k     - ar[3]
+ar1   - ar[4]
+
 
 */
             double r=Double.isNaN(pY)?pX:Math.sqrt((pX-pX0)*(pX-pX0)+(pY-pY0)*(pY-pY0))*PIXEL_SIZE; // in mm
@@ -5035,20 +5059,19 @@ ar1 - ar[4]
                     ar[i]+=this.modelParams[i][j]*rp;
                 }
             }
+            double exp_a=Math.exp(ar[1]);
+            double exp_r=Math.exp(ar[2]);
             double z=z_in-ar[0];
-            double exp=Math.exp(-ar[3]);
-            double reff=ar[2]*exp;
-//            double sqrt=Math.sqrt((ar[1]*z)*(ar[1]*z) + ar[2]*ar[2]);
-            double sqrt=Math.sqrt((ar[1]*z)*(ar[1]*z) + reff*reff);
+            double exp_k=Math.exp(-ar[3]);
+//            double reff=ar[2]*exp_k;
+            double reff=exp_r*exp_k;
+//            double sqrt=Math.sqrt((ar[1]*z)*(ar[1]*z) + reff*reff);
+            double sqrt=Math.sqrt((exp_a*z)*(exp_a*z) + reff*reff);
             
-            double f=sqrt+ar[2]*(1-exp);
+//            double f=sqrt+ar[2]*(1-exp_k);
+            double f=sqrt+exp_r*(1-exp_k);
             double zp=1.0;
-/*            
-            for (int i=3;i<ar.length;i++){
-                f+=ar[i]*zp;
-                zp*=z;
-            }
-*/            
+
             for (int i=4;i<ar.length;i++){
                 zp*=z;
                 f+=ar[i]*zp;
@@ -5057,29 +5080,35 @@ ar1 - ar[4]
             if (deriv==null) return f; // only value, no derivatives
             double [] df_da=new double[this.modelParams.length]; // last element - derivative for dz
             // derivative for z0 (shift) - ar[0]
-            df_da[0]=-1.0/sqrt*ar[1]*ar[1]*z;
+//            df_da[0]=-1.0/sqrt*ar[1]*ar[1]*z;
+            
+            df_da[0]=-1.0/sqrt*exp_a*exp_a*z;
+            
             zp=1.0;
             for (int i=4;i<this.modelParams.length;i++){
                 df_da[0]-=ar[i]*(i-3)*zp; // ar[i] calculated coefficients for current radius
                 zp*=z;
             }
             // derivative for a (related to numeric aperture) - ar[1]
-            df_da[1]=1.0/sqrt*ar[1]*z*z;
+//            df_da[1]=1.0/sqrt*ar[1]*z*z;
+            df_da[1]=1.0/sqrt*exp_a*z*z  *exp_a; // d(f)/d(exp_a) *exp_a
+            
+            
             // derivative for a (related to lowest PSF radius) - ar[2]
-//            df_da[2]=1.0/sqrt*ar[2];
-            df_da[2]=1.0/sqrt*reff*exp + (1-exp); // * exp(-k)
+//            df_da[2]=1.0/sqrt*reff*exp_k + (1-exp_k); // * exp(-k)
+            df_da[2]=(1.0/sqrt*reff*exp_k + (1-exp_k)) * exp_r; // d(f)/d(exp_r) *exp_r
+            
+            
+            
+            
             // derivative for k (ar[3]
             
-            df_da[3]=1.0/sqrt*reff*ar[2]*exp*(-1) + ar[2]*exp;
+//            df_da[3]=1.0/sqrt*reff*ar[2]*exp_k*(-1) + ar[2]*exp_k;
+            df_da[3]=1.0/sqrt*reff*exp_r*exp_k*(-1) + exp_r*exp_k;
             
             // derivatives for rest (polynomial) coefficients
             zp=1.0;
-/*            
-            for (int i=3;i<this.modelParams.length;i++){
-                df_da[i]=zp;
-                zp*=z;
-            }
-*/            
+
             for (int i=4;i<this.modelParams.length;i++){
                 zp*=z;
                 df_da[i]=zp;
@@ -5089,7 +5118,6 @@ ar1 - ar[4]
             double [] dar= new double [this.modelParams[0].length];
             dar[0]=1;
             for (int j=1;j<dar.length;j++){
-//                dar[j]=dar[j-1]*r2;
                 dar[j]=dar[j-1]*r;
                 if (j==1) dar[j]*=r; // 0,2,3,4,5...
             }
@@ -5120,14 +5148,16 @@ ar1 - ar[4]
         }
         public String getZName(int i){
             if (i==0) return "z0";
-            if (i==1) return "na";
-            if (i==2) return "r0";
+            if (i==1) return "ln(na)";
+            if (i==2) return "ln(r0)";
+            if (i==3) return "ln(k)";
             else return "az_"+(i-3);
         }
         public String getZDescription(int i){
             if (i==0) return "Focal shift";
-            if (i==1) return "Defocus/focus shift (~NA)";
-            if (i==2) return "Best PSF radius";
+            if (i==1) return "Defocus/focus shift (~NA), ln()";
+            if (i==2) return "Best PSF radius, ln()";
+            if (i==3) return "cross shift, ln()";
             else return "Polynomial coefficient for z^"+(i-3);
         }
         
