@@ -62,7 +62,12 @@ public class FocusingField {
 	double  filterInputDiff; // um
 	boolean filterInputFirstLast; 
 	boolean filterInputTooFar; // filter samples that are too far from the "center of mass" of other samples 
-	double  filterInpuFarRatio; // remove samples that are farther than this ration of average distance
+	double  filterInputFarRatio; // remove samples that are farther than this ration of average distance
+	boolean filterInputConcave;
+	double  filterInputConcaveSigma;
+	boolean filterInputConcaveRemoveFew;
+	int filterInputConcaveMinSeries;
+	double  filterInputConcaveScale;
 	// when false - tangential is master
 	double [] minMeas; // pixels
 	double [] maxMeas; // pixels
@@ -172,13 +177,19 @@ public class FocusingField {
     	filterInputDiff = 2.0; // um
     	filterInputFirstLast = true; 
     	filterInputTooFar = true; // filter samples that are too far from the "center of mass" of other samples 
-    	filterInpuFarRatio = 3.0; // remove samples that are farther than this ration of average distance
+    	filterInputFarRatio = 3.0; // remove samples that are farther than this ration of average distance
+    	filterInputConcave = true; //um
+    	filterInputConcaveSigma = 8.0; //um
+    	filterInputConcaveRemoveFew=true;
+    	filterInputConcaveMinSeries=5;
+    	filterInputConcaveScale=0.8;
     	// when false - tangential is master
     	double [] minMeasDflt= {0.5,0.5,0.5,0.5,0.5,0.5}; // pixels
     	minMeas= minMeasDflt; // pixels
     	double [] maxMeasDflt= {4.5,4.5,4.5,4.5,4.5,4.5}; // pixels
     	maxMeas= maxMeasDflt; // pixels
-    	double [] thresholdMaxDflt= {2.4,3.0,2.6,3.0,3.1,3.0}; // pixels
+//    	double [] thresholdMaxDflt= {2.4,3.0,2.6,3.0,3.1,3.0}; // pixels
+    	double [] thresholdMaxDflt= {3.5,3.5,3.5,3.5,3.5,3.5}; // pixels
     	thresholdMax= thresholdMaxDflt; // pixels
     	useMinMeas= true;
     	useMaxMeas= true;
@@ -236,9 +247,9 @@ public class FocusingField {
     	updateWeightWhileFitting=false;
         debugPoint=-1;
         debugParameter=-1;
-
-    	
-    	
+        
+        currentPX0=pX0_distortions;
+        currentPY0=pY0_distortions;
     	
     }
     
@@ -262,7 +273,15 @@ public class FocusingField {
 		properties.setProperty(prefix+"filterInputDiff",filterInputDiff+"");
 		properties.setProperty(prefix+"filterInputFirstLast",filterInputFirstLast+"");
 		properties.setProperty(prefix+"filterInputTooFar",filterInputTooFar+"");
-		properties.setProperty(prefix+"filterInpuFarRatio",filterInpuFarRatio+"");
+		properties.setProperty(prefix+"filterInputFarRatio",filterInputFarRatio+"");
+		
+		properties.setProperty(prefix+"filterInputConcave",filterInputConcave+"");
+		properties.setProperty(prefix+"filterInputConcaveSigma",filterInputConcaveSigma+"");
+		
+		properties.setProperty(prefix+"filterInputConcaveRemoveFew",filterInputConcaveRemoveFew+"");
+		properties.setProperty(prefix+"filterInputConcaveMinSeries",filterInputConcaveMinSeries+"");
+		properties.setProperty(prefix+"filterInputConcaveScale",filterInputConcaveScale+"");
+		
 		for (int chn=0; chn<minMeas.length; chn++) properties.setProperty(prefix+"minMeas_"+chn,minMeas[chn]+"");
 		for (int chn=0; chn<maxMeas.length; chn++) properties.setProperty(prefix+"maxMeas_"+chn,maxMeas[chn]+"");
 		for (int chn=0; chn<thresholdMax.length; chn++) properties.setProperty(prefix+"thresholdMax_"+chn,thresholdMax[chn]+"");
@@ -323,8 +342,22 @@ public class FocusingField {
 			filterInputFirstLast=Boolean.parseBoolean(properties.getProperty(prefix+"filterInputFirstLast"));
 		if (properties.getProperty(prefix+"filterInputTooFar")!=null)
 			filterInputTooFar=Boolean.parseBoolean(properties.getProperty(prefix+"filterInputTooFar"));
-		if (properties.getProperty(prefix+"filterInpuFarRatio")!=null)
-			filterInpuFarRatio=Double.parseDouble(properties.getProperty(prefix+"filterInpuFarRatio"));
+		if (properties.getProperty(prefix+"filterInputFarRatio")!=null)
+			filterInputFarRatio=Double.parseDouble(properties.getProperty(prefix+"filterInputFarRatio"));
+		
+		if (properties.getProperty(prefix+"filterInputConcave")!=null)
+			filterInputConcave=Boolean.parseBoolean(properties.getProperty(prefix+"filterInputConcave"));
+		if (properties.getProperty(prefix+"filterInputConcaveSigma")!=null)
+			filterInputConcaveSigma=Double.parseDouble(properties.getProperty(prefix+"filterInputConcaveSigma"));
+		
+		
+		if (properties.getProperty(prefix+"filterInputConcaveRemoveFew")!=null)
+			filterInputConcaveRemoveFew=Boolean.parseBoolean(properties.getProperty(prefix+"filterInputConcaveRemoveFew"));
+		if (properties.getProperty(prefix+"filterInputConcaveMinSeries")!=null)
+			filterInputConcaveMinSeries=Integer.parseInt(properties.getProperty(prefix+"filterInputConcaveMinSeries"));
+		if (properties.getProperty(prefix+"filterInputConcaveScale")!=null)
+			filterInputConcaveScale=Double.parseDouble(properties.getProperty(prefix+"filterInputConcaveScale"));
+		
 		for (int chn=0; chn<minMeas.length; chn++) if (properties.getProperty(prefix+"minMeas_"+chn)!=null)
 			minMeas[chn]=Double.parseDouble(properties.getProperty(prefix+"minMeas_"+chn));
 		for (int chn=0; chn<maxMeas.length; chn++) if (properties.getProperty(prefix+"maxMeas_"+chn)!=null)
@@ -473,11 +506,17 @@ public boolean configureDataVector(String title, boolean forcenew, boolean enabl
     gd.addNumericField("Maximal allowed PSF FWHM variations fro the move above",filterInputDiff,3,5,"um");
     gd.addCheckbox("Remove first/last in a series of measuremnts separated by small (see above) steps",filterInputFirstLast);
     gd.addCheckbox("Remove measurements taken too far from the rest for the same channel/sample",filterInputTooFar);
-    gd.addNumericField("\"Too far\" ratio to the average distance to the center of measurements",filterInpuFarRatio,3,5,"um");
+    gd.addNumericField("\"Too far\" ratio to the average distance to the center of measurements",filterInputFarRatio,3,5,"um");
+
+    gd.addCheckbox("Filter non-concave areas from best focus for each sample",filterInputConcave);
+    gd.addNumericField("Concave filter sigma",filterInputConcaveSigma,3,5,"um");
+    gd.addCheckbox("Remove small series ",filterInputConcaveRemoveFew);
+    gd.addNumericField("Minimal number of samples (to remove / apply concave vilter) ",filterInputConcaveMinSeries,3,5,"samples");
+    gd.addNumericField("Concave filter sigma",filterInputConcaveScale,3,5,"<=1.0");
+    
     gd.addCheckbox("Sagittal channels are master channels (false - tangential are masters)",sagittalMaster);
     gd.addMessage("=== Setting minimal measured PSF radius for different colors/directions ===");
     
-
         
     for (int i=0;i<minMeas.length;i++){
         gd.addNumericField(tmpFieldFitting.getDescription(i),this.minMeas[i],3,5,"pix");
@@ -519,14 +558,19 @@ public boolean configureDataVector(String title, boolean forcenew, boolean enabl
     
  // boolean configureDataVector(String title, boolean forcenew, boolean moreset)   
     
-    parallelOnly=         gd.getNextBoolean();
-    filterInput=          gd.getNextBoolean();
-    filterInputMotorDiff= gd.getNextNumber();
-    filterInputDiff=      gd.getNextNumber();
+    parallelOnly=            gd.getNextBoolean();
+    filterInput=             gd.getNextBoolean();
+    filterInputMotorDiff=    gd.getNextNumber();
+    filterInputDiff=         gd.getNextNumber();
     
-    filterInputFirstLast= gd.getNextBoolean();
-    filterInputTooFar=    gd.getNextBoolean();
-    filterInpuFarRatio=   gd.getNextNumber();
+    filterInputFirstLast=    gd.getNextBoolean();
+    filterInputTooFar=       gd.getNextBoolean();
+    filterInputFarRatio=     gd.getNextNumber();
+	filterInputConcave=      gd.getNextBoolean();
+	filterInputConcaveSigma= gd.getNextNumber();
+	filterInputConcaveRemoveFew=       gd.getNextBoolean();
+	filterInputConcaveMinSeries= (int) gd.getNextNumber();
+	filterInputConcaveScale=           gd.getNextNumber();
     
     sagittalMaster= gd.getNextBoolean();
     for (int i=0;i<minMeas.length;i++)this.minMeas[i]= gd.getNextNumber();
@@ -585,6 +629,180 @@ private void maskDataWeights(boolean [] enable){
 		if (!enable[i]) dataWeights[i]=0.0;
 	}
 }
+
+private boolean [] filterConcave(
+		double sigma,
+		boolean removeInsufficient,
+		int minSeries,
+		double  concaveScale,
+		boolean [] enable_in){
+	if (enable_in==null) {
+		enable_in=new boolean [dataVector.length];
+		for (int i=0;i<enable_in.length;i++)enable_in[i]=true;
+	}
+//	int minPoints=minSeries;
+	int debugThreshold=1;
+	double maxGap=sigma; // this point has this gap towards minimal
+	double kexp=-0.5/(sigma*sigma);
+	boolean [] enable_out=enable_in.clone();
+	double keepNearMin=sigma; // when removing non-concave points around min, skip very close ones
+	
+	double [][] flatSampleCoordinates=fieldFitting.getSampleCoordinates();
+	int numFilteredInsufficient = 0;
+	int numFiltered = 0;
+	int [][] numPoints=new int [getNumChannels()][getNumSamples()];
+	for (int chn=0;chn<numPoints.length;chn++)  for (int sample=0;sample<numPoints[chn].length;sample++) numPoints[chn][sample]=0;
+	for (int index=0;index<dataVector.length;index++) if ((index>=enable_in.length) ||enable_in[index]){
+		numPoints[dataVector[index].channel][dataVector[index].sampleIndex]++;
+	}
+	int [][][] indices=new int[numPoints.length][numPoints[0].length][];
+	for (int chn=0;chn<numPoints.length;chn++)  for (int sample=0;sample<numPoints[chn].length;sample++){
+		indices[chn][sample]=new int [numPoints[chn][sample]]; // may be 0 length
+		numPoints[chn][sample]=0; // will be used as a counter
+	}
+	for (int index=0;index<dataVector.length;index++) if ((index>=enable_in.length) ||enable_in[index]){
+		int chn=dataVector[index].channel;
+		int sample=dataVector[index].sampleIndex;
+//		numPoints[dataVector[index].channel][dataVector[index].sampleIndex]++;
+		indices[chn][sample][numPoints[chn][sample]++]=index;
+	}
+	for (int chn=0;chn<numPoints.length;chn++) for (int sample=0;sample<numPoints[chn].length;sample++){
+		if (indices[chn][sample].length<minSeries){
+			if (indices[chn][sample].length>0) {
+				if (debugLevel>0) System.out.println("filterConcave(): Channel "+chn+" sample "+sample+" has too few points - "+indices[chn][sample].length+" < "+minSeries);
+				if (removeInsufficient){
+					for (int i=0;i<indices[chn][sample].length;i++){
+						enable_out[indices[chn][sample][i]]=false;
+						numFilteredInsufficient++;
+					}
+				}
+			}
+		} else {
+			int [] thisIndices=indices[chn][sample];
+			double [] point_z = new double[thisIndices.length];
+			double [] point_v = new double[thisIndices.length];
+			double [] point_filt = new double[thisIndices.length];
+			double [] point_vdz = new double[thisIndices.length];
+			double [] point_slope = new double[thisIndices.length];
+			boolean [] nonConcave=new boolean[thisIndices.length];
+			for (int i=0;i<thisIndices.length;i++){
+//if ((chn==0) && (sample==7) && (i>=16)){
+//   System.out.println("DEBUG00");				
+//}
+				point_z[i]=fieldFitting.getMotorsZ(
+						dataVector[thisIndices[i]].motors, // 3 motor coordinates
+						flatSampleCoordinates[sample][0], // pixel x
+						flatSampleCoordinates[sample][1]); // pixel y
+				point_v[i]=dataVector[thisIndices[i]].value;
+				nonConcave[i]=false;
+			}			
+			for (int i=0;i<thisIndices.length;i++){
+				point_filt[i]=0.0;
+				double weight=0.0;
+				for (int j=0;j<thisIndices.length;j++){
+					double r=point_z[i]-point_z[j];
+					double w=Math.exp(kexp*r*r);
+					weight+=w;
+					point_filt[i]+=w*point_v[j];
+				}
+				point_filt[i]/=weight;
+			}
+			for (int i=0;i<thisIndices.length;i++){
+				point_vdz[i]=0.0;
+				double S0=0.0,SX=0.0,SY=0.0,SX2=0.0,SXY=0.0;
+				for (int j=0;j<thisIndices.length;j++){
+					double x=point_z[j]-point_z[i];
+					double v=point_filt[j];
+					double w=Math.exp(kexp*x*x);
+					S0+=w;
+					SX+=w*x;
+					SY+=w*v;
+					SX2+=w*x*x;
+					SXY+=w*x*v;
+				}
+				point_vdz[i]=(SXY*S0-SX*SY)/(SX2*S0-SX*SX);
+			}
+			// find min on filtered
+			int minIndex=0;
+			for (int i=1;i<thisIndices.length;i++) if (point_filt[i]<point_filt[minIndex]) minIndex=i;
+			for (int i=0;i<thisIndices.length;i++) {
+				if (i == minIndex) point_slope[i]=0.0;
+				else point_slope[i]= (point_filt[i]-point_filt[minIndex])/(point_z[i]-point_z[minIndex]);
+			}
+			//concaveScale
+			for (int i=0;i<thisIndices.length;i++) {
+				if (
+						(((point_z[i]-point_z[minIndex])>keepNearMin) && (concaveScale*point_slope[i]>point_vdz[i])) ||
+						(((point_z[minIndex]-point_z[i])>keepNearMin) && (concaveScale*point_slope[i]<point_vdz[i]))){
+					nonConcave[i]=true;
+				}
+			}
+			// find gaps 	double maxGap=sigma; // this point has this gap towards minimal
+			for (int i=0;i<thisIndices.length;i++) if (!nonConcave[i]){
+				if ((point_z[i]-point_z[minIndex])>keepNearMin){
+					boolean goodPoint=false;
+					for (int j=0;j<thisIndices.length;j++) if (
+							(point_z[j]>point_z[minIndex]) &&
+							(point_z[j]<point_z[i]) &&
+							((point_z[i]-point_z[j]) < maxGap )	){
+						goodPoint=true;
+						break;
+					}
+					if (!goodPoint) nonConcave[i]=true;
+				} else if ((point_z[minIndex]-point_z[i])>keepNearMin) {
+					boolean goodPoint=false;
+					for (int j=0;j<thisIndices.length;j++) if (
+							(point_z[j]<point_z[minIndex]) &&
+							(point_z[j]>point_z[i]) &&
+							((point_z[j]-point_z[i]) < maxGap )	){
+						goodPoint=true;
+						break;
+					}
+					if (!goodPoint) nonConcave[i]=true;
+				}
+			}
+			
+			// propagate
+			for (int i=0;i<thisIndices.length;i++) if (!nonConcave[i]){
+				if ((point_z[i]-point_z[minIndex])>keepNearMin){
+					for (int j=0;j<thisIndices.length;j++) if (
+							nonConcave[j] &&
+							(point_z[j]>point_z[minIndex]) &&
+							(point_z[j]<point_z[i])){
+						nonConcave[i]=true;
+						break;
+					}
+				} else if ((point_z[minIndex]-point_z[i])>keepNearMin) {
+					for (int j=0;j<thisIndices.length;j++) if (
+							nonConcave[j] &&
+							(point_z[j]<point_z[minIndex]) &&
+							(point_z[j]>point_z[i])){
+						nonConcave[i]=true;
+						break;
+					}
+				}
+			}
+			for (int i=0;i<thisIndices.length;i++) if (nonConcave[i]){
+				enable_out[thisIndices[i]]=false;
+				numFiltered++;
+			}
+
+			if (debugLevel>debugThreshold) {
+				System.out.println("filterConcave(), chn="+chn+", sample="+sample);
+
+				for (int i=0;i<thisIndices.length;i++){
+					System.out.println(i+": z="+ IJ.d2s(point_z[i],3)+", v="+ IJ.d2s(point_v[i],3)+
+							", filt="+ IJ.d2s(point_filt[i],3)+", vdz="+ IJ.d2s(100*point_vdz[i],3)+
+							", slope="+ IJ.d2s(100*point_slope[i],3)+ ", concave="+(nonConcave[i]?0.0:1.0));
+				}
+			}
+		}
+	}
+	if (debugLevel>0) System.out.println("filterConcave(): removed for too few points "+numFilteredInsufficient+" samples");
+	if (debugLevel>0) System.out.println("filterConcave(): removed for non-concave "+numFiltered+" samples");
+	return enable_out;
+}
+
 
 private boolean [] filterTooFar(double ratio,boolean [] enable_in){
 	if (enable_in==null) {
@@ -796,10 +1014,22 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
     if (filterInputTooFar){
     	boolean [] en=dataWeightsToBoolean();
     	en= filterTooFar(
-    			filterInpuFarRatio,
+    			filterInputFarRatio,
     			en);
     	maskDataWeights(en);
     }
+
+    if (filterInputConcave){
+    	boolean [] en=dataWeightsToBoolean();
+    	en= filterConcave(
+    			filterInputConcaveSigma,
+    	    	filterInputConcaveRemoveFew,
+    	    	filterInputConcaveMinSeries,
+    	    	filterInputConcaveScale,
+    			en);
+    	maskDataWeights(en);
+    }
+    
     
 }
 
@@ -2672,8 +2902,8 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         this.pX0_distortions=pX0;
         this.pY0_distortions=pY0;
         // copy distortions to current PX0/PY0
-        this.currentPX0=pX0_distortions;
-        this.currentPY0=pY0_distortions;
+//        this.currentPX0=pX0_distortions;
+//        this.currentPY0=pY0_distortions;
         this.sampleCoord=sampleCoord;
         this.measurements=new ArrayList<FocusingFieldMeasurement>();
         this.stopRequested=stopRequested;
@@ -2826,7 +3056,8 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
 
     	private int [][] sampleCorrChnParIndex=null;
     	private boolean [] dflt_sampleCorrSelect= {false,false,false,false};
-    	private double [] dflt_sampleCorrCost= {1.0,50.0,1.0,1.0};
+//    	private double [] dflt_sampleCorrCost= {1.0,50.0,1.0,1.0};
+    	private double [] dflt_sampleCorrCost= {0.3,20.0,0.3,1.0};
     	private double dflt_sampleCorrSigma= 2.0; // mm
     	private double dflt_sampleCorrPullZero= 0.75; // fraction
     	public final String [] channelDescriptions={
@@ -3598,7 +3829,9 @@ if ((chn==4) &&  (sampleIndex==3)){
             }
 */            
         }
-        
+        public double [][] getSampleCoordinates(){
+        	return sampleCoordinates;
+        }
         public double [] getCorrPar(int chn, int sampleIndex){
 /*            if ((sampleCorrChnParIndex==null) || (sampleCorrChnParIndex[chn]==null)) return null;
             double [] corr =new double [sampleCorrChnParIndex[chn].length];
