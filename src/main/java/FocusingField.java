@@ -86,9 +86,12 @@ public class FocusingField {
 	private boolean qb_invert;
 	private boolean z_relative;  // focal distance relative to center greeen
 	private boolean rslt_show_z_axial;
+	private boolean rslt_show_z_smooth;
 	private boolean rslt_show_z_individual;
 	private boolean rslt_show_f_axial;
+	private boolean rslt_show_f_smooth;
 	private boolean rslt_show_f_individual;
+	private double  rslt_show_smooth_sigma;
 	private double rslt_scan_below;
 	private double rslt_scan_above;
 	private double rslt_scan_step;
@@ -195,7 +198,7 @@ public class FocusingField {
     	useMinMeas= true;
     	useMaxMeas= true;
     	useThresholdMax=true;
-    	weightMode=1; // 0; // 0 - same weight, 1 - linear threshold difference, 2 - quadratic thershold difference
+    	weightMode=2; // 1; // 0 - same weight, 1 - linear threshold difference, >1 - power of PSF radius
     	weightRadius=0.0; //2.0; // Gaussian sigma in mm
     	k_red=0.7;
     	k_blue=0.4;
@@ -204,11 +207,14 @@ public class FocusingField {
     	qb_scan_step= 0.5; // um
     	qb_use_corrected=true;
     	qb_invert=true;
-    	z_relative=true;  // focal distance relative to center greeen
+    	z_relative=true;  // focal distance relative to best overall (false - center green )
     	rslt_show_z_axial=true;
+    	rslt_show_z_smooth=false;
     	rslt_show_z_individual=true;
     	rslt_show_f_axial=true;
+    	rslt_show_f_smooth=false;
     	rslt_show_f_individual=true;
+    	rslt_show_smooth_sigma=0.3; // mm
     	rslt_scan_below=-10.0;
     	rslt_scan_above= 10.0;
     	rslt_scan_step= 5.0;
@@ -301,9 +307,12 @@ public class FocusingField {
 		properties.setProperty(prefix+"qb_invert",qb_invert+"");
 		properties.setProperty(prefix+"z_relative",z_relative+"");
 		properties.setProperty(prefix+"rslt_show_z_axial",rslt_show_z_axial+"");
+		properties.setProperty(prefix+"rslt_show_z_smooth",rslt_show_z_smooth+"");
 		properties.setProperty(prefix+"rslt_show_z_individual",rslt_show_z_individual+"");
 		properties.setProperty(prefix+"rslt_show_f_axial",rslt_show_f_axial+"");
+		properties.setProperty(prefix+"rslt_show_f_smooth",rslt_show_f_smooth+"");
 		properties.setProperty(prefix+"rslt_show_f_individual",rslt_show_f_individual+"");
+		properties.setProperty(prefix+"rslt_show_smooth_sigma",rslt_show_smooth_sigma+"");
 		properties.setProperty(prefix+"rslt_scan_below",rslt_scan_below+"");
 		properties.setProperty(prefix+"rslt_scan_above",rslt_scan_above+"");
 		properties.setProperty(prefix+"rslt_scan_step",rslt_scan_step+"");
@@ -393,12 +402,18 @@ public class FocusingField {
 			z_relative=Boolean.parseBoolean(properties.getProperty(prefix+"z_relative"));
 		if (properties.getProperty(prefix+"rslt_show_z_axial")!=null)
 			rslt_show_z_axial=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_z_axial"));
+		if (properties.getProperty(prefix+"rslt_show_z_smooth")!=null)
+			rslt_show_z_smooth=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_z_smooth"));
 		if (properties.getProperty(prefix+"rslt_show_z_individual")!=null)
 			rslt_show_z_individual=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_z_individual"));
 		if (properties.getProperty(prefix+"rslt_show_f_axial")!=null)
 			rslt_show_f_axial=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_f_axial"));
+		if (properties.getProperty(prefix+"rslt_show_f_smooth")!=null)
+			rslt_show_f_smooth=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_f_smooth"));
 		if (properties.getProperty(prefix+"rslt_show_f_individual")!=null)
 			rslt_show_f_individual=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_f_individual"));
+		if (properties.getProperty(prefix+"rslt_show_smooth_sigma")!=null)
+			rslt_show_smooth_sigma=Double.parseDouble(properties.getProperty(prefix+"rslt_show_smooth_sigma"));
 		if (properties.getProperty(prefix+"rslt_scan_below")!=null)
 			rslt_scan_below=Double.parseDouble(properties.getProperty(prefix+"rslt_scan_below"));
 		if (properties.getProperty(prefix+"rslt_scan_above")!=null)
@@ -512,7 +527,7 @@ public boolean configureDataVector(String title, boolean forcenew, boolean enabl
     gd.addCheckbox("Filter non-concave areas from best focus for each sample",filterInputConcave);
     gd.addNumericField("Concave filter sigma",filterInputConcaveSigma,3,5,"um");
     gd.addCheckbox("Remove small series ",filterInputConcaveRemoveFew);
-    gd.addNumericField("Minimal number of samples (to remove / apply concave vilter) ",filterInputConcaveMinSeries,3,5,"samples");
+    gd.addNumericField("Minimal number of samples (to remove / apply concave filter) ",filterInputConcaveMinSeries,3,5,"samples");
     gd.addNumericField("Concave filter sigma",filterInputConcaveScale,3,5,"<=1.0");
     
     gd.addCheckbox("Sagittal channels are master channels (false - tangential are masters)",sagittalMaster);
@@ -807,6 +822,24 @@ private boolean [] filterConcave(
 				enable_out[thisIndices[i]]=false;
 				numFiltered++;
 			}
+			
+			// See if too few are left - remove them
+			int numPointsLeft=0;
+			for (int i=0;i<thisIndices.length;i++) if (enable_out[thisIndices[i]]){
+				numPointsLeft++;
+			}
+			if (numPointsLeft<minSeries){
+				if (debugLevel>0) System.out.println("filterConcave(): Channel "+chn+" sample "+sample+" has too few points left after filter - "+numPointsLeft+" < "+minSeries);
+				if (removeInsufficient){
+					for (int i=0;i<indices[chn][sample].length;i++){
+						if (enable_out[thisIndices[i]]) {
+							enable_out[indices[chn][sample][i]]=false;
+							numFilteredInsufficient++;
+						}
+					}
+				}
+			}
+			
 
 			if (debugLevel>debugThreshold) {
 				System.out.println("filterConcave(), chn="+chn+", sample="+sample);
@@ -1768,6 +1801,34 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
     }
 
     public void compareDrDerivatives(double [] vector){
+    	double delta=0.00010; // make configurable
+    	if (debugParameter>=0){
+    		String parName="";
+    		if ((debugParameterNames!=null) && (debugParameterNames.length>debugParameter)) parName=debugParameterNames[debugParameter];
+    		System.out.println("Debugging derivatives for parameter #"+debugParameter+" ("+parName+")");
+    		//debugParameterNames
+            double [] vector_dp=vector.clone();
+            vector_dp[debugParameter]+=delta;
+            double [] fx_dp=createFXandJacobian(vector_dp,false);
+            double [] fx= createFXandJacobian(vector,true);
+            for (int i=0;i<fx.length;i++){
+            	if ((debugPoint>=0) && (debugPoint!=i)) continue; // debug only single point
+    			int nMeasPoints=dataVector.length;
+    			String pointName="";
+    			if (i<nMeasPoints){
+    				pointName="chn"+dataVector[i].channel+":"+dataVector[i].sampleIndex+"__"+dataVector[i].timestamp;
+//    			} else {
+//    				int overData=i-nMeasPoints;
+//    				if ((corrNames!=null) && (overData< corrNames.length)){
+//    					pointName="correction_parameter-"+corrNames[overData];
+//    				} else {
+//    					pointName="unknown-point_+"+overData;
+//    				}
+    			}
+                System.out.println(i+": "+pointName+" fx= "+fx[i]+" delta_fx= "+((fx_dp[i]-fx[i])/delta)+" df/dp= "+jacobian[debugParameter][i]);
+            }
+    	}
+/*    	
         boolean [] centerSelect=fieldFitting.getCenterSelect();
         if (!centerSelect[0] || !centerSelect[1]){
             System.out.println("compareDrDerivatives(): Both px0 and px1 parameters should be enabled, aborting");
@@ -1785,6 +1846,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
          System.out.println(" df/dx= "+jacobian[0][i]+" df/dy= "+jacobian[1][i]);
          
      }
+*/     
     }
     
     
@@ -1821,7 +1883,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
             this.lMAArrays=calculateJacobianArrays(this.currentfX);
             this.currentRMS= calcErrorDiffY(this.currentfX,false);
             this.currentRMSPure=calcErrorDiffY(this.currentfX, true);
-			msg=": initial RMS="+IJ.d2s(this.currentRMS,8)+" (pure RMS"+IJ.d2s(this.currentRMSPure,8)+")"+
+			msg=": initial RMS="+IJ.d2s(this.currentRMS,8)+" (pure RMS="+IJ.d2s(this.currentRMSPure,8)+")"+
 					". Calculating next Jacobian. Points:"+this.dataValues.length+" Parameters:"+this.currentVector.length;
 			if (debugLevel>1) System.out.println(msg);
 			if (this.updateStatus) IJ.showStatus(msg);
@@ -2339,29 +2401,42 @@ public void listCombinedResults(){
 // public double fwhm_to_mtf50=500.0; // put actual number
     
     double [] center_z=fieldFitting.getZCenters();
-     GenericDialog gd = new GenericDialog("Setup results table");
-    double best_qb_axial= fieldFitting.getBestQualB(
-                k_red,
-                k_blue,
-                false);
-    double best_qb_corr= fieldFitting.getBestQualB(
+    double [] centerFWHM={
+    		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
+    		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
+    		fieldFitting.getCalcValuesForZ(center_z[2],0.0)[5]
+    };
+    double [] best_qb_axial= fieldFitting.getBestQualB(
+            k_red,
+            k_blue,
+            false);
+    double [] best_qb_corr= fieldFitting.getBestQualB(
             k_red,
             k_blue,
             true);
-    gd.addMessage("Best center focus for Red "+ IJ.d2s(center_z[0],3)+" um");
-    gd.addMessage("Best center focus for Green "+ IJ.d2s(center_z[1],3)+" um");
-    gd.addMessage("Best center focus for Blue "+ IJ.d2s(center_z[2],3)+" um");
-    gd.addMessage("Best composite distance for FWHM^4, axial model "+ IJ.d2s(best_qb_axial,3)+" um");
-    gd.addMessage("Best composite distance for FWHM^4, individual "+ IJ.d2s(best_qb_corr,3)+" um");
+    GenericDialog gd = new GenericDialog("Setup results table FWHM="+IJ.d2s(best_qb_corr[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/best_qb_corr[1],2)+" lp/mm");
+    gd.addMessage("Best center focus for Red "+ IJ.d2s(center_z[0],3)+" um"+
+    		", FWHM="+IJ.d2s(centerFWHM[0],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/centerFWHM[0],2)+" lp/mm");
+    gd.addMessage("Best center focus for Green "+ IJ.d2s(center_z[1],3)+" um"+
+    		", FWHM="+IJ.d2s(centerFWHM[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/centerFWHM[1],2)+" lp/mm");
+    gd.addMessage("Best center focus for Blue "+ IJ.d2s(center_z[2],3)+" um"+
+    		", FWHM="+IJ.d2s(centerFWHM[2],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/centerFWHM[2],2)+" lp/mm");
+    gd.addMessage("Best composite distance for FWHM^4, axial model "+ IJ.d2s(best_qb_axial[0],3)+" um"+
+    		", FWHM="+IJ.d2s(best_qb_axial[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/best_qb_axial[1],2)+" lp/mm");
+    gd.addMessage("Best composite distance for FWHM^4, individual "+ IJ.d2s(best_qb_corr[0],3)+"  um"+
+    		", FWHM="+IJ.d2s(best_qb_corr[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/best_qb_corr[1],2)+" lp/mm");
     for (int i=0;i<rslt_show_chn.length;i++){
-    gd.addCheckbox("Show results for "+fieldFitting.getDescription(i), this.rslt_show_chn[i]);
+    	gd.addCheckbox("Show results for "+fieldFitting.getDescription(i), this.rslt_show_chn[i]);
     }
     gd.addCheckbox("Show best focus distance (axial model)", this.rslt_show_z_axial);
+    gd.addCheckbox("Show ring-averaged focus distance", this.rslt_show_z_smooth);
     gd.addCheckbox("Show best focus distance (per-sample adjusted)", this.rslt_show_z_individual);
     gd.addCheckbox("Show constant-z sections (axial model)", this.rslt_show_f_axial);
+    gd.addCheckbox("Show ring-averaged per-sample adjusted section data", this.rslt_show_f_smooth);
     gd.addCheckbox("Show constant-z sections (per-sample adjusted)", this.rslt_show_f_individual);
+    gd.addNumericField("Ring averaging radial sigma", this.rslt_show_smooth_sigma, 3,5,"mm");
     gd.addCheckbox("Show mtf50 (false - PSF FWHM)", this.rslt_mtf50_mode);
-    gd.addCheckbox("Show focal distance relative to center green (false - motor absolute)", this.z_relative);
+    gd.addCheckbox("Show focal distance relative to center green (false - best_qb_corr[1])", this.z_relative);
     
     gd.addMessage("Multiple section setup:");
         gd.addNumericField("Scan from (relative to green center)", this.rslt_scan_below, 3,7,"um");
@@ -2373,12 +2448,16 @@ public void listCombinedResults(){
      }
     
     for (int i=0;i<rslt_show_chn.length;i++){
-    this.rslt_show_chn[i]=gd.getNextBoolean();
+    	this.rslt_show_chn[i]=gd.getNextBoolean();
     }
     this.rslt_show_z_axial= gd.getNextBoolean();
+    this.rslt_show_z_smooth= gd.getNextBoolean();
     this.rslt_show_z_individual= gd.getNextBoolean();
     this.rslt_show_f_axial= gd.getNextBoolean();
+    this.rslt_show_f_smooth= gd.getNextBoolean();
     this.rslt_show_f_individual= gd.getNextBoolean();
+    this.rslt_show_smooth_sigma= gd.getNextNumber();
+
     this.rslt_mtf50_mode= gd.getNextBoolean();
     this.z_relative= gd.getNextBoolean();
     this.rslt_scan_below= gd.getNextNumber();
@@ -2388,17 +2467,63 @@ public void listCombinedResults(){
     listCombinedResults(
     		"Field curvature measuremnts results", //String title,
     		null, //String path,
-            z_relative?center_z[1]:0.0,
+            z_relative?best_qb_corr[0]:center_z[1],
     		rslt_show_chn, //boolean [] show_chn,
     		rslt_show_z_axial, //boolean show_z_axial,
+    		rslt_show_z_smooth, // boolean rslt_show_z_smooth;
     		rslt_show_z_individual, //boolean show_z_individual,
     		rslt_show_f_axial, //boolean show_f_axial,
+    		rslt_show_f_smooth, //boolean rslt_show_f_smooth;
     		rslt_show_f_individual, //boolean show_f_individual,
+    		rslt_show_smooth_sigma, // double rslt_show_smooth_sigma;
     		center_z[1]+rslt_scan_below, // double scan_below,
     		center_z[1]+rslt_scan_above, //double scan_above,
     		rslt_scan_step, //double scan_step,
     		rslt_mtf50_mode); //boolean freq_mode)
 }
+
+public double [][] filterListSamples(
+		double sigma,
+		double [] radiuses, // numsaples+1 long!
+		double [] saggital, // numsamples!
+		double []tangential,
+		double [] saggitalWeights, // numsamples long
+		double [] tangentialWeights){// numsamples long
+	double [][] data={saggital,tangential};
+	double [][] weights={saggitalWeights,tangentialWeights};
+	
+	int len=saggital.length+1;
+	double [][] result = new double[2][len];
+	double kexp=-0.5/(sigma*sigma);
+	for (int dir=0;dir<2;dir++) {
+		if (data[dir]!=null) {
+			result[dir] = new double[len];
+			for (int i=0;i<len;i++){
+				double sum_w=0.0;
+				double sum_v=0.0;
+				for (int otherDir=0;otherDir<2;otherDir++) {
+					if (data[otherDir]!=null)
+						for (int j=1;j<len;j++){
+							double r= (otherDir==dir)?(radiuses[i]-radiuses[j]):(radiuses[i]+radiuses[j]);
+							double w=Math.exp(kexp*r*r);
+							if (weights[otherDir]!=null){
+								w*=weights[otherDir][j-1];
+							}
+							if (!Double.isNaN(data[otherDir][j-1])) {
+								sum_v+=data[otherDir][j-1]*w;
+								sum_w+=w;
+							}
+						}
+				}
+				result[dir][i]=(sum_w>0.0)?(sum_v/sum_w):0.0;
+			}
+		} else {
+			result[dir]=null;
+		}
+	}
+	return result;
+}
+
 
 public void listCombinedResults(
 		String title,
@@ -2406,14 +2531,25 @@ public void listCombinedResults(
 		double z0, // subtract from z
 		boolean [] show_chn,
 		boolean show_z_axial,
+		boolean show_z_smooth,
 		boolean show_z_individual,
 		boolean show_f_axial,
+		boolean show_f_smooth,
 		boolean show_f_individual,
+		double smooth_sigma,
 		double scan_below,
 		double scan_above,
 		double scan_step,
 		boolean freq_mode){
 	String [] chnNames={"RS","RT","GS","GT","BS","BT"};
+	// Calculate weights of each channel/sample
+	double [][] sampleWeights=new double[getNumChannels()][getNumSamples()];
+	for (int chn=0;chn<sampleWeights.length;chn++)  for (int sample=0;sample<sampleWeights[chn].length;sample++) {
+		sampleWeights[chn][sample]=0.0;
+	}
+	for (int index=0;index<dataVector.length;index++) {
+		sampleWeights[dataVector[index].channel][dataVector[index].sampleIndex] += dataWeights[index];
+	}
 
 	double k=this.fwhm_to_mtf50; //TODO: correct psf fwhm to mtf50 conversion
 	//     double k=2*Math.log(2.0)/Math.PI*1000;
@@ -2424,6 +2560,12 @@ public void listCombinedResults(
 			if (show_chn[i])header+="\tZ"+chnNames[i];
 		}
 	}
+	if (show_z_smooth){
+		for (int i=0;i<show_chn.length;i++){
+			if (show_chn[i])header+="\tZ"+chnNames[i]+"~";
+		}
+	}
+	
 	if (show_z_individual){
 		for (int i=0;i<show_chn.length;i++){
 			if (show_chn[i])header+="\tZ"+chnNames[i]+"*";
@@ -2434,6 +2576,11 @@ public void listCombinedResults(
 		if (show_f_axial) {
 			for (int i=0;i<show_chn.length;i++){
 				if (show_chn[i])header+="\t"+chnNames[i]+IJ.d2s(z-z0,1);
+			}
+		}
+		if (show_f_smooth) {
+			for (int i=0;i<show_chn.length;i++){
+				if (show_chn[i])header+="\t"+chnNames[i]+IJ.d2s(z-z0,1)+"~";
 			}
 		}
 		if (show_f_individual) {
@@ -2448,7 +2595,7 @@ public void listCombinedResults(
 	double [] radiuses=new double [numSamples+1];
 	radiuses[0]=0.0;
 	for (int i=0;i<numSamples;i++) radiuses[i+1]=radiuses0[i];
-	double [][][][] f_values=new double [numSect][2][][];
+	double [][][][] f_values=new double [numSect][3][][];
 	int sect=0;
 	for (double z=scan_below;z<=scan_above;z+=scan_step){
 		if (show_f_axial){
@@ -2482,9 +2629,26 @@ public void listCombinedResults(
 		} else {
 			f_values[sect][1]=null;
 		}
+		if (show_f_smooth){
+			double [][] f=fieldFitting.getCalcValuesForZ(z, true,true); // corrected (individual), 
+			f_values[sect][2]=new double [f.length][];
+			for (int chn=0;chn<f.length;chn+=2){
+				double [][] smooth=filterListSamples(
+						smooth_sigma,
+						radiuses,  // all 3 arrays should be numsaples+1 long
+						f[chn] ,   //double [] saggital, // not ordered, but [0]==0.0
+						f[chn+1] , //double []tangential,
+						sampleWeights[chn], //double [] saggitalWeights, // numsamples long
+						sampleWeights[chn+1]); //double [] tangentialWeights){// numsamples long
+				f_values[sect][2][chn]=smooth[0];
+				f_values[sect][2][chn+1]=smooth[1];
+			}
+		} else {
+			f_values[sect][2]=null;
+		}
 		sect++;
 	}
-	double [][][] z_values=new double [2][][];
+	double [][][] z_values=new double [3][][];
 	if (show_z_axial){
 		double [][] zai=fieldFitting.getCalcZ(false,true);
 		double [] zai0=fieldFitting.getCalcZ(0.0);
@@ -2514,12 +2678,39 @@ public void listCombinedResults(
 			} else z_values[1][chn]=null;
 		}
 	} else z_values[1] = null;
+	if (show_f_smooth){
+		double [][] zai=fieldFitting.getCalcZ(true,true);
+		z_values[2]=new double [zai.length][];
+		for (int chn=0;chn<zai.length;chn+=2){
+			double [][] smooth=filterListSamples(
+					smooth_sigma,
+					radiuses,  // all 3 arrays should be numsaples+1 long
+					zai[chn] ,   //double [] saggital, // not ordered, but [0]==0.0
+					zai[chn+1] , //double []tangential,
+					sampleWeights[chn], //double [] saggitalWeights, // numsamples long
+					sampleWeights[chn+1]); //double [] tangentialWeights){// numsamples long
+			z_values[2][chn]=smooth[0];
+			z_values[2][chn+1]=smooth[1];
+		}
+	} else {
+		z_values[2]=null;
+	}
+	
+	
+	
+	
+	
 	StringBuffer sb = new StringBuffer();
 	for (int n=0;n<radiuses.length;n++){
 		sb.append(IJ.d2s(radiuses[n],3));
 		if (show_z_axial){
 			for (int i=0;i<show_chn.length;i++){
 				if (show_chn[i]) sb.append("\t"+IJ.d2s(z_values[0][i][n]-z0,3));
+			}
+		}
+		if (show_z_smooth){
+			for (int i=0;i<show_chn.length;i++){
+				if (show_chn[i]) sb.append("\t"+IJ.d2s(z_values[2][i][n]-z0,3));
 			}
 		}
 		if (show_z_individual){
@@ -2533,6 +2724,13 @@ public void listCombinedResults(
 					sb.append("\t"+IJ.d2s(k/f_values[s][0][i][n],3));
 				} else {
 					sb.append("\t"+IJ.d2s(f_values[s][0][i][n],3));
+				}
+			}
+			if (show_f_smooth) for (int i=0;i<show_chn.length;i++) if (show_chn[i]) {
+				if (freq_mode){
+					sb.append("\t"+IJ.d2s(k/f_values[s][2][i][n],3));
+				} else {
+					sb.append("\t"+IJ.d2s(f_values[s][2][i][n],3));
 				}
 			}
 			if (show_f_individual) for (int i=0;i<show_chn.length;i++) if (show_chn[i]) {
@@ -2558,20 +2756,30 @@ public void listCombinedResults(
 public void listScanQB(){
     
     double [] center_z=fieldFitting.getZCenters();
-    double best_qb_axial= fieldFitting.getBestQualB(
+    double [] centerFWHM={
+    		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
+    		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
+    		fieldFitting.getCalcValuesForZ(center_z[2],0.0)[5]
+    };
+    double [] best_qb_axial= fieldFitting.getBestQualB(
                 k_red,
                 k_blue,
                 false);
-    double best_qb_corr= fieldFitting.getBestQualB(
+    double [] best_qb_corr= fieldFitting.getBestQualB(
                 k_red,
                 k_blue,
                 true);
-     GenericDialog gd = new GenericDialog("Setup quality-B table");
-    gd.addMessage("Best center focus for Red "+ IJ.d2s(center_z[0],3)+" um");
-    gd.addMessage("Best center focus for Green "+ IJ.d2s(center_z[1],3)+" um");
-    gd.addMessage("Best center focus for Blue "+ IJ.d2s(center_z[2],3)+" um");
-    gd.addMessage("Best composite distance for FWHM^4, axial model "+ IJ.d2s(best_qb_axial,3)+" um");
-    gd.addMessage("Best composite distance for FWHM^4, individual "+ IJ.d2s(best_qb_corr,3)+" um");
+     GenericDialog gd = new GenericDialog("Setup quality-B table FWHM="+IJ.d2s(best_qb_corr[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/best_qb_corr[1],2)+" lp/mm");
+     gd.addMessage("Best center focus for Red "+ IJ.d2s(center_z[0],3)+" um"+
+     		", FWHM="+IJ.d2s(centerFWHM[0],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/centerFWHM[0],2)+" lp/mm");
+     gd.addMessage("Best center focus for Green "+ IJ.d2s(center_z[1],3)+" um"+
+     		", FWHM="+IJ.d2s(centerFWHM[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/centerFWHM[1],2)+" lp/mm");
+     gd.addMessage("Best center focus for Blue "+ IJ.d2s(center_z[2],3)+" um"+
+     		", FWHM="+IJ.d2s(centerFWHM[2],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/centerFWHM[2],2)+" lp/mm");
+     gd.addMessage("Best composite distance for FWHM^4, axial model "+ IJ.d2s(best_qb_axial[0],3)+" um"+
+     		", FWHM="+IJ.d2s(best_qb_axial[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/best_qb_axial[1],2)+" lp/mm");
+     gd.addMessage("Best composite distance for FWHM^4, individual "+ IJ.d2s(best_qb_corr[0],3)+"  um"+
+     		", FWHM="+IJ.d2s(best_qb_corr[1],3)+"um, MTF50="+IJ.d2s(fwhm_to_mtf50/best_qb_corr[1],2)+" lp/mm");
         gd.addNumericField("Scan from (relative to green center)", this.qb_scan_below, 3,7,"um");
         gd.addNumericField("Scan to (relative to green center)", this.qb_scan_above, 3,7,"um");
         gd.addNumericField("Scan step", this.qb_scan_step, 3,7,"um");
@@ -2579,7 +2787,7 @@ public void listScanQB(){
         gd.addNumericField("Relative (to green) weight of blue channel",100* this.k_blue, 3,7,"%");
         gd.addCheckbox("Use per-sample location corrected data", this.qb_use_corrected);
         gd.addCheckbox("Show mtf50 (false - PSF FWHM)", this.qb_invert);
-        gd.addCheckbox("Show focal distance relative to center green (false - motor absolute)", this.z_relative);
+        gd.addCheckbox("Show focal distance relative to best composite focus (false - to center green )", this.z_relative);
         
      gd.showDialog();
      if (gd.wasCanceled()) {
@@ -2598,7 +2806,7 @@ public void listScanQB(){
         listScanQB(
              "Focus quality vs. distance", // String title,
              null, //String path,
-             z_relative?center_z[1]:0.0,
+             z_relative?best_qb_corr[0]:center_z[1],
              center_z[1]+this.qb_scan_below, //double min_z, // absolute
              center_z[1]+this.qb_scan_above, //double max_z,
              this.qb_scan_step , //double step_z,
@@ -2641,6 +2849,31 @@ public void listScanQB(
 //        for (String s:this.fieldFitting.getParameterValueStrings(true,true)){ //this.showDisabledParams)){ //
 //         sb.append(s+"\n");
 //        }
+        
+// Add result to the bottom of the file
+        double [] center_z=fieldFitting.getZCenters();
+        double [] centerFWHM={
+        		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
+        		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
+        		fieldFitting.getCalcValuesForZ(center_z[2],0.0)[5]
+        };
+//        double [] best_qb_axial= fieldFitting.getBestQualB(
+//                k_red,
+//                k_blue,
+//                false);
+        double [] best_qb_corr= fieldFitting.getBestQualB(
+                k_red,
+                k_blue,
+                true);
+        sb.append("Results:\t---\t---\t---\t---\n");
+        sb.append("Red center"+"\t"+  IJ.d2s(center_z[0],3)+"\t"+IJ.d2s(centerFWHM[0],3)+"\t"+IJ.d2s(fwhm_to_mtf50/centerFWHM[0],2)+"\t"+"lp/mm" +"\n");
+        sb.append("Green center"+"\t"+IJ.d2s(center_z[1],3)+"\t"+IJ.d2s(centerFWHM[1],3)+"\t"+IJ.d2s(fwhm_to_mtf50/centerFWHM[1],2)+"\t"+"lp/mm" +"\n");
+        sb.append("Blue center"+"\t"+ IJ.d2s(center_z[2],3)+"\t"+IJ.d2s(centerFWHM[2],3)+"\t"+IJ.d2s(fwhm_to_mtf50/centerFWHM[2],2)+"\t"+"lp/mm" +"\n");
+        sb.append("Composite ^4"+"\t"+ IJ.d2s(best_qb_corr[0],3)+"\t"+IJ.d2s(best_qb_corr[1],3)+"\t"+IJ.d2s(fwhm_to_mtf50/best_qb_corr[1],2)+"\t"+"lp/mm" +"\n");
+        
+        sb.append("Lens center "+"\t"+  "used" +             "\t"+IJ.d2s(currentPX0,1)+"\t"+ IJ.d2s(currentPY0,1)+"\t"+"pix" +"\n");
+        sb.append("Lens center "+"\t"+  "distortions" +      "\t"+IJ.d2s(pX0_distortions,1)+"\t"+IJ.d2s(pY0_distortions,1)+"\t"+"pix" +"\n");
+        
         if (path!=null) {
             CalibrationFileManagement.saveStringToFile (
                     path,
@@ -3106,7 +3339,11 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
     	private int [][] sampleCorrChnParIndex=null;
     	private boolean [] dflt_sampleCorrSelect= {false,false,false,false};
 //    	private double [] dflt_sampleCorrCost= {1.0,50.0,1.0,1.0};
-    	private double [] dflt_sampleCorrCost= {0.3,20.0,0.3,1.0};
+//    	private double [] dflt_sampleCorrCost= {0.3,20.0,0.3,1.0};
+//    	private double [] dflt_sampleCorrCost= {0.05,10.0,2.0,1.0};
+//    	private double [] dflt_sampleCorrCost= {0.05,1.0,1.0,1.0};
+//    	private double [] dflt_sampleCorrCost= {0.5,0.5,2.0,1.0};
+    	private double [] dflt_sampleCorrCost= {0.1,0.5,2.0,1.0};
     	private double dflt_sampleCorrSigma= 2.0; // mm
     	private double dflt_sampleCorrPullZero= 0.75; // fraction
     	public final String [] channelDescriptions={
@@ -3302,8 +3539,12 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             return sampleCorrRadius;
         }
 
-        
-        
+        public double getSampleRadius(int sample){
+        	double dx=sampleCoordinates[sample][0]-pXY[0];
+        	double dy=sampleCoordinates[sample][1]-pXY[1];
+        	return getPixelMM()*Math.sqrt(dx*dx+dy*dy);
+        }
+
         
         public void showCurvCorr(String title){
             int width=getSampleWidth();
@@ -3378,9 +3619,9 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                 if ((curvatureModel[chn]!=null) && (allChannels || channelSelect[chn])){
                     result[chn]=new double [numSamples];
                     for (int sampleIndex=0;sampleIndex<numSamples;sampleIndex++) {
-if ((chn==3) &&  (sampleIndex==23)){
-	System.out.println("getCalcValuesForZ(), chn="+chn+", sampleIndex="+sampleIndex);
-}
+//if ((chn==3) &&  (sampleIndex==23)){
+//	System.out.println("getCalcValuesForZ(), chn="+chn+", sampleIndex="+sampleIndex);
+//}
                     	
                         result[chn][sampleIndex]=curvatureModel[chn].getFdF(
                                 corrected?getCorrPar(chn,sampleIndex):null,
@@ -3400,13 +3641,81 @@ if ((chn==3) &&  (sampleIndex==23)){
             double [] result=new double [6];
             for (int chn=0;chn<result.length;chn++) {
                 if (curvatureModel[chn]!=null){
-                    result[chn]=curvatureModel[chn].getAr(r, null)[0];
+//                    result[chn]=curvatureModel[chn].getAr(r, null)[0];
+                    result[chn]=findBestZ(chn, -1, false);
                 } else {
                     result[chn]=Double.NaN;
                 }
             }
             return result;
         }        
+        public double findBestZ(
+        		int channel,
+        		int sampleIndex, // -1 for center
+        		boolean corrected){
+        	return findBestZ(
+            		channel,
+            		sampleIndex, // -1 for center
+            		corrected, // 
+                    1.0, // double iniStep,
+                    0.0001); //double precision)
+        }
+
+        public double findBestZ(
+        		int channel,
+        		int sampleIndex, // -1 for center
+        		boolean corrected, // 
+                double iniStep,
+                double precision){
+            int maxSteps=100;
+        	double [] corrPars=corrected?getCorrPar(channel,sampleIndex):null;
+        	double r=(sampleIndex>=0)?getSampleRadius(sampleIndex):0.0;
+        	double z0=curvatureModel[channel].getAr( r, corrPars)[0];
+        	if (Double.isNaN(z0)) return z0;
+        	double f0=getCalcValuesForZ(z0, r)[channel];
+            double z1=z0+iniStep;
+            double f1=getCalcValuesForZ(z1,r)[channel];
+            double dir = (f1<f0)?1.0:-1.0;
+            double z_prev,f_prev;
+            if (dir>0) {
+                z_prev=z0;
+                f_prev=f0;
+                z0=z1;
+                f0=f1;
+            } else {
+                z_prev=z1;
+                f_prev=f1;
+            }
+            int step;
+            for (step=0;step<maxSteps;step++) {
+                z1=z0+dir*iniStep;
+                f1=getCalcValuesForZ(z1,r)[channel];
+                if (f1>f0) break;
+                z_prev=z0;
+                f_prev=f0;
+                z0=z1;
+                f0=f1;
+            }
+            if (step>=maxSteps){
+                System.out.println("Failed to find minimum in "+maxSteps+" steps");
+                return Double.NaN;
+            }
+            // now dividing z_prev - z0 - z1 range
+            for (step=0;step<maxSteps;step++) {
+                if (f_prev>f1){
+                    z_prev=z0;
+                    f_prev=f0;
+                } else {
+                    z1=z0;
+                    f1=f0;
+                }
+                z0=(z_prev+z1)/2;
+//                f0=getCalcValuesForZ(z1,r)[channel]; // ????
+                f0=getCalcValuesForZ(z0,r)[channel];
+                if (Math.abs(z0-z_prev)<precision) break;
+            }
+            return z0;
+        }
         
         /**
          * calculate distance to "best focus" for each channel (color and S/T) for each sample
@@ -3428,10 +3737,18 @@ if ((chn==3) &&  (sampleIndex==23)){
                     result[chn]=new double [numSamples];
                     for (int sampleIndex=0;sampleIndex<numSamples;sampleIndex++) {
                     	if (goodSamples[chn][sampleIndex]) {
+/*                    		
                         result[chn][sampleIndex]=curvatureModel[chn].getAr(
                                 sampleCorrRadius[sampleIndex],
                                 corrected?getCorrPar(chn,sampleIndex):null
                                 )[0];
+//That was just the initial estimation, true only if z^1... are all 0                        
+*/                                
+
+                        result[chn][sampleIndex]=findBestZ(
+                        		chn,         // int channel,
+                        		sampleIndex, // int sampleIndex,
+                        		corrected);   //boolean corrected,
                     	} else {
                     		result[chn][sampleIndex]=Double.NaN;
                     	}
@@ -3449,10 +3766,17 @@ if ((chn==3) &&  (sampleIndex==23)){
         }
         public double [] getZCenters(){
 //            int chn=3; // Green, Tangential
-            double [] result = {
+/*            double [] result = {
                     curvatureModel[1].getCenterVector()[0], // Red, Tangential
                     curvatureModel[3].getCenterVector()[0], // Green, Tangential
                     curvatureModel[5].getCenterVector()[0]}; // Blue, Tangential
+ */           
+            double [] result = {
+            		findBestZ(1, -1, false),
+            		findBestZ(3, -1, false),
+            		findBestZ(5, -1, false),
+            		};
+            
             return result;
         }
         public double [] getQualB(double z, boolean corrected){
@@ -3518,7 +3842,7 @@ if ((chn==3) &&  (sampleIndex==23)){
                     (k[0]+k[1]+k[2])));
         }
 
-        public double getBestQualB(
+        public double [] getBestQualB(
                 double kr,
                 double kb,
                 boolean corrected){
@@ -3526,7 +3850,7 @@ if ((chn==3) &&  (sampleIndex==23)){
             
         }
         
-        public double getBestQualB( // find minimum
+        public double [] getBestQualB( // find minimum
                 double kr,
                 double kb,
                 boolean corrected,
@@ -3539,43 +3863,47 @@ if ((chn==3) &&  (sampleIndex==23)){
             double qb1=getQualB(z1,kr,kb,corrected);
             double dir = (qb1<qb0)?1.0:-1.0;
             double z_prev,qb_prev;
+            double [] result={Double.NaN,Double.NaN};
             if (dir>0) {
-                z_prev=z0;
-                qb_prev=qb0;
-                z0=z1;
-                qb0=qb1;
+            	z_prev=z0;
+            	qb_prev=qb0;
+            	z0=z1;
+            	qb0=qb1;
             } else {
-                z_prev=z1;
-                qb_prev=qb1;
+            	z_prev=z1;
+            	qb_prev=qb1;
             }
             int step;
             for (step=0;step<maxSteps;step++) {
-                z1=z0+dir*iniStep;
-                qb1=getQualB(z1,kr,kb,corrected);
-                if (qb1>qb0) break;
-                z_prev=z0;
-                qb_prev=qb0;
-                z0=z1;
-                qb0=qb1;
+            	z1=z0+dir*iniStep;
+            	qb1=getQualB(z1,kr,kb,corrected);
+            	if (qb1>qb0) break;
+            	z_prev=z0;
+            	qb_prev=qb0;
+            	z0=z1;
+            	qb0=qb1;
             }
             if (step>=maxSteps){
-                System.out.println("Failed to find minimum in "+maxSteps+" steps");
-                return Double.NaN;
+            	System.out.println("Failed to find minimum in "+maxSteps+" steps");
+            	return result;
             }
             // now dividing z_prev - z0 - z1 range
             for (step=0;step<maxSteps;step++) {
-                if (qb_prev>qb1){
-                    z_prev=z0;
-                    qb_prev=qb0;
-                } else {
-                    z1=z0;
-                    qb1=qb0;
-                }
-                z0=(z_prev+z1)/2;
-                qb0=getQualB(z1,kr,kb,corrected);
-                if (Math.abs(z0-z_prev)<precision) break;
+            	if (qb_prev>qb1){
+            		z_prev=z0;
+            		qb_prev=qb0;
+            	} else {
+            		z1=z0;
+            		qb1=qb0;
+            	}
+            	z0=(z_prev+z1)/2;
+//            	qb0=getQualB(z1,kr,kb,corrected); // ???????????????????
+            	qb0=getQualB(z0,kr,kb,corrected);
+            	if (Math.abs(z0-z_prev)<precision) break;
             }
-            return z0;
+            result[0]=z0;
+            result[1]=qb0;
+            		return result; // z0;
         }
         
         
@@ -3838,12 +4166,13 @@ if ((chn==3) &&  (sampleIndex==23)){
                                         double dx=sampleCoordinates[i][0]-sampleCoordinates[i][0];
                                         double dy=sampleCoordinates[i][1]-sampleCoordinates[i][1];
                                         double a= Math.exp(k*(dx*dx+dy*dy));
+                                        if (a<0.01) a=0.0; // reduce numbner of non-zero matrix elements
                                         sampleCorrCrossWeights[nChn][nPar][i][j]=a;
                                         sw+=a;
                                     }
                                 }
                                 double normalizedCost=sampleCorrCost[nChn][nPar];
-                                if (sampleSeriesWeights!=null) normalizedCost*=sampleSeriesWeights[nChn][i];
+                                if ((sampleSeriesWeights!=null) && ((sampleSeriesWeights[nChn][i]!=0.0))) normalizedCost*=sampleSeriesWeights[nChn][i];
                                 if ((sampleCorrPullZero[nChn][nPar]==0) ||(sampleCorrCost[nChn][nPar]==0)) sw=0.0;
                                 else if (sw!=0.0) sw=-normalizedCost*sampleCorrPullZero[nChn][nPar]/sw;
                                 for (int j=0;j<numberOfLocations;j++) {
@@ -4405,7 +4734,7 @@ if ((chn==3) &&  (sampleIndex==23)){
                 for (int i=0;i<2;i++){
                     dr_dxy[i]*=getPixelMM(); // radius in mm, dx, dy - in pixels
                 }
-                for (int c=0;c<channelSelect.length;c++) if (channelSelect[c]){
+                for (int c=0;c<channelSelect.length;c++) if (channelSelect[c]){ // c -full, nChn - disabled skipped - dependent COMPONET 
                     boolean isMasterDir=(c%2) == (sagittalMaster?0:1);
                     int otherChannel= c ^ 1;
 //                    deriv[nChn]=new double [getNumberOfRegularParameters(sagittalMaster)]; //???????????
@@ -4427,13 +4756,14 @@ if ((chn==3) &&  (sampleIndex==23)){
                         }
                     }
                     // other parameters - for dependent - skip center (j==0), for master add dependent
-                    for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
+                    for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){ // n - group of channel parameters
                         int [] ncp=curvatureModel[n].getNumPars(); // {(z),(r)}
-                        boolean isDependMasterDir=(n%2) == (sagittalMaster?0:1);
-                        for (int i=0;i<curvatureSelect[n].length; i++) if (curvatureSelect[n][i] ){
-                            if (((i%ncp[1])!=0) || isDependMasterDir) {
+                        boolean isDependMasterDir=(n%2) == (sagittalMaster?0:1); // n is master
+                        for (int i=0;i<curvatureSelect[n].length; i++) if (curvatureSelect[n][i] ){ // i - parameter number
+                            if (((i%ncp[1])!=0) || isDependMasterDir) { // non center or master
                                 int dependOnChannel=(((i%ncp[1])==0) && !isMasterDir)?otherChannel:c;
-                                deriv[nChn][np++]=(n==dependOnChannel)?(deriv_curv[n][i]):0.0;
+                                deriv[nChn][np++]=(n==dependOnChannel)?(deriv_curv[c][i]):0.0; // deriv[nChn][np++]=(n==dependOnChannel)?(deriv_curv[n][i]):0.0;
+
                             }
                         }
                     }
@@ -5140,7 +5470,7 @@ ar1   - ar[4]
             return f; // function value
         }
         public String getRadialName(int i){
-            return "ar_"+(i+1);
+            return "ar_"+(i+1); //TODO: chnage ar_1-> ar_0 (or ar_c),but that will break configuration files
         }
         public String getRadialDecription(int i){
             if (i==0) return "Radial constant coefficient";
