@@ -264,7 +264,7 @@ public class FocusingField {
 	public void setProperties(String prefix,Properties properties){
 		if (debugLevel>1) System.out.println("FocusingField: setProperties()");
 		if (fieldFitting == null) {
-			System.out.println("fieldFitting is not initioalized, nothing to save");
+			System.out.println("fieldFitting is not initialized, nothing to save");
 			return;
 		}
 
@@ -5372,6 +5372,21 @@ ln_a  - ar[1]
 ln_r0 - ar[2]
 k     - ar[3]
 ar1   - ar[4]
+=================
+f(x)=sqrt((ax)^2+r^2)+kx-f_corr
+f(z)=sqrt((a*(z-z_corr)^2+r^2)+k*(z-z_corr)-f_corr
+f'(x)=0 -> x=sqrt(1/r^2-a^2)
+z_corr=(kx*rc/a)/*sqrt(a^2-kx^2)
+f_corr=sqrt((a*(z-z_corr)^2+r^2)+k*(z-z_corr) - sqrt((a*(z)^2+r^2)
+f_corr=sqrt((a*z_corr)^2+r_eff^2)-kx*(z_corr) – r_eff
+k=a*func(tilt]), func(-inf)=-1, func(0)=0, func(+inf)=1 
+k=2/pi*atan(tilt);
+d_k/d_tilt = 2/pi*(1/tilt^2)
+
+x=z_in-(z0+z_corr)
+
+Ideally I should match second derivative near minimum to isolate tilt from ar[3] - adjust r_eff and then shift
+Maybe not, just keep iot as it is (matching f" at minimum while tilting will cause a sharp turn nearby)
 
 
 */
