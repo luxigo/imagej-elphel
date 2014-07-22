@@ -186,7 +186,7 @@ public class FocusingField {
     	filterInputConcaveSigma = 8.0; //um
     	filterInputConcaveRemoveFew=true;
     	filterInputConcaveMinSeries=5;
-    	filterInputConcaveScale=0.8;
+    	filterInputConcaveScale=0.9;
     	// when false - tangential is master
     	double [] minMeasDflt= {0.5,0.5,0.5,0.5,0.5,0.5}; // pixels
     	minMeas= minMeasDflt; // pixels
@@ -528,7 +528,7 @@ public boolean configureDataVector(String title, boolean forcenew, boolean enabl
     gd.addNumericField("Concave filter sigma",filterInputConcaveSigma,3,5,"um");
     gd.addCheckbox("Remove small series ",filterInputConcaveRemoveFew);
     gd.addNumericField("Minimal number of samples (to remove / apply concave filter) ",filterInputConcaveMinSeries,3,5,"samples");
-    gd.addNumericField("Concave filter sigma",filterInputConcaveScale,3,5,"<=1.0");
+    gd.addNumericField("Concave filter scale",filterInputConcaveScale,3,5,"<=1.0");
     
     gd.addCheckbox("Sagittal channels are master channels (false - tangential are masters)",sagittalMaster);
     gd.addMessage("=== Setting minimal measured PSF radius for different colors/directions ===");
@@ -1122,7 +1122,7 @@ public void commitParameterVector(double [] vector){
         double [] pXY=fieldFitting.getCenterXY();
     currentPX0=pXY[0];
     currentPY0=pXY[1];
-        if (debugLevel>1) System.out.println("Updated currentPX0="+currentPX0+", currentPY0="+currentPY0);
+        if (debugLevel>0) System.out.println("Updated currentPX0="+currentPX0+", currentPY0="+currentPY0);
     if (correct_measurement_ST && updateWeightWhileFitting) {
         setDataVector(createDataVector(
                 false, // boolean updateSelection,
@@ -1802,6 +1802,8 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 
     public void compareDrDerivatives(double [] vector){
     	double delta=0.00010; // make configurable
+    	boolean [] centerSelect=fieldFitting.getCenterSelect();
+    	if (centerSelect[0] && centerSelect[1]) delta=1.0;
     	if (debugParameter>=0){
     		String parName="";
     		if ((debugParameterNames!=null) && (debugParameterNames.length>debugParameter)) parName=debugParameterNames[debugParameter];
@@ -1828,7 +1830,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
                 System.out.println(i+": "+pointName+" fx= "+fx[i]+" delta_fx= "+((fx_dp[i]-fx[i])/delta)+" df/dp= "+jacobian[debugParameter][i]);
             }
     	}
-/*    	
+/*   	
         boolean [] centerSelect=fieldFitting.getCenterSelect();
         if (!centerSelect[0] || !centerSelect[1]){
             System.out.println("compareDrDerivatives(): Both px0 and px1 parameters should be enabled, aborting");
@@ -2400,7 +2402,7 @@ public void listCombinedResults(){
 // private boolean rslt_mtf50_mode= true;
 // public double fwhm_to_mtf50=500.0; // put actual number
     
-    double [] center_z=fieldFitting.getZCenters();
+    double [] center_z=fieldFitting.getZCenters(false);
     double [] centerFWHM={
     		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
     		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
@@ -2436,7 +2438,7 @@ public void listCombinedResults(){
     gd.addCheckbox("Show constant-z sections (per-sample adjusted)", this.rslt_show_f_individual);
     gd.addNumericField("Ring averaging radial sigma", this.rslt_show_smooth_sigma, 3,5,"mm");
     gd.addCheckbox("Show mtf50 (false - PSF FWHM)", this.rslt_mtf50_mode);
-    gd.addCheckbox("Show focal distance relative to center green (false - best_qb_corr[1])", this.z_relative);
+    gd.addCheckbox("Show focal distance relative to best composite focus (false - to center green )", this.z_relative);
     
     gd.addMessage("Multiple section setup:");
         gd.addNumericField("Scan from (relative to green center)", this.rslt_scan_below, 3,7,"um");
@@ -2476,8 +2478,8 @@ public void listCombinedResults(){
     		rslt_show_f_smooth, //boolean rslt_show_f_smooth;
     		rslt_show_f_individual, //boolean show_f_individual,
     		rslt_show_smooth_sigma, // double rslt_show_smooth_sigma;
-    		center_z[1]+rslt_scan_below, // double scan_below,
-    		center_z[1]+rslt_scan_above, //double scan_above,
+    		(z_relative?best_qb_corr[0]:center_z[1])+rslt_scan_below, // double scan_below,
+    		(z_relative?best_qb_corr[0]:center_z[1])+rslt_scan_above, //double scan_above,
     		rslt_scan_step, //double scan_step,
     		rslt_mtf50_mode); //boolean freq_mode)
 }
@@ -2755,7 +2757,7 @@ public void listCombinedResults(
 
 public void listScanQB(){
     
-    double [] center_z=fieldFitting.getZCenters();
+    double [] center_z=fieldFitting.getZCenters(false);
     double [] centerFWHM={
     		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
     		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
@@ -2851,7 +2853,7 @@ public void listScanQB(
 //        }
         
 // Add result to the bottom of the file
-        double [] center_z=fieldFitting.getZCenters();
+        double [] center_z=fieldFitting.getZCenters(false);
         double [] centerFWHM={
         		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
         		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
@@ -3343,7 +3345,10 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
 //    	private double [] dflt_sampleCorrCost= {0.05,10.0,2.0,1.0};
 //    	private double [] dflt_sampleCorrCost= {0.05,1.0,1.0,1.0};
 //    	private double [] dflt_sampleCorrCost= {0.5,0.5,2.0,1.0};
-    	private double [] dflt_sampleCorrCost= {0.1,0.5,2.0,1.0};
+//    	private double [] dflt_sampleCorrCost= {0.1,0.5,2.0,1.0};
+//    	private double [] dflt_sampleCorrCost= {0.1,1.0,1.0,0.5};
+//    	private double [] dflt_sampleCorrCost= {0.2,2.0,2.0,1.0,1.0};
+    	private double [] dflt_sampleCorrCost= {0.1,1.0,1.0,1.0,1.0};
     	private double dflt_sampleCorrSigma= 2.0; // mm
     	private double dflt_sampleCorrPullZero= 0.75; // fraction
     	public final String [] channelDescriptions={
@@ -3764,19 +3769,20 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             int chn=3; // Green, Tangential
             return curvatureModel[chn].getCenterVector()[0];
         }
-        public double [] getZCenters(){
+        public double [] getZCenters(boolean solve){
 //            int chn=3; // Green, Tangential
-/*            double [] result = {
+            double [] result = {
                     curvatureModel[1].getCenterVector()[0], // Red, Tangential
                     curvatureModel[3].getCenterVector()[0], // Green, Tangential
                     curvatureModel[5].getCenterVector()[0]}; // Blue, Tangential
- */           
-            double [] result = {
-            		findBestZ(1, -1, false),
-            		findBestZ(3, -1, false),
-            		findBestZ(5, -1, false),
-            		};
-            
+            if (solve) {
+            	double [] result_1 = {
+            			findBestZ(1, -1, false),
+            			findBestZ(3, -1, false),
+            			findBestZ(5, -1, false),
+            	};
+            	return solve?result_1:result;
+            }
             return result;
         }
         public double [] getQualB(double z, boolean corrected){
@@ -5377,87 +5383,152 @@ f(x)=sqrt((ax)^2+r^2)+kx-f_corr
 f(z)=sqrt((a*(z-z_corr)^2+r^2)+k*(z-z_corr)-f_corr
 f'(x)=0 -> x=sqrt(1/r^2-a^2)
 z_corr=(kx*rc/a)/*sqrt(a^2-kx^2)
-f_corr=sqrt((a*(z-z_corr)^2+r^2)+k*(z-z_corr) - sqrt((a*(z)^2+r^2)
 f_corr=sqrt((a*z_corr)^2+r_eff^2)-kx*(z_corr) – r_eff
 k=a*func(tilt]), func(-inf)=-1, func(0)=0, func(+inf)=1 
-k=2/pi*atan(tilt);
+k=a*2/pi*atan(tilt);
 d_k/d_tilt = 2/pi*(1/tilt^2)
 
 x=z_in-(z0+z_corr)
 
 Ideally I should match second derivative near minimum to isolate tilt from ar[3] - adjust r_eff and then shift
 Maybe not, just keep iot as it is (matching f" at minimum while tilting will cause a sharp turn nearby)
+a=exp(ln_a)
+r0=exp(ln_r0)
+z0    - ar[0]
+ln_a  - ar[1]
+ln_r0 - ar[2]
+k     - ar[3]
+a1    - ar[4]
 
+kx=a*2/pi*atan(a1);
+z_corr=(kx*rc/a)/sqrt(a^2-kx^2)
+f_corr=sqrt((a*z_corr)^2+r_eff^2)-kx*(z_corr) – r_eff
+f=sqrt((a*(zin-z0-z_corr))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ kx*(zin-z0-z_corr) {+...aN*(zin-z0-z_corr)^N} - {} are not likely to be ever used 
 
+dependence:
+kx: a,a1 (ar[1], ar[4]
+z_corr: kx,r_eff,a - ar[1], ar[4], ar[2], ar[3]
+f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 */
             double r=Double.isNaN(pY)?pX:Math.sqrt((pX-pX0)*(pX-pX0)+(pY-pY0)*(pY-pY0))*PIXEL_SIZE; // in mm
-//            double r2=r*r;
             double [] ar= new double [this.modelParams.length];
             for (int i=0;i<this.modelParams.length;i++){
                 ar[i]=this.modelParams[i][0];
                 if (param_corr!=null) ar[i]+=param_corr[i];
-//                double rp=1.0;
                 double rp=r;
                 for (int j=1;j<this.modelParams[i].length;j++){
-//                    rp*=r2;
                     rp*=r;
                     ar[i]+=this.modelParams[i][j]*rp;
                 }
             }
             double exp_a=Math.exp(ar[1]);
             double exp_r=Math.exp(ar[2]);
-            double z=z_in-ar[0];
-            double exp_k=Math.exp(-ar[3]);
-//            double reff=ar[2]*exp_k;
-            double reff=exp_r*exp_k;
-//            double sqrt=Math.sqrt((ar[1]*z)*(ar[1]*z) + reff*reff);
-            double sqrt=Math.sqrt((exp_a*z)*(exp_a*z) + reff*reff);
-            
-//            double f=sqrt+ar[2]*(1-exp_k);
-            double f=sqrt+exp_r*(1-exp_k);
-            double zp=1.0;
-
-            for (int i=4;i<ar.length;i++){
+            double exp_mk=Math.exp(-ar[3]);
+            double reff=exp_r*exp_mk;
+            double reff2=reff*reff;
+            double exp_a2=exp_a*exp_a;
+            double a1=ar[4];
+//            kx=a*2/pi*atan(a1);
+            double kx=exp_a*2.0/Math.PI*Math.atan(a1);
+//            z_corr=(kx*rc/a)/*sqrt(a^2-kx^2)
+            double z_corr=(kx*reff/exp_a)/Math.sqrt(exp_a2 - kx*kx);
+            double z_corr2=z_corr*z_corr;
+//          f_corr=sqrt((a*z_corr)^2+r_eff^2)-kx*(z_corr) – r_eff
+            double f_corr=Math.sqrt(exp_a2*z_corr2 + reff2)-kx*z_corr - reff;
+            double z=z_in-ar[0]-z_corr;
+            double sqrt=Math.sqrt(exp_a2*z*z + reff2);
+//            f=sqrt((a*(zin-z0-z_corr))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ kx*(zin-z0-z_corr)-f_corr {+...aN*(zin-z0-z_corr)^N} - {} are not likely to be ever used 
+            double f=sqrt+exp_r*(1-exp_mk) +kx*z -f_corr;
+            double zp=z;
+            for (int i=5;i<ar.length;i++){
                 zp*=z;
                 f+=ar[i]*zp;
             }
 
             if (deriv==null) return f; // only value, no derivatives
+            
+            
+// derivatives calculation independent of z - move to a separate function that can be called once for channel/sample, stored asnd then applied to multiple z measurements        
+//  double kx=exp_a*2.0/Math.PI*Math.atan(a1);
+            double dkx_dar1=kx; // exp_a*2.0/Math.PI*Math.atan(a1);
+            double dkx_dar4=exp_a*2.0/Math.PI/(1.0+ a1*a1);
+            // z_corr=(kx*reff/exp_a)/Math.sqrt(exp_a*exp_a - kx*kx)  //kx,r_eff,a - ar[1], ar[4], ar[2], ar[3]
+            //dzcorr_dkx=rc*a/(a^2-kx^2)/sqrt(a^2-kx^2)
+            double kx2=kx*kx;
+            double exp_a2_kx2=exp_a2-kx2;
+            double sqrt_exp_a2_kx2=Math.sqrt(exp_a2_kx2);
+            
+            double dzcorr_dkx=reff*exp_a/(exp_a2_kx2*sqrt_exp_a2_kx2); //(exp_a2-kx2)/Math.sqrt(exp_a2-kx2);
+            double dzcorr_dar4=dzcorr_dkx*dkx_dar4; // d_tilt
+//d_zcorr/d_tilt=d_kx/d_tilt*rc*a/(a^2-kx^2)/sqrt(a^2-kx^2)
+            double dzcorr_dar1=-z_corr; // Nice!
+// d_reff/dar2==reff; d_reff/dar3=-reff   
+// d_zcorr/dar2=z_corr d_zcorr/dar3=-z_corr verified
+//z_corr: kx,r_eff,a - ar[1], ar[4], ar[2], ar[3]
+            double sqr_azr=Math.sqrt(exp_a2*z_corr2+reff2);
+
+            double dfcorr_da=exp_a*z_corr2/sqr_azr;
+            double dfcorr_dreff=reff/sqr_azr-1;
+            double dfcorr_dkx=-z_corr;
+         // dfcorr_dar1==0
+            double dfcorr_dar2=dfcorr_dreff*exp_r*exp_mk;
+//                 dfcorr_dar3=dfcorr_dar2
+            double dfcorr_dar4=dfcorr_dkx*dkx_dar4;
+            
+
+            
+//            double z=z_in-ar[0]-z_corr;
+//            double sqrt=Math.sqrt(exp_a2*z*z + reff2);
+//            f=sqrt((a*(zin-z0-z_corr))^2 + (r0*(exp(-k))^2)+r0*(1-exp(-k))+ kx*(zin-z0-z_corr) -f_corr {+...aN*(zin-z0-z_corr)^N} - {} are not likely to be ever used 
+            
+            
+            // Dependent on z:
+            double z2=z*z;
             double [] df_da=new double[this.modelParams.length]; // last element - derivative for dz
             // derivative for z0 (shift) - ar[0]
-//            df_da[0]=-1.0/sqrt*ar[1]*ar[1]*z;
-            
-            df_da[0]=-1.0/sqrt*exp_a*exp_a*z;
-            
-            zp=1.0;
-            for (int i=4;i<this.modelParams.length;i++){
+            df_da[0]=-1.0/sqrt*exp_a2*z;
+            df_da[0]-=kx;
+            zp=z;
+            for (int i=5;i<this.modelParams.length;i++){
                 df_da[0]-=ar[i]*(i-3)*zp; // ar[i] calculated coefficients for current radius
                 zp*=z;
             }
-            // derivative for a (related to numeric aperture) - ar[1]
-//            df_da[1]=1.0/sqrt*ar[1]*z*z;
-            df_da[1]=1.0/sqrt*exp_a*z*z  *exp_a; // d(f)/d(exp_a) *exp_a
+            double df_dz_corr=df_da[0];
+//            double df_df_corr=-1;//, so subtract each of dfcorr_dar* from df_dar*
             
-            
-            // derivative for a (related to lowest PSF radius) - ar[2]
-//            df_da[2]=1.0/sqrt*reff*exp_k + (1-exp_k); // * exp(-k)
-            df_da[2]=(1.0/sqrt*reff*exp_k + (1-exp_k)) * exp_r; // d(f)/d(exp_r) *exp_r
-            
-            
-            
-            
-            // derivative for k (ar[3]
-            
-//            df_da[3]=1.0/sqrt*reff*ar[2]*exp_k*(-1) + ar[2]*exp_k;
-            df_da[3]=1.0/sqrt*reff*exp_r*exp_k*(-1) + exp_r*exp_k;
-            
-            // derivatives for rest (polynomial) coefficients
-            zp=1.0;
+//          double z=z_in-ar[0]-z_corr;
+//          double sqrt=Math.sqrt(exp_a2*z*z + reff2);
+//          f=sqrt((a*(zin-z0-z_corr))^2 + (r0*(exp(-k))^2) +r0*(1-exp(-k)) + kx*(zin-z0-z_corr) -f_corr{+...aN*(zin-z0-z_corr)^N} - {} are not likely to be ever used 
 
-            for (int i=4;i<this.modelParams.length;i++){
+            
+        // derivative for a (related to numeric aperture) - ar[1]
+//            df_da[1]=1.0/sqrt*exp_a*z*z  *exp_a; // d(f)/d(exp_a) *exp_a
+// first - calculate derivatives w/O f_corr, z_corr - then apply them            
+            df_da[1]=1.0/sqrt*exp_a2*z2; // d(f)/d(exp_a) *exp_a
+       // derivative for a (related to lowest PSF radius) - ar[2]
+            df_da[2]=(1.0/sqrt*reff*exp_mk + (1-exp_mk)) * exp_r; // d(f)/d(exp_r) *exp_r
+       // derivative for k (ar[3]
+            df_da[3]=1.0/sqrt*reff*exp_r*exp_mk*(-1) + exp_r*exp_mk;
+       // derivative for tilt (ar[4])
+            df_da[4]=z*dkx_dar4;
+            // derivatives for rest (polynomial) coefficients, probably not ever needed
+            zp=z;
+            for (int i=5;i<this.modelParams.length;i++){
                 zp*=z;
                 df_da[i]=zp;
             }
+         // new extra term dependent on ar[1] f=...+ kx*(zin-z0-z_corr) +...            
+            df_da[1]+=dkx_dar1*z;
+         // now apply corrections for z_corr and f_corr
+            df_da[1]+=df_dz_corr*dzcorr_dar1; // bad 
+            df_da[2]+=df_dz_corr*z_corr;      // good
+            df_da[3]+=df_dz_corr*(-z_corr);   // good 
+            df_da[4]+=df_dz_corr*dzcorr_dar4; // good
+            
+            df_da[2]-=dfcorr_dar2; // good
+            df_da[3]+=dfcorr_dar2; // good
+            df_da[4]-=dfcorr_dar4; // good
+            
             // derivative for z (to be combined with mechanical is just negative of derivative for z0, no need to calcualate separately
             // calculate even powers of radius
             double [] dar= new double [this.modelParams[0].length];
@@ -5496,13 +5567,15 @@ Maybe not, just keep iot as it is (matching f" at minimum while tilting will cau
             if (i==1) return "ln(na)";
             if (i==2) return "ln(r0)";
             if (i==3) return "ln(k)";
+            if (i==4) return "tilt";
             else return "az_"+(i-3);
         }
         public String getZDescription(int i){
             if (i==0) return "Focal shift";
             if (i==1) return "Defocus/focus shift (~NA), ln()";
             if (i==2) return "Best PSF radius, ln()";
-            if (i==3) return "cross shift, ln()";
+            if (i==3) return "Cross shift, ln()";
+            if (i==4) return "Tilt (asymmetry)";
             else return "Polynomial coefficient for z^"+(i-3);
         }
         
