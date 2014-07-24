@@ -96,6 +96,7 @@ public class FocusingField {
 	private double rslt_scan_above;
 	private double rslt_scan_step;
 	private boolean rslt_mtf50_mode;
+	private boolean rslt_solve; // find z for minimum of f, if false - use parameter z0
 	private boolean [] rslt_show_chn;
 
 // not saved/restored
@@ -219,6 +220,7 @@ public class FocusingField {
     	rslt_scan_above= 10.0;
     	rslt_scan_step= 5.0;
     	rslt_mtf50_mode= true;
+    	rslt_solve = false;
     	boolean [] rslt_show_chnDflt={true,true,true,true,true,true};
     	rslt_show_chn=rslt_show_chnDflt.clone();
     	// not saved/restored
@@ -317,6 +319,7 @@ public class FocusingField {
 		properties.setProperty(prefix+"rslt_scan_above",rslt_scan_above+"");
 		properties.setProperty(prefix+"rslt_scan_step",rslt_scan_step+"");
 		properties.setProperty(prefix+"rslt_mtf50_mode",rslt_mtf50_mode+"");
+		properties.setProperty(prefix+"rslt_solve",rslt_solve+"");
 		for (int chn=0; chn<rslt_show_chn.length; chn++) properties.setProperty(prefix+"rslt_show_chn_"+chn,rslt_show_chn[chn]+"");
 	}
 
@@ -422,6 +425,8 @@ public class FocusingField {
 			rslt_scan_step=Double.parseDouble(properties.getProperty(prefix+"rslt_scan_step"));
 		if (properties.getProperty(prefix+"rslt_mtf50_mode")!=null)
 			rslt_mtf50_mode=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_mtf50_mode"));
+		if (properties.getProperty(prefix+"rslt_solve")!=null)
+			rslt_solve=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_solve"));
 		for (int chn=0; chn<rslt_show_chn.length; chn++) if (properties.getProperty(prefix+"rslt_show_chn_"+chn)!=null)
 			rslt_show_chn[chn]=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_chn_"+chn));
 	}
@@ -618,6 +623,7 @@ public boolean configureDataVector(String title, boolean forcenew, boolean enabl
         	getProperties(propertiesPrefix,savedProperties);
         }
     }
+	fieldFitting.setCenterXY(currentPX0,currentPY0);
     if (setupMasks) {
         if (!fieldFitting.maskSetDialog("Setup parameter masks")) return false;
     }
@@ -2402,11 +2408,11 @@ public void listCombinedResults(){
 // private boolean rslt_mtf50_mode= true;
 // public double fwhm_to_mtf50=500.0; // put actual number
     
-    double [] center_z=fieldFitting.getZCenters(false);
+    double [] center_z=fieldFitting.getZCenters(false); // do not solve, use z0 coefficient
     double [] centerFWHM={
-    		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
-    		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
-    		fieldFitting.getCalcValuesForZ(center_z[2],0.0)[5]
+    		fieldFitting.getCalcValuesForZ(center_z[0],0.0,null)[1],
+    		fieldFitting.getCalcValuesForZ(center_z[1],0.0,null)[3],
+    		fieldFitting.getCalcValuesForZ(center_z[2],0.0,null)[5]
     };
     double [] best_qb_axial= fieldFitting.getBestQualB(
             k_red,
@@ -2438,6 +2444,8 @@ public void listCombinedResults(){
     gd.addCheckbox("Show constant-z sections (per-sample adjusted)", this.rslt_show_f_individual);
     gd.addNumericField("Ring averaging radial sigma", this.rslt_show_smooth_sigma, 3,5,"mm");
     gd.addCheckbox("Show mtf50 (false - PSF FWHM)", this.rslt_mtf50_mode);
+    gd.addCheckbox("Find z for minimum, unchecked - use parameter", this.rslt_solve);
+        
     gd.addCheckbox("Show focal distance relative to best composite focus (false - to center green )", this.z_relative);
     
     gd.addMessage("Multiple section setup:");
@@ -2459,8 +2467,8 @@ public void listCombinedResults(){
     this.rslt_show_f_smooth= gd.getNextBoolean();
     this.rslt_show_f_individual= gd.getNextBoolean();
     this.rslt_show_smooth_sigma= gd.getNextNumber();
-
     this.rslt_mtf50_mode= gd.getNextBoolean();
+    this.rslt_solve=gd.getNextBoolean();
     this.z_relative= gd.getNextBoolean();
     this.rslt_scan_below= gd.getNextNumber();
     this.rslt_scan_above= gd.getNextNumber();
@@ -2481,7 +2489,8 @@ public void listCombinedResults(){
     		(z_relative?best_qb_corr[0]:center_z[1])+rslt_scan_below, // double scan_below,
     		(z_relative?best_qb_corr[0]:center_z[1])+rslt_scan_above, //double scan_above,
     		rslt_scan_step, //double scan_step,
-    		rslt_mtf50_mode); //boolean freq_mode)
+    		rslt_mtf50_mode, //boolean freq_mode)
+    		rslt_solve); // currently if not using z^(>=2) no numeric solution is required - z0 is the minimum 
 }
 
 public double [][] filterListSamples(
@@ -2542,7 +2551,9 @@ public void listCombinedResults(
 		double scan_below,
 		double scan_above,
 		double scan_step,
-		boolean freq_mode){
+		boolean freq_mode,
+		boolean solveZ){ // currently if not using z^(>=2) no numeric solution is required - z0 is the minimum 
+
 	String [] chnNames={"RS","RT","GS","GT","BS","BT"};
 	// Calculate weights of each channel/sample
 	double [][] sampleWeights=new double[getNumChannels()][getNumSamples()];
@@ -2602,7 +2613,7 @@ public void listCombinedResults(
 	for (double z=scan_below;z<=scan_above;z+=scan_step){
 		if (show_f_axial){
 			double [][] f=fieldFitting.getCalcValuesForZ(z, false,true);
-			double [] f0=fieldFitting.getCalcValuesForZ(z, 0.0);
+			double [] f0=fieldFitting.getCalcValuesForZ(z, 0.0,null);
 			f_values[sect][0]=new double [f.length][];
 			for (int chn=0;chn<f.length;chn++){
 				if (f[chn]!=null){
@@ -2652,8 +2663,8 @@ public void listCombinedResults(
 	}
 	double [][][] z_values=new double [3][][];
 	if (show_z_axial){
-		double [][] zai=fieldFitting.getCalcZ(false,true);
-		double [] zai0=fieldFitting.getCalcZ(0.0);
+		double [][] zai=fieldFitting.getCalcZ(false,true,solveZ);
+		double [] zai0=fieldFitting.getCalcZ(0.0,solveZ);
 		z_values[0]=new double [zai.length][];
 		for (int chn=0;chn<zai.length;chn++){
 			if (zai[chn]!=null){
@@ -2667,7 +2678,7 @@ public void listCombinedResults(
 		}
 	} else z_values[0] = null;
 	if (show_z_individual){
-		double [][] zai=fieldFitting.getCalcZ(true,true);
+		double [][] zai=fieldFitting.getCalcZ(true,true,solveZ);
 		z_values[1]=new double [zai.length][];
 		for (int chn=0;chn<zai.length;chn++){
 			if (zai[chn]!=null){
@@ -2681,7 +2692,7 @@ public void listCombinedResults(
 		}
 	} else z_values[1] = null;
 	if (show_f_smooth){
-		double [][] zai=fieldFitting.getCalcZ(true,true);
+		double [][] zai=fieldFitting.getCalcZ(true,true,solveZ);
 		z_values[2]=new double [zai.length][];
 		for (int chn=0;chn<zai.length;chn+=2){
 			double [][] smooth=filterListSamples(
@@ -2757,11 +2768,11 @@ public void listCombinedResults(
 
 public void listScanQB(){
     
-    double [] center_z=fieldFitting.getZCenters(false);
+    double [] center_z=fieldFitting.getZCenters(false); // do not solve, use z0 coefficient
     double [] centerFWHM={
-    		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
-    		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
-    		fieldFitting.getCalcValuesForZ(center_z[2],0.0)[5]
+    		fieldFitting.getCalcValuesForZ(center_z[0],0.0,null)[1],
+    		fieldFitting.getCalcValuesForZ(center_z[1],0.0,null)[3],
+    		fieldFitting.getCalcValuesForZ(center_z[2],0.0,null)[5]
     };
     double [] best_qb_axial= fieldFitting.getBestQualB(
                 k_red,
@@ -2853,11 +2864,11 @@ public void listScanQB(
 //        }
         
 // Add result to the bottom of the file
-        double [] center_z=fieldFitting.getZCenters(false);
+        double [] center_z=fieldFitting.getZCenters(false); // z0 coefficient, do not find minimum
         double [] centerFWHM={
-        		fieldFitting.getCalcValuesForZ(center_z[0],0.0)[1],
-        		fieldFitting.getCalcValuesForZ(center_z[1],0.0)[3],
-        		fieldFitting.getCalcValuesForZ(center_z[2],0.0)[5]
+        		fieldFitting.getCalcValuesForZ(center_z[0],0.0,null)[1],
+        		fieldFitting.getCalcValuesForZ(center_z[1],0.0,null)[3],
+        		fieldFitting.getCalcValuesForZ(center_z[2],0.0,null)[5]
         };
 //        double [] best_qb_axial= fieldFitting.getBestQualB(
 //                k_red,
@@ -3592,12 +3603,12 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                      titles);
             
         }
-        public double [] getCalcValuesForZ(double z, double r){
+        public double [] getCalcValuesForZ(double z, double r, double [] corrPars){
         	double [] result=new double [6];
         	for (int chn=0;chn<result.length;chn++) {
         		if (curvatureModel[chn]!=null){
         			result[chn]=curvatureModel[chn].getFdF(
-        					null,
+        					corrPars,
         					r, // in mm,
         					Double.NaN, // py,
         					z, //mot_z,
@@ -3642,12 +3653,14 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             return result;
         }
 
-        public double [] getCalcZ(double r){
+        public double [] getCalcZ(double r,
+        		boolean solve // currently if not using z^(>=2) no numeric solution is required - z0 is the minimum 
+        		){
             double [] result=new double [6];
             for (int chn=0;chn<result.length;chn++) {
                 if (curvatureModel[chn]!=null){
 //                    result[chn]=curvatureModel[chn].getAr(r, null)[0];
-                    result[chn]=findBestZ(chn, -1, false);
+                    result[chn]=findBestZ(chn, -1, false,solve);
                 } else {
                     result[chn]=Double.NaN;
                 }
@@ -3657,11 +3670,14 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         public double findBestZ(
         		int channel,
         		int sampleIndex, // -1 for center
-        		boolean corrected){
+        		boolean corrected,
+        		boolean solve // currently if not using z^(>=2) no numeric solution is required - z0 is the minimum 
+        		){
         	return findBestZ(
             		channel,
             		sampleIndex, // -1 for center
-            		corrected, // 
+            		corrected, //
+            		solve, // currently if not using z^(>=2) no numeric solution is required - z0 is the minimum 
                     1.0, // double iniStep,
                     0.0001); //double precision)
         }
@@ -3670,16 +3686,18 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         		int channel,
         		int sampleIndex, // -1 for center
         		boolean corrected, // 
+        		boolean solve, // currently if not using z^(>=2) no numeric solution is required - z0 is the minimum 
                 double iniStep,
                 double precision){
             int maxSteps=100;
         	double [] corrPars=corrected?getCorrPar(channel,sampleIndex):null;
         	double r=(sampleIndex>=0)?getSampleRadius(sampleIndex):0.0;
         	double z0=curvatureModel[channel].getAr( r, corrPars)[0];
+        	if (!solve) return z0;
         	if (Double.isNaN(z0)) return z0;
-        	double f0=getCalcValuesForZ(z0, r)[channel];
+        	double f0=getCalcValuesForZ(z0, r,corrPars)[channel];
             double z1=z0+iniStep;
-            double f1=getCalcValuesForZ(z1,r)[channel];
+            double f1=getCalcValuesForZ(z1,r,corrPars)[channel];
             double dir = (f1<f0)?1.0:-1.0;
             double z_prev,f_prev;
             if (dir>0) {
@@ -3694,7 +3712,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             int step;
             for (step=0;step<maxSteps;step++) {
                 z1=z0+dir*iniStep;
-                f1=getCalcValuesForZ(z1,r)[channel];
+                f1=getCalcValuesForZ(z1,r,corrPars)[channel];
                 if (f1>f0) break;
                 z_prev=z0;
                 f_prev=f0;
@@ -3716,7 +3734,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                 }
                 z0=(z_prev+z1)/2;
 //                f0=getCalcValuesForZ(z1,r)[channel]; // ????
-                f0=getCalcValuesForZ(z0,r)[channel];
+                f0=getCalcValuesForZ(z0,r,corrPars)[channel];
                 if (Math.abs(z0-z_prev)<precision) break;
             }
             return z0;
@@ -3728,7 +3746,11 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
          * @param allChannels calculate for all (even disabled) channels, false - only for currently selected
          * @return outer dimension - number of channel, inner - number of sample (use getSampleRadiuses for radius of each)
          */
-        public double [][] getCalcZ(boolean corrected, boolean allChannels){
+        public double [][] getCalcZ(
+        		boolean corrected,
+        		boolean allChannels,
+        		boolean solve // currently if not using z^(>=2) no numeric solution is required - z0 is the minimum 
+        		){
         	double [] sampleCorrRadius=getSampleRadiuses();
             int numSamples=sampleCorrRadius.length;
             boolean [][] goodSamples=new boolean[getNumChannels()][getNumSamples()];
@@ -3753,7 +3775,8 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                         result[chn][sampleIndex]=findBestZ(
                         		chn,         // int channel,
                         		sampleIndex, // int sampleIndex,
-                        		corrected);   //boolean corrected,
+                        		corrected,   //boolean corrected,
+                        		solve);
                     	} else {
                     		result[chn][sampleIndex]=Double.NaN;
                     	}
@@ -3777,9 +3800,9 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                     curvatureModel[5].getCenterVector()[0]}; // Blue, Tangential
             if (solve) {
             	double [] result_1 = {
-            			findBestZ(1, -1, false),
-            			findBestZ(3, -1, false),
-            			findBestZ(5, -1, false),
+            			findBestZ(1, -1, false,true),
+            			findBestZ(3, -1, false,true),
+            			findBestZ(5, -1, false,true),
             	};
             	return solve?result_1:result;
             }
@@ -3922,6 +3945,10 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         }
         public double[] getCenterXY(){
             return pXY;
+        }
+        public void setCenterXY(double px, double py){
+            pXY[0]=px;
+            pXY[1]=py;
         }
         public void setDefaultSampleCorr(){
 //            int numPars= getNumCurvars()[0]; // number of Z parameters ( [1] - numbnr of radial parameters).
@@ -4465,10 +4492,11 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
          gd.addMessage("===== Aberrations center =====");
             String [] centerDescriptions={"Aberrations center X","Aberrations center Y"};
             for (int i=0;i<2;i++){
+            	double distXY=(i==0)?pX0_distortions:pY0_distortions;
                 if (centerSelect[i] ) {
-                    gd.addNumericField(centerDescriptions[i],pXY[i],5,10,"pix");
+                    gd.addNumericField(centerDescriptions[i],pXY[i],5,10,"pix ("+IJ.d2s(distXY,1)+")");
                 } else if (showDisabled){
-                    gd.addNumericField("(disabled) "+centerDescriptions[i],pXY[i],5,10,"pix");
+                    gd.addNumericField("(disabled) "+centerDescriptions[i],pXY[i],5,10,"pix ("+IJ.d2s(distXY,1)+")");
                 }
             }
          
@@ -5467,7 +5495,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 //z_corr: kx,r_eff,a - ar[1], ar[4], ar[2], ar[3]
             double sqr_azr=Math.sqrt(exp_a2*z_corr2+reff2);
 
-            double dfcorr_da=exp_a*z_corr2/sqr_azr;
+//            double dfcorr_da=exp_a*z_corr2/sqr_azr;
             double dfcorr_dreff=reff/sqr_azr-1;
             double dfcorr_dkx=-z_corr;
          // dfcorr_dar1==0
