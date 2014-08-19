@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
 //import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
 
@@ -787,14 +788,18 @@ if (MORE_BUTTONS) {
 		panelCurvature.setLayout(new GridLayout(1, 0, 5, 5));
 		addButton("Scan Calib LMA", panelCurvature,color_process);
 		addButton("Save History",   panelCurvature,color_debug);
-		addButton("Restore History",panelCurvature,color_debug);
-		addButton("Modify LMA",     panelCurvature,color_debug);
+		addButton("Restore History",panelCurvature,color_restore);
+		addButton("Modify LMA",     panelCurvature,color_configure);
+		addButton("Load strategies", panelCurvature,color_restore);
+		addButton("Organize strategies", panelCurvature,color_configure);
+		addButton("Save strategies", panelCurvature,color_bundle);
 		addButton("LMA History",    panelCurvature,color_process);
 		addButton("List curv pars", panelCurvature,color_debug);
 		addButton("List curv data", panelCurvature,color_debug);
 		addButton("List qualB",     panelCurvature,color_report);
 		addButton("List curv",      panelCurvature,color_report);
 		addButton("Show curv corr", panelCurvature,color_report);
+		addButton("Test measurement", panelCurvature,color_process);
 		add(panelCurvature);
 		
 	//panelGoniometer
@@ -4386,10 +4391,21 @@ if (MORE_BUTTONS) {
 			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
 			System.out.println("Loaded FocusingField");
 			if (!FOCUSING_FIELD.configureDataVector("Configure curvature",true,true)) return;
-			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
-			double []focusing_fx=FOCUSING_FIELD.createFXandJacobian(true);
-			double rms= FOCUSING_FIELD.getRMS(focusing_fx,false);
-			System.out.println("rms="+rms);
+///			FOCUSING_FIELD.fieldFitting.initSampleCorrChnParIndex(FOCUSING_FIELD.flattenSampleCoord()); //+
+///			FOCUSING_FIELD.setDataVector(
+///					true, // calibrate mode
+///					FOCUSING_FIELD.createDataVector());
+//			FOCUSING_FIELD.fieldFitting.initSampleCorrVector( //+
+//					FOCUSING_FIELD.flattenSampleCoord(), //double [][] sampleCoordinates,
+//					FOCUSING_FIELD.getSeriesWeights()); //double [][] sampleSeriesWeights);
+	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
+			double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+			System.out.println("rms="+rms+", rms_pure="+rms_pure);
 			return;
 		}
 /* ======================================================================== */
@@ -4398,15 +4414,49 @@ if (MORE_BUTTONS) {
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			if (!FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false,true)) return;
-			FOCUSING_FIELD.setDataVector(FOCUSING_FIELD.createDataVector());
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
 			return;
 		}
+/* ======================================================================== */
+		if       (label.equals("Load strategies")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.fieldFitting.fieldStrategies.loadStrategies(null,PROCESS_PARAMETERS.kernelsDirectory);
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Save strategies")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.fieldFitting.fieldStrategies.saveStrategies(null,PROCESS_PARAMETERS.kernelsDirectory);
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Organize strategies")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			int resp=0;
+			while (resp==0){
+				resp=FOCUSING_FIELD.organizeStrategies("Organize LMA strategies");
+			}
+			return;
+		}
+///organizeStrategies(String title)		
 /* ======================================================================== */
 		if       (label.equals("LMA History")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-			FOCUSING_FIELD.LevenbergMarquardt(true, DEBUG_LEVEL); //boolean openDialog, int debugLevel){
+			FOCUSING_FIELD.LevenbergMarquardt(
+					null, // measurement
+					true, // open dialog
+					false, // filterZ
+					DEBUG_LEVEL); //boolean openDialog, int debugLevel){
 			return;
 		}
 /* ======================================================================== */
@@ -4448,6 +4498,14 @@ if (MORE_BUTTONS) {
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.showCurvCorr(); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Test measurement")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.testMeasurement();
 			return;
 		}
 //		

@@ -30,8 +30,13 @@ import ij.text.TextWindow;
 import java.awt.Point;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,6 +45,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
+
+
+
+
+
+
 
 
 //import Distortions.LMAArrays; // may still reuse?
@@ -68,6 +79,9 @@ public class FocusingField {
 	boolean filterInputConcaveRemoveFew;
 	int filterInputConcaveMinSeries;
 	double  filterInputConcaveScale;
+	boolean    filterZ;    // (adjustment mode)filter samples by Z
+	int        minLeftSamples; // minimal number of samples (channel/dir/location) for adjustment
+
 	// when false - tangential is master
 	double [] minMeas; // pixels
 	double [] maxMeas; // pixels
@@ -107,12 +121,17 @@ public class FocusingField {
 	private int numIterations; // maximal number of iterations
 	private double maxLambda; // max lambda to fail
 	private double lambda; // copied from series
+	private String strategyComment;
+	private boolean lastInSeries;
+	private int currentStrategyStep; // -1 do not read from strategies
 	private boolean stopEachStep; // open dialog after each fitting step
+	private boolean stopEachSeries; // stop after each series
 	private boolean stopOnFailure; // open dialog when fitting series failed
 	private boolean showParams; // show modified parameters
 	private boolean showDisabledParams;
 	private boolean showCorrectionParams;
 	private boolean keepCorrectionParameters;
+	private boolean resetCenter; // use distortion center
 	private boolean saveSeries; // just for the dialog
 	private boolean showMotors;
 	private boolean [] showMeasCalc;
@@ -151,6 +170,9 @@ public class FocusingField {
 	public ArrayList<FocusingFieldMeasurement> measurements;
 	double [] weightReference=null; // calculated per-channel (6) array of maximal PSF FWHM after applying min/max correction
 	MeasuredSample [] dataVector;
+	double [][][] zRanges; // min/max "reliable" z for each channel/sample - will be used during adjustment
+	boolean [] prevEnable; // used in adjustment mode to save previous result of filterByZRanges()
+//	boolean changedEnable; // used in adjustment mode to signal if new result of filterByZRanges() differes from the previous one
 	double [] dataValues;
 	double [] dataWeights;
 //	int [][][] dataIndex=null; // [measurement][channel][sample] - index in dataValues (and  dataWeights) or -1
@@ -162,7 +184,8 @@ public class FocusingField {
 	
 	private LMAArrays lMAArrays=null;
 	private LMAArrays savedLMAArrays=null;
-	private double [] currentfX=null; // array of "f(x)" - simulated data for all images, combining pixel-X and pixel-Y (odd/even)
+	// temporarily changing visibility of currentfX
+	double [] currentfX=null; // array of "f(x)" - simulated data for all images, combining pixel-X and pixel-Y (odd/even)
 	private double [] nextfX=null; // array of "f(x)" - simulated data for all images, combining pixel-X and pixel-Y (odd/even)
 	private double currentRMS=-1.0; // calculated RMS for the currentVector->currentfX
 	private double currentRMSPure=-1.0; // calculated RMS for the currentVector->currentfX
@@ -174,6 +197,9 @@ public class FocusingField {
 
 
     public void setDefaults(){
+    	zRanges=null;
+    	prevEnable=null;
+//    	changedEnable=true;
     	z0_estimates=null;
     	sagittalMaster=false; // center data is the same, when true sagittal fitting only may change r=0 coefficients,
     	parallelOnly = true; // only process measurements for parallel moves
@@ -188,6 +214,9 @@ public class FocusingField {
     	filterInputConcaveRemoveFew=true;
     	filterInputConcaveMinSeries=5;
     	filterInputConcaveScale=0.9;
+    	filterZ=true;      // (adjustment mode)filter samples by Z
+    	minLeftSamples=10;  // minimal number of samples (channel/dir/location) for adjustment
+    	
     	// when false - tangential is master
     	double [] minMeasDflt= {0.5,0.5,0.5,0.5,0.5,0.5}; // pixels
     	minMeas= minMeasDflt; // pixels
@@ -229,14 +258,20 @@ public class FocusingField {
     	thresholdFinish=0.001; // (copied from series) stop iterations if 2 last steps had less improvement (but not worsening )
     	numIterations= 100; // maximal number of iterations
     	maxLambda= 100.0; // max lambda to fail
-
     	lambda=0.001; // copied from series
     	stopEachStep= true; // open dialog after each fitting step
+    	stopEachSeries= false;
     	stopOnFailure= true; // open dialog when fitting series failed
+    	strategyComment="";
+    	lastInSeries=true;
+    	currentStrategyStep=-1; // -1 do not read from strategies
+    	
+    	
     	showParams= false; // show modified parameters
     	showDisabledParams = false;
     	showCorrectionParams = false;
     	keepCorrectionParameters = true;
+    	resetCenter=false;
     	saveSeries=false; // just for the dialog
 
     	showMotors = true;
@@ -283,21 +318,19 @@ public class FocusingField {
 		properties.setProperty(prefix+"filterInputFirstLast",filterInputFirstLast+"");
 		properties.setProperty(prefix+"filterInputTooFar",filterInputTooFar+"");
 		properties.setProperty(prefix+"filterInputFarRatio",filterInputFarRatio+"");
-		
 		properties.setProperty(prefix+"filterInputConcave",filterInputConcave+"");
 		properties.setProperty(prefix+"filterInputConcaveSigma",filterInputConcaveSigma+"");
-		
 		properties.setProperty(prefix+"filterInputConcaveRemoveFew",filterInputConcaveRemoveFew+"");
 		properties.setProperty(prefix+"filterInputConcaveMinSeries",filterInputConcaveMinSeries+"");
 		properties.setProperty(prefix+"filterInputConcaveScale",filterInputConcaveScale+"");
-		
+		properties.setProperty(prefix+"filterZ",filterZ+"");
+		properties.setProperty(prefix+"minLeftSamples",minLeftSamples+"");
 		for (int chn=0; chn<minMeas.length; chn++) properties.setProperty(prefix+"minMeas_"+chn,minMeas[chn]+"");
 		for (int chn=0; chn<maxMeas.length; chn++) properties.setProperty(prefix+"maxMeas_"+chn,maxMeas[chn]+"");
 		for (int chn=0; chn<thresholdMax.length; chn++) properties.setProperty(prefix+"thresholdMax_"+chn,thresholdMax[chn]+"");
 		properties.setProperty(prefix+"useMinMeas",useMinMeas+"");
 		properties.setProperty(prefix+"useMaxMeas",useMaxMeas+"");
 		properties.setProperty(prefix+"useThresholdMax",useThresholdMax+"");
-
 		properties.setProperty(prefix+"weightMode",weightMode+"");
 		properties.setProperty(prefix+"weightRadius",weightRadius+"");
 		properties.setProperty(prefix+"k_red",k_red+"");
@@ -321,6 +354,17 @@ public class FocusingField {
 		properties.setProperty(prefix+"rslt_mtf50_mode",rslt_mtf50_mode+"");
 		properties.setProperty(prefix+"rslt_solve",rslt_solve+"");
 		for (int chn=0; chn<rslt_show_chn.length; chn++) properties.setProperty(prefix+"rslt_show_chn_"+chn,rslt_show_chn[chn]+"");
+// always re-calculate here?		
+		zRanges=calcZRanges(dataWeightsToBoolean());
+		if (zRanges!=null){
+			properties.setProperty(prefix+"zRanges_length",zRanges.length+"");
+			for (int chn=0;chn<zRanges.length;chn++) if (zRanges[chn]!=null) {
+				properties.setProperty(prefix+"zRanges_"+chn+"_length",zRanges[chn].length+"");
+				for (int sample=0;sample<zRanges[chn].length;sample++) if (zRanges[chn][sample]!=null) {
+					properties.setProperty(prefix+"zRanges_"+chn+"_"+sample,zRanges[chn][sample][0]+","+zRanges[chn][sample][1]);
+				}
+			}
+		}
 	}
 
 	public void getProperties(String prefix,Properties properties){
@@ -363,13 +407,17 @@ public class FocusingField {
 		if (properties.getProperty(prefix+"filterInputConcaveSigma")!=null)
 			filterInputConcaveSigma=Double.parseDouble(properties.getProperty(prefix+"filterInputConcaveSigma"));
 		
-		
 		if (properties.getProperty(prefix+"filterInputConcaveRemoveFew")!=null)
 			filterInputConcaveRemoveFew=Boolean.parseBoolean(properties.getProperty(prefix+"filterInputConcaveRemoveFew"));
 		if (properties.getProperty(prefix+"filterInputConcaveMinSeries")!=null)
 			filterInputConcaveMinSeries=Integer.parseInt(properties.getProperty(prefix+"filterInputConcaveMinSeries"));
 		if (properties.getProperty(prefix+"filterInputConcaveScale")!=null)
 			filterInputConcaveScale=Double.parseDouble(properties.getProperty(prefix+"filterInputConcaveScale"));
+		
+		if (properties.getProperty(prefix+"filterZ")!=null)
+			filterZ=Boolean.parseBoolean(properties.getProperty(prefix+"filterZ"));
+		if (properties.getProperty(prefix+"minLeftSamples")!=null)
+			minLeftSamples=Integer.parseInt(properties.getProperty(prefix+"minLeftSamples"));
 		
 		for (int chn=0; chn<minMeas.length; chn++) if (properties.getProperty(prefix+"minMeas_"+chn)!=null)
 			minMeas[chn]=Double.parseDouble(properties.getProperty(prefix+"minMeas_"+chn));
@@ -429,6 +477,26 @@ public class FocusingField {
 			rslt_solve=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_solve"));
 		for (int chn=0; chn<rslt_show_chn.length; chn++) if (properties.getProperty(prefix+"rslt_show_chn_"+chn)!=null)
 			rslt_show_chn[chn]=Boolean.parseBoolean(properties.getProperty(prefix+"rslt_show_chn_"+chn));
+		zRanges=null;
+		if (properties.getProperty(prefix+"zRanges_length")!=null){
+			zRanges=new double [Integer.parseInt(properties.getProperty(prefix+"zRanges_length"))][][];
+			for (int chn=0;chn<zRanges.length;chn++) {
+				zRanges[chn]=null;
+				if (properties.getProperty(prefix+"zRanges_"+chn+"_length")!=null){
+					zRanges[chn]=new double [Integer.parseInt(properties.getProperty(prefix+"zRanges_"+chn+"_length"))][];
+					for (int sample=0;sample<zRanges[chn].length;sample++) {
+						zRanges[chn][sample]=null;
+						String s=properties.getProperty(prefix+"zRanges_"+chn+"_"+sample);
+						if (s!=null){
+							zRanges[chn][sample]=new double[2];
+							String [] ss=s.split(",");
+							zRanges[chn][sample][0]=Double.parseDouble(ss[0]);
+							zRanges[chn][sample][1]=Double.parseDouble(ss[1]);
+						}
+					}
+				}
+			}
+		}
 	}
 	public void setDebugLevel(int debugLevel){
 		this.debugLevel=debugLevel;
@@ -666,6 +734,67 @@ public double [][] getSeriesWeights(){
 	return seriesWeights;
 }
 
+private double [][][] calcZRanges(
+		boolean [] enable){
+	double [][][] zRanges=new double[getNumChannels()][getNumSamples()][];
+	for (int chn=0;chn<zRanges.length;chn++) for (int sample=0;sample<zRanges[chn].length;sample++) zRanges[chn][sample]=null;
+	double [][] sCoord=	flattenSampleCoord();
+
+	for (int index=0;index<dataVector.length;index++) if ((index>=enable.length) ||enable[index]){
+		int chn=dataVector[index].channel;
+		int sample=dataVector[index].sampleIndex;
+		double z=     fieldFitting.getMotorsZ(
+				dataVector[index].motors, // 3 motor coordinates
+				sCoord[sample][0], // pixel x
+				sCoord[sample][1]); // pixel y
+		if (zRanges[chn][sample]==null){
+			zRanges[chn][sample]=new double[2];
+			zRanges[chn][sample][0]=z;
+			zRanges[chn][sample][1]=z;
+		} else {
+			if (z<zRanges[chn][sample][0]) zRanges[chn][sample][0]=z;
+			if (z>zRanges[chn][sample][1]) zRanges[chn][sample][1]=z;
+		}
+	}
+	if (debugLevel>0) System.out.println("calcZRanges()");
+	return zRanges;
+}
+
+private boolean [] filterByZRanges (
+		double [][][] zRanges,
+		boolean [] enable_in){
+	boolean [] enable_out=enable_in.clone();
+	double [][] sCoord=	flattenSampleCoord();
+	int numFiltered=0;
+	int numLeft=0;
+
+	if (zRanges!=null) {
+		for (int index=0;index<dataVector.length;index++) if ((index>=enable_in.length) || enable_in[index]){
+			int chn=dataVector[index].channel;
+			int sample=dataVector[index].sampleIndex;
+			double z=     fieldFitting.getMotorsZ(
+					dataVector[index].motors, // 3 motor coordinates
+					sCoord[sample][0], // pixel x
+					sCoord[sample][1]); // pixel y
+			if ((zRanges[chn]!=null) && (zRanges[chn][sample]!=null)){
+				if ((z<zRanges[chn][sample][0]) || (z>zRanges[chn][sample][1])) {
+					enable_out[index]=false;
+					numFiltered++;
+				} else {
+					numLeft++;
+				}
+			}
+		}
+	}
+	if (debugLevel>1) System.out.println("filterByZRanges(): Filtered "+numFiltered+" samples, left "+numLeft+" samples");
+	return enable_out;
+}
+private int getNumEnabledSamples(
+		boolean [] enable){
+	int num_en=0;
+	for (int index=0;index<dataVector.length;index++) if ((index>=enable.length) || enable[index]) num_en++;
+	return num_en;
+}
 
 private boolean [] filterConcave(
 		double sigma,
@@ -1029,10 +1158,12 @@ private int [] getParallelDiff(MeasuredSample [] vector){
 
 
 // includes deselected channels
-public void setDataVector(MeasuredSample [] vector){ // remove unused channels if any. vector is already corrected from input data, FWHM psf
+public void setDataVector(
+		boolean calibrateMode,
+		MeasuredSample [] vector){ // remove unused channels if any. vector is already corrected from input data, FWHM psf
     if (debugLevel>1) System.out.println("+++++ (Re)calculating sample weights +++++");
     int [] diffs=null;
-    if (parallelOnly) diffs=getParallelDiff(vector);
+    if (calibrateMode && parallelOnly) diffs=getParallelDiff(vector);
     boolean [] chanSel=fieldFitting.getSelectedChannels();
     int numSamples=0;
     for (int i=0;i<vector.length;i++) if (chanSel[vector[i].channel]){
@@ -1052,36 +1183,21 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
     int corrLength=fieldFitting.getNumberOfCorrParameters();
     dataValues = new double [dataVector.length+corrLength];
     dataWeights = new double [dataVector.length+corrLength];
-//     sumWeights=0.0;
-//    int mode=weightMode;
     double kw= (weightRadius>0.0)?(-0.5*getPixelMM()*getPixelMM()/(weightRadius*weightRadius)):0;
-//weightRadius     
-//    if (weightReference==null) mode=0;
     for (int i=0;i<dataVector.length;i++){
         MeasuredSample ms=dataVector[i];
         dataValues[i]=ms.value;
         dataWeights[i]=1.0/Math.pow(ms.value,weightMode);
-/*        
-        double diff=weightReference[ms.channel]-ms.value;
-        if (diff<0.0) diff=0;
-        switch (mode){
-        case 0:    dataWeights[i]=1.0; break;
-        case 1:    dataWeights[i]=diff; break;
-        case 2:    dataWeights[i]=diff*diff; break;
-        default: dataWeights[i]=1.0;
-        }
- */      
         if (weightRadius>0.0){
             double r2=(ms.px-currentPX0)*(ms.px-currentPX0)+(ms.py-currentPY0)*(ms.py-currentPY0);
             dataWeights[i]*=Math.exp(kw*r2);
         }
-//         sumWeights+=dataWeights[i];
     }
     for (int i=0;i<corrLength;i++){
         dataValues[i+dataVector.length]=0.0; // correction target is always 0
         dataWeights[i+dataVector.length]=1.0; // improve?
     }
-    if (filterInput){
+    if (calibrateMode && filterInput){
     	boolean [] en=dataWeightsToBoolean();
     	en= filterCrazyInput(
     			en, // [meas][cjn][sample] (or null) // can be shorter or longer than dataVector
@@ -1091,7 +1207,7 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
     			);
     	maskDataWeights(en);
     }
-    if (filterInputTooFar){
+    if (calibrateMode && filterInputTooFar){
     	boolean [] en=dataWeightsToBoolean();
     	en= filterTooFar(
     			filterInputFarRatio,
@@ -1099,7 +1215,7 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
     	maskDataWeights(en);
     }
 
-    if (filterInputConcave){
+    if (calibrateMode && filterInputConcave){
     	boolean [] en=dataWeightsToBoolean();
     	en= filterConcave(
     			filterInputConcaveSigma,
@@ -1120,23 +1236,24 @@ public void setDataVector(MeasuredSample [] vector){ // remove unused channels i
 // for compatibility with Distortions class\
 
 public void commitParameterVector(double [] vector){
-    fieldFitting.commitParameterVector(vector,sagittalMaster);
-    // recalculate measured S,T (depend on center) if center is among fitted parameters
-    boolean [] centerSelect=fieldFitting.getCenterSelect();
-    if (centerSelect[0] ||centerSelect[1]){ // do not do that if XC, YC are not modified
-        // recalculate data vector
-        double [] pXY=fieldFitting.getCenterXY();
-    currentPX0=pXY[0];
-    currentPY0=pXY[1];
-        if (debugLevel>0) System.out.println("Updated currentPX0="+currentPX0+", currentPY0="+currentPY0);
-    if (correct_measurement_ST && updateWeightWhileFitting) {
-        setDataVector(createDataVector(
-                false, // boolean updateSelection,
-                pXY[0], //double centerPX,
-                pXY[1])); //double centerPY
-    }
-
-    }
+	fieldFitting.commitParameterVector(vector,sagittalMaster);
+	// recalculate measured S,T (depend on center) if center is among fitted parameters
+	boolean [] centerSelect=fieldFitting.getCenterSelect();
+	if (centerSelect[0] ||centerSelect[1]){ // do not do that if XC, YC are not modified
+		// recalculate data vector
+		double [] pXY=fieldFitting.getCenterXY();
+		if (debugLevel>0) System.out.println("Updated currentPX0="+pXY[0]+"("+currentPX0+")"+", currentPY0="+pXY[1]+"("+currentPY0+")");
+		currentPX0=pXY[0];
+		currentPY0=pXY[1];
+		if (correct_measurement_ST && updateWeightWhileFitting) {
+			setDataVector(
+					true,
+					createDataVector(
+					false, // boolean updateSelection,
+					pXY[0], //double centerPX,
+					pXY[1])); //double centerPY
+		}
+	}
 }
 
 public double [] createFXandJacobian( double [] vector, boolean createJacobian){
@@ -1310,6 +1427,22 @@ public double getRMS(double [] fx, boolean pure){
     return Math.sqrt(sum);
 }
 
+public MeasuredSample [] createDataVector(FocusingFieldMeasurement measurement){
+	 ArrayList<FocusingFieldMeasurement> singleMeasurement=new ArrayList<FocusingFieldMeasurement>();
+	 singleMeasurement.add(measurement);
+    return createDataVector(
+    		singleMeasurement,
+    		false, // calibrate
+            true,  // update selection
+            currentPX0, // ignored
+            currentPY0, // ignored
+            (this.useMinMeas?this.minMeas:null), // pixels
+            (this.useMaxMeas?this.maxMeas:null), // pixels
+            (this.useThresholdMax?this.thresholdMax:null)); // pixels
+}
+
+
+
 public MeasuredSample [] createDataVector(){
     return createDataVector(
             true, // boolean updateSelection,
@@ -1322,6 +1455,8 @@ public MeasuredSample [] createDataVector(
         double centerPY
         ){ // use this data
 return createDataVector(
+		measurements,
+		true, // calibrate
         updateSelection,
         centerPX,
         centerPY,
@@ -1379,29 +1514,33 @@ d_cs/dy0= delta_x*(2*delta_y^2-r2)/r2^2
 
 */
 public MeasuredSample [] createDataVector(
-        boolean updateSelection,
-        double centerPX,
-        double centerPY,
-        double [] minMeas, // pixels
-        double [] maxMeas, // pixels
-        double [] thresholdMax){ // pixels
-    debugDerivatives=debugLevel==3;
-    currentPX0=centerPX;
-    currentPY0=centerPY;
-    final int numColors=3;
-    final int numDirs=2;
-    if (sampleMask== null) updateSelection=true;
-    if (updateSelection){
-        if (debugLevel>1) System.out.println("createDataVector(true,"+centerPX+","+centerPY+"...)");
-        sampleMask= new boolean[measurements.size()] [sampleCoord.length][sampleCoord[0].length][numColors][numDirs];
-        for (int n=0;n<sampleMask.length;n++)
-        for (int i=0;i<sampleMask[n].length;i++)
-            for (int j=0;j<sampleMask[n][i].length;j++)
-                for (int c=0;c<numColors;c++)
-                    for (int d=0;d<numDirs;d++) sampleMask[n][i][j][c][d]=false;
-        
-    }
-/*
+		ArrayList<FocusingFieldMeasurement> measurements,
+		boolean calibrate, // false - adjust, should have updateSelection==true and a single-element measurements list
+		boolean updateSelection,
+		double centerPX,
+		double centerPY,
+		double [] minMeas, // pixels
+		double [] maxMeas, // pixels
+		double [] thresholdMax){ // pixels
+	debugDerivatives=debugLevel==3;
+	if (calibrate) {
+		currentPX0=centerPX;
+		currentPY0=centerPY;
+	}
+	final int numColors=3;
+	final int numDirs=2;
+	if (sampleMask== null) updateSelection=true;
+	if (updateSelection){
+		if (debugLevel>1) System.out.println("createDataVector(true,"+centerPX+","+centerPY+"...)");
+		sampleMask= new boolean[measurements.size()] [sampleCoord.length][sampleCoord[0].length][numColors][numDirs];
+		for (int n=0;n<sampleMask.length;n++)
+			for (int i=0;i<sampleMask[n].length;i++)
+				for (int j=0;j<sampleMask[n][i].length;j++)
+					for (int c=0;c<numColors;c++)
+						for (int d=0;d<numDirs;d++) sampleMask[n][i][j][c][d]=false;
+
+	}
+	/*
 d_c2/d_x0= 2*delta_x*(delta_x^2 - r2)/r2^2
 d_c2/d_y0= 2*delta_y*delta_x^2/r2^2
 
@@ -1410,287 +1549,287 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 
 2*d_cs/dx0= 2*delta_y*(2*delta_x^2-r2)/r2^2
 2*d_cs/dy0= 2*delta_x*(2*delta_y^2-r2)/r2^2
-*/
-    double [][][] cosSin2Tab=new double[sampleCoord.length][sampleCoord[0].length][3];
-    double [][][] debugCosSin2Tab_dx=null;
-    double [][][] debugCosSin2Tab_dy=null;
-    double debugDelta_x_dx=0,debugDelta_y_dy=0,debugR2_dx=0,debugR2_dy=0;
-    if (debugDerivatives){
-    debugCosSin2Tab_dx=new double[sampleCoord.length][sampleCoord[0].length][3];
-    debugCosSin2Tab_dy=new double[sampleCoord.length][sampleCoord[0].length][3];
-        
-    }
-    double [][][] cosSin2Tab_dx0=new double[sampleCoord.length][sampleCoord[0].length][3];
-    double [][][] cosSin2Tab_dy0=new double[sampleCoord.length][sampleCoord[0].length][3];
-        for (int i=0;i<sampleCoord.length;i++) for (int j=0;j<sampleCoord[i].length;j++){
-            double delta_x=sampleCoord[i][j][0]-currentPX0;
-            double delta_y=sampleCoord[i][j][1]-currentPY0;
-            double r2=delta_x*delta_x+delta_y*delta_y;
-            double r4=r2*r2;
-         if (debugDerivatives){
-             debugDelta_x_dx=sampleCoord[i][j][0]-currentPX0-1;
-             debugDelta_y_dy=sampleCoord[i][j][1]-currentPY0-1;
-             debugR2_dx=debugDelta_x_dx*debugDelta_x_dx+delta_y*delta_y;
-             debugR2_dy=delta_x*delta_x+debugDelta_y_dy*debugDelta_y_dy;
-             
-         }
-            if (r2>0.0) {
-                cosSin2Tab[i][j][0]= delta_x*delta_x/r2; // cos^2
-                cosSin2Tab[i][j][1]= delta_y*delta_y/r2; // sin^2
-                cosSin2Tab[i][j][2]=2*delta_x*delta_y/r2; // 2*cos*sin
-                
-                cosSin2Tab_dx0[i][j][0]= 2*delta_x*(delta_x*delta_x - r2)/r4; // d(cos^2)/d(x0)
-                cosSin2Tab_dx0[i][j][1]= 2*delta_x*delta_y*delta_y/r4; // d(sin^2)/d(x0)
-                cosSin2Tab_dx0[i][j][2]= 2*delta_y*(2*delta_x*delta_x-r2)/r4; // d(2*cos*sin)/d(x0)
-                
-                cosSin2Tab_dy0[i][j][0]= 2*delta_y*delta_x*delta_x/r4; // d(cos^2)/d(y0)
-                cosSin2Tab_dy0[i][j][1]= 2*delta_y*(delta_y*delta_y - r2)/r4; // d(sin^2)/d(y0)
-                cosSin2Tab_dy0[i][j][2]= 2*delta_x*(2*delta_y*delta_y-r2)/r4; // d(2*cos*sin)/d(y0)
-             if (debugDerivatives){
-                 debugCosSin2Tab_dx[i][j][0]= debugDelta_x_dx*debugDelta_x_dx/debugR2_dx; // cos^2
-                 debugCosSin2Tab_dx[i][j][1]= delta_y*delta_y/debugR2_dx; // sin^2
-                 debugCosSin2Tab_dx[i][j][2]=2*debugDelta_x_dx*delta_y/debugR2_dx; // 2*cos*sin
+	 */
+	double [][][] cosSin2Tab=new double[sampleCoord.length][sampleCoord[0].length][3];
+	double [][][] debugCosSin2Tab_dx=null;
+	double [][][] debugCosSin2Tab_dy=null;
+	double debugDelta_x_dx=0,debugDelta_y_dy=0,debugR2_dx=0,debugR2_dy=0;
+	if (debugDerivatives){
+		debugCosSin2Tab_dx=new double[sampleCoord.length][sampleCoord[0].length][3];
+		debugCosSin2Tab_dy=new double[sampleCoord.length][sampleCoord[0].length][3];
 
-                 debugCosSin2Tab_dy[i][j][0]= delta_x*delta_x/debugR2_dy; // cos^2
-                 debugCosSin2Tab_dy[i][j][1]= debugDelta_y_dy*debugDelta_y_dy/debugR2_dy; // sin^2
-                 debugCosSin2Tab_dy[i][j][2]=2*delta_x*debugDelta_y_dy/debugR2_dy; // 2*cos*sin
-             }
+	}
+	double [][][] cosSin2Tab_dx0=new double[sampleCoord.length][sampleCoord[0].length][3];
+	double [][][] cosSin2Tab_dy0=new double[sampleCoord.length][sampleCoord[0].length][3];
+	for (int i=0;i<sampleCoord.length;i++) for (int j=0;j<sampleCoord[i].length;j++){
+		double delta_x=sampleCoord[i][j][0]-currentPX0;
+		double delta_y=sampleCoord[i][j][1]-currentPY0;
+		double r2=delta_x*delta_x+delta_y*delta_y;
+		double r4=r2*r2;
+		if (debugDerivatives){
+			debugDelta_x_dx=sampleCoord[i][j][0]-currentPX0-1;
+			debugDelta_y_dy=sampleCoord[i][j][1]-currentPY0-1;
+			debugR2_dx=debugDelta_x_dx*debugDelta_x_dx+delta_y*delta_y;
+			debugR2_dy=delta_x*delta_x+debugDelta_y_dy*debugDelta_y_dy;
 
-            } else {
-                cosSin2Tab[i][j][0]=1.0;
-                cosSin2Tab[i][j][1]=0.0;
-                cosSin2Tab[i][j][2]=0.0;
+		}
+		if (r2>0.0) {
+			cosSin2Tab[i][j][0]= delta_x*delta_x/r2; // cos^2
+			cosSin2Tab[i][j][1]= delta_y*delta_y/r2; // sin^2
+			cosSin2Tab[i][j][2]=2*delta_x*delta_y/r2; // 2*cos*sin
 
-                cosSin2Tab_dx0[i][j][0]=0.0;
-                cosSin2Tab_dx0[i][j][1]=0.0;
-                cosSin2Tab_dx0[i][j][2]=0.0;
+			cosSin2Tab_dx0[i][j][0]= 2*delta_x*(delta_x*delta_x - r2)/r4; // d(cos^2)/d(x0)
+			cosSin2Tab_dx0[i][j][1]= 2*delta_x*delta_y*delta_y/r4; // d(sin^2)/d(x0)
+			cosSin2Tab_dx0[i][j][2]= 2*delta_y*(2*delta_x*delta_x-r2)/r4; // d(2*cos*sin)/d(x0)
 
-                cosSin2Tab_dy0[i][j][0]=0.0;
-                cosSin2Tab_dy0[i][j][1]=0.0;
-                cosSin2Tab_dy0[i][j][2]=0.0;
-             if (debugDerivatives){
-                 debugCosSin2Tab_dx[i][j][0]= 0.0;
-                 debugCosSin2Tab_dx[i][j][1]= 0.0;
-                 debugCosSin2Tab_dx[i][j][2]= 0.0;
+			cosSin2Tab_dy0[i][j][0]= 2*delta_y*delta_x*delta_x/r4; // d(cos^2)/d(y0)
+			cosSin2Tab_dy0[i][j][1]= 2*delta_y*(delta_y*delta_y - r2)/r4; // d(sin^2)/d(y0)
+			cosSin2Tab_dy0[i][j][2]= 2*delta_x*(2*delta_y*delta_y-r2)/r4; // d(2*cos*sin)/d(y0)
+			if (debugDerivatives){
+				debugCosSin2Tab_dx[i][j][0]= debugDelta_x_dx*debugDelta_x_dx/debugR2_dx; // cos^2
+				debugCosSin2Tab_dx[i][j][1]= delta_y*delta_y/debugR2_dx; // sin^2
+				debugCosSin2Tab_dx[i][j][2]=2*debugDelta_x_dx*delta_y/debugR2_dx; // 2*cos*sin
 
-                 debugCosSin2Tab_dy[i][j][0]= 0.0;
-                 debugCosSin2Tab_dy[i][j][1]= 0.0;
-                 debugCosSin2Tab_dy[i][j][2]= 0.0;
-             }
-            }
-        }
-    
-    ArrayList<MeasuredSample> sampleList=new ArrayList<MeasuredSample>();
-        if (thresholdMax != null){
-         weightReference=thresholdMax.clone();
-         for (int c=0;c<weightReference.length;c++){
-                // correct for for minimal measurement;
-                if (minMeas != null){
-                    if (weightReference[c]<minMeas[c]){
-                        weightReference[c]=0; // do not use
-                        System.out.println ("Weight reference calculation failed (below minimal), all samples may only have the same weight");
-                        weightReference=null;
-                        break;
-                    }
-                    weightReference[c]=Math.sqrt(weightReference[c]*weightReference[c]-minMeas[c]*minMeas[c]);
-                }
-                // correct for for maximal measurement;
-                if (maxMeas != null) {
-                    if (weightReference[c] >= maxMeas[c]){
-                        weightReference[c]=0; // do not use
-                        System.out.println ("Weight reference calculation failed (above maximal), all samples may only have the same weight");
-                        weightReference=null;
-                        break;
-                    }
-                    weightReference[c] = 1.0/Math.sqrt(1.0/(weightReference[c]*weightReference[c])-1.0/(maxMeas[c]*maxMeas[c]));
-                }
-                // convert to microns from pixels
-                weightReference[c]*=getPixelUM();
-                if (debugLevel>1) System.out.println("==== weightReference["+c+"]="+weightReference[c]);
-         }
-        } else {
-            thresholdMax=null;
-        }
-        int nMeas=0;
-    for (FocusingFieldMeasurement ffm:measurements){
-        double [][][][] samples=ffm.samples;
-        if (samples!=null) for (int i=0;i<sampleCoord.length;i++){
-            if ((i<samples.length) && (samples[i]!=null)) for (int j=0;j<sampleCoord[i].length;j++){
-                if ((j<samples[i].length) && (samples[i][j]!=null)) for (int c=0;c<numColors;c++){
+				debugCosSin2Tab_dy[i][j][0]= delta_x*delta_x/debugR2_dy; // cos^2
+				debugCosSin2Tab_dy[i][j][1]= debugDelta_y_dy*debugDelta_y_dy/debugR2_dy; // sin^2
+				debugCosSin2Tab_dy[i][j][2]=2*delta_x*debugDelta_y_dy/debugR2_dy; // 2*cos*sin
+			}
 
-                if ((c<samples[i][j].length) && (samples[i][j][c]!=null)){
-                        double [] sagTan = {
-                                Math.sqrt(
-                                        cosSin2Tab[i][j][0]*samples[i][j][c][0]+
-                                        cosSin2Tab[i][j][1]*samples[i][j][c][1]+
-                                        cosSin2Tab[i][j][2]*samples[i][j][c][2]),
-                                Math.sqrt(
-                                        cosSin2Tab[i][j][1]*samples[i][j][c][0]+
-                                        cosSin2Tab[i][j][0]*samples[i][j][c][1]-
-                                        cosSin2Tab[i][j][2]*samples[i][j][c][2])};
-                        double [] debugSagTan_dx={0.0,0.0},debugSagTan_dy={0.0,0.0};
-                        if (debugDerivatives){
-                            debugSagTan_dx[0]= Math.sqrt(
-                                    debugCosSin2Tab_dx[i][j][0]*samples[i][j][c][0]+
-                                    debugCosSin2Tab_dx[i][j][1]*samples[i][j][c][1]+
-                                    debugCosSin2Tab_dx[i][j][2]*samples[i][j][c][2]);
-                            debugSagTan_dx[1]= Math.sqrt(
-                                    debugCosSin2Tab_dx[i][j][1]*samples[i][j][c][0]+
-                                    debugCosSin2Tab_dx[i][j][0]*samples[i][j][c][1]-
-                                    debugCosSin2Tab_dx[i][j][2]*samples[i][j][c][2]);
-                            debugSagTan_dy[0]= Math.sqrt(
-                                    debugCosSin2Tab_dy[i][j][0]*samples[i][j][c][0]+
-                                    debugCosSin2Tab_dy[i][j][1]*samples[i][j][c][1]+
-                                    debugCosSin2Tab_dy[i][j][2]*samples[i][j][c][2]);
-                            debugSagTan_dy[1]= Math.sqrt(
-                                    debugCosSin2Tab_dy[i][j][1]*samples[i][j][c][0]+
-                                    debugCosSin2Tab_dy[i][j][0]*samples[i][j][c][1]-
-                                    debugCosSin2Tab_dy[i][j][2]*samples[i][j][c][2]);
-                     }
-                        double [] sagTan_dx0 = {
-                                (0.5*(
-                                        cosSin2Tab_dx0[i][j][0]*samples[i][j][c][0]+
-                                        cosSin2Tab_dx0[i][j][1]*samples[i][j][c][1]+
-                                        cosSin2Tab_dx0[i][j][2]*samples[i][j][c][2])/sagTan[0]),
-                                    (0.5*(
-                                            cosSin2Tab_dx0[i][j][1]*samples[i][j][c][0]+
-                                            cosSin2Tab_dx0[i][j][0]*samples[i][j][c][1]-
-                                            cosSin2Tab_dx0[i][j][2]*samples[i][j][c][2])/sagTan[1])
-                        };
+		} else {
+			cosSin2Tab[i][j][0]=1.0;
+			cosSin2Tab[i][j][1]=0.0;
+			cosSin2Tab[i][j][2]=0.0;
 
-                        double [] sagTan_dy0 = {
-                                (0.5*(
-                                        cosSin2Tab_dy0[i][j][0]*samples[i][j][c][0]+
-                                        cosSin2Tab_dy0[i][j][1]*samples[i][j][c][1]+
-                                        cosSin2Tab_dy0[i][j][2]*samples[i][j][c][2])/sagTan[0]),
-                                    (0.5*(
-                                            cosSin2Tab_dy0[i][j][1]*samples[i][j][c][0]+
-                                            cosSin2Tab_dy0[i][j][0]*samples[i][j][c][1]-
-                                            cosSin2Tab_dy0[i][j][2]*samples[i][j][c][2])/sagTan[1])
-                        };
+			cosSin2Tab_dx0[i][j][0]=0.0;
+			cosSin2Tab_dx0[i][j][1]=0.0;
+			cosSin2Tab_dx0[i][j][2]=0.0;
 
-                        if (debugLevel>3) System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
-                        for (int d=0;d<numDirs;d++){
-                            if (debugLevel>3) System.out.print(" d= "+d+" ");
+			cosSin2Tab_dy0[i][j][0]=0.0;
+			cosSin2Tab_dy0[i][j][1]=0.0;
+			cosSin2Tab_dy0[i][j][2]=0.0;
+			if (debugDerivatives){
+				debugCosSin2Tab_dx[i][j][0]= 0.0;
+				debugCosSin2Tab_dx[i][j][1]= 0.0;
+				debugCosSin2Tab_dx[i][j][2]= 0.0;
 
-                        if (!updateSelection && !sampleMask[nMeas][i][j][c][d]) continue;
-                        int chn=d+numDirs*c;
-                        //                     System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
-                        // saved values are PSF radius, convert to FWHM by multiplying by 2.0
-                        double value=sagTan[d]*2.0;
-                        double value_dx0=sagTan_dx0[d]*2.0;
-                        double value_dy0=sagTan_dy0[d]*2.0;
-                        double debugValue_dx0=0.0,debugValue_dy0=0.0;
-                     if (debugDerivatives){
-                         debugValue_dx0=debugSagTan_dx[d]*2.0;
-                         debugValue_dy0=debugSagTan_dy[d]*2.0;
-                     }
-                        
-                        boolean dbg=(debugLevel==3) && (i==1) && (j==3);
-                        double dbg_delta_x=sampleCoord[i][j][0]-currentPX0;
-                        double dbg_delta_y=sampleCoord[i][j][1]-currentPY0;
+				debugCosSin2Tab_dy[i][j][0]= 0.0;
+				debugCosSin2Tab_dy[i][j][1]= 0.0;
+				debugCosSin2Tab_dy[i][j][2]= 0.0;
+			}
+		}
+	}
 
-                        if (dbg) System.out.print("mot="+ffm.motors[2]+" dx="+dbg_delta_x+" dy="+dbg_delta_y);
-                        if (dbg) System.out.println(" value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
-                        if (dbg) System.out.println(" value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
-                                " debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
-                        // discard above threshold (in pixels, raw FWHM data)
-                        if (Double.isNaN(value)) {
-                            if (debugLevel>3) System.out.println("samples["+i+"]["+j+"]["+c+"]["+d+"] = Double.NaN, motors[0]="+ffm.motors[0]);
-                            if (updateSelection) continue; // bad measurement
-                        }
-                        if (debugLevel>3) System.out.print(" A "+value);
-                        if (thresholdMax != null){
-                            if (value >= thresholdMax[chn]) {
-                                if (debugLevel>3) System.out.print(" > "+thresholdMax[chn]);
-                                if (updateSelection) continue; // bad measurement (above threshold)
-                            }
-                        }
-                        if (debugLevel>3) System.out.print(" B "+value);
-                        // correct for for minimal measurement;
-                        if (minMeas != null){
-                            if (value<minMeas[chn]) {
-                                if (debugLevel>3) System.out.print(" < "+minMeas[chn]);
-                                if (updateSelection) continue; // bad measurement (smaller than correction)
-                            }
-                            double f=value;
-                            value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
-                            value_dx0*=f/value;
-                            value_dy0*=f/value;
-                        if (dbg) {
-                            System.out.println("2. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
-                     if (debugDerivatives){
-                            debugValue_dx0=Math.sqrt(debugValue_dx0*debugValue_dx0-minMeas[chn]*minMeas[chn]);
-                            debugValue_dy0=Math.sqrt(debugValue_dy0*debugValue_dy0-minMeas[chn]*minMeas[chn]);
-                        if (dbg) System.out.println("2. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
-                                " debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
-                     }
-                        }
-                        }
-                        if (debugLevel>3) System.out.print(" C "+value);
-                        // correct for for maximal measurement;
-                        if (maxMeas != null) {
-                            if (value >= maxMeas[chn]){
-                                if (debugLevel>3) System.out.print(" > "+maxMeas[chn]);
-                                if (updateSelection) continue; // bad measurement (larger than correction)
-                            }
-                            double f=value;
-                            value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
-//                             value_dx0*=1.0/(value*f*f*f);
-//                             value_dy0*=1.0/(value*f*f*f);
-                            f=value/f;
-                            f*=f*f;
-                            value_dx0*=f;
-                            value_dy0*=f;
-                            
-                        if (dbg) {
-                            System.out.println("3. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
-                     if (debugDerivatives){
-                         debugValue_dx0 = 1.0/Math.sqrt(1.0/(debugValue_dx0*debugValue_dx0)-1.0/(maxMeas[chn]*maxMeas[chn]));
-                         debugValue_dy0 = 1.0/Math.sqrt(1.0/(debugValue_dy0*debugValue_dy0)-1.0/(maxMeas[chn]*maxMeas[chn]));
-                        if (dbg) System.out.println("3. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
-                                " debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
-                     }
-                        }
-                        }
-                        if (debugLevel>3) System.out.print(" D "+value);
-                        // convert to microns from pixels
-                        value*=getPixelUM();
-                        value_dx0*=getPixelUM();
-                        value_dy0*=getPixelUM();
-                        if (dbg) {
-                            System.out.println("4. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
-                     if (debugDerivatives){
-                            debugValue_dx0*=getPixelUM();
-                            debugValue_dy0*=getPixelUM();
-                        if (dbg) System.out.println("4. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
-                                " debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
-                     }
-                        }
+	ArrayList<MeasuredSample> sampleList=new ArrayList<MeasuredSample>();
+	if (thresholdMax != null){
+		weightReference=thresholdMax.clone();
+		for (int c=0;c<weightReference.length;c++){
+			// correct for for minimal measurement;
+			if (minMeas != null){
+				if (weightReference[c]<minMeas[c]){
+					weightReference[c]=0; // do not use
+					System.out.println ("Weight reference calculation failed (below minimal), all samples may only have the same weight");
+					weightReference=null;
+					break;
+				}
+				weightReference[c]=Math.sqrt(weightReference[c]*weightReference[c]-minMeas[c]*minMeas[c]);
+			}
+			// correct for for maximal measurement;
+			if (maxMeas != null) {
+				if (weightReference[c] >= maxMeas[c]){
+					weightReference[c]=0; // do not use
+					System.out.println ("Weight reference calculation failed (above maximal), all samples may only have the same weight");
+					weightReference=null;
+					break;
+				}
+				weightReference[c] = 1.0/Math.sqrt(1.0/(weightReference[c]*weightReference[c])-1.0/(maxMeas[c]*maxMeas[c]));
+			}
+			// convert to microns from pixels
+			weightReference[c]*=getPixelUM();
+			if (debugLevel>1) System.out.println("==== weightReference["+c+"]="+weightReference[c]);
+		}
+	} else {
+		thresholdMax=null;
+	}
+	int nMeas=0;
+	for (FocusingFieldMeasurement ffm:measurements){
+		double [][][][] samples=ffm.samples;
+		if (samples!=null) for (int i=0;i<sampleCoord.length;i++){
+			if ((i<samples.length) && (samples[i]!=null)) for (int j=0;j<sampleCoord[i].length;j++){
+				if ((j<samples[i].length) && (samples[i][j]!=null)) for (int c=0;c<numColors;c++){
 
-                        sampleList.add(new MeasuredSample(
-                                ffm.motors,
-                                ffm.timestamp,
-                                sampleCoord[i][j][0], // px,
-                                sampleCoord[i][j][1], // py,
-                                flattenIndex(i,j),
-                                chn,
-                                value,
-                                value_dx0, //double dPxc; // derivative of the value by optical (aberration) center pixel X
-                                value_dy0 //double dPyc; // derivative of the value by optical (aberration) center pixel Y
-                                ));
-                        if (debugLevel>3) System.out.print(" E "+value);
-                        if (updateSelection) sampleMask[nMeas][i][j][c][d]=true;
-                    }
-                }
-                }
-            }
-        }
-        nMeas++;
-    }
-    if (debugLevel>3) System.out.println();
-    if (debugLevel>1) System.out.println("createDataVector -> "+sampleList.size()+" elements");
-    return sampleList.toArray(new MeasuredSample[0]);
+					if ((c<samples[i][j].length) && (samples[i][j][c]!=null)){
+						double [] sagTan = {
+								Math.sqrt(
+										cosSin2Tab[i][j][0]*samples[i][j][c][0]+
+										cosSin2Tab[i][j][1]*samples[i][j][c][1]+
+										cosSin2Tab[i][j][2]*samples[i][j][c][2]),
+										Math.sqrt(
+												cosSin2Tab[i][j][1]*samples[i][j][c][0]+
+												cosSin2Tab[i][j][0]*samples[i][j][c][1]-
+												cosSin2Tab[i][j][2]*samples[i][j][c][2])};
+						double [] debugSagTan_dx={0.0,0.0},debugSagTan_dy={0.0,0.0};
+						if (debugDerivatives){
+							debugSagTan_dx[0]= Math.sqrt(
+									debugCosSin2Tab_dx[i][j][0]*samples[i][j][c][0]+
+									debugCosSin2Tab_dx[i][j][1]*samples[i][j][c][1]+
+									debugCosSin2Tab_dx[i][j][2]*samples[i][j][c][2]);
+							debugSagTan_dx[1]= Math.sqrt(
+									debugCosSin2Tab_dx[i][j][1]*samples[i][j][c][0]+
+									debugCosSin2Tab_dx[i][j][0]*samples[i][j][c][1]-
+									debugCosSin2Tab_dx[i][j][2]*samples[i][j][c][2]);
+							debugSagTan_dy[0]= Math.sqrt(
+									debugCosSin2Tab_dy[i][j][0]*samples[i][j][c][0]+
+									debugCosSin2Tab_dy[i][j][1]*samples[i][j][c][1]+
+									debugCosSin2Tab_dy[i][j][2]*samples[i][j][c][2]);
+							debugSagTan_dy[1]= Math.sqrt(
+									debugCosSin2Tab_dy[i][j][1]*samples[i][j][c][0]+
+									debugCosSin2Tab_dy[i][j][0]*samples[i][j][c][1]-
+									debugCosSin2Tab_dy[i][j][2]*samples[i][j][c][2]);
+						}
+						double [] sagTan_dx0 = {
+								(0.5*(
+										cosSin2Tab_dx0[i][j][0]*samples[i][j][c][0]+
+										cosSin2Tab_dx0[i][j][1]*samples[i][j][c][1]+
+										cosSin2Tab_dx0[i][j][2]*samples[i][j][c][2])/sagTan[0]),
+										(0.5*(
+												cosSin2Tab_dx0[i][j][1]*samples[i][j][c][0]+
+												cosSin2Tab_dx0[i][j][0]*samples[i][j][c][1]-
+												cosSin2Tab_dx0[i][j][2]*samples[i][j][c][2])/sagTan[1])
+						};
+
+						double [] sagTan_dy0 = {
+								(0.5*(
+										cosSin2Tab_dy0[i][j][0]*samples[i][j][c][0]+
+										cosSin2Tab_dy0[i][j][1]*samples[i][j][c][1]+
+										cosSin2Tab_dy0[i][j][2]*samples[i][j][c][2])/sagTan[0]),
+										(0.5*(
+												cosSin2Tab_dy0[i][j][1]*samples[i][j][c][0]+
+												cosSin2Tab_dy0[i][j][0]*samples[i][j][c][1]-
+												cosSin2Tab_dy0[i][j][2]*samples[i][j][c][2])/sagTan[1])
+						};
+
+						if (debugLevel>3) System.out.print("\n"+ffm.motors[2]+" i= "+i+" j= "+j+" c= "+c+" sagTan= "+sagTan[0]+" "+sagTan[1]+" ");
+						for (int d=0;d<numDirs;d++){
+							if (debugLevel>3) System.out.print(" d= "+d+" ");
+
+							if (!updateSelection && !sampleMask[nMeas][i][j][c][d]) continue;
+							int chn=d+numDirs*c;
+							//                     System.out.println("i="+i+", j="+j+", c="+c+", d="+d);
+							// saved values are PSF radius, convert to FWHM by multiplying by 2.0
+							double value=sagTan[d]*2.0;
+							double value_dx0=sagTan_dx0[d]*2.0;
+							double value_dy0=sagTan_dy0[d]*2.0;
+							double debugValue_dx0=0.0,debugValue_dy0=0.0;
+							if (debugDerivatives){
+								debugValue_dx0=debugSagTan_dx[d]*2.0;
+								debugValue_dy0=debugSagTan_dy[d]*2.0;
+							}
+
+							boolean dbg=(debugLevel==3) && (i==1) && (j==3);
+							double dbg_delta_x=sampleCoord[i][j][0]-currentPX0;
+							double dbg_delta_y=sampleCoord[i][j][1]-currentPY0;
+
+							if (dbg) System.out.print("mot="+ffm.motors[2]+" dx="+dbg_delta_x+" dy="+dbg_delta_y);
+							if (dbg) System.out.println(" value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+							if (dbg) System.out.println(" value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+									" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
+							// discard above threshold (in pixels, raw FWHM data)
+							if (Double.isNaN(value)) {
+								if (debugLevel>3) System.out.println("samples["+i+"]["+j+"]["+c+"]["+d+"] = Double.NaN, motors[0]="+ffm.motors[0]);
+								if (updateSelection) continue; // bad measurement
+							}
+							if (debugLevel>3) System.out.print(" A "+value);
+							if (thresholdMax != null){
+								if (value >= thresholdMax[chn]) {
+									if (debugLevel>3) System.out.print(" > "+thresholdMax[chn]);
+									if (updateSelection) continue; // bad measurement (above threshold)
+								}
+							}
+							if (debugLevel>3) System.out.print(" B "+value);
+							// correct for for minimal measurement;
+							if (minMeas != null){
+								if (value<minMeas[chn]) {
+									if (debugLevel>3) System.out.print(" < "+minMeas[chn]);
+									if (updateSelection) continue; // bad measurement (smaller than correction)
+								}
+								double f=value;
+								value=Math.sqrt(value*value-minMeas[chn]*minMeas[chn]);
+								value_dx0*=f/value;
+								value_dy0*=f/value;
+								if (dbg) {
+									System.out.println("2. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+									if (debugDerivatives){
+										debugValue_dx0=Math.sqrt(debugValue_dx0*debugValue_dx0-minMeas[chn]*minMeas[chn]);
+										debugValue_dy0=Math.sqrt(debugValue_dy0*debugValue_dy0-minMeas[chn]*minMeas[chn]);
+										if (dbg) System.out.println("2. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+												" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
+									}
+								}
+							}
+							if (debugLevel>3) System.out.print(" C "+value);
+							// correct for for maximal measurement;
+							if (maxMeas != null) {
+								if (value >= maxMeas[chn]){
+									if (debugLevel>3) System.out.print(" > "+maxMeas[chn]);
+									if (updateSelection) continue; // bad measurement (larger than correction)
+								}
+								double f=value;
+								value = 1.0/Math.sqrt(1.0/(value*value)-1.0/(maxMeas[chn]*maxMeas[chn]));
+								//                             value_dx0*=1.0/(value*f*f*f);
+								//                             value_dy0*=1.0/(value*f*f*f);
+								f=value/f;
+								f*=f*f;
+								value_dx0*=f;
+								value_dy0*=f;
+
+								if (dbg) {
+									System.out.println("3. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+									if (debugDerivatives){
+										debugValue_dx0 = 1.0/Math.sqrt(1.0/(debugValue_dx0*debugValue_dx0)-1.0/(maxMeas[chn]*maxMeas[chn]));
+										debugValue_dy0 = 1.0/Math.sqrt(1.0/(debugValue_dy0*debugValue_dy0)-1.0/(maxMeas[chn]*maxMeas[chn]));
+										if (dbg) System.out.println("3. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+												" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
+									}
+								}
+							}
+							if (debugLevel>3) System.out.print(" D "+value);
+							// convert to microns from pixels
+							value*=getPixelUM();
+							value_dx0*=getPixelUM();
+							value_dy0*=getPixelUM();
+							if (dbg) {
+								System.out.println("4. value="+value+" value_dx0="+value_dx0+" value_dy0="+value_dy0);
+								if (debugDerivatives){
+									debugValue_dx0*=getPixelUM();
+									debugValue_dy0*=getPixelUM();
+									if (dbg) System.out.println("4. value(dx)="+debugValue_dx0+" value(dy)="+debugValue_dy0+
+											" debugDiff_dx0="+(debugValue_dx0-value)+" debugDiff_dy0="+(debugValue_dy0-value));
+								}
+							}
+
+							sampleList.add(new MeasuredSample(
+									ffm.motors,
+									ffm.timestamp,
+									sampleCoord[i][j][0], // px,
+									sampleCoord[i][j][1], // py,
+									flattenIndex(i,j),
+									chn,
+									value,
+									value_dx0, //double dPxc; // derivative of the value by optical (aberration) center pixel X
+									value_dy0 //double dPyc; // derivative of the value by optical (aberration) center pixel Y
+									));
+							if (debugLevel>3) System.out.print(" E "+value);
+							if (updateSelection) sampleMask[nMeas][i][j][c][d]=true;
+						}
+					}
+				}
+			}
+		}
+		nMeas++;
+	}
+	if (debugLevel>3) System.out.println();
+	if (debugLevel>1) System.out.println("createDataVector -> "+sampleList.size()+" elements");
+	return sampleList.toArray(new MeasuredSample[0]);
 }
     /**
      * Calculate differences vector
@@ -1891,7 +2030,7 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
             this.lMAArrays=calculateJacobianArrays(this.currentfX);
             this.currentRMS= calcErrorDiffY(this.currentfX,false);
             this.currentRMSPure=calcErrorDiffY(this.currentfX, true);
-			msg=": initial RMS="+IJ.d2s(this.currentRMS,8)+" (pure RMS="+IJ.d2s(this.currentRMSPure,8)+")"+
+			msg=this.currentStrategyStep+": initial RMS="+IJ.d2s(this.currentRMS,8)+" (pure RMS="+IJ.d2s(this.currentRMSPure,8)+")"+
 					". Calculating next Jacobian. Points:"+this.dataValues.length+" Parameters:"+this.currentVector.length;
 			if (debugLevel>1) System.out.println(msg);
 			if (this.updateStatus) IJ.showStatus(msg);
@@ -2023,13 +2162,24 @@ public boolean selectLMAParameters(){
 //     int numSeries=fittingStrategy.getNumSeries();
 //    boolean resetCorrections=false;
      GenericDialog gd = new GenericDialog("Levenberg-Marquardt algorithm parameters for cameras distortions/locations");
+     
+     //TODO: change to selection using series comments
+//     	gd.addNumericField("Fitting series number", this.currentStrategyStep, 0, 3," (-1 - current)");
+    	FieldStrategies fs=fieldFitting.fieldStrategies;
+        String [] indices=new String[fs.getNumStrategies()+1];
+        indices[0]="current strategy";
+        for (int i=0;i<fs.getNumStrategies();i++) {
+        	indices[i+1]=i+": "+fs.getComment(i)+" ("+(fs.isStopAfterThis(i)?"STOP":"CONTINUE")+")";
+        }
+        if (this.currentStrategyStep>=(indices.length-1)) this.currentStrategyStep=indices.length-2;
+        gd.addChoice("Fitting series", indices,indices[this.currentStrategyStep+1]);
+     	
         gd.addCheckbox("Debug df/dX0, df/dY0", false);
         gd.addNumericField("Debug Jacobian for point number", this.debugPoint, 0, 5,"(-1 - none)");
         gd.addNumericField("Debug Jacobian for parameter number", this.debugParameter, 0, 5,"(-1 - none)");
         
-        gd.addCheckbox("Keep current correction parameters (do not reset)", this.keepCorrectionParameters);
-//        gd.addNumericField("Iteration number to start (0.."+(numSeries-1)+")", this.seriesNumber, 0);
-        gd.addNumericField("Initial LMA Lambda ", this.lambda, 5);
+//        gd.addCheckbox("Keep current correction parameters (do not reset)", this.keepCorrectionParameters);
+        gd.addNumericField("Initial LMA Lambda ", 0.0, 5, 8, "0 - keep, last was "+this.lambda);
         gd.addNumericField("Multiply lambda on success", this.lambdaStepDown, 5);
         gd.addNumericField("Threshold RMS to exit LMA", this.thresholdFinish, 7,9,"pix");
         gd.addNumericField("Multiply lambda on failure", this.lambdaStepUp, 5);
@@ -2037,48 +2187,44 @@ public boolean selectLMAParameters(){
         gd.addNumericField("Maximal number of iterations", this.numIterations, 0);
 
         gd.addCheckbox("Dialog after each iteration step", this.stopEachStep);
-//        gd.addCheckbox("Dialog after each iteration series", this.stopEachSeries);
+        gd.addCheckbox("Dialog after each iteration series", this.stopEachSeries);
         gd.addCheckbox("Dialog after each failure", this.stopOnFailure);
-//        gd.addCheckbox("Ask for weight function filter", this.askFilter);
-        
         gd.addCheckbox("Show modified parameters", this.showParams);
         gd.addCheckbox("Show disabled parameters", this.showDisabledParams);
         gd.addCheckbox("Show per-sample correction parameters", this.showCorrectionParams);
 
-//        gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
-        
-//        gd.addCheckbox("Show debug images before correction",this.showThisImages);
-//        gd.addCheckbox("Show debug images after correction", this.showNextImages);
-//        gd.addNumericField("Maximal number of threads", this.threadsMax, 0);
-//        gd.addCheckbox("Use memory-saving/multithreaded version", this.threadedLMA);
-     gd.showDialog();
-     if (gd.wasCanceled()) return false;
-     this.debugDerivativesFxDxDy=gd.getNextBoolean();
-     
-		debugPoint=     (int) gd.getNextNumber();
-		debugParameter= (int) gd.getNextNumber();
+        //        gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
 
-        this.keepCorrectionParameters = gd.getNextBoolean();
-//     this.seriesNumber= (int) gd.getNextNumber();
-        this.lambda= gd.getNextNumber();
+        //        gd.addCheckbox("Show debug images before correction",this.showThisImages);
+        //        gd.addCheckbox("Show debug images after correction", this.showNextImages);
+        //        gd.addNumericField("Maximal number of threads", this.threadsMax, 0);
+        //        gd.addCheckbox("Use memory-saving/multithreaded version", this.threadedLMA);
+        gd.showDialog();
+        if (gd.wasCanceled()) return false;
+        this.currentStrategyStep= gd.getNextChoiceIndex()-1; //(int) gd.getNextNumber();
+        if (this.currentStrategyStep>=0){
+        	getStrategy(this.currentStrategyStep);
+        }
+        this.debugDerivativesFxDxDy=gd.getNextBoolean();
+
+        debugPoint=     (int) gd.getNextNumber();
+        debugParameter= (int) gd.getNextNumber();
+
+//        this.keepCorrectionParameters = gd.getNextBoolean();
+        double preLambda=gd.getNextNumber();
+        if (preLambda>0.0) this.lambda= preLambda;
         this.lambdaStepDown= gd.getNextNumber();
         this.thresholdFinish= gd.getNextNumber();
         this.lambdaStepUp= gd.getNextNumber();
         this.maxLambda= gd.getNextNumber();
         this.numIterations= (int) gd.getNextNumber();
         this.stopEachStep= gd.getNextBoolean();
-//        this.stopEachSeries= gd.getNextBoolean();
+        this.stopEachSeries= gd.getNextBoolean();
         this.stopOnFailure= gd.getNextBoolean();
-//        this.askFilter= gd.getNextBoolean();
         this.showParams= gd.getNextBoolean();
         this.showDisabledParams= gd.getNextBoolean();
         this.showCorrectionParams= gd.getNextBoolean();
-//        this.showThisImages= gd.getNextBoolean();
-//        this.showNextImages= gd.getNextBoolean();
-//        this.threadsMax= (int) gd.getNextNumber();
-//        this.threadedLMA= gd.getNextBoolean();
-//        resetCorrections= gd.getNextBoolean();
-    if (!keepCorrectionParameters) fieldFitting.resetSampleCorr();
+//    if (!keepCorrectionParameters) fieldFitting.resetSampleCorr();
      return true;
 }
 
@@ -2145,14 +2291,14 @@ public void listData(String title, String path){
          for (int i=0;i<localShowSamples.length;i++) localShowSamples[i]=true;
      }
      listData(title,
-     path,
-     showMotors,
-     showMeasCalc,
-     showColors,
-     showDirs,
-     localShowSamples,
-     showIgnoredData,
-     showRad);
+    		 path,
+    		 showMotors,
+    		 showMeasCalc,
+    		 showColors,
+    		 showDirs,
+    		 localShowSamples,
+    		 showIgnoredData,
+    		 showRad);
 }
 
 public void listData(String title,
@@ -2197,20 +2343,20 @@ public void listData(String title,
     if (showMotors) header +="M1\tM2\tM3\t";
     boolean first=true;
     for (int i=0;i<sampleCoord.length;i++) for (int j=0;j<sampleCoord[i].length;j++) if (showSamples[j+i*sampleCoord[i].length]){
-        if (showMeasCalc[2]) {
-                if (!first) header+="\t";
-                first=false;
-                header+="Y"+i+"X"+j+sMeasCalc[2];
-        }
-        for (int c=0;c<numColors;c++) if (showColors[c]){
-            for (int d=0;d<numDirs;d++) if (showDirs[d]){
-            for (int m=0;m<2;m++) if (showMeasCalc[m]){
-                if (!first) header+="\t";
-                first=false;
-                header+="Y"+i+"X"+j+sColors[c]+sDirs[d]+sMeasCalc[m];
-            }                 
-            }
-        }
+    	if (showMeasCalc[2]) {
+    		if (!first) header+="\t";
+    		first=false;
+    		header+="Y"+i+"X"+j+sMeasCalc[2];
+    	}
+    	for (int c=0;c<numColors;c++) if (showColors[c]){
+    		for (int d=0;d<numDirs;d++) if (showDirs[d]){
+    			for (int m=0;m<2;m++) if (showMeasCalc[m]){
+    				if (!first) header+="\t";
+    				first=false;
+    				header+="Y"+i+"X"+j+sColors[c]+sDirs[d]+sMeasCalc[m];
+    			}                 
+    		}
+    	}
     }
     for (FocusingFieldMeasurement ffm:measurements){
 //        double [][][][] samples=ffm.samples;
@@ -2778,7 +2924,7 @@ public void listScanQB(){
                 k_red,
                 k_blue,
                 false);
-    double [] best_qb_corr= fieldFitting.getBestQualB(
+    double [] best_qb_corr= fieldFitting.getBestQualB( //best_qb_corr[0] - distance (motorZ)
                 k_red,
                 k_blue,
                 true);
@@ -2908,6 +3054,7 @@ public boolean dialogLMAStep(boolean [] state){
      GenericDialog gd = new GenericDialog("Levenberg-Marquardt algorithm step");
 //     String [][] parameterDescriptions=fittingStrategy.distortionCalibrationData.parameterDescriptions;
     gd.addMessage("Current state="+states[iState]);
+    gd.addMessage("Current series="+this.currentStrategyStep);
     gd.addMessage("Iteration step="+this.iterationStepNumber);
     
     gd.addMessage("Initial RMS="+IJ.d2s(this.firstRMS,6)+", Current RMS="+IJ.d2s(this.currentRMS,6)+", new RMS="+IJ.d2s(this.nextRMS,6));
@@ -2930,7 +3077,7 @@ public boolean dialogLMAStep(boolean [] state){
         gd.addNumericField("Maximal number of iterations", this.numIterations, 0);
 
         gd.addCheckbox("Dialog after each iteration step", this.stopEachStep);
-//        gd.addCheckbox("Dialog after each iteration series", this.stopEachSeries);
+        gd.addCheckbox("Dialog after each iteration series", this.stopEachSeries);
         gd.addCheckbox("Dialog after each failure", this.stopOnFailure);
         gd.addCheckbox("Show modified parameters", this.showParams);
         gd.addCheckbox("Show disabled parameters", this.showDisabledParams);
@@ -2954,7 +3101,7 @@ public boolean dialogLMAStep(boolean [] state){
         this.maxLambda= gd.getNextNumber();
         this.numIterations= (int) gd.getNextNumber();
         this.stopEachStep= gd.getNextBoolean();
-//        this.stopEachSeries= gd.getNextBoolean();
+        this.stopEachSeries= gd.getNextBoolean();
         this.stopOnFailure= gd.getNextBoolean();
         this.showParams= gd.getNextBoolean();
         this.showDisabledParams= gd.getNextBoolean();
@@ -2965,126 +3112,254 @@ public boolean dialogLMAStep(boolean [] state){
      this.saveSeries=true;
      return gd.wasOKed();
 }
+public double getAdjustRMS(
+		FocusingFieldMeasurement measurement,
+		boolean filterZ,
+		double z,
+		double tx,
+		double ty){
+	fieldFitting.selectZTilt();
+	fieldFitting.mechanicalFocusingModel.setZTxTy(z,tx,ty);
+	double [] sv= fieldFitting.createParameterVector(sagittalMaster);
+	setDataVector(
+			false, // calibrate mode
+			createDataVector(measurement));
+	if (filterZ) {
+		boolean [] en=dataWeightsToBoolean();
+		en= filterByZRanges(
+				zRanges,
+				en);
+		maskDataWeights(en);
+		prevEnable=en;
+    	int numEn=getNumEnabledSamples(en);
+    	if (numEn<minLeftSamples) return Double.NaN;
+	}
+
+	double [] focusing_fx= createFXandJacobian(sv, false);
+	double rms_pure=       calcErrorDiffY(focusing_fx, true);
+	//	System.out.println("rms_pure="+rms_pure);
+	return rms_pure;
+}
+public double findAdjustZ(
+		FocusingFieldMeasurement measurement,
+		boolean filterZ,
+		double zMin,
+		double zMax,
+		double zStep,
+		double tx,
+		double ty){
+	double zBest=Double.NaN;
+	double bestRMS=Double.NaN;
+	for (double z=zMin;z<=zMax;z+=zStep){
+		double rms=getAdjustRMS(
+				measurement,
+				filterZ,
+				z,
+				tx,
+				ty);
+		if (((Double.isNaN(bestRMS) || (bestRMS>=rms)) && !Double.isNaN(rms) && (rms>0.0))){
+			zBest=z;
+			bestRMS=rms;
+		}
+		if (debugLevel>1)  System.out.println("findAdjustZ(): z="+z+" rms="+rms);
+	}
+	if (debugLevel>0) System.out.println("findAdjustZ()->"+zBest+" (best RMS = "+bestRMS+")");
+	return zBest;
+}
 
 
-public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
-    double savedLambda=this.lambda;
-    this.debugLevel=debugLevel;
-    if (openDialog && !selectLMAParameters()) return false;
-    this.startTime=System.nanoTime();
-// create savedVector (it depends on parameter masks), restore from it if aborted
-    fieldFitting.initSampleCorrVector(
-    		flattenSampleCoord(), //double [][] sampleCoordinates,
-    		getSeriesWeights()); //double [][] sampleSeriesWeights);
-    fieldFitting.setEstimatedZ0( z0_estimates, false); // boolean force)
-    
-    this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
-    if (debugDerivativesFxDxDy){
-        compareDrDerivatives(this.savedVector);
-    }
-    this.iterationStepNumber=0;
-    this.firstRMS=-1; //undefined
-//     while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
-        this.currentVector=null; // invalidate for the new series
-//         boolean wasLastSeries=false;
-        while (true) { // loop for the same series
-            
-            boolean [] state=stepLevenbergMarquardtFirst(debugLevel);
-            if (state==null) {
-                String msg="Calculation aborted by user request, restoring saved parameter vector";
-                IJ.showMessage(msg);
-                System.out.println(msg);
-                commitParameterVector(this.savedVector);
-                this.lambda=savedLambda;
-                return false;
-            }
-            
-            if (debugLevel>1) System.out.println(":"+this.iterationStepNumber+": stepLevenbergMarquardtFirst("+debugLevel+")==>"+state[1]+":"+state[0]);
-                boolean cont=true;
-                // Make it success if this.currentRMS<this.firstRMS even if LMA failed to converge
-                if (state[1] && !state[0] && (this.firstRMS>this.currentRMS)){
-                    if (debugLevel>1) System.out.println("LMA failed to converge, but RMS improved from the initial value ("+
-                this.currentRMS+" < "+this.firstRMS+"), currentRMSPure="+currentRMSPure+", firstRMSPure="+firstRMSPure);
-                    state[0]=true;
-                }
-            if (
-                    (this.stopRequested.get()>0) || // graceful stop requested
-                    (this.stopEachStep) ||
-//                     (this.stopEachSeries && state[1]) ||
-                    (this.stopOnFailure && state[1] && !state[0])){
-                
-                if (debugLevel>0){
-                    if (this.stopRequested.get()>0) System.out.println("User requested stop");
-                    System.out.println("LevenbergMarquardt(): step ="+this.iterationStepNumber+
-                        ", RMS="+IJ.d2s(this.currentRMS,8)+
-                        " ("+IJ.d2s(this.firstRMS,8)+") "+
-                        ") at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3));
-                }
-                long startDialogTime=System.nanoTime();
-                cont=dialogLMAStep(state);
-                this.stopRequested.set(0); // Will not stop each run
-                this.startTime+=(System.nanoTime()-startDialogTime); // do not count time used by the User.
-//                 if (this.showThisImages) showDiff (this.currentfX, "fit-"+this.iterationStepNumber);
-//                 if (this.showNextImages) showDiff (this.nextfX, "fit-"+(this.iterationStepNumber+1));
-            }
-                stepLevenbergMarquardtAction(debugLevel); // apply step - in any case?
-                if (this.updateStatus){
-                     IJ.showStatus("Step #"+this.iterationStepNumber+
-                             " RMS="+IJ.d2s(this.currentRMS,8)+
-                             " ("+IJ.d2s(this.firstRMS,8)+")"+
-                             " RMSPure="+IJ.d2s(this.currentRMSPure,8)+
-                             " ("+IJ.d2s(this.firstRMSPure,8)+")"+
-                             " ");
-                }
-                if (!cont){
-                    if (this.saveSeries) {
-                     savedLambda=this.lambda;
 
-                        this.savedVector=this.currentVector.clone();
-//                        saveFittingSeries(); // will save series even if it ended in failure, vector will be only updated
-//                        updateCameraParametersFromCalculated(true); // update camera parameters from all (even disabled) images
-//                        updateCameraParametersFromCalculated(false); // update camera parameters from enabled only images (may overwrite some of the above)
-                    }
-                    // if RMS was decreased. this.saveSeries==false after dialogLMAStep(state) only if "cancel" was pressed
-                    commitParameterVector(this.savedVector); // either new or original
-                this.lambda=savedLambda;
-                    return this.saveSeries; // TODO: Maybe change result?
-                }
-//stepLevenbergMarquardtAction();             
-            if (state[1]) {
-                if (!state[0]) {
-                    commitParameterVector(this.savedVector);
-                this.lambda=savedLambda;
-                    return false; // sequence failed
-                }
-                    this.savedVector=this.currentVector.clone();
-//                 saveFittingSeries();
-//                    updateCameraParametersFromCalculated(true); // update camera parameters from all (even disabled) images
-//                    updateCameraParametersFromCalculated(false); // update camera parameters from enabled only images (may overwrite some of the above)
-//                    wasLastSeries=this.fittingStrategy.isLastSeries(this.seriesNumber);
-//                 this.seriesNumber++;
-                break; // while (true), proceed to the next series
-            }
+public boolean LevenbergMarquardt(
+		FocusingFieldMeasurement measurement, // null in calibrate mode
+		boolean openDialog,
+		boolean filterZ, // for adjust mode
+		int debugLevel){
+	boolean calibrate=measurement==null;
+	double savedLambda=this.lambda;
+	this.debugLevel=debugLevel;
+	if (openDialog && !selectLMAParameters()) return false;
+	this.startTime=System.nanoTime();
+	// create savedVector (it depends on parameter masks), restore from it if aborted
+//	fieldFitting.initSampleCorrVector(
+//			flattenSampleCoord(), //double [][] sampleCoordinates,
+//			getSeriesWeights()); //double [][] sampleSeriesWeights);
+//	fieldFitting.setEstimatedZ0( z0_estimates, false); // boolean force)
+
+//	this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
+//	if (debugDerivativesFxDxDy){
+//		compareDrDerivatives(this.savedVector);
+//	}
+	if (!calibrate) {
+		this.currentStrategyStep=-1;
+		fieldFitting.selectZTilt();
+		keepCorrectionParameters=true;
+		resetCenter=false;
+		if (!openDialog) stopEachStep=false;
+	}
+	this.iterationStepNumber=0;
+	this.firstRMS=-1; //undefined
+	while (true) { // loop for all series
+		
+        if (this.currentStrategyStep>=0){
+        	if (!getStrategy(this.currentStrategyStep)) break; //invalid strategy
         }
-//         if (wasLastSeries) break;
-//     } // while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
-    	String msg="RMS="+this.currentRMS+" ("+this.firstRMS+") "+
-    	           ", pure RMS="+this.currentRMSPure+" ("+this.firstRMSPure+") "+
-    	           " at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3);
-    	if (debugLevel>0) System.out.println("stepLevenbergMarquardtAction() "+msg);
-    	//    	if (this.updateStatus) IJ.showStatus(msg);
-    	if (this.updateStatus){
-    		IJ.showStatus("Done: Step #"+this.iterationStepNumber+
-    				" RMS="+IJ.d2s(this.currentRMS,8)+
-    				" ("+IJ.d2s(this.firstRMS,8)+")"+
-    				" RMSPure="+IJ.d2s(this.currentRMSPure,8)+
-    				" ("+IJ.d2s(this.firstRMSPure,8)+")"+
-    				" ");
+        if (!keepCorrectionParameters) fieldFitting.resetSampleCorr();
+        if (resetCenter){
+			if (debugLevel>0) System.out.println("Resetting center: X "+IJ.d2s(currentPX0,2)+" -> "+IJ.d2s(pX0_distortions,2));
+			if (debugLevel>0) System.out.println("Resetting center: Y "+IJ.d2s(currentPY0,2)+" -> "+IJ.d2s(pY0_distortions,2));
+            currentPX0=pX0_distortions;
+            currentPY0=pY0_distortions;
+    		fieldFitting.setCenterXY(currentPX0,currentPY0);
+        }
+//        setDataVector(createDataVector()); //new
+       	fieldFitting.initSampleCorrChnParIndex(flattenSampleCoord());
+       	if (calibrate) {
+       		setDataVector(
+       				true, // calibrate mode
+       				createDataVector()); // Make it different for adjustment mode
+       		fieldFitting.initSampleCorrVector(
+       				flattenSampleCoord(), //double [][] sampleCoordinates,
+       				getSeriesWeights()); //double [][] sampleSeriesWeights);
+       		fieldFitting.setEstimatedZ0( z0_estimates, false); // boolean force)
+       	} else {
+       		setDataVector(
+       				false, // calibrate mode
+       				createDataVector(measurement)); // Make it different for adjustment mode
+       		if (filterZ) {
+       	    	boolean [] en=dataWeightsToBoolean();
+       	    	en= filterByZRanges(
+       	    			zRanges,
+       	    			en);
+       	    	maskDataWeights(en);
+       	    	prevEnable=en;
+       	    	int numEn=getNumEnabledSamples(en);
+       	    	if (numEn<minLeftSamples) return false;
+       		}
+       		fieldFitting.initSampleCorrVector(
+       				flattenSampleCoord(), //double [][] sampleCoordinates,
+       				null); //getSeriesWeights()); //double [][] sampleSeriesWeights);
+//       		fieldFitting.setEstimatedZ0( z0_estimates, false); // boolean force)
+
+       	}
+
+    	this.savedVector=this.fieldFitting.createParameterVector(sagittalMaster);
+    	if (debugDerivativesFxDxDy){
+    		compareDrDerivatives(this.savedVector);
     	}
-    	this.savedVector=this.currentVector.clone();
-    	commitParameterVector(this.savedVector);
-    	return true; // all series done
-    }
+       	
+    	
+    	
+    	
+		//     while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
+		this.currentVector=null; // invalidate for the new series
+		//         boolean wasLastSeries=false;
+		while (true) { // loop for the same series
+	        
+			boolean [] state=stepLevenbergMarquardtFirst(debugLevel);
+			if (state==null) {
+				String msg="Calculation aborted by user request, restoring saved parameter vector";
+				IJ.showMessage(msg);
+				System.out.println(msg);
+				commitParameterVector(this.savedVector);
+				this.lambda=savedLambda;
+				return false;
+			}
+
+			if (debugLevel>1) System.out.println(this.currentStrategyStep+":"+this.iterationStepNumber+": stepLevenbergMarquardtFirst("+debugLevel+")==>"+state[1]+":"+state[0]);
+			boolean cont=true;
+			// Make it success if this.currentRMS<this.firstRMS even if LMA failed to converge
+			if (state[1] && !state[0] && (this.firstRMS>this.currentRMS)){
+				if (debugLevel>1) System.out.println("LMA failed to converge, but RMS improved from the initial value ("+
+						this.currentRMS+" < "+this.firstRMS+"), currentRMSPure="+currentRMSPure+", firstRMSPure="+firstRMSPure);
+				state[0]=true;
+			}
+			if (
+					(this.stopRequested.get()>0) || // graceful stop requested
+					(this.stopEachStep) ||
+					(this.stopEachSeries && state[1]) ||
+					(this.stopOnFailure && state[1] && !state[0])){
+
+				if (debugLevel>0){
+					if (this.stopRequested.get()>0) System.out.println("User requested stop");
+					System.out.println("LevenbergMarquardt(): step ="+this.currentStrategyStep+":"+this.iterationStepNumber+
+							", RMS="+IJ.d2s(this.currentRMS,8)+
+							" ("+IJ.d2s(this.firstRMS,8)+") "+
+							") at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3));
+				}
+				long startDialogTime=System.nanoTime();
+				cont=dialogLMAStep(state);
+				this.stopRequested.set(0); // Will not stop each run
+				this.startTime+=(System.nanoTime()-startDialogTime); // do not count time used by the User.
+				//                 if (this.showThisImages) showDiff (this.currentfX, "fit-"+this.iterationStepNumber);
+				//                 if (this.showNextImages) showDiff (this.nextfX, "fit-"+(this.iterationStepNumber+1));
+			}
+			stepLevenbergMarquardtAction(debugLevel); // apply step - in any case?
+			if (this.updateStatus){
+				IJ.showStatus("Step #"+this.currentStrategyStep+":"+this.iterationStepNumber+
+						" RMS="+IJ.d2s(this.currentRMS,8)+
+						" ("+IJ.d2s(this.firstRMS,8)+")"+
+						" RMSPure="+IJ.d2s(this.currentRMSPure,8)+
+						" ("+IJ.d2s(this.firstRMSPure,8)+")"+
+						" ");
+			}
+			if (!cont){
+				if (this.saveSeries) {
+					savedLambda=this.lambda;
+
+					this.savedVector=this.currentVector.clone();
+					//                        saveFittingSeries(); // will save series even if it ended in failure, vector will be only updated
+					//                        updateCameraParametersFromCalculated(true); // update camera parameters from all (even disabled) images
+					//                        updateCameraParametersFromCalculated(false); // update camera parameters from enabled only images (may overwrite some of the above)
+				}
+				// if RMS was decreased. this.saveSeries==false after dialogLMAStep(state) only if "cancel" was pressed
+				commitParameterVector(this.savedVector); // either new or original
+				this.lambda=savedLambda;
+				return this.saveSeries; // TODO: Maybe change result?
+			}
+			//stepLevenbergMarquardtAction();             
+			if (state[1]) {
+				if (!state[0]) {
+					commitParameterVector(this.savedVector);
+					this.lambda=savedLambda;
+					return false; // sequence failed
+				}
+				this.savedVector=this.currentVector.clone();
+				//                 saveFittingSeries();
+				//                    updateCameraParametersFromCalculated(true); // update camera parameters from all (even disabled) images
+				//                    updateCameraParametersFromCalculated(false); // update camera parameters from enabled only images (may overwrite some of the above)
+				//                    wasLastSeries=this.fittingStrategy.isLastSeries(this.seriesNumber);
+				//                 this.seriesNumber++;
+				break; // while (true), proceed to the next series
+			}
+		} // while true - same series
+		//         if (wasLastSeries) break;
+		//     } // while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
+		if (fieldFitting.fieldStrategies.isLast(this.currentStrategyStep)) break;
+		String msg="LMA series="+this.currentStrategyStep+ " RMS="+this.currentRMS+" ("+this.firstRMS+") "+
+				", pure RMS="+this.currentRMSPure+" ("+this.firstRMSPure+") "+
+				" at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3);
+		if (debugLevel>0) System.out.println("stepLevenbergMarquardtAction() "+msg);
+		this.currentStrategyStep++;
+		this.iterationStepNumber=0;
+	} // for all series
+	String msg="RMS="+this.currentRMS+" ("+this.firstRMS+") "+
+			", pure RMS="+this.currentRMSPure+" ("+this.firstRMSPure+") "+
+			" at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3);
+	if (debugLevel>0) System.out.println("stepLevenbergMarquardtAction() "+msg);
+	//    	if (this.updateStatus) IJ.showStatus(msg);
+	if (this.updateStatus){
+		IJ.showStatus("Done: Step #"+this.currentStrategyStep+":"+this.iterationStepNumber+
+				" RMS="+IJ.d2s(this.currentRMS,8)+
+				" ("+IJ.d2s(this.firstRMS,8)+")"+
+				" RMSPure="+IJ.d2s(this.currentRMSPure,8)+
+				" ("+IJ.d2s(this.firstRMSPure,8)+")"+
+				" ");
+	}
+	this.savedVector=this.currentVector.clone();
+	commitParameterVector(this.savedVector);
+	if (calibrate) zRanges=calcZRanges(dataWeightsToBoolean());
+	return true; // all series done
+}
 
     public class FocusingFieldMeasurement{
         public String timestamp;
@@ -3327,6 +3602,157 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
          e.printStackTrace();
      }
     }
+    public void testMeasurement(){
+        GenericDialog gd = new GenericDialog("Select measurement");
+        int nMeas=measurements.size()/2;
+        double zMin=-40.0;
+        double zMax= 40.0;
+        double zStep=2.0;
+        
+    	filterZ=true;      // (adjustment mode)filter samples by Z
+    	minLeftSamples=10;  // minimal number of samples (channel/dir/location) for adjustment
+        
+        gd.addNumericField("Measurement number",nMeas,0,5,"0.."+(measurements.size()-1));
+        
+        gd.addCheckbox("Filter samples/channels by Z",filterZ);
+        gd.addNumericField("Minimal required number of channels/samples",minLeftSamples,0,3,"samples");
+
+        gd.addNumericField("Z min",zMin,2,5,"um");
+        gd.addNumericField("Z max",zMax,2,5,"um");
+        gd.addNumericField("Z step",zStep,2,5,"um");
+        
+    	gd.showDialog();
+    	if (gd.wasCanceled()) return;
+    	nMeas=(int) gd.getNextNumber();
+
+    	filterZ=gd.getNextBoolean();
+        minLeftSamples=(int) gd.getNextNumber();
+    	
+        zMin= gd.getNextNumber();
+        zMax= gd.getNextNumber();
+        zStep=gd.getNextNumber();
+        boolean OK;
+
+    	if (nMeas>=0){
+    		OK=testMeasurement(
+    				measurements.get(nMeas),    				
+//    				nMeas,
+    				zMin,
+			        zMax,
+			        zStep);
+    		if (!OK){
+    			if (debugLevel>0) System.out.println("testMeasurement("+nMeas+") failed");
+    		} else {
+        		if (debugLevel>0) System.out.print("======== testMeasurement("+nMeas+") ========");
+    			for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
+    				if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
+    					System.out.println(
+    							fieldFitting.mechanicalFocusingModel.getDescription(i)+": "+
+    									IJ.d2s(fieldFitting.mechanicalFocusingModel.paramValues[i],3)+" "+
+    									fieldFitting.mechanicalFocusingModel.getUnits(i));
+    				}
+    			}
+    		}
+    		
+    	} else {
+    		for (nMeas=0;nMeas<measurements.size();nMeas++){
+        		if (debugLevel>0) System.out.print("======== testMeasurement("+nMeas+") ========      ");
+    			OK=testMeasurement(
+    					measurements.get(nMeas),
+//    					nMeas,
+    			        zMin,
+    			        zMax,
+    			        zStep);
+        		if (!OK){
+        			if (debugLevel>0) System.out.println("testMeasurement("+nMeas+") failed");
+        		} else {
+//            		if (debugLevel>0) System.out.println("======== testMeasurement("+nMeas+") ========");
+        			for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
+        				if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
+        					System.out.println(
+        							fieldFitting.mechanicalFocusingModel.getDescription(i)+": "+
+        									IJ.d2s(fieldFitting.mechanicalFocusingModel.paramValues[i],3)+" "+
+        									fieldFitting.mechanicalFocusingModel.getUnits(i));
+        				}
+        			}
+        		}
+    		}
+    	}
+    }
+    public boolean testMeasurement(
+    		FocusingFieldMeasurement measurement, // null in calibrate mode
+//    		int nMeas,
+            double zMin,
+            double zMax,
+            double zStep){
+    	int retryLimit=20;
+    	setDataVector(
+    			false,
+    			createDataVector(measurement)); //measurements.get(nMeas)));
+//    	System.out.println("testMeasurement("+nMeas+")");
+    	double z=findAdjustZ(
+//    			measurements.get(nMeas),
+    			measurement,
+    			filterZ, //boolean filterZ,
+    			zMin,
+    			zMax,
+    			zStep,
+    			0.0, //double tx,
+    			0.0); // double ty);
+    	fieldFitting.mechanicalFocusingModel.setZTxTy(z,0.0,0.0);// z,tx,ty
+    	boolean [] wasPrevEnable=null;
+    	for (int n=0;n<retryLimit;n++) { // TODO: Watch for the mask remain stable
+    		z=fieldFitting.mechanicalFocusingModel.getValue(MECH_PAR.z0);
+    		if (debugLevel>0) System.out.println("testMeasurement(), run "+n+" (z="+z+")");
+    		boolean [] was2PrevEnable=(wasPrevEnable==null)?null:wasPrevEnable.clone();
+    		wasPrevEnable=(prevEnable==null)?null:prevEnable.clone();
+    		boolean OK=LevenbergMarquardt(
+    				measurement, 
+    				false, // true, // open dialog
+    				filterZ, // filterZ
+    				debugLevel);
+    		if (!OK){
+//        		if (debugLevel>0) System.out.println("testMeasurement("+nMeas+") failed");
+        		if (debugLevel>1) System.out.println("testMeasurement() failed");
+        		return false;
+    		}
+/*    		
+    		for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
+    			if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
+    				System.out.println(
+    						fieldFitting.mechanicalFocusingModel.getDescription(i)+": "+
+    								IJ.d2s(fieldFitting.mechanicalFocusingModel.paramValues[i],3)+" "+
+    								fieldFitting.mechanicalFocusingModel.getUnits(i));
+    			}
+    		}
+*/    		
+    		if ((wasPrevEnable!=null) && (prevEnable!=null) && (wasPrevEnable.length==prevEnable.length)){
+    			boolean changedEnable=false;
+    			for (int i=0;i<prevEnable.length;i++) if (prevEnable[i]!=wasPrevEnable[i]){
+    				changedEnable=true;
+    				break;
+    			}
+    			if (!changedEnable) {
+    				if (debugLevel>0) System.out.println("No filter chnage, finished in "+(n+1)+" steps");
+    				return true;
+    			} else {
+    				if ((was2PrevEnable!=null) && (prevEnable!=null) && (was2PrevEnable.length==prevEnable.length)){
+    					changedEnable=false;
+    					for (int i=0;i<prevEnable.length;i++) if (prevEnable[i]!=was2PrevEnable[i]){
+    						changedEnable=true;
+    						break;
+    					}
+    					if (!changedEnable) {
+    						if (debugLevel>0) System.out.println("Filter repeats one before previous, finished in "+(n+1)+" steps");
+    						return true;
+    					}
+    				}
+    			}
+    		}
+    	}
+		if (debugLevel>0) System.out.println("Maximal retries exceeded in "+retryLimit+" steps");
+    	return true; //?
+    }
     public class FieldFitting{
  //   	private Properties savedProperties=null;
     	private double [] pXY=null;
@@ -3342,6 +3768,11 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
     	private double [][] sampleCorrCost= new double[6][]; // equivalent cost of one unit of parameter value (in result units, um)
     	private double [][] sampleCorrSigma= new double[6][]; // sigma (in mm) for neighbors influence
     	private double [][] sampleCorrPullZero=new double[6][]; // 1.0 - only difference from neighbors matters, 0.0 - only difference from 0
+//    	private String strategyComment="";
+//    	private boolean lastInSeries=true;
+//    	private double lambda=0.001; // synchronize with top?
+    	public FieldStrategies fieldStrategies;
+    	
 //    	private double [] sampleCorrRadius=null;
     	private double [][] sampleCoordinates=null;
     	private double [][][][] sampleCorrCrossWeights= new double[6][][][];
@@ -3359,7 +3790,8 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
 //    	private double [] dflt_sampleCorrCost= {0.1,0.5,2.0,1.0};
 //    	private double [] dflt_sampleCorrCost= {0.1,1.0,1.0,0.5};
 //    	private double [] dflt_sampleCorrCost= {0.2,2.0,2.0,1.0,1.0};
-    	private double [] dflt_sampleCorrCost= {0.1,1.0,1.0,1.0,1.0};
+//    	private double [] dflt_sampleCorrCost= {0.1,1.0,1.0,1.0,1.0};
+    	private double [] dflt_sampleCorrCost= {0.01,1.0,1.0,1.0,1.0};
     	private double dflt_sampleCorrSigma= 2.0; // mm
     	private double dflt_sampleCorrPullZero= 0.75; // fraction
     	public final String [] channelDescriptions={
@@ -3411,6 +3843,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         			}
         		}
         	}
+            fieldStrategies.setProperties(prefix+"fieldStrategies.",properties);
         }
         public void getProperties(String prefix,Properties properties){
         	if (properties.getProperty(prefix+"numberOfLocations")!=null)
@@ -3536,8 +3969,8 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         		if (debugLevel>1) System.out.println("numberOfLocations==0, can not restore");
         	}
 
-
-
+            fieldStrategies= new FieldStrategies(); // reset old
+            fieldStrategies.getProperties(prefix+"fieldStrategies.",properties);
         }        
         
 //        public double [] getSampleRadiuses(){ // distance from the current center to each each sample
@@ -4004,63 +4437,63 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
          * @return true if OK was pressed, false - if cancel
          */
         public boolean setupSampleCorr(String title, boolean individualChannels, boolean disabledPars){
-            int firstChn=0;
-            for (int i=0;i<channelSelect.length;i++) if (channelSelect[i]){
-                firstChn=i;
-                break;
-            }
-            if (!channelSelect[firstChn]){
-                String msg="No channels selected, please select at least one";
-                IJ.showMessage(msg);
-                System.out.println(msg);
-            }
-            int fromChn=individualChannels?0:firstChn;
-            int toChn=individualChannels?channelSelect.length:(firstChn+1);
-            boolean resetCorrections=false;
-         GenericDialog gd = new GenericDialog(title);
-            gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
-         
-         int numParsZR[] = getNumCurvars(); // [0] - Z, [1] - r,
-         for (int nChn=fromChn;nChn<toChn;nChn++) if (channelSelect[nChn]){
-             
-             String chnName=individualChannels?channelDescriptions[nChn]:"All selected Channels";
-             for (int i=0;i<sampleCorrSelect[nChn].length;i++) if (disabledPars || curvatureSelect[nChn][i*numParsZR[1]]){
-              gd.addMessage("===== "+chnName+", "+curvatureModel[nChn].getZDescription(i)+" =====");
-                 gd.addCheckbox("Enable per-sample correction for \""+curvatureModel[nChn].getZDescription(i)+"\"", sampleCorrSelect[nChn][i]);
-                    gd.addNumericField("Correction cost",sampleCorrCost[nChn][i],5,8,"um");
-                    gd.addNumericField("Correction sigma",sampleCorrSigma[nChn][i],5,8,"mm");
-                    gd.addNumericField("Pull to zero fraction",100*sampleCorrPullZero[nChn][i],4,8,"%");
-             }
-         }
-         gd.enableYesNoCancel("Apply","Keep"); // default OK (on enter) - "Apply"
-     WindowTools.addScrollBars(gd);
-    gd.showDialog();
-         if (gd.wasCanceled()) return false;
-         if (gd.wasOKed()) { // selected non-default "Apply"
-             resetCorrections= gd.getNextBoolean();
-             for (int nChn=fromChn;nChn<toChn;nChn++) if (channelSelect[nChn]){
-                 for (int i=0;i<sampleCorrSelect[nChn].length;i++) if (disabledPars || curvatureSelect[nChn][i*numParsZR[1]]){
-                     sampleCorrSelect[nChn][i]= gd.getNextBoolean();
-                     sampleCorrCost[nChn][i]= gd.getNextNumber();
-                     sampleCorrSigma[nChn][i]= gd.getNextNumber();
-                     sampleCorrPullZero[nChn][i]= 0.01*gd.getNextNumber();
-                 } else {
-                     sampleCorrSelect[nChn][i]= false;
-                 }
-             }
-             if (!individualChannels){ // copy settings to other channels
-                 for (int nChn=0;nChn<channelSelect.length;nChn++) if (channelSelect[nChn] && (nChn!=fromChn) ){
-                     for (int i=0;i<sampleCorrSelect[nChn].length;i++){
-                         sampleCorrSelect[nChn][i]= sampleCorrSelect[fromChn][i];
-                         sampleCorrCost[nChn][i]= sampleCorrCost[fromChn][i];
-                         sampleCorrSigma[nChn][i]= sampleCorrSigma[fromChn][i];
-                         sampleCorrPullZero[nChn][i]= sampleCorrPullZero[fromChn][i];
-                     }
-                 }
-             }
-         }
-         if (resetCorrections) resetSampleCorr();
-            return true;
+        	int firstChn=0;
+        	for (int i=0;i<channelSelect.length;i++) if (channelSelect[i]){
+        		firstChn=i;
+        		break;
+        	}
+        	if (!channelSelect[firstChn]){
+        		String msg="No channels selected, please select at least one";
+        		IJ.showMessage(msg);
+        		System.out.println(msg);
+        	}
+        	int fromChn=individualChannels?0:firstChn;
+        	int toChn=individualChannels?channelSelect.length:(firstChn+1);
+        	boolean resetCorrections=false;
+        	GenericDialog gd = new GenericDialog(title);
+        	gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
+
+        	int numParsZR[] = getNumCurvars(); // [0] - Z, [1] - r,
+        	for (int nChn=fromChn;nChn<toChn;nChn++) if (channelSelect[nChn]){
+
+        		String chnName=individualChannels?channelDescriptions[nChn]:"All selected Channels";
+        		for (int i=0;i<sampleCorrSelect[nChn].length;i++) if (disabledPars || curvatureSelect[nChn][i*numParsZR[1]]){
+        			gd.addMessage("===== "+chnName+", "+curvatureModel[nChn].getZDescription(i)+" =====");
+        			gd.addCheckbox("Enable per-sample correction for \""+curvatureModel[nChn].getZDescription(i)+"\"", sampleCorrSelect[nChn][i]);
+        			gd.addNumericField("Correction cost",sampleCorrCost[nChn][i],5,8,"um");
+        			gd.addNumericField("Correction sigma",sampleCorrSigma[nChn][i],5,8,"mm");
+        			gd.addNumericField("Pull to zero fraction",100*sampleCorrPullZero[nChn][i],4,8,"%");
+        		}
+        	}
+        	gd.enableYesNoCancel("Apply","Keep"); // default OK (on enter) - "Apply"
+        	WindowTools.addScrollBars(gd);
+        	gd.showDialog();
+        	if (gd.wasCanceled()) return false;
+        	if (gd.wasOKed()) { // selected non-default "Apply"
+        		resetCorrections= gd.getNextBoolean();
+        		for (int nChn=fromChn;nChn<toChn;nChn++) if (channelSelect[nChn]){
+        			for (int i=0;i<sampleCorrSelect[nChn].length;i++) if (disabledPars || curvatureSelect[nChn][i*numParsZR[1]]){
+        				sampleCorrSelect[nChn][i]= gd.getNextBoolean();
+        				sampleCorrCost[nChn][i]= gd.getNextNumber();
+        				sampleCorrSigma[nChn][i]= gd.getNextNumber();
+        				sampleCorrPullZero[nChn][i]= 0.01*gd.getNextNumber();
+        			} else {
+        				sampleCorrSelect[nChn][i]= false;
+        			}
+        		}
+        		if (!individualChannels){ // copy settings to other channels
+        			for (int nChn=0;nChn<channelSelect.length;nChn++) if (channelSelect[nChn] && (nChn!=fromChn) ){
+        				for (int i=0;i<sampleCorrSelect[nChn].length;i++){
+        					sampleCorrSelect[nChn][i]= sampleCorrSelect[fromChn][i];
+        					sampleCorrCost[nChn][i]= sampleCorrCost[fromChn][i];
+        					sampleCorrSigma[nChn][i]= sampleCorrSigma[fromChn][i];
+        					sampleCorrPullZero[nChn][i]= sampleCorrPullZero[fromChn][i];
+        				}
+        			}
+        		}
+        	}
+        	if (resetCorrections) resetSampleCorr();
+        	return true;
         }
         // once per data set
         public void resetSampleCorr(){
@@ -4179,7 +4612,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         public void initSampleCorrVector(
         		double [][] sampleCoordinates,
         		double [][] sampleSeriesWeights){
-        	System.out.println("initSampleCorrVector()");
+        	if (debugLevel>1) System.out.println("initSampleCorrVector()");
             numberOfLocations=sampleCoordinates.length;
             this.sampleCoordinates=new double[sampleCoordinates.length][];
             for (int i=0;i<sampleCoordinates.length;i++) this.sampleCoordinates[i]=sampleCoordinates[i].clone();
@@ -4250,7 +4683,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         			sampleCorrChnParIndex[nChn]=null;
         		}
         	}
-        	System.out.println("initSampleCorrChnParIndex()");
+        	if (debugLevel>1) System.out.println("initSampleCorrChnParIndex()");
         	// currently all correction parameters are initialized as zeros.
         	getCorrVector();
         }
@@ -4297,6 +4730,7 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
                 int distanceParametersNumber,
                 int radialParametersNumber)
         {
+            fieldStrategies= new FieldStrategies();
             pXY=new double [2];
             pXY[0]=pX0;
             pXY[1]=pY0;
@@ -4327,7 +4761,12 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
 
             }
         }
-        public boolean maskSetDialog(String title){
+        public boolean maskSetDialog(
+        		String title//,
+//         		String strategyComment,
+//        		double lambda,
+//        		boolean lastInSeries
+        		){
         	GenericDialog gd = new GenericDialog(title);
         	boolean editMechMask=false;
         	boolean editCurvMask=false;
@@ -4352,7 +4791,13 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         	gd.addCheckbox("Setup per-sample correction", setupCorrectionPars);
         	gd.addCheckbox("Apply same per-sample corrections to all channels", commonCorrectionPars);
         	gd.addCheckbox("Setup correction parameters when the parameter itself is disabled", disabledCorrectionPars);
-
+        	gd.addMessage("---");
+        	
+     		gd.addStringField("Strategy comment",strategyComment,60);
+     		gd.addNumericField("Initial LMA lambda",lambda,3,5,"");
+        	gd.addCheckbox("Reset optical center to distortions center", resetCenter);
+        	gd.addCheckbox("Reset correction parameters before this LMA step", !keepCorrectionParameters);
+        	gd.addCheckbox("Stop after this LMA step", lastInSeries);
 
         	//         gd.enableYesNoCancel("Keep","Apply"); // default OK (on enter) - "Keep"
         	gd.showDialog();
@@ -4369,6 +4814,12 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         	setupCorrectionPars=gd.getNextBoolean();
         	commonCorrectionPars=gd.getNextBoolean();
         	disabledCorrectionPars=gd.getNextBoolean();
+
+        	strategyComment=gd.getNextString();
+     		lambda=gd.getNextNumber();
+     		resetCenter=gd.getNextBoolean();
+        	keepCorrectionParameters=!gd.getNextBoolean();
+        	lastInSeries=gd.getNextBoolean();
         	//         boolean OK;
         	if (editMechMask){
         		boolean [] mask=mechanicalFocusingModel.maskSetDialog("Focusing mechanical parameters mask", mechanicalSelect);
@@ -4416,6 +4867,21 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
         	// will modify
         	initSampleCorrChnParIndex(flattenSampleCoord()); // run always regardless of configured or not (to create zero-length array of corr)
         	return true;
+        }
+        
+        public void selectZTilt(){
+        	mechanicalSelect=mechanicalFocusingModel.maskSetZTxTy(); // enable z0, tx, ty
+        	// enable all color/dir channels (add separate selection dialog?)
+        	for (int i=0;i<channelSelect.length;i++) {
+        		channelSelect[i]=true;
+				curvatureSelect[i]=curvatureModel[0].maskAllDisabled();
+        	}
+        	if (sampleCorrSelect!=null){
+            	for (int i=0;i<sampleCorrSelect.length;i++) if (sampleCorrSelect[i]!=null) {
+                	for (int j=0;j<sampleCorrSelect[i].length;j++) sampleCorrSelect[i][j]=false;
+            	}
+        	}
+        	initSampleCorrChnParIndex(flattenSampleCoord());
         }
         
         ArrayList<String> getParameterValueStrings(boolean showDisabled, boolean showCorrection){
@@ -4824,197 +5290,162 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             }
             return chnValues;
         }
-/*
-        public double [] getValsDerivativesOld(
-                boolean sagittalMaster,
-                int [] motors, // 3 motor coordinates
-                double px, // pixel x
-                double py, // pixel y
-                double [][] deriv // array of (1..6[][], matching getNumberOfChannels) or null if derivatives are not required
-                ){
-            double [] motorDerivs=(deriv==null)? null:(new double [mechanicalFocusingModel.getNumPars()]);
-            double [] chnValues=new double [getNumberOfChannels()];
-            double mot_z=mechanicalFocusingModel.calc_ZdZ(
-                    motors,
-                    px,
-                    py,
-                    motorDerivs);
-            int nChn=0;
-            for (int c=0;c<channelSelect.length;c++) if (channelSelect[c]){
-                double [] deriv_curv=(deriv==null)?null:(new double [curvatureModel[c].getSize()]);
-                chnValues[nChn]=curvatureModel[c].getFdF(
-                        null, // param_corr
-                        px,
-                        py,
-                        mot_z,
-                        deriv_curv);
-                if (deriv!=null){
-                    deriv[nChn]=new double [getNumberOfParameters(sagittalMaster)];
-                    int np=0;
-
-                    for (int i=0;i<mechanicalFocusingModel.paramValues.length;i++){
-                        if ((mechanicalSelect==null) || mechanicalSelect[i] ) deriv[nChn][np++]=-motorDerivs[i]*deriv_curv[0]; // minus d/dz0 const part
-                    }
-                    
-                    for (int n=0;n<channelSelect.length;n++) if (channelSelect[n]){
-                        for (int i=0;i<curvatureSelect[n].length; i++) if (curvatureSelect[n][i] ){
-                            deriv[nChn][np++]=(n==c)?(deriv_curv[i]):0.0;
-                        }
-                    }
-                }
-                nChn++;
-            }
-            return chnValues;
-        }
-*/        
+        
+        
+        
         
         
     }
     
     public class MechanicalFocusingModel{
 
-        public final String [][] descriptions={
-                {"K0", "Average motor center travel","um/step","0.0124"},
-                {"KD1","M1 and M2 travel disbalance","um/step","0.0"},
-                {"KD3","M3 to average of M1 and M2 travel disbalance","um/step","0.0"},
-                {"sM1","M1: sin component amplitude, relative to tread pitch","","0.0"},
-                {"cM1","M1: cos component amplitude, relative to tread pitch","","0.0"},
-                {"sM2","M2: sin component amplitude, relative to tread pitch","","0.0"},
-                {"cM2","M2: cos component amplitude, relative to tread pitch","","0.0"},
-                {"sM3","M3: sin component amplitude, relative to tread pitch","","0.0"},
-                {"cM3","M3: cos component amplitude, relative to tread pitch","","0.0"},
-                {"Lx", "Half horizontal distance between M3 and and M2 supports", "mm","21.0"},
-                {"Ly", "Half vertical distance between M1 and M2 supports", "mm","10.0"},
-                {"mpX0","pixel X coordinate of mechanical center","px","1296.0"},
-                {"mpY0","pixel Y coordinate of mechanical center","px","968.0"},
-                {"z0", "center shift, positive away form the lens","um","0.0"},
-                {"tx", "horizontal tilt", "um/mm","0.0"},
-                {"ty", "vertical tilt", "um/mm","0.0"}};
-        public double PERIOD=3584.0; // steps/revolution
-//        public double PIXEL_SIZE=0.0022; // mm
-        public double [] paramValues=new double [descriptions.length];
-        
-        public MechanicalFocusingModel(){ // add arguments?
-            initDefaults();
-        }
-        
-    public void setProperties(String prefix,Properties properties){
-        if (paramValues!=null) {
-        for (int i=0;i<paramValues.length;i++){
-            properties.setProperty(prefix+descriptions[i][0],paramValues[i]+"");
-        }
-        }
-    }
-    public void getProperties(String prefix,Properties properties){
-        if ((paramValues==null) || (paramValues.length!=descriptions.length))
-            initDefaults();
-        for (int i=0;i<paramValues.length;i++){
-            if (properties.getProperty(prefix+descriptions[i][0])!=null)
-                paramValues[i]=Double.parseDouble(properties.getProperty(prefix+descriptions[i][0]));
-        }
-    }
-        public void initDefaults(){
-            paramValues=new double [descriptions.length];
-            for (int i=0;i<descriptions.length;i++) paramValues[i]=Double.parseDouble(descriptions[i][3]);
-        }
-        public void setVector(double[] vector){
-            paramValues=new double [descriptions.length];
-            for (int i=0;i<vector.length;i++) paramValues[i]=vector[i];
-        }
-                
-        public void setVector(double[] vector, boolean [] mask){
-            for (int i=0;i<vector.length;i++) if (mask[i]) paramValues[i]=vector[i];
-        }
-        
-        public double [] getVector() {return paramValues;}
-        
-        public int getNumPars(){return descriptions.length;}
-        public int getIndex(String parName){
-            for (int i=0;i<descriptions.length;i++) if (descriptions[i].equals(parName)) return i;
-            return -1;
-        }
-        public int getIndex(MECH_PAR mech_par){
-            return mech_par.ordinal();
-        }
-        public String getDescription(int i){
-            return descriptions[i][1];
-        }
-        public String getName(int i){
-            return descriptions[i][0];
-        }
-        public String getDescription(MECH_PAR mech_par){
-            return descriptions[mech_par.ordinal()][1];
-        }
-        public String getUnits(int i){
-            return descriptions[i][2];
-        }
-        public String getUnits(MECH_PAR mech_par){
-            return descriptions[mech_par.ordinal()][2];
-        }
-        public Double getValue(int i){
-            return paramValues[i];
-        }
-        
-        public Double getValue(MECH_PAR mech_par){
-            return paramValues[mech_par.ordinal()];
-        }
- 
-        public double [] debugDeriv_ZdZ(
+    	public final String [][] descriptions={
+    			{"K0", "Average motor center travel","um/step","0.0124"},
+    			{"KD1","M1 and M2 travel disbalance","um/step","0.0"},
+    			{"KD3","M3 to average of M1 and M2 travel disbalance","um/step","0.0"},
+    			{"sM1","M1: sin component amplitude, relative to tread pitch","","0.0"},
+    			{"cM1","M1: cos component amplitude, relative to tread pitch","","0.0"},
+    			{"sM2","M2: sin component amplitude, relative to tread pitch","","0.0"},
+    			{"cM2","M2: cos component amplitude, relative to tread pitch","","0.0"},
+    			{"sM3","M3: sin component amplitude, relative to tread pitch","","0.0"},
+    			{"cM3","M3: cos component amplitude, relative to tread pitch","","0.0"},
+    			{"Lx", "Half horizontal distance between M3 and and M2 supports", "mm","21.0"},
+    			{"Ly", "Half vertical distance between M1 and M2 supports", "mm","10.0"},
+    			{"mpX0","pixel X coordinate of mechanical center","px","1296.0"},
+    			{"mpY0","pixel Y coordinate of mechanical center","px","968.0"},
+    			{"z0", "center shift, positive away form the lens","um","0.0"},
+    			{"tx", "horizontal tilt", "um/mm","0.0"},
+    			{"ty", "vertical tilt", "um/mm","0.0"}};
+    	public double PERIOD=3584.0; // steps/revolution
+    	//        public double PIXEL_SIZE=0.0022; // mm
+    	public double [] paramValues=new double [descriptions.length];
+
+    	public MechanicalFocusingModel(){ // add arguments?
+    		initDefaults();
+    	}
+
+    	public void setProperties(String prefix,Properties properties){
+    		if (paramValues!=null) {
+    			for (int i=0;i<paramValues.length;i++){
+    				properties.setProperty(prefix+descriptions[i][0],paramValues[i]+"");
+    			}
+    		}
+    	}
+    	public void getProperties(String prefix,Properties properties){
+    		if ((paramValues==null) || (paramValues.length!=descriptions.length))
+    			initDefaults();
+    		for (int i=0;i<paramValues.length;i++){
+    			if (properties.getProperty(prefix+descriptions[i][0])!=null)
+    				paramValues[i]=Double.parseDouble(properties.getProperty(prefix+descriptions[i][0]));
+    		}
+    	}
+    	public void initDefaults(){
+    		paramValues=new double [descriptions.length];
+    		for (int i=0;i<descriptions.length;i++) paramValues[i]=Double.parseDouble(descriptions[i][3]);
+    	}
+    	public void setVector(double[] vector){
+    		paramValues=new double [descriptions.length];
+    		for (int i=0;i<vector.length;i++) paramValues[i]=vector[i];
+    	}
+    	public void setZTxTy(double z, double tx, double ty){
+    		paramValues[getIndex(MECH_PAR.z0)]=z;
+    		paramValues[getIndex(MECH_PAR.tx)]=tx;
+    		paramValues[getIndex(MECH_PAR.ty)]=ty;
+    	}
+
+    	public void setVector(double[] vector, boolean [] mask){
+    		for (int i=0;i<vector.length;i++) if (mask[i]) paramValues[i]=vector[i];
+    	}
+
+    	public double [] getVector() {return paramValues;}
+
+    	public int getNumPars(){return descriptions.length;}
+    	public int getIndex(String parName){
+    		for (int i=0;i<descriptions.length;i++) if (descriptions[i].equals(parName)) return i;
+    		return -1;
+    	}
+    	public int getIndex(MECH_PAR mech_par){
+    		return mech_par.ordinal();
+    	}
+    	public String getDescription(int i){
+    		return descriptions[i][1];
+    	}
+    	public String getName(int i){
+    		return descriptions[i][0];
+    	}
+    	public String getDescription(MECH_PAR mech_par){
+    		return descriptions[mech_par.ordinal()][1];
+    	}
+    	public String getUnits(int i){
+    		return descriptions[i][2];
+    	}
+    	public String getUnits(MECH_PAR mech_par){
+    		return descriptions[mech_par.ordinal()][2];
+    	}
+    	public Double getValue(int i){
+    		return paramValues[i];
+    	}
+
+    	public Double getValue(MECH_PAR mech_par){
+    		return paramValues[mech_par.ordinal()];
+    	}
+
+    	public double [] debugDeriv_ZdZ(
     			double scale,
-                int [] motors,
-                double px,
-                double py){
-        	double [] derivSteps ={
-        			0.001, // [0]	K0 843.6001052876973	
-        			0.001, // [1]	KD1 1600.0723700390713	
-        			0.001, // [2]	KD3 -2428.8998947123027	
-        			0.1,   // [3]	sM1 -1.1720600074585734	
-        			0.1,   // [4]	cM1 0.6081060292866338	
-        			0.1,   // [5]	sM2 -2.3717384278673035	
-        			0.1,   // [6]	cM2 1.2305414643438266	
-        			0.1,   // [7]	sM3 2.7345656468251707	
-        			0.1,   // [8]	cM3 1.4187890097199358	
-        			1.0,   // [9]	Lx -0.535718420298317	
-        			1.0,   // [10]  Ly 	0.0	
-        			10.0,  // [11]  mpX0	-2.816702366108815E-5	
-        			10.0,  // [12]  mpY0	-8.351458550253758E-5	
-        			1.0,   // [13]  z0	 1.0	
-        			0.1,   // [14]  tx -2.5168000000000004	
-        			0.1    // [15]  ty -1.76	
-        	};
-        	double [] initialVector=paramValues.clone();
-        	double [] derivs=new double [paramValues.length];
-        	for (int i=0;i<derivs.length;i++){
-        		paramValues[i]=initialVector[i]-scale*derivSteps[i];
-        		double zm=calc_ZdZ(motors,px,py,null);
-        		paramValues[i]=initialVector[i]+scale*derivSteps[i];
-        		double zp=calc_ZdZ(motors,px,py,null);
-        		paramValues[i]=initialVector[i];
-        		derivs[i]=(zp-zm)/(2.0*scale*derivSteps[i]);
-        	}
-        	return derivs;
-        	
-        }
- 
-        
-        /**
-         * Calculate distance from the selected sensor pixel to the common "focal" plane
-         * and optionally partial derivatives of the pixel distance from the focal plane by selected parameters
-         * @param motors array of 3 motor positions
-         * @param px horizontal sensor position
-         * @param py vertical sensor pixel position
-         * @param deriv returns partial derivatives if array is provided. If null - does not calculate derivatives
-         * @return array of partial derivatives
-         */
-        public double calc_ZdZ(
-                int [] motors,
-                double px,
-                double py,
-                double[] deriv){
-        	double debugMot=6545;
-        	int debugThreshold=2;
-        	boolean dbg = (debugLevel>debugThreshold);
-            /*
+    			int [] motors,
+    			double px,
+    			double py){
+    		double [] derivSteps ={
+    				0.001, // [0]	K0 843.6001052876973	
+    				0.001, // [1]	KD1 1600.0723700390713	
+    				0.001, // [2]	KD3 -2428.8998947123027	
+    				0.1,   // [3]	sM1 -1.1720600074585734	
+    				0.1,   // [4]	cM1 0.6081060292866338	
+    				0.1,   // [5]	sM2 -2.3717384278673035	
+    				0.1,   // [6]	cM2 1.2305414643438266	
+    				0.1,   // [7]	sM3 2.7345656468251707	
+    				0.1,   // [8]	cM3 1.4187890097199358	
+    				1.0,   // [9]	Lx -0.535718420298317	
+    				1.0,   // [10]  Ly 	0.0	
+    				10.0,  // [11]  mpX0	-2.816702366108815E-5	
+    				10.0,  // [12]  mpY0	-8.351458550253758E-5	
+    				1.0,   // [13]  z0	 1.0	
+    				0.1,   // [14]  tx -2.5168000000000004	
+    				0.1    // [15]  ty -1.76	
+    		};
+    		double [] initialVector=paramValues.clone();
+    		double [] derivs=new double [paramValues.length];
+    		for (int i=0;i<derivs.length;i++){
+    			paramValues[i]=initialVector[i]-scale*derivSteps[i];
+    			double zm=calc_ZdZ(motors,px,py,null);
+    			paramValues[i]=initialVector[i]+scale*derivSteps[i];
+    			double zp=calc_ZdZ(motors,px,py,null);
+    			paramValues[i]=initialVector[i];
+    			derivs[i]=(zp-zm)/(2.0*scale*derivSteps[i]);
+    		}
+    		return derivs;
+
+    	}
+
+
+    	/**
+    	 * Calculate distance from the selected sensor pixel to the common "focal" plane
+    	 * and optionally partial derivatives of the pixel distance from the focal plane by selected parameters
+    	 * @param motors array of 3 motor positions
+    	 * @param px horizontal sensor position
+    	 * @param py vertical sensor pixel position
+    	 * @param deriv returns partial derivatives if array is provided. If null - does not calculate derivatives
+    	 * @return array of partial derivatives
+    	 */
+    	public double calc_ZdZ(
+    			int [] motors,
+    			double px,
+    			double py,
+    			double[] deriv){
+    		double debugMot=6545;
+    		int debugThreshold=2;
+    		boolean dbg = (debugLevel>debugThreshold);
+    		/*
              kM3=K0+KD3
              kM1=K0+KD1-KD3
              kM2=K0-KD1-KD3
@@ -5034,195 +5465,203 @@ public boolean LevenbergMarquardt(boolean openDialog, int debugLevel){
             d2Z/dY/dm2= -ps/(2*Ly)* kM2 * (m2 + sM2*P/(2*pi)*sin(2pi*m2/P) + cM2*P/(2*pi)*cos(2pi*m2/P))
             d2Z/dY/dm3= 0
 
-            */
-//            double [] deriv=new double [paramValues.length];
-            double kM1=    getValue(MECH_PAR.K0)+getValue(MECH_PAR.KD1)-getValue(MECH_PAR.KD3);
-            double kM2=    getValue(MECH_PAR.K0)-getValue(MECH_PAR.KD1)-getValue(MECH_PAR.KD3);
-            double kM3=    getValue(MECH_PAR.K0)+getValue(MECH_PAR.KD3);
-            double p2pi= PERIOD/2/Math.PI;
-            double m1=motors[0],m2=motors[1],m3=motors[2];
-            double aM1=(m1 + getValue(MECH_PAR.sM1)*p2pi*Math.sin(m1/p2pi) + getValue(MECH_PAR.cM1)*p2pi*Math.cos(m1/p2pi));
-            double aM2=(m2 + getValue(MECH_PAR.sM2)*p2pi*Math.sin(m2/p2pi) + getValue(MECH_PAR.cM2)*p2pi*Math.cos(m2/p2pi));
-            double aM3=(m3 + getValue(MECH_PAR.sM3)*p2pi*Math.sin(m3/p2pi) + getValue(MECH_PAR.cM3)*p2pi*Math.cos(m3/p2pi));
-            double zM1=kM1 * aM1;
-            double zM2=kM2 * aM2;
-            double zM3=kM3 * aM3;
+    		 */
+    		//            double [] deriv=new double [paramValues.length];
+    		double kM1=    getValue(MECH_PAR.K0)+getValue(MECH_PAR.KD1)-getValue(MECH_PAR.KD3);
+    		double kM2=    getValue(MECH_PAR.K0)-getValue(MECH_PAR.KD1)-getValue(MECH_PAR.KD3);
+    		double kM3=    getValue(MECH_PAR.K0)+getValue(MECH_PAR.KD3);
+    		double p2pi= PERIOD/2/Math.PI;
+    		double m1=motors[0],m2=motors[1],m3=motors[2];
+    		double aM1=(m1 + getValue(MECH_PAR.sM1)*p2pi*Math.sin(m1/p2pi) + getValue(MECH_PAR.cM1)*p2pi*Math.cos(m1/p2pi));
+    		double aM2=(m2 + getValue(MECH_PAR.sM2)*p2pi*Math.sin(m2/p2pi) + getValue(MECH_PAR.cM2)*p2pi*Math.cos(m2/p2pi));
+    		double aM3=(m3 + getValue(MECH_PAR.sM3)*p2pi*Math.sin(m3/p2pi) + getValue(MECH_PAR.cM3)*p2pi*Math.cos(m3/p2pi));
+    		double zM1=kM1 * aM1;
+    		double zM2=kM2 * aM2;
+    		double zM3=kM3 * aM3;
 
-            double zc= 0.25* zM1+ 0.25* zM2+ 0.5 * zM3+getValue(MECH_PAR.z0);
-            double dx=PIXEL_SIZE*(px-getValue(MECH_PAR.mpX0));
-            double dy=PIXEL_SIZE*(py-getValue(MECH_PAR.mpY0));
-            double zx=dx*(getValue(MECH_PAR.tx)+(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx))) ;
-//            double zy=dy*(getValue(MECH_PAR.ty)+(zM1-zM2)/(2*getValue(MECH_PAR.Ly)));
-            double zy=dy*(getValue(MECH_PAR.ty)+(zM2-zM1)/(2*getValue(MECH_PAR.Ly)));
-            double z=zc+zx+zy;
-            if (dbg) if ((Math.abs(m1)==debugMot)&& (Math.abs(m2)==debugMot)){
-            	System.out.print ("M: "+((int)m1)+":"+((int)m2)+":"+((int)m3)+
-            			" dxy="+IJ.d2s(dx,3)+":"+IJ.d2s(dy,3)+" zcxy="+IJ.d2s(zc,3)+":"+IJ.d2s(zx,3)+":"+IJ.d2s(zy,3)+
-            			" zxy(t)="+IJ.d2s(dx*getValue(MECH_PAR.tx),3)+":"+IJ.d2s(dy*getValue(MECH_PAR.ty),3));
-            }
-            if (deriv==null) {
-            	if (dbg) if ((Math.abs(m1)==debugMot)&& (Math.abs(m2)==debugMot)){
-                	System.out.println();
-                }
-            	return z;
-            }
-            for (int i=0;i<deriv.length;i++) deriv[i]=0.0;
-            // Above same as calc_Z
-            double dx_mpX0=-PIXEL_SIZE;
-            double dy_mpY0=-PIXEL_SIZE;
-            double zM1_K0= aM1;
-            double zM1_KD1= aM1;
-            double zM1_KD3=-aM1;
-            double zM2_K0= aM2;
-            double zM2_KD1=-aM2;
-            double zM2_KD3=-aM2;
-            double zM3_K0= aM3;
-//            double zM3_KD1=-aM3;
-//            double zM3_KD3= 0.0;
-            double zM3_KD1= 0.0;
-            double zM3_KD3= aM3;
-            double zM1_sM1= kM1*p2pi*Math.sin(m1/p2pi);
-            double zM1_cM1= kM1*p2pi*Math.cos(m1/p2pi);
-            double zM2_sM2= kM2*p2pi*Math.sin(m2/p2pi);
-            double zM2_cM2= kM2*p2pi*Math.cos(m2/p2pi);
-            double zM3_sM3= kM3*p2pi*Math.sin(m3/p2pi);
-            double zM3_cM3= kM3*p2pi*Math.cos(m3/p2pi);
-            
-            double zc_K0= 0.25* zM1_K0+ 0.25* zM2_K0+ 0.5 * zM3_K0;
-            double zc_KD1= 0.25* zM1_KD1+ 0.25* zM2_KD1+ 0.5 * zM3_KD1;
-            double zc_KD3= 0.25* zM1_KD3+ 0.25* zM2_KD3+ 0.5 * zM3_KD3;
-            double zc_sM1= 0.25* zM1_sM1;
-            double zc_cM1= 0.25* zM1_cM1;
-            double zc_sM2= 0.25* zM2_sM2;
-            double zc_cM2= 0.25* zM2_cM2;
-            double zc_sM3= 0.5* zM3_sM3;
-            double zc_cM3= 0.5* zM3_cM3;
-            
-//            double zx_K0=(2*zM3-zM1-zM2)* dx/(4*getValue(MECH_PAR.Lx));
-            double zx_a=dx/(4*getValue(MECH_PAR.Lx));
-            double zx_K0= (2*zM3_K0-zM1_K0-zM2_K0)*zx_a;
-            double zx_KD1=(2*zM3_KD1-zM1_KD1-zM2_KD1)*zx_a;
-            double zx_KD3=(2*zM3_KD3-zM1_KD3-zM2_KD3)*zx_a;
-            double zx_sM1= (-zM1_sM1)*zx_a;
-            double zx_cM1= (-zM1_cM1)*zx_a;
-            double zx_sM2= (-zM2_sM2)*zx_a;
-            double zx_cM2= (-zM2_cM2)*zx_a;
-            double zx_sM3= (2*zM3_sM3)*zx_a;
-            double zx_cM3= (2*zM3_cM3)*zx_a;
-            double zx_mpX0=dx_mpX0*(getValue(MECH_PAR.tx)+(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx))); //  double zx_mpX0=dx_mpX0/(4*getValue(MECH_PAR.Lx));
-            double zx_tx= dx;
-            double zx_Lx= -dx*(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx)*getValue(MECH_PAR.Lx));
-//          double zy=dy*(getValue(MECH_PAR.ty)+(zM2-zM1)/(2*getValue(MECH_PAR.Ly)));
-            double zy_a=dy/(2*getValue(MECH_PAR.Ly));
-            double zy_K0=  (zM2_K0- zM1_K0) *zy_a;
-            double zy_KD1= (zM2_KD1-zM1_KD1)*zy_a;
-            double zy_KD3= (zM2_KD3-zM1_KD3)*zy_a;
-            double zy_sM1= (-zM1_sM1)*zy_a;
-            double zy_cM1= (-zM1_cM1)*zy_a;
-            double zy_sM2= (zM2_sM2)*zy_a;
-            double zy_cM2= (zM2_cM2)*zy_a;
-            double zy_sM3= 0.0;
-            double zy_cM3= 0.0;
-            double zy_mpY0=dy_mpY0*(getValue(MECH_PAR.ty)+(zM2-zM1)/(2*getValue(MECH_PAR.Ly))); // double zy_mpY0=dy_mpY0/(2*getValue(MECH_PAR.Ly));
-            double zy_ty= dy;
-//            double zy_Ly= -dy*(zM1-zM2)/(2*getValue(MECH_PAR.Ly)*getValue(MECH_PAR.Ly));
-            double zy_Ly= -dy*(zM2-zM1)/(2*getValue(MECH_PAR.Ly)*getValue(MECH_PAR.Ly));
+    		double zc= 0.25* zM1+ 0.25* zM2+ 0.5 * zM3+getValue(MECH_PAR.z0);
+    		double dx=PIXEL_SIZE*(px-getValue(MECH_PAR.mpX0));
+    		double dy=PIXEL_SIZE*(py-getValue(MECH_PAR.mpY0));
+    		double zx=dx*(getValue(MECH_PAR.tx)+(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx))) ;
+    		//            double zy=dy*(getValue(MECH_PAR.ty)+(zM1-zM2)/(2*getValue(MECH_PAR.Ly)));
+    		double zy=dy*(getValue(MECH_PAR.ty)+(zM2-zM1)/(2*getValue(MECH_PAR.Ly)));
+    		double z=zc+zx+zy;
+    		if (dbg) if ((Math.abs(m1)==debugMot)&& (Math.abs(m2)==debugMot)){
+    			System.out.print ("M: "+((int)m1)+":"+((int)m2)+":"+((int)m3)+
+    					" dxy="+IJ.d2s(dx,3)+":"+IJ.d2s(dy,3)+" zcxy="+IJ.d2s(zc,3)+":"+IJ.d2s(zx,3)+":"+IJ.d2s(zy,3)+
+    					" zxy(t)="+IJ.d2s(dx*getValue(MECH_PAR.tx),3)+":"+IJ.d2s(dy*getValue(MECH_PAR.ty),3));
+    		}
+    		if (deriv==null) {
+    			if (dbg) if ((Math.abs(m1)==debugMot)&& (Math.abs(m2)==debugMot)){
+    				System.out.println();
+    			}
+    			return z;
+    		}
+    		for (int i=0;i<deriv.length;i++) deriv[i]=0.0;
+    		// Above same as calc_Z
+    		double dx_mpX0=-PIXEL_SIZE;
+    		double dy_mpY0=-PIXEL_SIZE;
+    		double zM1_K0= aM1;
+    		double zM1_KD1= aM1;
+    		double zM1_KD3=-aM1;
+    		double zM2_K0= aM2;
+    		double zM2_KD1=-aM2;
+    		double zM2_KD3=-aM2;
+    		double zM3_K0= aM3;
+    		//            double zM3_KD1=-aM3;
+    		//            double zM3_KD3= 0.0;
+    		double zM3_KD1= 0.0;
+    		double zM3_KD3= aM3;
+    		double zM1_sM1= kM1*p2pi*Math.sin(m1/p2pi);
+    		double zM1_cM1= kM1*p2pi*Math.cos(m1/p2pi);
+    		double zM2_sM2= kM2*p2pi*Math.sin(m2/p2pi);
+    		double zM2_cM2= kM2*p2pi*Math.cos(m2/p2pi);
+    		double zM3_sM3= kM3*p2pi*Math.sin(m3/p2pi);
+    		double zM3_cM3= kM3*p2pi*Math.cos(m3/p2pi);
 
-            deriv[getIndex(MECH_PAR.K0)]= zc_K0+zx_K0+zy_K0;
-            deriv[getIndex(MECH_PAR.KD1)]=zc_KD1+zx_KD1+zy_KD1;
-            deriv[getIndex(MECH_PAR.KD3)]=zc_KD3+zx_KD3+zy_KD3;
-            deriv[getIndex(MECH_PAR.sM1)]=zc_sM1+zx_sM1+zy_sM1;
-            deriv[getIndex(MECH_PAR.cM1)]=zc_cM1+zx_cM1+zy_cM1;
-            deriv[getIndex(MECH_PAR.sM2)]=zc_sM2+zx_sM2+zy_sM2;
-            deriv[getIndex(MECH_PAR.cM2)]=zc_cM2+zx_cM2+zy_cM2;
-            deriv[getIndex(MECH_PAR.sM3)]=zc_sM3+zx_sM3+zy_sM3;
-            deriv[getIndex(MECH_PAR.cM3)]=zc_cM3+zx_cM3+zy_cM3;
-            deriv[getIndex(MECH_PAR.Lx)] = zx_Lx;
-            deriv[getIndex(MECH_PAR.Ly)] = zy_Ly;
-            deriv[getIndex(MECH_PAR.mpX0)] = zx_mpX0;
-            deriv[getIndex(MECH_PAR.mpY0)] = zy_mpY0;
-            deriv[getIndex(MECH_PAR.z0)] = 1.0;
-            deriv[getIndex(MECH_PAR.tx)] = zx_tx;
-            deriv[getIndex(MECH_PAR.ty)] = zy_ty;
-            if (dbg) if ((Math.abs(m1)==debugMot)&& (Math.abs(m2)==debugMot)){
-            	if (m1*m2>0){
-            		System.out.println("same sign");
-            	} else {
-            		System.out.println("opposite sign");
-            	}
-            	System.out.println (" zxy_txy="+IJ.d2s(zx_tx,3)+":"+IJ.d2s(zy_ty,3)+" zxy_Lxy="+IJ.d2s(zx_Lx,5)+":"+IJ.d2s(zy_Ly,5));
-            	double [] dbg_derivs= debugDeriv_ZdZ(
-            			0.1, //scale,
-                        motors,
-                        px,
-                        py);
-            	for (int i=0;i<deriv.length;i++){
-            		System.out.println(i+": "+descriptions[i][0]+" deriv="+deriv[i]+", dbg_derivs="+dbg_derivs[i]);
-            	}
-            }
-            return z;
-        }
-        public boolean[] getDefaultMask(){
-            boolean [] mask = new boolean[this.paramValues.length];
-            for (int i=0;i<mask.length;i++) mask[i]=false;
-            mask[getIndex(MECH_PAR.K0)]= false;
-            mask[getIndex(MECH_PAR.KD1)]=false; //true;
-            mask[getIndex(MECH_PAR.KD3)]=false; //true;
-            mask[getIndex(MECH_PAR.sM1)]=false;
-            mask[getIndex(MECH_PAR.cM1)]=false;
-            mask[getIndex(MECH_PAR.sM2)]=false;
-            mask[getIndex(MECH_PAR.cM2)]=false;
-            mask[getIndex(MECH_PAR.sM3)]=false;
-            mask[getIndex(MECH_PAR.cM3)]=false;
-            mask[getIndex(MECH_PAR.Lx)] =false;
-            mask[getIndex(MECH_PAR.Ly)] =false; //true;
-            mask[getIndex(MECH_PAR.mpX0)] = false; //true;
-            mask[getIndex(MECH_PAR.mpY0)] = false; //true;
-            mask[getIndex(MECH_PAR.tx)] = true;
-            mask[getIndex(MECH_PAR.ty)] = true;
-            return mask;
-        }
-        
-        public boolean[] maskSetDialog(String title, boolean [] currentMask){
-         GenericDialog gd = new GenericDialog(title);
-         boolean [] mask = new boolean[this.paramValues.length];
-         if (currentMask==null) currentMask=getDefaultMask();
-        for (int i=0;i<mask.length;i++) {
-            mask[i]=currentMask[i];
-                gd.addCheckbox(getDescription(i), mask[i]);                    
-         }
-         gd.enableYesNoCancel("Apply","Keep"); // default OK (on enter) - "Apply"
-    gd.showDialog();
-         if (gd.wasCanceled()) return null;
-         if (gd.wasOKed()) { // selected default "Apply"
-             for (int i=0;i<mask.length;i++) {
-                 mask[i]=gd.getNextBoolean();
-             }
-         }
-         return mask;
-        }
-        public boolean showModifyParameterValues(String title, boolean showDisabled, boolean [] mask){
-         GenericDialog gd = new GenericDialog(title);
-            for (int i=0;i<this.paramValues.length;i++){
-                if ((mask==null) || mask[i] ) {
-                    gd.addNumericField(getDescription(i),this.paramValues[i],5,8,getUnits(i));
-                } else if (showDisabled){
-//                    gd.addMessage(getDescription(i) +": "+this.paramValues[i]+" ("+getUnits(i)+")");
-                    gd.addNumericField("(disabled) "+getDescription(i),this.paramValues[i],5,8,getUnits(i));
-                }
-            }
-         gd.enableYesNoCancel("Apply","Keep"); // default OK (on enter) - "Apply"
-    gd.showDialog();
-         if (gd.wasCanceled()) return false;
-         if (gd.wasOKed()) { // selected default "Apply"
-                for (int i=0;i<this.paramValues.length;i++){
-                    if ((mask==null) || mask[i] || showDisabled) {
-                        this.paramValues[i]=gd.getNextNumber();
-                    }
-                }
-         }         
-         return true;    
-        }        
+    		double zc_K0= 0.25* zM1_K0+ 0.25* zM2_K0+ 0.5 * zM3_K0;
+    		double zc_KD1= 0.25* zM1_KD1+ 0.25* zM2_KD1+ 0.5 * zM3_KD1;
+    		double zc_KD3= 0.25* zM1_KD3+ 0.25* zM2_KD3+ 0.5 * zM3_KD3;
+    		double zc_sM1= 0.25* zM1_sM1;
+    		double zc_cM1= 0.25* zM1_cM1;
+    		double zc_sM2= 0.25* zM2_sM2;
+    		double zc_cM2= 0.25* zM2_cM2;
+    		double zc_sM3= 0.5* zM3_sM3;
+    		double zc_cM3= 0.5* zM3_cM3;
+
+    		//            double zx_K0=(2*zM3-zM1-zM2)* dx/(4*getValue(MECH_PAR.Lx));
+    		double zx_a=dx/(4*getValue(MECH_PAR.Lx));
+    		double zx_K0= (2*zM3_K0-zM1_K0-zM2_K0)*zx_a;
+    		double zx_KD1=(2*zM3_KD1-zM1_KD1-zM2_KD1)*zx_a;
+    		double zx_KD3=(2*zM3_KD3-zM1_KD3-zM2_KD3)*zx_a;
+    		double zx_sM1= (-zM1_sM1)*zx_a;
+    		double zx_cM1= (-zM1_cM1)*zx_a;
+    		double zx_sM2= (-zM2_sM2)*zx_a;
+    		double zx_cM2= (-zM2_cM2)*zx_a;
+    		double zx_sM3= (2*zM3_sM3)*zx_a;
+    		double zx_cM3= (2*zM3_cM3)*zx_a;
+    		double zx_mpX0=dx_mpX0*(getValue(MECH_PAR.tx)+(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx))); //  double zx_mpX0=dx_mpX0/(4*getValue(MECH_PAR.Lx));
+    		double zx_tx= dx;
+    		double zx_Lx= -dx*(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx)*getValue(MECH_PAR.Lx));
+    		//          double zy=dy*(getValue(MECH_PAR.ty)+(zM2-zM1)/(2*getValue(MECH_PAR.Ly)));
+    		double zy_a=dy/(2*getValue(MECH_PAR.Ly));
+    		double zy_K0=  (zM2_K0- zM1_K0) *zy_a;
+    		double zy_KD1= (zM2_KD1-zM1_KD1)*zy_a;
+    		double zy_KD3= (zM2_KD3-zM1_KD3)*zy_a;
+    		double zy_sM1= (-zM1_sM1)*zy_a;
+    		double zy_cM1= (-zM1_cM1)*zy_a;
+    		double zy_sM2= (zM2_sM2)*zy_a;
+    		double zy_cM2= (zM2_cM2)*zy_a;
+    		double zy_sM3= 0.0;
+    		double zy_cM3= 0.0;
+    		double zy_mpY0=dy_mpY0*(getValue(MECH_PAR.ty)+(zM2-zM1)/(2*getValue(MECH_PAR.Ly))); // double zy_mpY0=dy_mpY0/(2*getValue(MECH_PAR.Ly));
+    		double zy_ty= dy;
+    		//            double zy_Ly= -dy*(zM1-zM2)/(2*getValue(MECH_PAR.Ly)*getValue(MECH_PAR.Ly));
+    		double zy_Ly= -dy*(zM2-zM1)/(2*getValue(MECH_PAR.Ly)*getValue(MECH_PAR.Ly));
+
+    		deriv[getIndex(MECH_PAR.K0)]= zc_K0+zx_K0+zy_K0;
+    		deriv[getIndex(MECH_PAR.KD1)]=zc_KD1+zx_KD1+zy_KD1;
+    		deriv[getIndex(MECH_PAR.KD3)]=zc_KD3+zx_KD3+zy_KD3;
+    		deriv[getIndex(MECH_PAR.sM1)]=zc_sM1+zx_sM1+zy_sM1;
+    		deriv[getIndex(MECH_PAR.cM1)]=zc_cM1+zx_cM1+zy_cM1;
+    		deriv[getIndex(MECH_PAR.sM2)]=zc_sM2+zx_sM2+zy_sM2;
+    		deriv[getIndex(MECH_PAR.cM2)]=zc_cM2+zx_cM2+zy_cM2;
+    		deriv[getIndex(MECH_PAR.sM3)]=zc_sM3+zx_sM3+zy_sM3;
+    		deriv[getIndex(MECH_PAR.cM3)]=zc_cM3+zx_cM3+zy_cM3;
+    		deriv[getIndex(MECH_PAR.Lx)] = zx_Lx;
+    		deriv[getIndex(MECH_PAR.Ly)] = zy_Ly;
+    		deriv[getIndex(MECH_PAR.mpX0)] = zx_mpX0;
+    		deriv[getIndex(MECH_PAR.mpY0)] = zy_mpY0;
+    		deriv[getIndex(MECH_PAR.z0)] = 1.0;
+    		deriv[getIndex(MECH_PAR.tx)] = zx_tx;
+    		deriv[getIndex(MECH_PAR.ty)] = zy_ty;
+    		if (dbg) if ((Math.abs(m1)==debugMot)&& (Math.abs(m2)==debugMot)){
+    			if (m1*m2>0){
+    				System.out.println("same sign");
+    			} else {
+    				System.out.println("opposite sign");
+    			}
+    			System.out.println (" zxy_txy="+IJ.d2s(zx_tx,3)+":"+IJ.d2s(zy_ty,3)+" zxy_Lxy="+IJ.d2s(zx_Lx,5)+":"+IJ.d2s(zy_Ly,5));
+    			double [] dbg_derivs= debugDeriv_ZdZ(
+    					0.1, //scale,
+    					motors,
+    					px,
+    					py);
+    			for (int i=0;i<deriv.length;i++){
+    				System.out.println(i+": "+descriptions[i][0]+" deriv="+deriv[i]+", dbg_derivs="+dbg_derivs[i]);
+    			}
+    		}
+    		return z;
+    	}
+    	public boolean[] getDefaultMask(){
+    		boolean [] mask = new boolean[this.paramValues.length];
+    		for (int i=0;i<mask.length;i++) mask[i]=false;
+    		mask[getIndex(MECH_PAR.K0)]= false;
+    		mask[getIndex(MECH_PAR.KD1)]=false; //true;
+    		mask[getIndex(MECH_PAR.KD3)]=false; //true;
+    		mask[getIndex(MECH_PAR.sM1)]=false;
+    		mask[getIndex(MECH_PAR.cM1)]=false;
+    		mask[getIndex(MECH_PAR.sM2)]=false;
+    		mask[getIndex(MECH_PAR.cM2)]=false;
+    		mask[getIndex(MECH_PAR.sM3)]=false;
+    		mask[getIndex(MECH_PAR.cM3)]=false;
+    		mask[getIndex(MECH_PAR.Lx)] =false;
+    		mask[getIndex(MECH_PAR.Ly)] =false; //true;
+    		mask[getIndex(MECH_PAR.mpX0)] = false; //true;
+    		mask[getIndex(MECH_PAR.mpY0)] = false; //true;
+    		mask[getIndex(MECH_PAR.tx)] = true;
+    		mask[getIndex(MECH_PAR.ty)] = true;
+    		return mask;
+    	}
+
+    	public boolean[] maskSetDialog(String title, boolean [] currentMask){
+    		GenericDialog gd = new GenericDialog(title);
+    		boolean [] mask = new boolean[this.paramValues.length];
+    		if (currentMask==null) currentMask=getDefaultMask();
+    		for (int i=0;i<mask.length;i++) {
+    			mask[i]=currentMask[i];
+    			gd.addCheckbox(getDescription(i), mask[i]);                    
+    		}
+    		gd.enableYesNoCancel("Apply","Keep"); // default OK (on enter) - "Apply"
+    		gd.showDialog();
+    		if (gd.wasCanceled()) return null;
+    		if (gd.wasOKed()) { // selected default "Apply"
+    			for (int i=0;i<mask.length;i++) {
+    				mask[i]=gd.getNextBoolean();
+    			}
+    		}
+    		return mask;
+    	}
+    	public boolean [] maskSetZTxTy(){
+    		boolean [] mask = new boolean[this.paramValues.length];
+    		for (int i=0;i<mask.length;i++)	mask[i]=false;
+    		mask[getIndex(MECH_PAR.z0)]=true;
+    		mask[getIndex(MECH_PAR.tx)]=true;
+    		mask[getIndex(MECH_PAR.ty)]=true;
+    		return mask;
+    	}
+    	public boolean showModifyParameterValues(String title, boolean showDisabled, boolean [] mask){
+    		GenericDialog gd = new GenericDialog(title);
+    		for (int i=0;i<this.paramValues.length;i++){
+    			if ((mask==null) || mask[i] ) {
+    				gd.addNumericField(getDescription(i),this.paramValues[i],5,8,getUnits(i));
+    			} else if (showDisabled){
+    				//                    gd.addMessage(getDescription(i) +": "+this.paramValues[i]+" ("+getUnits(i)+")");
+    				gd.addNumericField("(disabled) "+getDescription(i),this.paramValues[i],5,8,getUnits(i));
+    			}
+    		}
+    		gd.enableYesNoCancel("Apply","Keep"); // default OK (on enter) - "Apply"
+    		gd.showDialog();
+    		if (gd.wasCanceled()) return false;
+    		if (gd.wasOKed()) { // selected default "Apply"
+    			for (int i=0;i<this.paramValues.length;i++){
+    				if ((mask==null) || mask[i] || showDisabled) {
+    					this.paramValues[i]=gd.getNextNumber();
+    				}
+    			}
+    		}         
+    		return true;    
+    	}        
     }
     
     public class CurvatureModel{
@@ -5615,6 +6054,11 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
             }
             return mask;
         }
+        public boolean[] maskAllDisabled(){
+            boolean [] mask = new boolean[this.modelParams.length*this.modelParams[0].length];
+            for (int i=0;i<mask.length;i++) mask[i]=false;
+            return mask;
+        }
         public boolean[] maskSetDialog(String title, boolean detailed, boolean [] currentMask){
          GenericDialog gd = new GenericDialog(title);
          boolean [] mask = new boolean[this.modelParams.length*this.modelParams[0].length];
@@ -5709,6 +6153,608 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
          }         
          return true;    
         }
+    }
+    
+    public boolean getStrategy(int strategyIndex){
+    	FieldStrategies fs=fieldFitting.fieldStrategies;
+    	if ((strategyIndex>=0) && (strategyIndex<fs.getNumStrategies())) {
+    		fs.getFromStrategy( strategyIndex, fieldFitting);
+    		this.strategyComment=fs.getComment(strategyIndex);
+    		this.lambda=fs.getInitialLambda(strategyIndex);
+    		this.lastInSeries=fs.isStopAfterThis(strategyIndex);
+    		this.keepCorrectionParameters=!fs.isResetCorrection(strategyIndex);
+    		this.resetCenter=fs.isResetCenter(strategyIndex);
+    		return true;
+    	} else return false;
+    }
+
+    public int organizeStrategies(String title){
+    	String [] actions={
+    			"<select action>",                      // 0
+    			"Restore strategy",                     // 1
+    			"Save (replace) strategy",              // 2
+    			"Save (insert before/append) strategy", // 3
+    			"Remove strategy",                      // 4
+    			"Edit strategy (restore-edit-save)"};   // 5
+    	FieldStrategies fs=fieldFitting.fieldStrategies;
+    	int selectedActionIndex=0;
+    	int selectedStrategyIndex=fs.getNumStrategies();
+    	boolean editStrategy=false;
+        GenericDialog gd = new GenericDialog(title);
+        gd.addMessage("Current strategies:");
+        String [] indices=new String[fs.getNumStrategies()+1];
+        for (int i=0;i<fs.getNumStrategies();i++) {
+        	indices[i]=i+": "+fs.getComment(i)+
+        			" ("+(fs.isStopAfterThis(i)?"STOP":"CONTINUE")+
+        			(fs.isResetCenter(i)?", RESET CENTER":"")+
+        			(fs.isResetCorrection(i)?", RESET CORRECTIONS":"")+
+        			")";
+        }
+        indices[fs.getNumStrategies()]="very end";
+        for (int i=0;i<fs.getNumStrategies();i++){
+            gd.addMessage(i+": "+fs.getComment(i)+
+            		" ("+(fs.isStopAfterThis(i)?"STOP":"CONTINUE")+
+        			(fs.isResetCenter(i)?", RESET CENTER":"")+
+            		(fs.isResetCorrection(i)?", RESET CORRECTIONS":"")+
+            		")");
+        }
+        gd.addMessage("=======================");
+        gd.addChoice("Action",actions,actions[selectedActionIndex]);
+        gd.addChoice("Index", indices,indices[selectedStrategyIndex]);
+        gd.addMessage("=======================");
+        gd.addCheckbox("Edit strategy",editStrategy);
+        
+        gd.enableYesNoCancel("OK","Done");
+        WindowTools.addScrollBars(gd);
+        gd.showDialog();
+        if (gd.wasCanceled()) return -1;
+        selectedActionIndex=gd.getNextChoiceIndex();
+        selectedStrategyIndex=gd.getNextChoiceIndex();
+        editStrategy=gd.getNextBoolean();
+        if ((selectedActionIndex!=3) && (selectedStrategyIndex>=fs.getNumStrategies())){
+        	selectedStrategyIndex=fs.getNumStrategies()-1; // last
+        }
+        if (selectedStrategyIndex>=0){
+        	switch (selectedActionIndex){
+        	case 1:
+        		getStrategy(selectedStrategyIndex);
+        		if (editStrategy){
+        	        if (!fieldFitting.maskSetDialog("Setup restored strategy "+selectedStrategyIndex)) break;
+        		}
+        		break;
+        	case 3:
+        		if (editStrategy){
+        	        if (!fieldFitting.maskSetDialog("Setup strategy "+selectedStrategyIndex)) break;
+        		}
+        		if (selectedStrategyIndex>=fs.getNumStrategies()) fs.addStrategy();
+        		else fs.insertStrategy(selectedStrategyIndex);
+        		// fall through to the next case
+        	case 2:
+        		if ((selectedActionIndex!=3) && editStrategy){
+        	        if (!fieldFitting.maskSetDialog("Setup strategy "+selectedStrategyIndex)) break;
+        		}
+        		fs.setStrategy(selectedStrategyIndex,fieldFitting);
+        		fs.setComment(selectedStrategyIndex,this.strategyComment);
+        		fs.setInitialLambda(selectedStrategyIndex,this.lambda);
+        		fs.setStopAfterThis(selectedStrategyIndex,this.lastInSeries);
+        		fs.setResetCorrection(selectedStrategyIndex,!this.keepCorrectionParameters);
+        		fs.setResetCenter(selectedStrategyIndex,this.resetCenter);
+        		break;
+        	case 4:
+        		fs.removeStrategy(selectedStrategyIndex);
+        		break;
+        	case 0:
+        		if (editStrategy){
+        	        if (!fieldFitting.maskSetDialog("Setup current strategy")) break;
+        		}
+        		break;
+        	case 5:
+        		getStrategy(selectedStrategyIndex);
+        		if (!fieldFitting.maskSetDialog("Edit strategy "+selectedStrategyIndex)) break;
+        		fs.setStrategy(selectedStrategyIndex,fieldFitting);
+        		fs.setComment(selectedStrategyIndex,this.strategyComment);
+        		fs.setInitialLambda(selectedStrategyIndex,this.lambda);
+        		fs.setStopAfterThis(selectedStrategyIndex,this.lastInSeries);
+        		fs.setResetCorrection(selectedStrategyIndex,!this.keepCorrectionParameters);
+        		fs.setResetCenter(selectedStrategyIndex,this.resetCenter);
+        		break;
+        	}
+        	
+        }
+        if (gd.wasOKed()) return 0;
+        return 1; // "Done" selected
+    }
+    
+    
+    
+    
+    public class FieldStrategies{
+    	ArrayList<FieldSrategy> strategies=new ArrayList<FieldSrategy>();
+        public void setProperties(String prefix,Properties properties){
+			properties.setProperty(prefix+"strategies_length",strategies.size()+"");
+			for (int i=0;i<strategies.size();i++){
+				FieldSrategy strategy=strategies.get(i);
+				if (strategy!=null) strategy.setProperties(prefix+"strategy_"+i+"_",properties);
+			}
+        }
+    	
+        public void getProperties(String prefix,Properties properties){
+        	strategies=new ArrayList<FieldSrategy>();
+        	String s=properties.getProperty(prefix+"strategies_length");
+        	if (s!=null) {
+        		int len=Integer.parseInt(s);
+        		for (int i=0;i<len;i++){
+    				FieldSrategy strategy=new FieldSrategy();
+    				// compatibility with old version
+    				if (properties.getProperty(prefix+"strategy_"+i+"_"+"centerSelect")!=null){
+    					if (debugLevel>0) System.out.println("Restoring new format strategy #"+i);
+        				strategy.getProperties(prefix+"strategy_"+i+"_", properties);
+    				} else if (properties.getProperty(prefix+"_"+i+"_"+"centerSelect")!=null){
+    					if (debugLevel>0) System.out.println("Restoring old format strategy #"+i);
+        				strategy.getProperties(prefix+"_"+i+"_", properties);
+    				} else {
+    					if (debugLevel>0) System.out.println("No info for the field LMA strategy #"+i);
+    				}
+    				strategies.add(strategy);
+        		}
+        	}
+        }
+        public int getNumStrategies(){
+        	return strategies.size();
+        }
+
+        public void getFromStrategy( // any of the arguments can be null - do not set this array
+    			int strategyIndex,
+    			FieldFitting fieldFitting){
+    		strategies.get(strategyIndex).getFromStrategy( // any of the arguments can be null - do not set this array
+    				fieldFitting.centerSelect,
+    				fieldFitting.channelSelect,
+    				fieldFitting.mechanicalSelect,
+    				fieldFitting.curvatureSelect,
+    				fieldFitting.sampleCorrSelect,
+    				fieldFitting.sampleCorrCost,
+    				fieldFitting.sampleCorrSigma,
+    				fieldFitting.sampleCorrPullZero
+        			);
+    	}
+
+        public void setStrategy( // any of the arguments can be null - do not set this array
+    			int strategyIndex,
+    			FieldFitting fieldFitting){
+    		strategies.get(strategyIndex).setStrategy( // any of the arguments can be null - do not set this array
+    				fieldFitting.centerSelect,
+    				fieldFitting.channelSelect,
+    				fieldFitting.mechanicalSelect,
+    				fieldFitting.curvatureSelect,
+    				fieldFitting.sampleCorrSelect,
+    				fieldFitting.sampleCorrCost,
+    				fieldFitting.sampleCorrSigma,
+    				fieldFitting.sampleCorrPullZero
+        			);
+    	}
+		public double getInitialLambda(
+				int strategyIndex) {
+			return strategies.get(strategyIndex).getInitialLambda();
+		}
+		public void setInitialLambda(
+				int strategyIndex,
+				double initialLambda) {
+			strategies.get(strategyIndex).setInitialLambda(initialLambda);
+		}
+		public boolean isStopAfterThis(
+				int strategyIndex) {
+			return strategies.get(strategyIndex).isStopAfterThis();
+		}
+		public boolean isResetCorrection(
+				int strategyIndex) {
+			return strategies.get(strategyIndex).isResetCorrection();
+		}
+
+		public boolean isResetCenter(
+				int strategyIndex) {
+			return strategies.get(strategyIndex).isResetCenter();
+		}
+				
+		public boolean isLast(
+				int strategyIndex) {
+			if (strategyIndex < 0) return true;
+			if (strategyIndex>=(getNumStrategies()-1)) return true;// last
+			return isStopAfterThis(strategyIndex);
+		}
+		
+		public void setStopAfterThis(
+				int strategyIndex,
+				boolean stopAfterThis) {
+			strategies.get(strategyIndex).setStopAfterThis(stopAfterThis);
+		}
+		public void setResetCorrection(
+				int strategyIndex,
+				boolean resetCorrection) {
+			strategies.get(strategyIndex).setResetCorrection(resetCorrection);
+		}
+		public void setResetCenter(
+				int strategyIndex,
+				boolean resetCenter) {
+			strategies.get(strategyIndex).setResetCenter(resetCenter);
+		}
+		public String getComment(
+				int strategyIndex){
+			return strategies.get(strategyIndex).getComment();
+		}
+
+		public void setComment(
+				int strategyIndex,
+				String comment){
+			strategies.get(strategyIndex).setComment(comment);
+		}
+		
+		
+        public void insertStrategy(
+        		int strategyIndex){
+        	strategies.add(strategyIndex,new FieldSrategy());
+        }
+        public void removeStrategy(
+        		int strategyIndex){
+        	strategies.remove(strategyIndex);
+        }
+        public void addStrategy(){
+        	strategies.add(new FieldSrategy());
+        }
+
+        public void saveStrategies(
+        		String path,      // full path w/o extension or null
+        		String directory ){
+        	String [] patterns= {".fstg-xml",".xml"};
+        	if (path==null) {
+        		path= CalibrationFileManagement.selectFile(true, // save  
+        				"Save Field LMA Strategy selection", // title
+        				"Select Field LMA Strategy file", // button
+        				new CalibrationFileManagement.MultipleExtensionsFileFilter(patterns,
+        						"Strategy files (*.fstg-xml)"), // filter
+        						directory); // may be ""
+        	} else path+=patterns[0];
+        	if (path==null) return;
+        	Properties properties=new Properties();
+        	setProperties("",properties); // no prefix
+        	OutputStream os;
+        	try {
+        		os = new FileOutputStream(path);
+        	} catch (FileNotFoundException e1) {
+        		IJ.showMessage("Error","Failed to open field LMA strategy file for writing: "+path);
+        		return;
+        	}
+        	try {
+        		properties.storeToXML(os,
+        				"last updated " + new java.util.Date(), "UTF8");
+
+        	} catch (IOException e) {
+        		IJ.showMessage("Error","Failed to write XML configuration file: "+path);
+        		return;
+        	}
+        	try {
+        		os.close();
+        	} catch (IOException e) {
+        		// TODO Auto-generated catch block
+        		e.printStackTrace();
+        	}
+        	if (debugLevel>0) System.out.println("Field LMA strategy parameters are saved to "+path);
+        }
+
+        public void loadStrategies(
+        		String path,      // full path w/o extension or null
+        		String directory ){
+        	String [] patterns= {".fstg-xml",".xml"};
+        	if (path==null) {
+        		path= CalibrationFileManagement.selectFile(false, // save  
+        				"Field LMA Strategy selection", // title
+        				"Select Field LMA Strategy file", // button
+        				new CalibrationFileManagement.MultipleExtensionsFileFilter(patterns,
+        						"Strategy files (*.fstg-xml)"), // filter
+        						directory); // may be ""
+        	} else {
+  	    	  // do not add extension if it already exists
+  	    	  if ((path.length()<patterns[0].length()) || (!path.substring(path.length()-patterns[0].length()).equals(patterns[0]))){
+  	    		  path+=patterns[0];
+  	    	  }
+        	}
+        	if (path==null) return;
+        	InputStream is;
+        	try {
+        		is = new FileInputStream(path);
+        	} catch (FileNotFoundException e) {
+        		IJ.showMessage("Error","Failed to open field LMA strategy file: "+path);
+        		return;
+        	}
+        	Properties properties=new Properties();
+        	try {
+        		properties.loadFromXML(is);
+
+        	} catch (IOException e) {
+        		IJ.showMessage("Error","Failed to read field LMA strategy file: "+path);
+        		return;
+        	}
+        	try {
+        		is.close();
+        	} catch (IOException e) {
+        		// TODO Auto-generated catch block
+        		e.printStackTrace();
+        	}      
+        	getProperties("",properties); // no prefix
+        	if (debugLevel>0) System.out.println("Field LMA strategy parameters are restored from "+path);
+        }
+        
+    	class FieldSrategy{
+    		private boolean [] centerSelect=null;
+        	private boolean [] channelSelect=null;
+        	private boolean [] mechanicalSelect=null;
+        	private boolean [][] curvatureSelect=new boolean[6][];
+        	private boolean [][] sampleCorrSelect= new boolean[6][]; // enable individual (per sample coordinates) correction of parameters
+        	private double [][] sampleCorrCost= new double[6][]; // equivalent cost of one unit of parameter value (in result units, um)
+        	private double [][] sampleCorrSigma= new double[6][]; // sigma (in mm) for neighbors influence
+        	private double [][] sampleCorrPullZero=new double[6][]; // 1.0 - only difference from neighbors matters, 0.0 - only difference from 0
+        	// TODO: add LMA-specific (initial lambda, stop after this
+        	private double initialLambda=0.001;
+			private boolean stopAfterThis=true;
+			private boolean resetCorrection=false;
+			private boolean resetCenter=false;
+			private String strategyComment="";
+			private Properties properties=null;
+			private String prefix=null;
+			public FieldSrategy(){
+				setDefaults();
+			}
+			public FieldSrategy(
+					String strategyComment,
+					double lambda,
+					boolean lastInSeries,
+					boolean resetCorrection,
+					boolean resetCenter
+					){
+				this.strategyComment=strategyComment;
+				initialLambda=lambda;
+				stopAfterThis=lastInSeries;
+				this.resetCorrection=resetCorrection;
+				this.resetCenter=resetCenter;
+				setDefaults();
+			}
+			private void setDefaults(){
+				boolean [][] booleanNull6={null,null,null,null,null,null};
+				double [][]  doubleNull6= {null,null,null,null,null,null};
+				curvatureSelect=    booleanNull6.clone();
+				sampleCorrSelect=   booleanNull6.clone();
+				sampleCorrCost=     doubleNull6.clone();
+				sampleCorrSigma=    doubleNull6.clone();
+				sampleCorrPullZero= doubleNull6.clone();
+			}
+			private String boolToStr(boolean [] ba){
+				if (ba==null) return "";
+				String result="";
+				for (boolean b : ba) result+=b?"+":"-";
+				return result;
+			}
+			private void setPropBool(boolean [] arr, String name){
+            	if (arr!=null) properties.setProperty(prefix+name,boolToStr(arr));
+        	}
+			private void setPropBool(boolean [][] arr, String name){
+				if (arr!=null) {
+					properties.setProperty(prefix+name+"_length",arr.length+"");
+					for (int i=0;i<arr.length;i++) {
+						setPropBool(arr[i], name+"_"+i);
+					}
+				}
+			}
+			private void setPropDouble(double [] arr, String name){
+            	if (arr!=null) properties.setProperty(prefix+name,doubleToStr(arr));
+        	}
+			private void setPropDouble(double [][] arr, String name){
+				if (arr!=null) {
+					properties.setProperty(prefix+name+"_length",arr.length+"");
+					for (int i=0;i<arr.length;i++) {
+						setPropDouble(arr[i], name+"_"+i);
+					}
+				}
+			}
+			private boolean [] strToBool(String s){
+				if (s==null) return new boolean [0];
+				boolean [] result= new boolean [s.length()];
+				for (int i=0;i<result.length;i++) result[i]=(s.charAt(i)=='+');
+				return result;
+			}
+			private String doubleToStr(double [] da){
+				if (da==null) return "";
+				String result="";
+				for (double d : da) result+=","+d;
+				if (result.length()>0) result=result.substring(1);
+				return result;
+			}
+			private double [] strToDouble(String s){
+				if (s==null) return new double [0];
+				String [] sa=s.split(",");
+				double [] result= new double [sa.length];
+				for (int i=0;i<result.length;i++) result[i]=Double.parseDouble(sa[i]);
+				return result;
+			}
+			
+			private boolean [] getPropBool(boolean[] arr, String name){
+				String s=properties.getProperty(prefix+name);
+				if (s!=null) return strToBool(s);
+				else return arr;
+        	}
+
+			private boolean[][] getPropBool(boolean[][] arr, String name){
+				if (arr==null){
+					String s=properties.getProperty(prefix+name+"_length");
+					if (s==null) return null;
+					arr=new boolean[Integer.parseInt(s)][];
+					for (int i=0;i<arr.length;i++) arr[i]=null;
+				}
+				for (int i=0;i<arr.length;i++){
+					boolean [] a=getPropBool((boolean[]) null,name+"_"+i);
+					if (a!=null) arr[i]=a;
+				}
+				return arr;
+        	}
+
+			private double [] getPropDouble(double [] arr, String name){
+				String s=properties.getProperty(prefix+name);
+				if (s!=null) return strToDouble(s);
+				else return arr;
+        	}
+			
+			private double[][] getPropDouble(double[][] arr, String name){
+				if (arr==null){
+					String s=properties.getProperty(prefix+name+"_length");
+					if (s==null) return null;
+					arr=new double[Integer.parseInt(s)][];
+					for (int i=0;i<arr.length;i++) arr[i]=null;
+				}
+				for (int i=0;i<arr.length;i++){
+					double [] a=getPropDouble((double []) null,name+"_"+i);
+					if (a!=null) arr[i]=a;
+				}
+				return arr;
+        	}
+
+			public String getComment(){
+				return strategyComment;
+			}
+			public void setComment(String comment){
+				strategyComment=comment;
+			}
+
+			public double getInitialLambda() {
+				return initialLambda;
+			}
+			public void setInitialLambda(double initialLambda) {
+				this.initialLambda = initialLambda;
+			}
+			public boolean isStopAfterThis() {
+				return stopAfterThis;
+			}
+			public void setStopAfterThis(boolean stopAfterThis) {
+				this.stopAfterThis = stopAfterThis;
+			}
+			public boolean isResetCorrection() {
+				return resetCorrection;
+			}
+			public void setResetCorrection(boolean resetCorrection) {
+				this.resetCorrection = resetCorrection;
+			}
+			public boolean isResetCenter() {
+				return resetCenter;
+			}
+			public void setResetCenter(boolean resetCenter) {
+				this.resetCenter = resetCenter;
+			}
+
+			public void setStrategy( // any of the arguments can be null - do not set this array
+            		boolean [] centerSelect,
+                	boolean [] channelSelect,
+                	boolean [] mechanicalSelect,
+                	boolean [][] curvatureSelect,
+                	boolean [][] sampleCorrSelect,
+                	double [][] sampleCorrCost,
+                	double [][] sampleCorrSigma,
+                	double [][] sampleCorrPullZero
+        			){
+        		if (centerSelect!=null)    this.centerSelect=      centerSelect.clone();
+        		if (channelSelect!=null)    this.channelSelect=      channelSelect.clone();
+        		if (mechanicalSelect!=null) this.mechanicalSelect=   mechanicalSelect.clone();
+        		if (curvatureSelect!=null) {
+        			this.curvatureSelect=    new boolean[curvatureSelect.length][];
+        			for (int i=0;i<curvatureSelect.length;i++)    this.curvatureSelect[i]=curvatureSelect[i].clone();
+        		}
+        		if (sampleCorrSelect!=null) {
+        			this.sampleCorrSelect=   new boolean[sampleCorrSelect.length][];
+        			for (int i=0;i<sampleCorrSelect.length;i++)   this.sampleCorrSelect[i]=sampleCorrSelect[i].clone();
+        		}
+        		if (sampleCorrCost!=null) {
+        			this.sampleCorrCost=     new double[sampleCorrCost.length][];
+        			for (int i=0;i<sampleCorrCost.length;i++)     this.sampleCorrCost[i]=sampleCorrCost[i].clone();
+        		}
+        		if (sampleCorrSigma!=null) {
+        			this.sampleCorrSigma=    new double[sampleCorrSigma.length][];
+        			for (int i=0;i<sampleCorrSigma.length;i++)    this.sampleCorrSigma[i]=sampleCorrSigma[i].clone();
+        		}
+        		if (sampleCorrPullZero!=null) {
+        			this.sampleCorrPullZero= new double[sampleCorrPullZero.length][];
+        			for (int i=0;i<sampleCorrPullZero.length;i++) this.sampleCorrPullZero[i]=sampleCorrPullZero[i].clone();
+        		}
+        	}
+        	public void getFromStrategy( // any of the arguments can be null - do not set this array
+            		boolean [] centerSelect,
+                	boolean [] channelSelect,
+                	boolean [] mechanicalSelect,
+                	boolean [][] curvatureSelect,
+                	boolean [][] sampleCorrSelect,
+                	double [][] sampleCorrCost,
+                	double [][] sampleCorrSigma,
+                	double [][] sampleCorrPullZero
+        			){
+        		if (centerSelect!=null) for (int i=0;i<centerSelect.length;i++) centerSelect[i]=this.centerSelect[i];
+        		if (channelSelect!=null) for (int i=0;i<channelSelect.length;i++) channelSelect[i]=this.channelSelect[i];
+        		if (mechanicalSelect!=null) for (int i=0;i<mechanicalSelect.length;i++) mechanicalSelect[i]=this.mechanicalSelect[i];
+        		if (curvatureSelect!=null) {
+        			for (int i=0;i<curvatureSelect.length;i++)    curvatureSelect[i]=this.curvatureSelect[i].clone();
+        		}
+        		if (sampleCorrSelect!=null) {
+        			for (int i=0;i<sampleCorrSelect.length;i++)   sampleCorrSelect[i]=this.sampleCorrSelect[i].clone();
+        		}
+        		if (sampleCorrCost!=null) {
+        			for (int i=0;i<sampleCorrCost.length;i++)     sampleCorrCost[i]=this.sampleCorrCost[i].clone();
+        		}
+        		if (sampleCorrSigma!=null) {
+        			for (int i=0;i<sampleCorrSigma.length;i++)    sampleCorrSigma[i]=this.sampleCorrSigma[i].clone();
+        		}
+        		if (sampleCorrPullZero!=null) {
+        			for (int i=0;i<sampleCorrPullZero.length;i++) sampleCorrPullZero[i]=this.sampleCorrPullZero[i].clone();
+        		}
+        	}
+            public void setProperties(String prefix,Properties properties){
+            	this.prefix=prefix;
+            	this.properties=properties;
+            	setPropBool(centerSelect, "centerSelect");
+            	setPropBool(channelSelect, "channelSelect");
+            	setPropBool(mechanicalSelect, "mechanicalSelect");
+            	setPropBool(curvatureSelect, "curvatureSelect");
+            	setPropBool(sampleCorrSelect, "sampleCorrSelect");
+            	setPropDouble(sampleCorrCost, "sampleCorrCost");
+            	setPropDouble(sampleCorrSigma, "sampleCorrSigma");
+            	setPropDouble(sampleCorrPullZero, "sampleCorrPullZero");
+				properties.setProperty(prefix+"initialLambda",getInitialLambda()+"");
+				properties.setProperty(prefix+"stopAfterThis",isStopAfterThis()+"");
+				properties.setProperty(prefix+"resetCorrection",isResetCorrection()+"");
+				properties.setProperty(prefix+"resetCenter",isResetCenter()+"");
+				properties.setProperty(prefix+"strategyComment","<![CDATA["+strategyComment+ "]]>");
+            }
+            public void getProperties(String prefix,Properties properties){
+            	this.prefix=prefix;
+            	this.properties=properties;
+            	centerSelect=      getPropBool(centerSelect, "centerSelect");
+            	channelSelect=     getPropBool(channelSelect, "channelSelect");
+            	mechanicalSelect=  getPropBool(mechanicalSelect, "mechanicalSelect");
+            	curvatureSelect=   getPropBool(curvatureSelect, "curvatureSelect");
+            	sampleCorrSelect=  getPropBool(sampleCorrSelect, "sampleCorrSelect");
+            	sampleCorrCost=    getPropDouble(sampleCorrCost, "sampleCorrCost");
+            	sampleCorrSigma=   getPropDouble(sampleCorrSigma, "sampleCorrSigma");
+            	sampleCorrPullZero=getPropDouble(sampleCorrPullZero, "sampleCorrPullZero");
+            	String s=properties.getProperty(prefix+"initialLambda");
+            	if (s!=null) initialLambda=Double.parseDouble(s);
+            	s=properties.getProperty(prefix+"stopAfterThis");
+            	if (s!=null) stopAfterThis=Boolean.parseBoolean(s);
+            	s=properties.getProperty(prefix+"resetCorrection");
+            	if (s!=null) resetCorrection=Boolean.parseBoolean(s);
+            	s=properties.getProperty(prefix+"resetCenter");
+            	if (s!=null) resetCenter=Boolean.parseBoolean(s);
+            	s=properties.getProperty(prefix+"strategyComment");
+            	if (s!=null){
+            		strategyComment=s;
+        			if ((strategyComment.length()>10) && strategyComment.substring(0,9).equals("<![CDATA[")) {
+        				strategyComment=strategyComment.substring(9,strategyComment.length()-3); 
+        			}
+            	}
+            }
+    	}
     }
 }
 
