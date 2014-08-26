@@ -4390,8 +4390,10 @@ if (MORE_BUTTONS) {
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
 			System.out.println("Loaded FocusingField");
-			if (!FOCUSING_FIELD.configureDataVector("Configure curvature",true,true)) return;
-///			FOCUSING_FIELD.fieldFitting.initSampleCorrChnParIndex(FOCUSING_FIELD.flattenSampleCoord()); //+
+			if (!FOCUSING_FIELD.configureDataVector("Configure curvature - TODO: fix many settings restored from properties",true,true)) return;
+			System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
+			System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
+			///			FOCUSING_FIELD.fieldFitting.initSampleCorrChnParIndex(FOCUSING_FIELD.flattenSampleCoord()); //+
 ///			FOCUSING_FIELD.setDataVector(
 ///					true, // calibrate mode
 ///					FOCUSING_FIELD.createDataVector());
