@@ -304,6 +304,7 @@ public class LensAdjustment {
         public int scanHysteresisNumber=5;   // number of test points for the Hysteresis measurement
         
         public boolean scanTiltEnable=true;  // enable scanning tilt
+        public boolean scanTiltReverse=false;  // enable scanning tilt in both directions
         public int scanTiltRangeX=14336;    // 4 periods
         public int scanTiltRangeY=14336;    // 4 periods
         public int scanTiltStepsX=24;
@@ -518,6 +519,7 @@ public class LensAdjustment {
                 int scanHysteresisNumber,   // number of test points for the Hysteresis measurement
                 
                 boolean scanTiltEnable, //=true;  // enable scanning tilt
+                boolean scanTiltReverse,
                 int scanTiltRangeX, //=14336;    // 4 periods
                 int scanTiltRangeY, //=14336;    // 4 periods
                 int scanTiltStepsX, //=24;
@@ -660,6 +662,7 @@ public class LensAdjustment {
 			this.scanHysteresisNumber=scanHysteresisNumber; // number of test points for the Hysteresis measurement
 			
 			this.scanTiltEnable=scanTiltEnable; //=true;  // enable scanning tilt
+			this.scanTiltReverse=scanTiltReverse;
 			this.scanTiltRangeX=scanTiltRangeX; //, //=14336;    // 4 periods
 			this.scanTiltRangeY=scanTiltRangeY; //, //=14336;    // 4 periods
 			this.scanTiltStepsX=scanTiltStepsX; //=24;
@@ -803,6 +806,7 @@ public class LensAdjustment {
     				this.scanHysteresisNumber,   // number of test points for the Hysteresis measurement
     				
     				this.scanTiltEnable,  // enable scanning tilt
+    				this.scanTiltReverse,
     	    		this.scanTiltRangeX,    // 4 periods
     	    		this.scanTiltRangeY,    // 4 periods
     	    		this.scanTiltStepsX,
@@ -953,6 +957,8 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"scanHysteresisNumber",this.scanHysteresisNumber+"");
 			
 			properties.setProperty(prefix+"scanTiltEnable",this.scanTiltEnable+"");  // enable scanning tilt
+			properties.setProperty(prefix+"scanTiltReverse",this.scanTiltReverse+"");
+			
 			properties.setProperty(prefix+"scanTiltRangeX",this.scanTiltRangeX+"");    // 4 periods
 			properties.setProperty(prefix+"scanTiltRangeY",this.scanTiltRangeY+"");    // 4 periods
 			properties.setProperty(prefix+"scanTiltStepsX",this.scanTiltStepsX+"");
@@ -1207,6 +1213,10 @@ public class LensAdjustment {
 
 			if (properties.getProperty(prefix+"scanTiltEnable")!=null)
 				this.scanTiltEnable=Boolean.parseBoolean(properties.getProperty(prefix+"scanTiltEnable"));
+			if (properties.getProperty(prefix+"scanTiltReverse")!=null)
+				this.scanTiltReverse=Boolean.parseBoolean(properties.getProperty(prefix+"scanTiltReverse"));
+			
+						
 			if (properties.getProperty(prefix+"scanTiltRangeX")!=null)
 				this.scanTiltRangeX=Integer.parseInt(properties.getProperty(prefix+"scanTiltRangeX"));
 			if (properties.getProperty(prefix+"scanTiltRangeY")!=null)
@@ -1353,6 +1363,9 @@ public class LensAdjustment {
     		gd.addNumericField("Number of scan steps during hysteresis (play) measurement",                      this.scanHysteresisNumber, 0);
 
     		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
+    		gd.addCheckbox    ("Scan for tilt measurement in both directions",                                   this.scanTiltReverse);
+    		
+    		
     		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
     		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
     		gd.addNumericField("Number of stops measurements when tilting in X-deirection",                      this.scanTiltStepsX, 0);
@@ -1372,6 +1385,7 @@ public class LensAdjustment {
 			this.scanHysteresisNumber= (int) gd.getNextNumber();
 
     		this.scanTiltEnable=             gd.getNextBoolean();
+    		this.scanTiltReverse=            gd.getNextBoolean();
     		this.scanTiltRangeX=       (int) gd.getNextNumber();
     		this.scanTiltRangeY=       (int) gd.getNextNumber();
     		this.scanTiltStepsX=       (int) gd.getNextNumber();
@@ -1503,6 +1517,8 @@ public class LensAdjustment {
     		gd.addNumericField("Number of scan steps during hysteresis (play) measurement",                      this.scanHysteresisNumber, 0);
 
     		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
+    		gd.addCheckbox    ("Scan for tilt measurement in both directions",                                   this.scanTiltReverse);
+    		
     		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
     		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
     		gd.addNumericField("Number of stops measurements when tilting in X-deirection",                      this.scanTiltStepsX, 0);
@@ -1667,6 +1683,7 @@ public class LensAdjustment {
 			this.scanHysteresisNumber= (int) gd.getNextNumber();
 			
     		this.scanTiltEnable=             gd.getNextBoolean();
+    		this.scanTiltReverse=            gd.getNextBoolean();
     		this.scanTiltRangeX=       (int) gd.getNextNumber();
     		this.scanTiltRangeY=       (int) gd.getNextNumber();
     		this.scanTiltStepsX=       (int) gd.getNextNumber();

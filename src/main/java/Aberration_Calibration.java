@@ -4388,6 +4388,7 @@ if (MORE_BUTTONS) {
 					"",//); //String defaultPath); //			AtomicInteger stopRequested
 					this.SYNC_COMMAND.stopRequested);
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false);
 			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
 			System.out.println("Loaded FocusingField");
 			if (!FOCUSING_FIELD.configureDataVector("Configure curvature - TODO: fix many settings restored from properties",true,true)) return;
@@ -4415,6 +4416,7 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false);
 			if (!FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false,true)) return;
 			FOCUSING_FIELD.setDataVector(
 					true, // calibrate mode
@@ -4454,10 +4456,11 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false);
 			FOCUSING_FIELD.LevenbergMarquardt(
 					null, // measurement
 					true, // open dialog
-					false, // filterZ
+//					false, // filterZ
 					DEBUG_LEVEL); //boolean openDialog, int debugLevel){
 			return;
 		}
@@ -9719,7 +9722,44 @@ if (MORE_BUTTONS) {
 		    		}
 					if (!allOK) break; // failed
 				}
-
+				if (focusMeasurementParameters.scanTiltReverse) {
+					if (debugLevel>0) System.out.println("Starting reverse scanning tilt in X direction, number of stops="+ focusMeasurementParameters.scanTiltStepsX+
+							", step size="+IJ.d2s(scanStepX,0));
+					for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsX;numStep++){
+						int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeX*
+								(1.0*numStep/(focusMeasurementParameters.scanTiltStepsX-1) -0.5));
+						scanPos[0]=centerMotorPos[0]+delta;
+						scanPos[1]=centerMotorPos[1]+delta;
+						scanPos[2]=centerMotorPos[2]-delta;
+						if (debugLevel>0) System.out.println("Reverse scanning tilt in X direction, step#"+(numStep+1)+" (of "+
+						focusMeasurementParameters.scanTiltStepsX+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+						allOK &=moveAndMaybeProbe(
+								true,
+								scanPos, // null OK
+								focusingMotors,
+								camerasInterface,
+								lensDistortionParameters,
+								matchSimulatedPattern, // should not bee null
+								focusMeasurementParameters,
+								patternDetectParameters,
+								distortionParameters,
+								simulParameters,
+								colorComponents,
+								otfFilterParameters,
+								psfParameters,
+								threadsMax,
+								updateStatus,
+								debugLevel,
+								loopDebugLevel);
+			    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+			    			aborted=true;
+			    			allOK=false;
+			    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+			    			break;
+			    		}
+						if (!allOK) break; // failed
+					}
+				}
 			}
 			if (allOK && (focusMeasurementParameters.scanTiltStepsY >1 )) { // 0 or 1 STOPS - do not scan
 				double scanStepY=1.0*focusMeasurementParameters.scanTiltRangeY/(focusMeasurementParameters.scanTiltStepsY-1);
@@ -9759,9 +9799,45 @@ if (MORE_BUTTONS) {
 		    		}
 					if (!allOK) break; // failed
 				}
-
+				if (focusMeasurementParameters.scanTiltReverse) {
+					if (debugLevel>0) System.out.println("Starting reverse scanning tilt in Y direction, number of stops="+ focusMeasurementParameters.scanTiltStepsY+
+							", step size="+IJ.d2s(scanStepY,0));
+					for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsY;numStep++){
+						int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeY*
+								(1.0*numStep/(focusMeasurementParameters.scanTiltStepsY-1) -0.5));
+						scanPos[0]=centerMotorPos[0]+delta;
+						scanPos[1]=centerMotorPos[1]-delta;
+						scanPos[2]=centerMotorPos[2]+0;
+						if (debugLevel>0) System.out.println("Reverse scanning tilt in Y direction, step#"+(numStep+1)+" (of "+
+						focusMeasurementParameters.scanTiltStepsY+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+						allOK &=moveAndMaybeProbe(
+								true,
+								scanPos, // null OK
+								focusingMotors,
+								camerasInterface,
+								lensDistortionParameters,
+								matchSimulatedPattern, // should not bee null
+								focusMeasurementParameters,
+								patternDetectParameters,
+								distortionParameters,
+								simulParameters,
+								colorComponents,
+								otfFilterParameters,
+								psfParameters,
+								threadsMax,
+								updateStatus,
+								debugLevel,
+								loopDebugLevel);
+			    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+			    			aborted=true;
+			    			allOK=false;
+			    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+			    			break;
+			    		}
+						if (!allOK) break; // failed
+					}
+				}
 			}
-
 		}
 
 		if (allOK && focusMeasurementParameters.scanHysteresis && (scanPosLast!=null)){
