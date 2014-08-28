@@ -4487,10 +4487,10 @@ public boolean LevenbergMarquardt(
         		int sampleIndex, // -1 for center
         		boolean corrected // 
         		){
-        	int r0Index=2; // index of "r0" parameter
+        	int r0Index=2; // index of "r0" parameter (fwhm is twice that)
         	double [] corrPars=corrected?getCorrPar(channel,sampleIndex):null;
         	double r=(sampleIndex>=0)?getSampleRadius(sampleIndex):0.0;
-        	double fwhm=curvatureModel[channel].getAr( r, corrPars)[r0Index];
+        	double fwhm=2.0 * curvatureModel[channel].getAr( r, corrPars)[r0Index];
         	return fwhm;
         }
 
