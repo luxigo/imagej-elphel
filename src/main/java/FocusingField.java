@@ -866,7 +866,7 @@ private boolean [] filterByValue (
 			}
 		}
 	}
-	if (debugLevel>0) System.out.println("filterByValue(): Filtered "+numFiltered+" samples, left "+numLeft+" samples");
+	if (debugLevel>1) System.out.println("filterByValue(): Filtered "+numFiltered+" samples, left "+numLeft+" samples");
 	return enable_out;
 }
 

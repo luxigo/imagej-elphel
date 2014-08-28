@@ -9805,8 +9805,8 @@ if (MORE_BUTTONS) {
 					for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsY;numStep++){
 						int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeY*
 								(1.0*numStep/(focusMeasurementParameters.scanTiltStepsY-1) -0.5));
-						scanPos[0]=centerMotorPos[0]+delta;
-						scanPos[1]=centerMotorPos[1]-delta;
+						scanPos[0]=centerMotorPos[0]-delta;
+						scanPos[1]=centerMotorPos[1]+delta;
 						scanPos[2]=centerMotorPos[2]+0;
 						if (debugLevel>0) System.out.println("Reverse scanning tilt in Y direction, step#"+(numStep+1)+" (of "+
 						focusMeasurementParameters.scanTiltStepsY+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
