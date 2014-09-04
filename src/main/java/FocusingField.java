@@ -81,7 +81,12 @@ public class FocusingField {
 	double  filterInputConcaveScale;
 	boolean    filterZ;    // (adjustment mode)filter samples by Z
 	double  filterByValueScale;
-	int        minLeftSamples; // minimal number of samples (channel/dir/location) for adjustment
+	int     minLeftSamples;       // minimal number of samples (channel/dir/location) for adjustment
+	int     minCenterSamplesBest; // minimal number of samples (channel/dir/location) for adjustment in the center, best channel
+	int     minCenterSamplesTotal; // minimal number of samples (channel/dir/location) for adjustment in the center, all channels total
+	int     centerSamples;        // number of center samples to consider for minLeftCenterSamples
+	
+	double  maxRMS;               // maximal (pure) RMS allowed during adjustment
     double zMin;
     double zMax;
     double zStep;
@@ -223,16 +228,20 @@ public class FocusingField {
     	filterInputConcaveRemoveFew=true;
     	filterInputConcaveMinSeries=5;
     	filterInputConcaveScale=0.9;
-    	filterZ=true;      // (adjustment mode)filter samples by Z
+    	filterZ=true;           // (adjustment mode)filter samples by Z
     	filterByValueScale=1.5; // (adjustment mode)filter samples by value - remove higher than scaled best FWHM
-    	minLeftSamples=10;  // minimal number of samples (channel/dir/location) for adjustment
+    	minLeftSamples=10;      // minimal number of samples (channel/dir/location) for adjustment
+    	minCenterSamplesBest=4; // minimal number of samples (channel/dir/location) for adjustment in the center, best channel
+    	minCenterSamplesTotal=0;// minimal number of samples (channel/dir/location) for adjustment in the center, all channels total
+    	centerSamples=       8; // there should remain at least  of centerSamples closest to r==0
+    	maxRMS=0.5;             // maximal (pure) RMS allowed during adjustment
 
     	zMin=-40.0;
         zMax= 40.0;
         zStep=2.0;
-        tMin=-15.0;
-        tMax= 15.0;
-        tStep=1.0;
+        tMin=-10.0;
+        tMax= 10.0;
+        tStep=2.0;
     	
     	targetRelFocalShift=8.0; // target focal shift relative to best composite "sharpness" 
     	// when false - tangential is master
@@ -343,9 +352,12 @@ public class FocusingField {
 		properties.setProperty(prefix+"filterInputConcaveScale",filterInputConcaveScale+"");
 		properties.setProperty(prefix+"filterZ",filterZ+"");
 		properties.setProperty(prefix+"filterByValueScale",filterByValueScale+"");
-		
 		properties.setProperty(prefix+"minLeftSamples",minLeftSamples+"");
+		properties.setProperty(prefix+"minCenterSamplesBest",minCenterSamplesBest+"");
+		properties.setProperty(prefix+"minCenterSamplesTotal",minCenterSamplesTotal+"");
 		
+		properties.setProperty(prefix+"centerSamples",centerSamples+"");
+		properties.setProperty(prefix+"maxRMS",maxRMS+"");
 		properties.setProperty(prefix+"zMin",zMin+"");
 		properties.setProperty(prefix+"zMax",zMax+"");
 		properties.setProperty(prefix+"zStep",zStep+"");
@@ -448,6 +460,14 @@ public class FocusingField {
 			filterByValueScale=Double.parseDouble(properties.getProperty(prefix+"filterByValueScale"));
 		if (properties.getProperty(prefix+"minLeftSamples")!=null)
 			minLeftSamples=Integer.parseInt(properties.getProperty(prefix+"minLeftSamples"));
+		if (properties.getProperty(prefix+"minCenterSamplesBest")!=null)
+			minCenterSamplesBest=Integer.parseInt(properties.getProperty(prefix+"minCenterSamplesBest"));
+		if (properties.getProperty(prefix+"minCenterSamplesTotal")!=null)
+			minCenterSamplesTotal=Integer.parseInt(properties.getProperty(prefix+"minCenterSamplesTotal"));
+		if (properties.getProperty(prefix+"centerSamples")!=null)
+			centerSamples=Integer.parseInt(properties.getProperty(prefix+"centerSamples"));
+		if (properties.getProperty(prefix+"maxRMS")!=null)
+			maxRMS=Double.parseDouble(properties.getProperty(prefix+"maxRMS"));
 		if (properties.getProperty(prefix+"zMin")!=null)
 			zMin=Double.parseDouble(properties.getProperty(prefix+"zMin"));
 		if (properties.getProperty(prefix+"zMax")!=null)
@@ -868,6 +888,50 @@ private boolean [] filterByValue (
 	}
 	if (debugLevel>1) System.out.println("filterByValue(): Filtered "+numFiltered+" samples, left "+numLeft+" samples");
 	return enable_out;
+}
+
+public boolean checkEnoughCenter(
+		boolean [] centerSamples,
+		boolean [] enable_in,
+		int minTotalSamples,
+		int minBestChannelSamples){
+	int [] numSamples=getNumCenterSamples(
+			centerSamples,
+			enable_in);
+	int total=0;
+	boolean bestOK=false;
+	for (int num:numSamples){
+		total+=num;
+		if (num>=minBestChannelSamples) bestOK=true;
+	}
+	return bestOK && (total>=minTotalSamples);
+}
+public int [] getNumCenterSamples( // per channel (disabled channels are already removed in enable_in)
+		boolean [] centerSamples,
+		boolean [] enable_in){
+	int [] numSamples=new int [getNumChannels()];
+	for (int i=0;i<numSamples.length;i++) numSamples[i]=0;
+	for (int index=0;index<dataVector.length;index++) if ((index>=enable_in.length) || enable_in[index]){
+		if (centerSamples[dataVector[index].sampleIndex]) numSamples[dataVector[index].channel]++;
+	}
+	return numSamples;
+}
+
+public boolean [] getCenterSamples(int num){
+	double [] sampleCorrRadiuses=fieldFitting.getSampleRadiuses();
+	if (num>sampleCorrRadiuses.length) num = sampleCorrRadiuses.length;
+	boolean [] centerMask=new boolean[sampleCorrRadiuses.length];
+	for (int i=0;i<centerMask.length;i++) centerMask[i]=false;
+	for (int pass=0;pass<num;pass++){
+		double min=0;
+		int bestIndex=-1;
+		for (int i=0;i<centerMask.length;i++) if (!centerMask[i] && ((bestIndex<0) || (sampleCorrRadiuses[i] < min))){
+			bestIndex=i;
+			min=sampleCorrRadiuses[i];
+		}
+		centerMask[bestIndex]=true;
+	}
+	return centerMask;
 }
 
 private int getNumEnabledSamples(
@@ -3316,6 +3380,27 @@ public double getAdjustRMS(
     	int numEn=getNumEnabledSamples(en);
     	if (numEn<minLeftSamples) return Double.NaN;
 	}
+	if ((minCenterSamplesTotal>0) || (minCenterSamplesBest>0)){
+		boolean [] centerSampesMask= getCenterSamples(centerSamples);
+		boolean [] en=dataWeightsToBoolean();
+		if (!checkEnoughCenter(
+				centerSampesMask,
+				en,
+				minCenterSamplesTotal, //int minTotalSamples,
+				minCenterSamplesBest )){ //int minBestChannelSamples)){
+			if (debugLevel>0) {
+				int [] numSamples=getNumCenterSamples( // per channel
+						centerSampesMask,
+						en);
+				System.out.println("Not enough center samples, requested "+minCenterSamplesBest+" best channel and "+minCenterSamplesTotal+" total.");
+				System.out.print("Got:");
+				for (int n:numSamples) System.out.print(" "+n);
+				System.out.println();
+			}
+			return Double.NaN;
+		}
+	}
+	
 	double [] focusing_fx= createFXandJacobian(sv, false);
 	double rms_pure=       calcErrorDiffY(focusing_fx, true);
 	//	System.out.println("rms_pure="+rms_pure);
@@ -3440,6 +3525,27 @@ public boolean LevenbergMarquardt(
        	    	int numEn=getNumEnabledSamples(en);
        	    	if (numEn<minLeftSamples) return false;
        		}       		
+       		
+       		if ((minCenterSamplesTotal>0) || (minCenterSamplesBest>0)){
+       			boolean [] centerSampesMask= getCenterSamples(centerSamples);
+       			boolean [] en=dataWeightsToBoolean();
+       			if (!checkEnoughCenter(
+       					centerSampesMask,
+       					en,
+       					minCenterSamplesTotal, //int minTotalSamples,
+       					minCenterSamplesBest )){ //int minBestChannelSamples)){
+       				if (debugLevel>0) {
+       					int [] numSamples=getNumCenterSamples( // per channel
+       							centerSampesMask,
+       							en);
+       					System.out.println("Not enough center samples, requested "+minCenterSamplesBest+" best channel and "+minCenterSamplesTotal+" total.");
+       					System.out.print("Got:");
+       					for (int n:numSamples) System.out.print(" "+n);
+       					System.out.println();
+       				}
+       				return false;
+       			}
+       		}
        		
        		fieldFitting.initSampleCorrVector(
        				flattenSampleCoord(), //double [][] sampleCoordinates,
@@ -3857,6 +3963,11 @@ public boolean LevenbergMarquardt(
         gd.addCheckbox("Filter samples/channels by Z",filterZ);
         gd.addNumericField("Filter by value (remove samples above scaled best FWHM for channel/location)",filterByValueScale,2,5,"x");
         gd.addNumericField("Minimal required number of channels/samples",minLeftSamples,0,3,"samples");
+        gd.addNumericField("... of them closest to the center, best channel",minCenterSamplesBest,0,3,"samples");
+        gd.addNumericField("... of them closest to the center, total in all channels",minCenterSamplesTotal,0,3,"samples");
+        gd.addNumericField("Number of closest samples to consider",centerSamples,0,3,"samples");
+        
+        gd.addNumericField("Maximal accepted RMS",maxRMS,3,5,"");
 
         gd.addNumericField("Z min",zMin,2,5,"um");
         gd.addNumericField("Z max",zMax,2,5,"um");
@@ -3882,7 +3993,10 @@ public boolean LevenbergMarquardt(
     	filterZ=gd.getNextBoolean();
     	filterByValueScale=gd.getNextNumber();
         minLeftSamples=(int) gd.getNextNumber();
-    	
+        minCenterSamplesBest=(int) gd.getNextNumber();
+        minCenterSamplesTotal=(int) gd.getNextNumber();
+        centerSamples=(int) gd.getNextNumber();
+        maxRMS=gd.getNextNumber();
         zMin= gd.getNextNumber();
         zMax= gd.getNextNumber();
         zStep=gd.getNextNumber();
@@ -3905,6 +4019,7 @@ public boolean LevenbergMarquardt(
 				header+="\t"+fieldFitting.mechanicalFocusingModel.getName(i)+" ("+fieldFitting.mechanicalFocusingModel.getUnits(i)+")";
 			}
 		}
+		header+="\tRMS";
         for (int i=0;i<3;i++) header+="\tmz"+i;
         for (int i=0;i<3;i++) header+="\tm"+i;
         StringBuffer sb = new StringBuffer();
@@ -3957,6 +4072,7 @@ public boolean LevenbergMarquardt(
     					sb.append("\t"+IJ.d2s(fieldFitting.mechanicalFocusingModel.paramValues[i],3));
     				}
     			}
+    			sb.append("\t"+IJ.d2s(currentRMSPure,3));
     			if (dmz!=null){
     				for (int i=0;i<dmz.length;i++) sb.append("\t"+IJ.d2s(dmz[i],1)); 
     			} else {
@@ -4007,12 +4123,20 @@ public boolean LevenbergMarquardt(
         			if ((dm!=null) && (debugLevel>0)){
         				System.out.println("Suggested motor positions: "+IJ.d2s(dm[0],0)+":"+IJ.d2s(dm[1],0)+":"+IJ.d2s(dm[2],0));
         			}
+        			
+        			if (maxRMS>0.0){
+        				if (currentRMSPure > maxRMS){
+            				if (debugLevel>0) System.out.println("RMS too high, "+IJ.d2s(currentRMSPure,3)+" > "+ IJ.d2s(maxRMS,3));
+        					continue;
+        				}
+        			}
         			sb.append(nMeas);
         			for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
         				if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
         					sb.append("\t"+IJ.d2s(fieldFitting.mechanicalFocusingModel.paramValues[i],3));
         				}
         			}
+        			sb.append("\t"+IJ.d2s(currentRMSPure,3));
         			if (dmz!=null){
         				for (int i=0;i<dmz.length;i++) sb.append("\t"+IJ.d2s(dmz[i],1)); 
         			} else {
@@ -4490,7 +4614,8 @@ public boolean LevenbergMarquardt(
         	int r0Index=2; // index of "r0" parameter (fwhm is twice that)
         	double [] corrPars=corrected?getCorrPar(channel,sampleIndex):null;
         	double r=(sampleIndex>=0)?getSampleRadius(sampleIndex):0.0;
-        	double fwhm=2.0 * curvatureModel[channel].getAr( r, corrPars)[r0Index];
+//        	double fwhm=2.0 * curvatureModel[channel].getAr( r, corrPars)[r0Index];
+        	double fwhm=Math.exp(curvatureModel[channel].getAr( r, corrPars)[r0Index]);
         	return fwhm;
         }
 
