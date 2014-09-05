@@ -333,92 +333,105 @@ public class FocusingField {
     	
     }
     
-    
-	public void setProperties(String prefix,Properties properties){
-		if (debugLevel>1) System.out.println("FocusingField: setProperties()");
-		if (fieldFitting == null) {
-			System.out.println("fieldFitting is not initialized, nothing to save");
-			return;
-		}
 
-		fieldFitting.setProperties(prefix+"fieldFitting.",properties);
-		properties.setProperty(prefix+"pX0_distortions",pX0_distortions+"");
-		properties.setProperty(prefix+"pY0_distortions",pY0_distortions+"");
-		properties.setProperty(prefix+"currentPX0",currentPX0+"");
-		properties.setProperty(prefix+"currentPY0",currentPY0+"");
-		properties.setProperty(prefix+"sagittalMaster",sagittalMaster+"");
-		properties.setProperty(prefix+"parallelOnly",parallelOnly+"");
-		properties.setProperty(prefix+"filterInput",filterInput+"");
-		properties.setProperty(prefix+"filterInputMotorDiff",filterInputMotorDiff+"");
-		properties.setProperty(prefix+"filterInputDiff",filterInputDiff+"");
-		properties.setProperty(prefix+"filterInputFirstLast",filterInputFirstLast+"");
-		properties.setProperty(prefix+"filterInputTooFar",filterInputTooFar+"");
-		properties.setProperty(prefix+"filterInputFarRatio",filterInputFarRatio+"");
-		properties.setProperty(prefix+"filterInputConcave",filterInputConcave+"");
-		properties.setProperty(prefix+"filterInputConcaveSigma",filterInputConcaveSigma+"");
-		properties.setProperty(prefix+"filterInputConcaveRemoveFew",filterInputConcaveRemoveFew+"");
-		properties.setProperty(prefix+"filterInputConcaveMinSeries",filterInputConcaveMinSeries+"");
-		properties.setProperty(prefix+"filterInputConcaveScale",filterInputConcaveScale+"");
-		properties.setProperty(prefix+"filterZ",filterZ+"");
-		properties.setProperty(prefix+"filterTiltedZ",filterTiltedZ+"");
-		properties.setProperty(prefix+"filterByValueScale",filterByValueScale+"");
-		properties.setProperty(prefix+"filterTiltedByValueScale",filterTiltedByValueScale+"");
-		properties.setProperty(prefix+"filterByScanValue",filterByScanValue+"");
-		properties.setProperty(prefix+"filterTiltedByScanValue",filterTiltedByScanValue+"");
-		properties.setProperty(prefix+"minLeftSamples",minLeftSamples+"");
-		properties.setProperty(prefix+"minCenterSamplesBest",minCenterSamplesBest+"");
-		properties.setProperty(prefix+"minCenterSamplesTotal",minCenterSamplesTotal+"");
-		properties.setProperty(prefix+"centerSamples",centerSamples+"");
-		properties.setProperty(prefix+"maxRMS",maxRMS+"");
-		properties.setProperty(prefix+"zMin",zMin+"");
-		properties.setProperty(prefix+"zMax",zMax+"");
-		properties.setProperty(prefix+"zStep",zStep+"");
-		properties.setProperty(prefix+"tMin",tMin+"");
-		properties.setProperty(prefix+"tMax",tMax+"");
-		properties.setProperty(prefix+"tStep",tStep+"");
-		
-		properties.setProperty(prefix+"targetRelFocalShift",targetRelFocalShift+"");
-		for (int chn=0; chn<minMeas.length; chn++) properties.setProperty(prefix+"minMeas_"+chn,minMeas[chn]+"");
-		for (int chn=0; chn<maxMeas.length; chn++) properties.setProperty(prefix+"maxMeas_"+chn,maxMeas[chn]+"");
-		for (int chn=0; chn<thresholdMax.length; chn++) properties.setProperty(prefix+"thresholdMax_"+chn,thresholdMax[chn]+"");
-		properties.setProperty(prefix+"useMinMeas",useMinMeas+"");
-		properties.setProperty(prefix+"useMaxMeas",useMaxMeas+"");
-		properties.setProperty(prefix+"useThresholdMax",useThresholdMax+"");
-		properties.setProperty(prefix+"weightMode",weightMode+"");
-		properties.setProperty(prefix+"weightRadius",weightRadius+"");
-		properties.setProperty(prefix+"k_red",k_red+"");
-		properties.setProperty(prefix+"k_blue",k_blue+"");
-		properties.setProperty(prefix+"qb_scan_below",qb_scan_below+"");
-		properties.setProperty(prefix+"qb_scan_above",qb_scan_above+"");
-		properties.setProperty(prefix+"qb_scan_step",qb_scan_step+"");
-		properties.setProperty(prefix+"qb_use_corrected",qb_use_corrected+"");
-		properties.setProperty(prefix+"qb_invert",qb_invert+"");
-		properties.setProperty(prefix+"z_relative",z_relative+"");
-		properties.setProperty(prefix+"rslt_show_z_axial",rslt_show_z_axial+"");
-		properties.setProperty(prefix+"rslt_show_z_smooth",rslt_show_z_smooth+"");
-		properties.setProperty(prefix+"rslt_show_z_individual",rslt_show_z_individual+"");
-		properties.setProperty(prefix+"rslt_show_f_axial",rslt_show_f_axial+"");
-		properties.setProperty(prefix+"rslt_show_f_smooth",rslt_show_f_smooth+"");
-		properties.setProperty(prefix+"rslt_show_f_individual",rslt_show_f_individual+"");
-		properties.setProperty(prefix+"rslt_show_smooth_sigma",rslt_show_smooth_sigma+"");
-		properties.setProperty(prefix+"rslt_scan_below",rslt_scan_below+"");
-		properties.setProperty(prefix+"rslt_scan_above",rslt_scan_above+"");
-		properties.setProperty(prefix+"rslt_scan_step",rslt_scan_step+"");
-		properties.setProperty(prefix+"rslt_mtf50_mode",rslt_mtf50_mode+"");
-		properties.setProperty(prefix+"rslt_solve",rslt_solve+"");
-		for (int chn=0; chn<rslt_show_chn.length; chn++) properties.setProperty(prefix+"rslt_show_chn_"+chn,rslt_show_chn[chn]+"");
-// always re-calculate here? - only in calibration mode or restore calibration mode? No, only in LMA in calibration mode		
-//		zRanges=calcZRanges(dataWeightsToBoolean());
-		if (zRanges!=null){
-			properties.setProperty(prefix+"zRanges_length",zRanges.length+"");
-			for (int chn=0;chn<zRanges.length;chn++) if (zRanges[chn]!=null) {
-				properties.setProperty(prefix+"zRanges_"+chn+"_length",zRanges[chn].length+"");
-				for (int sample=0;sample<zRanges[chn].length;sample++) if (zRanges[chn][sample]!=null) {
-					properties.setProperty(prefix+"zRanges_"+chn+"_"+sample,zRanges[chn][sample][0]+","+zRanges[chn][sample][1]+","+zRanges[chn][sample][2]);
-				}
-			}
-		}
-	}
+    public void setProperties(String prefix,Properties properties){
+    	if (debugLevel>1) System.out.println("FocusingField: setProperties()");
+    	if (fieldFitting == null) {
+    		System.out.println("fieldFitting is not initialized, nothing to save");
+    		return;
+    	}
+    	boolean select= (properties.getProperty("selected")!=null);
+    	boolean select_fieldFitting=!select;
+    	boolean select_FOCUSING_FIELD=!select;
+    	if (select) {
+    		GenericDialog gd = new GenericDialog("Select FocusingField parameters to save");
+        	gd.addCheckbox("FieldFitting parameter class", select_fieldFitting);
+        	gd.addCheckbox("FocusingField local parameters", select_FOCUSING_FIELD);
+            gd.showDialog();
+            if (gd.wasCanceled()) return;
+            select_fieldFitting=gd.getNextBoolean();
+            select_FOCUSING_FIELD=gd.getNextBoolean();
+    	}
+    	if (select_fieldFitting) fieldFitting.setProperties(prefix+"fieldFitting.",properties);
+    	if (select_FOCUSING_FIELD){
+    		properties.setProperty(prefix+"pX0_distortions",pX0_distortions+"");
+    		properties.setProperty(prefix+"pY0_distortions",pY0_distortions+"");
+    		properties.setProperty(prefix+"currentPX0",currentPX0+"");
+    		properties.setProperty(prefix+"currentPY0",currentPY0+"");
+    		properties.setProperty(prefix+"sagittalMaster",sagittalMaster+"");
+    		properties.setProperty(prefix+"parallelOnly",parallelOnly+"");
+    		properties.setProperty(prefix+"filterInput",filterInput+"");
+    		properties.setProperty(prefix+"filterInputMotorDiff",filterInputMotorDiff+"");
+    		properties.setProperty(prefix+"filterInputDiff",filterInputDiff+"");
+    		properties.setProperty(prefix+"filterInputFirstLast",filterInputFirstLast+"");
+    		properties.setProperty(prefix+"filterInputTooFar",filterInputTooFar+"");
+    		properties.setProperty(prefix+"filterInputFarRatio",filterInputFarRatio+"");
+    		properties.setProperty(prefix+"filterInputConcave",filterInputConcave+"");
+    		properties.setProperty(prefix+"filterInputConcaveSigma",filterInputConcaveSigma+"");
+    		properties.setProperty(prefix+"filterInputConcaveRemoveFew",filterInputConcaveRemoveFew+"");
+    		properties.setProperty(prefix+"filterInputConcaveMinSeries",filterInputConcaveMinSeries+"");
+    		properties.setProperty(prefix+"filterInputConcaveScale",filterInputConcaveScale+"");
+    		properties.setProperty(prefix+"filterZ",filterZ+"");
+    		properties.setProperty(prefix+"filterTiltedZ",filterTiltedZ+"");
+    		properties.setProperty(prefix+"filterByValueScale",filterByValueScale+"");
+    		properties.setProperty(prefix+"filterTiltedByValueScale",filterTiltedByValueScale+"");
+    		properties.setProperty(prefix+"filterByScanValue",filterByScanValue+"");
+    		properties.setProperty(prefix+"filterTiltedByScanValue",filterTiltedByScanValue+"");
+    		properties.setProperty(prefix+"minLeftSamples",minLeftSamples+"");
+    		properties.setProperty(prefix+"minCenterSamplesBest",minCenterSamplesBest+"");
+    		properties.setProperty(prefix+"minCenterSamplesTotal",minCenterSamplesTotal+"");
+    		properties.setProperty(prefix+"centerSamples",centerSamples+"");
+    		properties.setProperty(prefix+"maxRMS",maxRMS+"");
+    		properties.setProperty(prefix+"zMin",zMin+"");
+    		properties.setProperty(prefix+"zMax",zMax+"");
+    		properties.setProperty(prefix+"zStep",zStep+"");
+    		properties.setProperty(prefix+"tMin",tMin+"");
+    		properties.setProperty(prefix+"tMax",tMax+"");
+    		properties.setProperty(prefix+"tStep",tStep+"");
+
+    		properties.setProperty(prefix+"targetRelFocalShift",targetRelFocalShift+"");
+    		for (int chn=0; chn<minMeas.length; chn++) properties.setProperty(prefix+"minMeas_"+chn,minMeas[chn]+"");
+    		for (int chn=0; chn<maxMeas.length; chn++) properties.setProperty(prefix+"maxMeas_"+chn,maxMeas[chn]+"");
+    		for (int chn=0; chn<thresholdMax.length; chn++) properties.setProperty(prefix+"thresholdMax_"+chn,thresholdMax[chn]+"");
+    		properties.setProperty(prefix+"useMinMeas",useMinMeas+"");
+    		properties.setProperty(prefix+"useMaxMeas",useMaxMeas+"");
+    		properties.setProperty(prefix+"useThresholdMax",useThresholdMax+"");
+    		properties.setProperty(prefix+"weightMode",weightMode+"");
+    		properties.setProperty(prefix+"weightRadius",weightRadius+"");
+    		properties.setProperty(prefix+"k_red",k_red+"");
+    		properties.setProperty(prefix+"k_blue",k_blue+"");
+    		properties.setProperty(prefix+"qb_scan_below",qb_scan_below+"");
+    		properties.setProperty(prefix+"qb_scan_above",qb_scan_above+"");
+    		properties.setProperty(prefix+"qb_scan_step",qb_scan_step+"");
+    		properties.setProperty(prefix+"qb_use_corrected",qb_use_corrected+"");
+    		properties.setProperty(prefix+"qb_invert",qb_invert+"");
+    		properties.setProperty(prefix+"z_relative",z_relative+"");
+    		properties.setProperty(prefix+"rslt_show_z_axial",rslt_show_z_axial+"");
+    		properties.setProperty(prefix+"rslt_show_z_smooth",rslt_show_z_smooth+"");
+    		properties.setProperty(prefix+"rslt_show_z_individual",rslt_show_z_individual+"");
+    		properties.setProperty(prefix+"rslt_show_f_axial",rslt_show_f_axial+"");
+    		properties.setProperty(prefix+"rslt_show_f_smooth",rslt_show_f_smooth+"");
+    		properties.setProperty(prefix+"rslt_show_f_individual",rslt_show_f_individual+"");
+    		properties.setProperty(prefix+"rslt_show_smooth_sigma",rslt_show_smooth_sigma+"");
+    		properties.setProperty(prefix+"rslt_scan_below",rslt_scan_below+"");
+    		properties.setProperty(prefix+"rslt_scan_above",rslt_scan_above+"");
+    		properties.setProperty(prefix+"rslt_scan_step",rslt_scan_step+"");
+    		properties.setProperty(prefix+"rslt_mtf50_mode",rslt_mtf50_mode+"");
+    		properties.setProperty(prefix+"rslt_solve",rslt_solve+"");
+    		for (int chn=0; chn<rslt_show_chn.length; chn++) properties.setProperty(prefix+"rslt_show_chn_"+chn,rslt_show_chn[chn]+"");
+    		// always re-calculate here? - only in calibration mode or restore calibration mode? No, only in LMA in calibration mode		
+    		//		zRanges=calcZRanges(dataWeightsToBoolean());
+    		if (zRanges!=null){
+    			properties.setProperty(prefix+"zRanges_length",zRanges.length+"");
+    			for (int chn=0;chn<zRanges.length;chn++) if (zRanges[chn]!=null) {
+    				properties.setProperty(prefix+"zRanges_"+chn+"_length",zRanges[chn].length+"");
+    				for (int sample=0;sample<zRanges[chn].length;sample++) if (zRanges[chn][sample]!=null) {
+    					properties.setProperty(prefix+"zRanges_"+chn+"_"+sample,zRanges[chn][sample][0]+","+zRanges[chn][sample][1]+","+zRanges[chn][sample][2]);
+    				}
+    			}
+    		}
+    	}
+    }
 
 	public void getProperties(String prefix,Properties properties){
 		savedProperties=properties;
@@ -4569,52 +4582,76 @@ public boolean LevenbergMarquardt(
     			"Green, sagittal","Green, tangential",
     			"Blue, sagittal","Blue, tangential"};
 
-        public void setProperties(String prefix,Properties properties){
-        	if (mechanicalFocusingModel==null){
-        		if (debugLevel>1) System.out.println ("Mechanical properties not yet initialized, will save properties later");
-        		return;
-        	}
-        	properties.setProperty(prefix+"numberOfLocations",numberOfLocations+"");
-        	properties.setProperty(prefix+"centerSelect_X",centerSelect[0]+"");
-        	properties.setProperty(prefix+"centerSelect_Y",centerSelect[1]+"");
-        	mechanicalFocusingModel.setProperties(prefix+"mechanicalFocusingModel.",properties);
-        	for (int i=0;i<curvatureModel.length;i++){
-        		if (curvatureModel[i]!=null) curvatureModel[i].setProperties(prefix+"curvatureModel_"+i+".",properties);
-        	}
-        	if (channelSelect!=null) for (int i=0;i<channelSelect.length;i++){
-        		properties.setProperty(prefix+"channelSelect_"+i,channelSelect[i]+"");
-        	}
-        	if (mechanicalSelect!=null) for (int i=0;i<mechanicalSelect.length;i++){
-        		properties.setProperty(prefix+"mechanicalSelect_"+i,mechanicalSelect[i]+"");
-        	}
-        	for (int chn=0;chn<curvatureSelect.length;chn++) if (curvatureSelect[chn]!=null) for (int i=0;i<curvatureSelect[chn].length;i++){
-        		properties.setProperty(prefix+"curvatureSelect_"+chn+"_"+i,curvatureSelect[chn][i]+"");
-        	}
-        	for (int chn=0;chn<sampleCorrSelect.length;chn++) if (sampleCorrSelect[chn]!=null) for (int i=0;i<sampleCorrSelect[chn].length;i++){
-        		properties.setProperty(prefix+"sampleCorrSelect_"+chn+"_"+i,sampleCorrSelect[chn][i]+"");
-        	}
-        	for (int chn=0;chn<sampleCorrCost.length;chn++) if (sampleCorrCost[chn]!=null) for (int i=0;i<sampleCorrCost[chn].length;i++){
-        		properties.setProperty(prefix+"sampleCorrCost_"+chn+"_"+i,sampleCorrCost[chn][i]+"");
-        	}
-        	for (int chn=0;chn<sampleCorrSigma.length;chn++) if (sampleCorrSigma[chn]!=null) for (int i=0;i<sampleCorrSigma[chn].length;i++){
-        		properties.setProperty(prefix+"sampleCorrSigma_"+chn+"_"+i,sampleCorrSigma[chn][i]+"");
-        	}
-        	for (int chn=0;chn<sampleCorrPullZero.length;chn++) if (sampleCorrPullZero[chn]!=null) for (int i=0;i<sampleCorrPullZero[chn].length;i++){
-        		properties.setProperty(prefix+"sampleCorrPullZero_"+chn+"_"+i,sampleCorrPullZero[chn][i]+"");
-        	}
-        	// save correction parameters values
-//        	private double [][][] correctionParameters=new double[6][][]; // all
-        	if (correctionParameters!=null){
-        		for (int chn=0;chn<correctionParameters.length; chn++) if (correctionParameters[chn]!=null){
-        			for (int np=0;np<correctionParameters[chn].length;np++) if (correctionParameters[chn][np]!=null){
-        				for (int i=0;i<correctionParameters[chn][np].length;i++){
-        	        		properties.setProperty(prefix+"correctionParameters_"+chn+"_"+np+"_"+i,correctionParameters[chn][np][i]+"");
-        				}
-        			}
-        		}
-        	}
-            fieldStrategies.setProperties(prefix+"fieldStrategies.",properties);
-        }
+    	public void setProperties(String prefix,Properties properties){
+    		if (mechanicalFocusingModel==null){
+    			if (debugLevel>1) System.out.println ("Mechanical properties not yet initialized, will save properties later");
+    			return;
+    		}
+    		boolean select= (properties.getProperty("selected")!=null);
+    		boolean select_mechanicalFocusingModel=!select;
+    		boolean select_curvatureModel=!select;
+    		boolean select_fieldStrategies=!select;
+    		boolean select_FieldFitting=!select;
+    		if (select) {
+    			GenericDialog gd = new GenericDialog("Select FieldFitting parameters to save");
+    			gd.addCheckbox("MechanicalFocusingModel parameter class", select_mechanicalFocusingModel);
+    			gd.addCheckbox("CurvatureModel parameter classes", select_curvatureModel);
+    			gd.addCheckbox("FieldStrategies parameter classes", select_fieldStrategies);
+    			gd.addCheckbox("FieldFitting local parameters", select_FieldFitting);
+    			gd.showDialog();
+    			if (gd.wasCanceled()) return;
+    			select_mechanicalFocusingModel=gd.getNextBoolean();
+    			select_curvatureModel=gd.getNextBoolean();
+    			select_fieldStrategies=gd.getNextBoolean();
+    			select_FieldFitting=gd.getNextBoolean();
+    		}
+
+    		if (select_mechanicalFocusingModel) mechanicalFocusingModel.setProperties(prefix+"mechanicalFocusingModel.",properties);
+    		if (select_curvatureModel) {
+    			for (int i=0;i<curvatureModel.length;i++){
+    				if (curvatureModel[i]!=null) curvatureModel[i].setProperties(prefix+"curvatureModel_"+i+".",properties);
+    			}
+    		}
+    		if (select_FieldFitting) {
+    			properties.setProperty(prefix+"numberOfLocations",numberOfLocations+"");
+    			properties.setProperty(prefix+"centerSelect_X",centerSelect[0]+"");
+    			properties.setProperty(prefix+"centerSelect_Y",centerSelect[1]+"");
+
+    			if (channelSelect!=null) for (int i=0;i<channelSelect.length;i++){
+    				properties.setProperty(prefix+"channelSelect_"+i,channelSelect[i]+"");
+    			}
+    			if (mechanicalSelect!=null) for (int i=0;i<mechanicalSelect.length;i++){
+    				properties.setProperty(prefix+"mechanicalSelect_"+i,mechanicalSelect[i]+"");
+    			}
+    			for (int chn=0;chn<curvatureSelect.length;chn++) if (curvatureSelect[chn]!=null) for (int i=0;i<curvatureSelect[chn].length;i++){
+    				properties.setProperty(prefix+"curvatureSelect_"+chn+"_"+i,curvatureSelect[chn][i]+"");
+    			}
+    			for (int chn=0;chn<sampleCorrSelect.length;chn++) if (sampleCorrSelect[chn]!=null) for (int i=0;i<sampleCorrSelect[chn].length;i++){
+    				properties.setProperty(prefix+"sampleCorrSelect_"+chn+"_"+i,sampleCorrSelect[chn][i]+"");
+    			}
+    			for (int chn=0;chn<sampleCorrCost.length;chn++) if (sampleCorrCost[chn]!=null) for (int i=0;i<sampleCorrCost[chn].length;i++){
+    				properties.setProperty(prefix+"sampleCorrCost_"+chn+"_"+i,sampleCorrCost[chn][i]+"");
+    			}
+    			for (int chn=0;chn<sampleCorrSigma.length;chn++) if (sampleCorrSigma[chn]!=null) for (int i=0;i<sampleCorrSigma[chn].length;i++){
+    				properties.setProperty(prefix+"sampleCorrSigma_"+chn+"_"+i,sampleCorrSigma[chn][i]+"");
+    			}
+    			for (int chn=0;chn<sampleCorrPullZero.length;chn++) if (sampleCorrPullZero[chn]!=null) for (int i=0;i<sampleCorrPullZero[chn].length;i++){
+    				properties.setProperty(prefix+"sampleCorrPullZero_"+chn+"_"+i,sampleCorrPullZero[chn][i]+"");
+    			}
+    			// save correction parameters values
+    			//        	private double [][][] correctionParameters=new double[6][][]; // all
+    			if (correctionParameters!=null){
+    				for (int chn=0;chn<correctionParameters.length; chn++) if (correctionParameters[chn]!=null){
+    					for (int np=0;np<correctionParameters[chn].length;np++) if (correctionParameters[chn][np]!=null){
+    						for (int i=0;i<correctionParameters[chn][np].length;i++){
+    							properties.setProperty(prefix+"correctionParameters_"+chn+"_"+np+"_"+i,correctionParameters[chn][np][i]+"");
+    						}
+    					}
+    				}
+    			}
+    		}
+    		if (select_fieldStrategies) fieldStrategies.setProperties(prefix+"fieldStrategies.",properties);
+    	}
         public void getProperties(String prefix,Properties properties){
         	if (properties.getProperty(prefix+"numberOfLocations")!=null)
         		numberOfLocations=Integer.parseInt(properties.getProperty(prefix+"numberOfLocations"));
@@ -7124,8 +7161,8 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 
          }
          gd.enableYesNoCancel("Apply","Keep"); // default OK (on enter) - "Apply"
-     WindowTools.addScrollBars(gd);
-    gd.showDialog();
+         WindowTools.addScrollBars(gd);
+         gd.showDialog();
          if (gd.wasCanceled()) return null;
          if (gd.wasOKed()) { // selected non-default "Apply"
              if (detailed){

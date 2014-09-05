@@ -48,6 +48,8 @@ import java.util.regex.Pattern;
 
 
 
+
+
 //import FocusingField.FocusingFieldMeasurement;
 //import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
@@ -579,6 +581,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		panelRun.setLayout(new GridLayout(1, 0, 5, 5));
 		addButton("Process Calibration Files",panelRun);
 		addButton("Save",panelRun);
+		addButton("Save Selected",panelRun);
 		addButton("Restore",panelRun,color_restore);
 		addButton("Restore no autoload",panelRun);
 		addButton("Restore SFE Latest",panelRun,color_restore);
@@ -1046,11 +1049,18 @@ if (MORE_BUTTONS) {
 	    	String fileName= selectKernelsDirectory(PROCESS_PARAMETERS.kernelsDirectory);
 	        if (fileName!=null) PROCESS_PARAMETERS.kernelsDirectory=fileName;
 			return;
-			/* ======================================================================== */
+/* ======================================================================== */
 		     
 	    } else if (label.equals("Save")) {
 	    	saveProperties(null,PROCESS_PARAMETERS.kernelsDirectory,PROCESS_PARAMETERS.useXML, PROPERTIES);
 	    	return;
+/* ======================================================================== */
+	    } else if (label.equals("Save Selected")) {
+	    	Properties selectedProperties=new Properties();
+	    	selectedProperties.setProperty("selected", "true");
+	    	saveProperties(null,PROCESS_PARAMETERS.kernelsDirectory, PROCESS_PARAMETERS.useXML, selectedProperties);
+	    	return;
+	    	
 /* ======================================================================== */
 	        
 	    } else if (label.equals("Restore") || label.equals("Restore no autoload")) {
@@ -13010,6 +13020,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
      } else path+=patterns[0];
      if (path==null) return;
      setAllProperties(properties);
+     
      OutputStream os;
 	try {
 		os = new FileOutputStream(path);
@@ -13050,6 +13061,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 			String directory,
 			boolean useXML,
 			Properties properties){
+		setAllProperties(properties); // NEW. Setting properties from current parameters so missing (in the file) parameters will not cause an error
    	    String [] XMLPatterns= {".conf-xml",".xml"};
 	    String [] confPatterns={".conf"};
 	    String [] patterns=useXML?XMLPatterns:confPatterns;
@@ -13101,42 +13113,159 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	}
 /* ======================================================================== */
     public void setAllProperties(Properties properties){
-       	properties.setProperty("MASTER_DEBUG_LEVEL", MASTER_DEBUG_LEVEL+"");
-    	properties.setProperty("SHOW_AS_STACKS",     SHOW_AS_STACKS+"");//  Show debug images as stacks (false - individual)
-    	properties.setProperty("FFT_SIZE",           FFT_SIZE+"");
-    	properties.setProperty("MAP_FFT_SIZE",       MAP_FFT_SIZE+"");// used to find where grid covers the image
-    	properties.setProperty("GAUSS_WIDTH",        GAUSS_WIDTH+""); // 0.4 (0 - use Hamming window)
-    	properties.setProperty("FFT_OVERLAP",        FFT_OVERLAP+""); // createPSFMap()
-    	properties.setProperty("PSF_SUBPIXEL",       PSF_SUBPIXEL+""); // sub-pixel decimation
-    	properties.setProperty("PSF_SAVE_FILE",      PSF_SAVE_FILE+"");// save PSF array to a multi-slice TIFF file
-    	properties.setProperty("THREADS_MAX",        THREADS_MAX+"");  // 100, testing multi-threading, limit maximal number of threads
-    	properties.setProperty("UPDATE_STATUS",      UPDATE_STATUS+""); // update ImageJ status info
+    	boolean select= (properties.getProperty("selected")!=null);
+    	boolean select_MASTER_DEBUG_LEVEL=!select;
+    	boolean select_SHOW_AS_STACKS=!select;
+    	boolean select_FFT_SIZE=!select;
+    	boolean select_MAP_FFT_SIZE=!select;
+    	boolean select_GAUSS_WIDTH=!select;
+    	boolean select_FFT_OVERLAP=!select;
+    	boolean select_PSF_SUBPIXEL=!select;
+    	boolean select_PSF_SAVE_FILE=!select;
+    	boolean select_THREADS_MAX=!select;
+    	boolean select_UPDATE_STATUS=!select;
+    	boolean select_SIMUL=!select;
+    	boolean select_INTERPOLATE=!select;
+    	boolean select_INVERSE=!select;
+    	boolean select_PSF_PARS=!select;
+    	boolean select_OTF_FILTER=!select;
+    	boolean select_PATTERN_DETECT=!select;
+    	boolean select_COMPONENTS=!select;
+    	boolean select_SHOW_RESULTS=!select;
+    	boolean select_MULTIFILE_PSF=!select;
+    	boolean select_PROCESS_PARAMETERS=!select;
+    	boolean select_DISTORTION=!select;
+    	boolean select_LASER_POINTERS=!select;
+    	boolean select_FLATFIELD_PARAMETERS=!select;
+    	boolean select_PATTERN_PARAMETERS=!select;
+    	boolean select_LENS_DISTORTION_PARAMETERS=!select;
+    	boolean select_EYESIS_CAMERA_PARAMETERS=!select;
+    	boolean select_LASERS=!select;
+    	boolean select_CAMERAS=!select;
+    	boolean select_DISTORTION_PROCESS_CONFIGURATION=!select;
+    	boolean select_REFINE_PARAMETERS=!select;
+    	boolean select_FOCUS_MEASUREMENT_PARAMETERS=!select;
+    	boolean select_MOTORS_focusingHistory=!select;
+    	boolean select_GONIOMETER_PARAMETERS=!select;
+    	boolean select_ABERRATIONS_PARAMETERS=!select;
+    	boolean select_FOCUSING_FIELD=!select;
+    	if (select) {
+    		GenericDialog gd = new GenericDialog("Select parameters to save");
+    		gd.addMessage("===== Individual parameters ======");
+        	gd.addCheckbox("MASTER_DEBUG_LEVEL", select_MASTER_DEBUG_LEVEL);
+        	gd.addCheckbox("SHOW_AS_STACKS", select_SHOW_AS_STACKS);
+        	gd.addCheckbox("FFT_SIZE",select_FFT_SIZE);
+        	gd.addCheckbox("MAP_FFT_SIZE",select_MAP_FFT_SIZE);
+        	gd.addCheckbox("GAUSS_WIDTH",select_GAUSS_WIDTH);
+        	gd.addCheckbox("FFT_OVERLAP",select_FFT_OVERLAP);
+        	gd.addCheckbox("PSF_SUBPIXEL",select_PSF_SUBPIXEL);
+        	gd.addCheckbox("PSF_SAVE_FILE",select_PSF_SAVE_FILE);
+        	gd.addCheckbox("THREADS_MAX",select_THREADS_MAX);
+        	gd.addCheckbox("UPDATE_STATUS",select_UPDATE_STATUS);
+    		gd.addMessage("===== Parameter classes ======");
+        	gd.addCheckbox("SIMUL",select_SIMUL);
+        	gd.addCheckbox("INTERPOLATE",select_INTERPOLATE);
+        	gd.addCheckbox("INVERSE",select_INVERSE);
+        	gd.addCheckbox("PSF_PARS",select_PSF_PARS);
+        	gd.addCheckbox("OTF_FILTER",select_OTF_FILTER);
+        	gd.addCheckbox("PATTERN_DETECT",select_PATTERN_DETECT);
+        	gd.addCheckbox("COMPONENTS",select_COMPONENTS);
+        	gd.addCheckbox("SHOW_RESULTS",select_SHOW_RESULTS);
+        	gd.addCheckbox("MULTIFILE_PSF",select_MULTIFILE_PSF);
+        	gd.addCheckbox("PROCESS_PARAMETERS",select_PROCESS_PARAMETERS);
+        	gd.addCheckbox("DISTORTION",select_DISTORTION);
+        	gd.addCheckbox("LASER_POINTERS",select_LASER_POINTERS);
+        	gd.addCheckbox("FLATFIELD_PARAMETERS",select_FLATFIELD_PARAMETERS);
+        	gd.addCheckbox("PATTERN_PARAMETERS",select_PATTERN_PARAMETERS);
+        	gd.addCheckbox("LENS_DISTORTION_PARAMETERS",select_LENS_DISTORTION_PARAMETERS);
+        	gd.addCheckbox("EYESIS_CAMERA_PARAMETERS",select_EYESIS_CAMERA_PARAMETERS);
+        	gd.addCheckbox("LASERS",select_LASERS);
+        	gd.addCheckbox("CAMERAS",select_CAMERAS);
+        	gd.addCheckbox("DISTORTION_PROCESS_CONFIGURATION",select_DISTORTION_PROCESS_CONFIGURATION);
+        	gd.addCheckbox("REFINE_PARAMETERS",select_REFINE_PARAMETERS);
+        	gd.addCheckbox("FOCUS_MEASUREMENT_PARAMETERS",select_FOCUS_MEASUREMENT_PARAMETERS);
+        	gd.addCheckbox("MOTORS_focusingHistory",select_MOTORS_focusingHistory);
+        	gd.addCheckbox("GONIOMETER_PARAMETERS",select_GONIOMETER_PARAMETERS);
+        	gd.addCheckbox("ABERRATIONS_PARAMETERS",select_ABERRATIONS_PARAMETERS);
+        	gd.addCheckbox("FOCUSING_FIELD",select_FOCUSING_FIELD);
+            WindowTools.addScrollBars(gd);
+            gd.showDialog();
+            if (gd.wasCanceled()) return;
+        	select_MASTER_DEBUG_LEVEL=gd.getNextBoolean();
+        	select_SHOW_AS_STACKS=gd.getNextBoolean();
+        	select_FFT_SIZE=gd.getNextBoolean();
+        	select_MAP_FFT_SIZE=gd.getNextBoolean();
+        	select_GAUSS_WIDTH=gd.getNextBoolean();
+        	select_FFT_OVERLAP=gd.getNextBoolean();
+        	select_PSF_SUBPIXEL=gd.getNextBoolean();
+        	select_PSF_SAVE_FILE=gd.getNextBoolean();
+        	select_THREADS_MAX=gd.getNextBoolean();
+        	select_UPDATE_STATUS=gd.getNextBoolean();
 
-        SIMUL.setProperties(             "SIMUL.", properties);
-        INTERPOLATE.setProperties(       "INTERPOLATE.", properties);
-        INVERSE.setProperties(           "INVERSE.", properties);
-        PSF_PARS.setProperties(          "PSF_PARS.", properties);
-        OTF_FILTER.setProperties(        "OTF_FILTER.", properties);
-        PATTERN_DETECT.setProperties(    "PATTERN_DETECT.", properties);
-        COMPONENTS.setProperties(        "COMPONENTS.", properties);
-        SHOW_RESULTS.setProperties(      "SHOW_RESULTS.", properties);
-        MULTIFILE_PSF.setProperties(     "MULTIFILE_PSF.", properties);
-        PROCESS_PARAMETERS.setProperties("PROCESS_PARAMETERS.", properties);
-        DISTORTION.setProperties(        "DISTORTION.", properties);
-        LASER_POINTERS.setProperties("LASER.", properties);
-        FLATFIELD_PARAMETERS.setProperties("FLATFIELD_PARAMETERS.", properties);
-        PATTERN_PARAMETERS.setProperties  ("PATTERN_PARAMETERS.", properties);
-        LENS_DISTORTION_PARAMETERS.setProperties("LENS_DISTORTION_PARAMETERS.", properties);
-        EYESIS_CAMERA_PARAMETERS.setProperties("EYESIS_CAMERA_PARAMETERS.", properties);
-        LASERS.setProperties("LASERS.", properties);
-        CAMERAS.setProperties("CAMERAS.", properties);
-        DISTORTION_PROCESS_CONFIGURATION.setProperties("DISTORTION_PROCESS_CONFIGURATION.", properties);
-        REFINE_PARAMETERS.setProperties("REFINE_PARAMETERS.", properties);
-        FOCUS_MEASUREMENT_PARAMETERS.setProperties("FOCUS_MEASUREMENT_PARAMETERS.", properties);
-        MOTORS.focusingHistory.setProperties("FOCUSING_HISTORY.", properties);
-        GONIOMETER_PARAMETERS.setProperties("GONIOMETER_PARAMETERS.", properties);
-        ABERRATIONS_PARAMETERS.setProperties("ABERRATIONS_PARAMETERS.", properties);
-        if (FOCUSING_FIELD!=null) FOCUSING_FIELD.setProperties("FOCUSING_FIELD.", properties);
+        	select_SIMUL=gd.getNextBoolean();
+        	select_INTERPOLATE=gd.getNextBoolean();
+        	select_INVERSE=gd.getNextBoolean();
+        	select_PSF_PARS=gd.getNextBoolean();
+        	select_OTF_FILTER=gd.getNextBoolean();
+        	select_PATTERN_DETECT=gd.getNextBoolean();
+        	select_COMPONENTS=gd.getNextBoolean();
+        	select_SHOW_RESULTS=gd.getNextBoolean();
+        	select_MULTIFILE_PSF=gd.getNextBoolean();
+        	select_PROCESS_PARAMETERS=gd.getNextBoolean();
+        	select_DISTORTION=gd.getNextBoolean();
+        	select_LASER_POINTERS=gd.getNextBoolean();
+        	select_FLATFIELD_PARAMETERS=gd.getNextBoolean();
+        	select_PATTERN_PARAMETERS=gd.getNextBoolean();
+        	select_LENS_DISTORTION_PARAMETERS=gd.getNextBoolean();
+        	select_EYESIS_CAMERA_PARAMETERS=gd.getNextBoolean();
+        	select_LASERS=gd.getNextBoolean();
+        	select_CAMERAS=gd.getNextBoolean();
+        	select_DISTORTION_PROCESS_CONFIGURATION=gd.getNextBoolean();
+        	select_REFINE_PARAMETERS=gd.getNextBoolean();
+        	select_FOCUS_MEASUREMENT_PARAMETERS=gd.getNextBoolean();
+        	select_MOTORS_focusingHistory=gd.getNextBoolean();
+        	select_GONIOMETER_PARAMETERS=gd.getNextBoolean();
+        	select_ABERRATIONS_PARAMETERS=gd.getNextBoolean();
+        	select_FOCUSING_FIELD=gd.getNextBoolean();
+    	}
+    	
+       	if (select_MASTER_DEBUG_LEVEL) properties.setProperty("MASTER_DEBUG_LEVEL", MASTER_DEBUG_LEVEL+"");
+       	if (select_SHOW_AS_STACKS) properties.setProperty("SHOW_AS_STACKS",     SHOW_AS_STACKS+"");//  Show debug images as stacks (false - individual)
+       	if (select_FFT_SIZE) properties.setProperty("FFT_SIZE",           FFT_SIZE+"");
+       	if (select_MAP_FFT_SIZE) properties.setProperty("MAP_FFT_SIZE",       MAP_FFT_SIZE+"");// used to find where grid covers the image
+       	if (select_GAUSS_WIDTH) properties.setProperty("GAUSS_WIDTH",        GAUSS_WIDTH+""); // 0.4 (0 - use Hamming window)
+       	if (select_FFT_OVERLAP) properties.setProperty("FFT_OVERLAP",        FFT_OVERLAP+""); // createPSFMap()
+       	if (select_PSF_SUBPIXEL) properties.setProperty("PSF_SUBPIXEL",       PSF_SUBPIXEL+""); // sub-pixel decimation
+       	if (select_PSF_SAVE_FILE) properties.setProperty("PSF_SAVE_FILE",      PSF_SAVE_FILE+"");// save PSF array to a multi-slice TIFF file
+       	if (select_THREADS_MAX) properties.setProperty("THREADS_MAX",        THREADS_MAX+"");  // 100, testing multi-threading, limit maximal number of threads
+       	if (select_UPDATE_STATUS) properties.setProperty("UPDATE_STATUS",      UPDATE_STATUS+""); // update ImageJ status info
+
+       	if (select_SIMUL) SIMUL.setProperties(             "SIMUL.", properties);
+        if (select_INTERPOLATE) INTERPOLATE.setProperties(       "INTERPOLATE.", properties);
+        if (select_INVERSE) INVERSE.setProperties(           "INVERSE.", properties);
+        if (select_PSF_PARS) PSF_PARS.setProperties(          "PSF_PARS.", properties);
+        if (select_OTF_FILTER) OTF_FILTER.setProperties(        "OTF_FILTER.", properties);
+        if (select_PATTERN_DETECT) PATTERN_DETECT.setProperties(    "PATTERN_DETECT.", properties);
+        if (select_COMPONENTS) COMPONENTS.setProperties(        "COMPONENTS.", properties);
+        if (select_SHOW_RESULTS) SHOW_RESULTS.setProperties(      "SHOW_RESULTS.", properties);
+        if (select_MULTIFILE_PSF) MULTIFILE_PSF.setProperties(     "MULTIFILE_PSF.", properties);
+        if (select_PROCESS_PARAMETERS) PROCESS_PARAMETERS.setProperties("PROCESS_PARAMETERS.", properties);
+        if (select_DISTORTION) DISTORTION.setProperties(        "DISTORTION.", properties);
+        if (select_LASER_POINTERS) LASER_POINTERS.setProperties("LASER.", properties);
+        if (select_FLATFIELD_PARAMETERS) FLATFIELD_PARAMETERS.setProperties("FLATFIELD_PARAMETERS.", properties);
+        if (select_PATTERN_PARAMETERS) PATTERN_PARAMETERS.setProperties  ("PATTERN_PARAMETERS.", properties);
+        if (select_LENS_DISTORTION_PARAMETERS) LENS_DISTORTION_PARAMETERS.setProperties("LENS_DISTORTION_PARAMETERS.", properties);
+        if (select_EYESIS_CAMERA_PARAMETERS) EYESIS_CAMERA_PARAMETERS.setProperties("EYESIS_CAMERA_PARAMETERS.", properties);
+        if (select_LASERS) LASERS.setProperties("LASERS.", properties);
+        if (select_CAMERAS) CAMERAS.setProperties("CAMERAS.", properties);
+        if (select_DISTORTION_PROCESS_CONFIGURATION) DISTORTION_PROCESS_CONFIGURATION.setProperties("DISTORTION_PROCESS_CONFIGURATION.", properties);
+        if (select_REFINE_PARAMETERS) REFINE_PARAMETERS.setProperties("REFINE_PARAMETERS.", properties);
+        if (select_FOCUS_MEASUREMENT_PARAMETERS) FOCUS_MEASUREMENT_PARAMETERS.setProperties("FOCUS_MEASUREMENT_PARAMETERS.", properties);
+        if (select_MOTORS_focusingHistory) MOTORS.focusingHistory.setProperties("FOCUSING_HISTORY.", properties);
+        if (select_GONIOMETER_PARAMETERS) GONIOMETER_PARAMETERS.setProperties("GONIOMETER_PARAMETERS.", properties);
+        if (select_ABERRATIONS_PARAMETERS) ABERRATIONS_PARAMETERS.setProperties("ABERRATIONS_PARAMETERS.", properties);
+        if ((select_FOCUSING_FIELD) && (FOCUSING_FIELD!=null)) FOCUSING_FIELD.setProperties("FOCUSING_FIELD.", properties);
+    	if (select) properties.remove("selected");
     }
 /* ======================================================================== */
     public void getAllProperties(Properties properties){
