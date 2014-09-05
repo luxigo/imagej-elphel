@@ -46,6 +46,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
+
+
+//import FocusingField.FocusingFieldMeasurement;
 //import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
 
@@ -799,7 +802,8 @@ if (MORE_BUTTONS) {
 		addButton("List qualB",     panelCurvature,color_report);
 		addButton("List curv",      panelCurvature,color_report);
 		addButton("Show curv corr", panelCurvature,color_report);
-		addButton("Test measurement", panelCurvature,color_process);
+		addButton("Test measurement", panelCurvature,color_debug);
+		addButton("Focus/Tilt LMA", panelCurvature,color_process);
 		add(panelCurvature);
 		
 	//panelGoniometer
@@ -4511,6 +4515,26 @@ if (MORE_BUTTONS) {
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.testMeasurement();
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Focus/Tilt LMA")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
+				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
+					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
+					// reset histories
+					MOTORS.clearPreFocus();
+					MOTORS.clearHistory();
+				} else {
+					IJ.showMessage("Error","Camera is not configured\nProcess canceled");
+					return;
+				}
+			}
+			while (adjustFocusTiltLMA());
 			return;
 		}
 //		
@@ -8661,8 +8685,121 @@ if (MORE_BUTTONS) {
 		return;
 	}
 	
-	
 /* ===== Other methods ==================================================== */
+	public boolean adjustFocusTiltLMA(){
+		// just for reporting distance old way
+		MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
+				FOCUS_MEASUREMENT_PARAMETERS,
+    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
+    			DEBUG_LEVEL);
+		// No-move measure, add to history
+		moveAndMaybeProbe(
+				true, // just move, not probe
+				null, // no move, just measure
+				MOTORS,
+				CAMERAS,
+				LENS_DISTORTION_PARAMETERS,
+				matchSimulatedPattern, // should not bee null - is null after grid center!!!
+				FOCUS_MEASUREMENT_PARAMETERS,
+				PATTERN_DETECT,
+				DISTORTION,
+				SIMUL,
+				COMPONENTS,
+				OTF_FILTER,
+				PSF_PARS,
+				THREADS_MAX,
+				UPDATE_STATUS,
+				MASTER_DEBUG_LEVEL,
+				DISTORTION.loop_debug_level);
+		//get measurement
+		FocusingField.FocusingFieldMeasurement fFMeasurement=MOTORS.getThisFFMeasurement(FOCUSING_FIELD);	
+		// calculate z, tx, ty, m1,m2,m3
+	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA (fFMeasurement);
+		// show dialog: Apply, re-calculate, exit
+    	int [] currentMotors=fFMeasurement.motors;
+    	int [] newMotors=currentMotors.clone();
+    	double [] zTxTy={Double.NaN,Double.NaN,Double.NaN};
+    	if (zTxTyM1M2M3!=null){
+    		newMotors[0]=(int) Math.round(zTxTyM1M2M3[3]);
+    		newMotors[1]=(int) Math.round(zTxTyM1M2M3[4]);
+    		newMotors[2]=(int) Math.round(zTxTyM1M2M3[5]);
+    		zTxTy[0]=zTxTyM1M2M3[0];
+    		zTxTy[1]=zTxTyM1M2M3[1];
+    		zTxTy[2]=zTxTyM1M2M3[2];
+    	}
+    	double [] targetTilts={0.0,0.0};
+    	double scaleMovement=1.0; // calculate automatically - reduce when close
+    	GenericDialog gd = new GenericDialog("Adjusting focus/tilt");
+        gd.addNumericField("Target focus (relative to best composirte)",FOCUSING_FIELD.targetRelFocalShift,2,5,"um ("+IJ.d2s(zTxTy[0],3)+")");
+        gd.addNumericField("Target horizontal tilt (normally 0)",targetTilts[0],2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
+        gd.addNumericField("Target vertical tilt (normally 0)",targetTilts[1],2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
+		gd.addNumericField("Motor 1",newMotors[0],0,5,"steps ("+currentMotors[0]+")");
+		gd.addNumericField("Motor 2",newMotors[1],0,5,"steps ("+currentMotors[1]+")");
+		gd.addNumericField("Motor 3",newMotors[2],0,5,"steps ("+currentMotors[2]+")");
+		gd.addNumericField("Scale movement",scaleMovement,3,5,"x");
+		
+        gd.addCheckbox("Filter samples/channels by Z",FOCUSING_FIELD.filterZ); // should be false after manual movement
+        gd.addCheckbox("Filter by value (leave lower than maximal fwhm used in focal scan mode)",FOCUSING_FIELD.filterByScanValue);
+        gd.addNumericField("Filter by value (remove samples above scaled best FWHM for channel/location)",FOCUSING_FIELD.filterByValueScale,2,5,"x");
+
+        gd.addNumericField("Z min",FOCUSING_FIELD.zMin,2,5,"um");
+        gd.addNumericField("Z max",FOCUSING_FIELD.zMax,2,5,"um");
+        gd.addNumericField("Z step",FOCUSING_FIELD.zStep,2,5,"um");
+
+        gd.addNumericField("Tilt min",FOCUSING_FIELD.tMin,2,5,"um/mm");
+        gd.addNumericField("Tilt max",FOCUSING_FIELD.tMax,2,5,"um/mm");
+        gd.addNumericField("Tilt step",FOCUSING_FIELD.tStep,2,5,"um/mm");
+		
+		gd.addNumericField("Motor anti-hysteresis travel (last measured was "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.measuredHysteresis,0)+")", FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis, 0,7,"motors steps");
+		gd.addNumericField("Debug Level:",                                MASTER_DEBUG_LEVEL, 0);
+		gd.enableYesNoCancel("Apply movement","Re-measure"); // default OK (on enter) - "Apply"
+    	WindowTools.addScrollBars(gd);
+    	gd.showDialog();
+		if (gd.wasCanceled()) return false;
+		FOCUSING_FIELD.targetRelFocalShift=gd.getNextNumber();
+		targetTilts[0]=                    gd.getNextNumber();
+		targetTilts[1]=                    gd.getNextNumber();
+		newMotors[0]=               (int)  gd.getNextNumber();
+		newMotors[1]=               (int)  gd.getNextNumber();
+		newMotors[2]=               (int)  gd.getNextNumber();
+		scaleMovement=                     gd.getNextNumber();
+		
+        FOCUSING_FIELD.filterZ=            gd.getNextBoolean();
+        FOCUSING_FIELD.filterByScanValue=  gd.getNextBoolean();
+        FOCUSING_FIELD.filterByValueScale= gd.getNextNumber();
+
+        FOCUSING_FIELD.zMin=               gd.getNextNumber();
+        FOCUSING_FIELD.zMax=               gd.getNextNumber();
+        FOCUSING_FIELD.zStep=              gd.getNextNumber();
+
+        FOCUSING_FIELD.tMin=               gd.getNextNumber();
+        FOCUSING_FIELD.tMax=               gd.getNextNumber();
+        FOCUSING_FIELD.tStep=              gd.getNextNumber();
+		FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis= (int) gd.getNextNumber();
+		MASTER_DEBUG_LEVEL=(         int)  gd.getNextNumber();
+		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+		
+//	Scale motor movement	
+		newMotors[0]=currentMotors[0]+((int) Math.round((newMotors[0]-currentMotors[0])*scaleMovement));
+		newMotors[1]=currentMotors[1]+((int) Math.round((newMotors[1]-currentMotors[1])*scaleMovement));
+		newMotors[2]=currentMotors[2]+((int) Math.round((newMotors[2]-currentMotors[2])*scaleMovement));
+		
+		if (gd.wasOKed()){
+			// Move, no measure
+			MOTORS.moveElphel10364Motors(
+					true, //boolean wait,
+					newMotors,
+					0.0, //double sleep,
+					true, //boolean showStatus,
+					"",   //String message,
+					false); //!noHysteresis);			
+		}
+		return true;
+	}
+	
+	
+	
 	public boolean checkSerialAndRestore(){
 		// wait for camera
 		CAMERAS.debugLevel=DEBUG_LEVEL;

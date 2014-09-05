@@ -3084,12 +3084,59 @@ public class CalibrationHardwareInterface {
     			pY0,
     			sampleCoord);
 	}
-    
-	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
-		this.focusingHistory.addCurrentHistory(focusingField);
+	public FocusingField.FocusingFieldMeasurement getThisFFMeasurement(FocusingField focusingField){
+		return getThisFFMeasurement(focusingField, -1);
+	}    
+	public FocusingField.FocusingFieldMeasurement getThisFFMeasurement(FocusingField focusingField, int index){
+		return focusingField. getFocusingFieldMeasurement(
+				historyGetTimestamp(index),   //focusingState.getTimestamp(),
+				historyGetTemperature(index), //focusingState.getTemperature(),
+				historyGetMotors(index),      //focusingState.motorsPos,
+				historyGetSamples(index)); //focusingState.getSamples());
+	}
+	private FocusingHistory.FocusingState getFocusingState(int index){
+		if (index<0) index+=historySize();
+		if ((index>=0) && (index<historySize())) return this.focusingHistory.history.get(index);
+		return null;
 	}
 	
-    public int historySize(){
+//	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
+//		this.focusingHistory.addCurrentHistory(focusingField);
+//	}
+	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
+		for (int i=0;i<historySize();i++){
+			addCurrentHistoryToFocusingField(focusingField,i);
+		}        	 
+//		this.focusingHistory.addCurrentHistory(focusingField);
+	}
+
+	public void addCurrentHistoryToFocusingField(
+			FocusingField focusingField,
+			int index){ // -1 - last (negative - from length)
+		focusingField.addSample(
+				historyGetTimestamp(index),   //focusingState.getTimestamp(),
+				historyGetTemperature(index), //focusingState.getTemperature(),
+				historyGetMotors(index),      //focusingState.motorsPos,
+				historyGetSamples(index)); //focusingState.getSamples());
+	}
+	
+	
+	public String historyGetTimestamp(int index){
+		return getFocusingState(index).getTimestamp();
+	}
+
+	public double historyGetTemperature(int index){
+		return getFocusingState(index).getTemperature();
+	}
+	public int [] historyGetMotors(int index){
+		return getFocusingState(index).getMotors();
+	}
+	
+	public double [][][][] historyGetSamples(int index){
+		return getFocusingState(index).getSamples();
+	}
+
+	public int historySize(){
     	return this.focusingHistory.history.size();
     }
     public void setLastProbed(){
@@ -5470,7 +5517,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     				Double.NaN,
     				Double.NaN);
     	}
-    	
+ /*   	
     	public void addCurrentHistory(
     			FocusingField focusingField)
     	{
@@ -5484,7 +5531,8 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     		}        	 
 
     	}
-
+    	
+*/
     	public void saveXML(
     			String path,
         		String serialNumber,

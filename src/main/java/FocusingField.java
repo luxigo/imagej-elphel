@@ -3949,6 +3949,19 @@ public boolean LevenbergMarquardt(
             return nodeList;
         }
     }
+    public FocusingFieldMeasurement getFocusingFieldMeasurement(
+            String timestamp,
+            double temperature,
+            int [] motors,
+            double [][][][] samples
+            ){
+    	return new FocusingFieldMeasurement(
+                timestamp,
+                temperature,
+                motors,
+                samples);
+    }
+
     public FocusingField(
         String serialNumber,
             String lensSerial, // if null - do not add average
@@ -4341,11 +4354,69 @@ public boolean LevenbergMarquardt(
 //    	fieldFitting.mechanicalFocusingModel.setZTxTy(0.0,0.0,0.0); // restore zeros to correctly find Z centers,
     	fieldFitting.mechanicalFocusingModel.setAdjustMode(false); // to correctly find Z centers,
     }
+    
+//,
+    public double [] adjustLMA (FocusingFieldMeasurement measurement){
+    	if (!testMeasurement(
+    			measurement,    				
+				zMin, //+best_qb_corr[0],
+		        zMax, //+best_qb_corr[0],
+		        zStep, 
+				tMin,
+		        tMax,
+		        tStep)) {
+			if (debugLevel>0) System.out.println("adjustLMA() failed");
+    		return null;
+    	}
+    	double [] result=new double [6];
+        double [] best_qb_corr= fieldFitting.getBestQualB(
+                k_red,
+                k_blue,
+                true);
+        double [] zTilts=getCenterZTxTy(measurement);
+        result[0]=zTilts[0]-best_qb_corr[0];
+        result[1]=zTilts[1];
+        result[2]=zTilts[2];
+		double [] dm= getAdjustedMotors(
+	            targetRelFocalShift+best_qb_corr[0],
+	            0.0, // targetTiltX, // for testing, normally should be 0 um/mm
+	            0.0, // targetTiltY,
+	            true); // motor steps
+		if ((dm!=null) && (debugLevel>1)){
+			System.out.println("Suggested motor positions: "+IJ.d2s(dm[0],0)+":"+IJ.d2s(dm[1],0)+":"+IJ.d2s(dm[2],0));
+		}
+		if (dm!=null) {
+			result[3]=dm[0];
+			result[4]=dm[1];
+			result[5]=dm[2];
+		} else {
+			result[3]=Double.NaN;
+			result[4]=Double.NaN;
+			result[5]=Double.NaN;
+		}
+    	return result;
+    }
+    
+    // add tx, ty?
+    public double[] getCenterZTxTy(FocusingFieldMeasurement measurement){
+    	double [] tilts= fieldFitting.mechanicalFocusingModel.getTilts(measurement.motors);
+    	double [] result = {
+    			fieldFitting.mechanicalFocusingModel.calc_ZdZ(
+    					measurement.motors,
+    					currentPX0, //fieldFitting.getCenterXY()[0],
+    					currentPY0, //fieldFitting.getCenterXY()[1],
+    					null),
+    					tilts[0],
+    					tilts[1]
+    	};
+    	return result;
+    }
+    
     public double [] getAdjustedMotors(
             double targetRelFocalShift,
             double targetTiltX, // for testing, normally should be 0 um/mm
-            double targetTiltY,
-            boolean motorSteps){ // for testing, normally should be 0 um/mm
+            double targetTiltY,  // for testing, normally should be 0 um/mm
+            boolean motorSteps){ 
     	double [] zM=fieldFitting.mechanicalFocusingModel.getZM(
     			currentPX0, //fieldFitting.getCenterXY()[0],
     			currentPY0, //fieldFitting.getCenterXY()[1],
@@ -6370,6 +6441,25 @@ public boolean LevenbergMarquardt(
     		}
     		return z;
     	}
+        public double [] getTilts(int [] motors){
+    		double kM1=    getValue(MECH_PAR.K0)+getValue(MECH_PAR.KD1)-getValue(MECH_PAR.KD3);
+    		double kM2=    getValue(MECH_PAR.K0)-getValue(MECH_PAR.KD1)-getValue(MECH_PAR.KD3);
+    		double kM3=    getValue(MECH_PAR.K0)+getValue(MECH_PAR.KD3);
+    		double p2pi= PERIOD/2/Math.PI;
+    		double m1=motors[0],m2=motors[1],m3=motors[2];
+    		double aM1=(m1 + getValue(MECH_PAR.sM1)*p2pi*Math.sin(m1/p2pi) + getValue(MECH_PAR.cM1)*p2pi*Math.cos(m1/p2pi));
+    		double aM2=(m2 + getValue(MECH_PAR.sM2)*p2pi*Math.sin(m2/p2pi) + getValue(MECH_PAR.cM2)*p2pi*Math.cos(m2/p2pi));
+    		double aM3=(m3 + getValue(MECH_PAR.sM3)*p2pi*Math.sin(m3/p2pi) + getValue(MECH_PAR.cM3)*p2pi*Math.cos(m3/p2pi));
+    		double zM1=kM1 * aM1;
+    		double zM2=kM2 * aM2;
+    		double zM3=kM3 * aM3;
+        	double [] result ={
+        			getValue(MECH_PAR.tx)+(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx)),
+        			getValue(MECH_PAR.ty)-(zM2-zM1)/(2*getValue(MECH_PAR.Ly))};
+        	return result;
+        }
+
+    	
     	
     	/**
     	 * Calculate linearized mount (motor) displacement from motor position in steps
@@ -6522,9 +6612,9 @@ public boolean LevenbergMarquardt(
     				}
     		};
     		double [][] B={
-    			{targetZ-getValue(MECH_PAR.z0)},
-    			{targetTx-dx*getValue(MECH_PAR.tx)},
-    			{targetTy-dy*getValue(MECH_PAR.ty)}
+    			{targetZ-getValue(MECH_PAR.z0)}, // calc_ZdZ()?
+    			{targetTx-getValue(MECH_PAR.tx)},
+    			{targetTy-getValue(MECH_PAR.ty)}
     		};
     		Matrix MA=new Matrix(A);
     		Matrix MB=new Matrix(B);
