@@ -4544,6 +4544,12 @@ if (MORE_BUTTONS) {
 					return;
 				}
 			}
+			// Just for old focal distance calculation
+			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
+					FOCUS_MEASUREMENT_PARAMETERS,
+	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
+	    			DEBUG_LEVEL);
+			
 			while (adjustFocusTiltLMA());
 			return;
 		}
@@ -8698,10 +8704,12 @@ if (MORE_BUTTONS) {
 /* ===== Other methods ==================================================== */
 	public boolean adjustFocusTiltLMA(){
 		// just for reporting distance old way
+/*		
 		MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
 				FOCUS_MEASUREMENT_PARAMETERS,
     			MOTORS.getMicronsPerStep(), //double micronsPerStep,
     			DEBUG_LEVEL);
+*/    			
 		// No-move measure, add to history
 		moveAndMaybeProbe(
 				true, // just move, not probe
@@ -8724,7 +8732,7 @@ if (MORE_BUTTONS) {
 		//get measurement
 		FocusingField.FocusingFieldMeasurement fFMeasurement=MOTORS.getThisFFMeasurement(FOCUSING_FIELD);	
 		// calculate z, tx, ty, m1,m2,m3
-	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA (fFMeasurement);
+	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(fFMeasurement,false);
 		// show dialog: Apply, re-calculate, exit
     	int [] currentMotors=fFMeasurement.motors;
     	int [] newMotors=currentMotors.clone();
@@ -8738,15 +8746,47 @@ if (MORE_BUTTONS) {
     		zTxTy[2]=zTxTyM1M2M3[2];
     	}
     	double [] targetTilts={0.0,0.0};
+    	double [] manualScrewsCW=null;
+    	if (zTxTyM1M2M3!=null){
+    		manualScrewsCW=FOCUSING_FIELD.fieldFitting.mechanicalFocusingModel. getManualScrews(
+    				zTxTy[0]-FOCUSING_FIELD.targetRelFocalShift, //double zErr, // positive - away from lens
+    				zTxTy[1]-targetTilts[0],                     // double tXErr,// positive - 1,2 away from lens, 3 - to the lens
+    				zTxTy[2]-targetTilts[1]);                    // double tYErr);
+    	}
     	double scaleMovement=1.0; // calculate automatically - reduce when close
+    	boolean parallelMove=false;
+    	if (MASTER_DEBUG_LEVEL>0){
+    		System.out.println("----- Focus/tilt measurement results -----");
+    		System.out.println("Relative focal shift "+IJ.d2s(zTxTy[0],3)+" um ("+IJ.d2s(FOCUSING_FIELD.targetRelFocalShift,3)+"um)");
+    		System.out.println("Horizontal tilt "+IJ.d2s(zTxTy[1],3)+" um/mm ("+IJ.d2s(targetTilts[0],3)+"um/mm)");
+    		System.out.println("Vertical tilt "+IJ.d2s(zTxTy[2],3)+" um/mm ("+IJ.d2s(targetTilts[1],3)+"um/mm)");
+    		for (int i=0;i<newMotors.length;i++){
+        		System.out.println("Suggested for motor "+(i+1)+" "+newMotors[i]+" ("+currentMotors[i]+")");
+    		}
+    		if (manualScrewsCW!=null) for (int i=0;i<manualScrewsCW.length;i++){
+    			if (manualScrewsCW[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" (CW)");
+    			else  System.out.println("Suggested rotation for screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" (CCW)");
+    		}
+    		System.out.println("----- end of Focus/tilt measurement results -----");
+    	}
     	GenericDialog gd = new GenericDialog("Adjusting focus/tilt");
+    	if (zTxTyM1M2M3==null){
+    		gd.addMessage("**** Failed to determine focus/tilt, probably too far out of focus. ****");
+    		gd.addMessage("**** You may cancel the command and try \"Auto pre-focus\" first. ****");
+    	}
         gd.addNumericField("Target focus (relative to best composirte)",FOCUSING_FIELD.targetRelFocalShift,2,5,"um ("+IJ.d2s(zTxTy[0],3)+")");
         gd.addNumericField("Target horizontal tilt (normally 0)",targetTilts[0],2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
         gd.addNumericField("Target vertical tilt (normally 0)",targetTilts[1],2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
 		gd.addNumericField("Motor 1",newMotors[0],0,5,"steps ("+currentMotors[0]+")");
 		gd.addNumericField("Motor 2",newMotors[1],0,5,"steps ("+currentMotors[1]+")");
 		gd.addNumericField("Motor 3",newMotors[2],0,5,"steps ("+currentMotors[2]+")");
+		gd.addMessage("Suggested rotation of the top screws, use if motor positions are out of limits - outside of +/-25,000");
+		if (manualScrewsCW!=null)  for (int i=0;i<manualScrewsCW.length;i++){
+			if (manualScrewsCW[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" (CW)");
+			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" (CCW)");
+		}
 		gd.addNumericField("Scale movement",scaleMovement,3,5,"x");
+        gd.addCheckbox("Recalculate and apply parallel move only",parallelMove); // should be false after manual movement
 		
         gd.addCheckbox("Filter samples/channels by Z",FOCUSING_FIELD.filterZ); // should be false after manual movement
         gd.addCheckbox("Filter by value (leave lower than maximal fwhm used in focal scan mode)",FOCUSING_FIELD.filterByScanValue);
@@ -8773,7 +8813,7 @@ if (MORE_BUTTONS) {
 		newMotors[1]=               (int)  gd.getNextNumber();
 		newMotors[2]=               (int)  gd.getNextNumber();
 		scaleMovement=                     gd.getNextNumber();
-		
+		parallelMove=                      gd.getNextBoolean();
         FOCUSING_FIELD.filterZ=            gd.getNextBoolean();
         FOCUSING_FIELD.filterByScanValue=  gd.getNextBoolean();
         FOCUSING_FIELD.filterByValueScale= gd.getNextNumber();
@@ -8789,6 +8829,18 @@ if (MORE_BUTTONS) {
 		MASTER_DEBUG_LEVEL=(         int)  gd.getNextNumber();
 		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+		if (parallelMove){ // ignore/recalculate newMotors data 
+		    zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(fFMeasurement,true); // recalculate with parallel move only
+	    	newMotors=currentMotors.clone();
+	    	if (zTxTyM1M2M3!=null){
+	    		newMotors[0]=(int) Math.round(zTxTyM1M2M3[3]);
+	    		newMotors[1]=(int) Math.round(zTxTyM1M2M3[4]);
+	    		newMotors[2]=(int) Math.round(zTxTyM1M2M3[5]);
+	    	}			
+    		System.out.println("Parallel move position for motor 1 "+newMotors[0]+" ("+currentMotors[0]+")");
+    		System.out.println("Parallel move position for motor 2 "+newMotors[1]+" ("+currentMotors[1]+")");
+    		System.out.println("Parallel move position for motor 3 "+newMotors[2]+" ("+currentMotors[2]+")");
+		}
 		
 //	Scale motor movement	
 		newMotors[0]=currentMotors[0]+((int) Math.round((newMotors[0]-currentMotors[0])*scaleMovement));
@@ -10042,6 +10094,7 @@ if (MORE_BUTTONS) {
 			return null;
 		}
 		if (allOK) {
+			if (focusMeasurementParameters.scanMeasureLast) {
 			allOK &= moveAndMaybeProbe(
 					true,
 					centerMotorPos, // null OK
@@ -10060,6 +10113,16 @@ if (MORE_BUTTONS) {
 					updateStatus,
 					debugLevel,
 					loopDebugLevel);
+			} else { // just move, no measuring
+				System.out.println("Returning motors to initial position at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+				focusingMotors.moveElphel10364Motors( // return to last direct scan position
+						true, //boolean wait,
+						centerMotorPos,
+						0.0, //double sleep,
+						true, //boolean showStatus,
+						"",   //String message,
+						false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
+			}
 		}
 
 		if (debugLevel>0) System.out.println("Scanning focus in the center, number of steps="+ focusMeasurementParameters.scanNumber+

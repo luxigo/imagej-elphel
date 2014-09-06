@@ -4255,6 +4255,7 @@ public boolean LevenbergMarquardt(
     				}
     			}
     			double [] dmz= getAdjustedMotors(
+    					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
     		            targetRelFocalShift+best_qb_corr[0],
     		            targetTiltX, // for testing, normally should be 0 um/mm
     		            targetTiltY,
@@ -4263,6 +4264,7 @@ public boolean LevenbergMarquardt(
     				System.out.println("Suggested motor linearized positions: "+IJ.d2s(dmz[0],2)+":"+IJ.d2s(dmz[1],2)+":"+IJ.d2s(dmz[2],2));
     			}
     			double [] dm= getAdjustedMotors(
+    					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
     		            targetRelFocalShift+best_qb_corr[0],
     		            targetTiltX, // for testing, normally should be 0 um/mm
     		            targetTiltY,
@@ -4312,6 +4314,7 @@ public boolean LevenbergMarquardt(
         				}
         			}
         			double [] dmz= getAdjustedMotors(
+        					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
         		            targetRelFocalShift+best_qb_corr[0],
         		            targetTiltX, // for testing, normally should be 0 um/mm
         		            targetTiltY,
@@ -4320,6 +4323,7 @@ public boolean LevenbergMarquardt(
         				System.out.println("Suggested motor linearized positions: "+IJ.d2s(dmz[0],2)+":"+IJ.d2s(dmz[1],2)+":"+IJ.d2s(dmz[2],2));
         			}
         			double [] dm= getAdjustedMotors(
+        					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
         		            targetRelFocalShift+best_qb_corr[0],
         		            targetTiltX, // for testing, normally should be 0 um/mm
         		            targetTiltY,
@@ -4369,7 +4373,9 @@ public boolean LevenbergMarquardt(
     }
     
 //,
-    public double [] adjustLMA (FocusingFieldMeasurement measurement){
+    public double [] adjustLMA (
+    		FocusingFieldMeasurement measurement,
+    		boolean parallelMove){
     	if (!testMeasurement(
     			measurement,    				
 				zMin, //+best_qb_corr[0],
@@ -4390,7 +4396,13 @@ public boolean LevenbergMarquardt(
         result[0]=zTilts[0]-best_qb_corr[0];
         result[1]=zTilts[1];
         result[2]=zTilts[2];
+        double [] zm=null;
+        if (parallelMove){
+        	zm=new double [3];
+        	for (int i=0;i<zm.length;i++) zm[i]=fieldFitting.mechanicalFocusingModel.mToZm(measurement.motors[i], i);
+        }
 		double [] dm= getAdjustedMotors(
+				zm,
 	            targetRelFocalShift+best_qb_corr[0],
 	            0.0, // targetTiltX, // for testing, normally should be 0 um/mm
 	            0.0, // targetTiltY,
@@ -4426,11 +4438,13 @@ public boolean LevenbergMarquardt(
     }
     
     public double [] getAdjustedMotors(
+    		double [] zM0, //  current linearized motors (or null for full adjustment) 
             double targetRelFocalShift,
             double targetTiltX, // for testing, normally should be 0 um/mm
             double targetTiltY,  // for testing, normally should be 0 um/mm
             boolean motorSteps){ 
     	double [] zM=fieldFitting.mechanicalFocusingModel.getZM(
+    			zM0,
     			currentPX0, //fieldFitting.getCenterXY()[0],
     			currentPY0, //fieldFitting.getCenterXY()[1],
     			targetRelFocalShift,
@@ -4516,7 +4530,7 @@ public boolean LevenbergMarquardt(
     				break;
     			}
     			if (!changedEnable) {
-    				if (debugLevel>0) System.out.println("No filter chnage, finished in "+(n+1)+" steps");
+    				if (debugLevel>0) System.out.println("No filter cnange, finished in "+(n+1)+" step"+((n==0)?"":"s"));
     				return true;
     			} else {
     				if ((was2PrevEnable!=null) && (prevEnable!=null) && (was2PrevEnable.length==prevEnable.length)){
@@ -4541,7 +4555,7 @@ public boolean LevenbergMarquardt(
     	private double [] pXY=null;
     	private boolean [] centerSelect=null;
     	private boolean [] centerSelectDefault={true,true};
-    	private MechanicalFocusingModel mechanicalFocusingModel;
+    	public MechanicalFocusingModel mechanicalFocusingModel;
     	private CurvatureModel [] curvatureModel=new CurvatureModel[6]; // 3 colors, sagittal+tangential each
     	private boolean [] channelSelect=null;
     	private boolean [] mechanicalSelect=null;
@@ -6609,9 +6623,44 @@ public boolean LevenbergMarquardt(
     		}
     		return m;
     	}
+    	/**
+    	 * Calculate manual screw adjustments for focus/tilt to reduce amount of motor travel (when it is out of limits)
+    	 * @param zErr  current focal distance error in microns, positive - away from lens
+    	 * @param tXErr current horizontal tilt in microns/mm , positive - 1,2 away from lens, 3 - to the lens
+    	 * @param tYErr current vertical tilt in microns/mm , positive - 2 away from lens, 1 - to the lens
+    	 * @return array of optimal CW rotations of each screw (1.0 == 360 deg)
+    	 * Screw locations:
+    	 *       5    2
+    	 *  3    +
+    	 *       4    1
+    	 * + - center      
+    	 * 1,2 M2x0.4 set screws (push)
+    	 * 3 - M2x0.4 socket screw (push)
+    	 * 4 - M2x0.4 socket screw (pull)
+    	 * 5 - M2.5x0.45 screw (pull)
+    	 */
+    	public double [] getManualScrews(
+    			double zErr, // positive - away from lens
+    			double tXErr,// positive - 1,2 away from lens, 3 - to the lens
+    			double tYErr){// positive - 2 away from lens
+    		double [][] screws={ // right, down, thread pitch (pull)
+    				{ 20.5 ,17.5, -0.4},
+    				{ 20.5,-17.5, -0.4},
+    				{-20.5,  0.0, -0.4},
+    				{  0.0, 17.5,  0.4},
+    				{  0.0,-17.5,  0.45}};
+    		double [] moveDownUm=new double [screws.length];
+    		double [] turnCW=new double [screws.length];
+    		for (int i=0;i<screws.length;i++){
+    			moveDownUm[i]=zErr + screws[i][0]*tXErr+screws[i][1]*tYErr;
+    			turnCW[i]=0.001*moveDownUm[i]/screws[i][2];
+    		}
+    		return turnCW;
+    	}
 
     	/**
     	 * Calculate three linearized values of motor positions for current parameters, target center focal shift and tilt 
+    	 * @param zM0 current linearized position (for parallel adjustment) or null for full adjustment
     	 * @param px lens center X (pixels)
     	 * @param py lens center Y (pixels)
     	 * @param targetZ target focal shift uin the center, microns, positive - away
@@ -6620,6 +6669,7 @@ public boolean LevenbergMarquardt(
     	 * @return array of 3 linearized motor positions (microns) 
     	 */
     	public double [] getZM(
+        		double [] zMCurrent, //  current linearized motors (or null for full adjustment) 
     			double px,
     			double py,
     			double targetZ,
@@ -6627,6 +6677,16 @@ public boolean LevenbergMarquardt(
     			double targetTy){
     		double dx=PIXEL_SIZE*(px-getValue(MECH_PAR.mpX0));
     		double dy=PIXEL_SIZE*(py-getValue(MECH_PAR.mpY0));
+    		if (zMCurrent!=null){
+        		//    		0.25* zM1+ 0.25* zM2+ 0.5 * zM3 = targetZ-getValue(MECH_PAR.z0);
+        		//    		0.25* (zM1+dzM)+ 0.25* (zM2+dzM)+ 0.5 * (zM3+dzM) = targetZ-getValue(MECH_PAR.z0);
+        		//    		0.25* (dzM+ 0.25* dzM+ 0.5 * dzM = targetZ-getValue(MECH_PAR.z0) - (0.25* zM1+ 0.25* zM2+ 0.5 * zM3 );
+        		//    		dzM = targetZ-getValue(MECH_PAR.z0) - (0.25* zM1+ 0.25* zM2+ 0.5 * zM3 );
+    			double dZM=targetZ-getValue(MECH_PAR.z0)-(0.25* zMCurrent[0]+ 0.25* zMCurrent[1]+ 0.5 * zMCurrent[2]);
+    			double [] zM=zMCurrent.clone();
+    			for (int i=0;i<zM.length;i++) zM[i]+=dZM;
+    			return zM;
+    		}
     		//    		double zc= 0.25* zM1+ 0.25* zM2+ 0.5 * zM3+getValue(MECH_PAR.z0);
     		//    		double zx=dx*(getValue(MECH_PAR.tx)+(2*zM3-zM1-zM2)/(4*getValue(MECH_PAR.Lx))) ;
     		//    		double zy=dy*(getValue(MECH_PAR.ty)-(zM2-zM1)/(2*getValue(MECH_PAR.Ly)));//!

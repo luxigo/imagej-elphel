@@ -305,6 +305,7 @@ public class LensAdjustment {
         
         public boolean scanTiltEnable=true;  // enable scanning tilt
         public boolean scanTiltReverse=false;  // enable scanning tilt in both directions
+        public boolean scanMeasureLast=false;  // Calculate PSF after last move (to original position)
         public int scanTiltRangeX=14336;    // 4 periods
         public int scanTiltRangeY=14336;    // 4 periods
         public int scanTiltStepsX=24;
@@ -520,6 +521,7 @@ public class LensAdjustment {
                 
                 boolean scanTiltEnable, //=true;  // enable scanning tilt
                 boolean scanTiltReverse,
+                boolean scanMeasureLast,
                 int scanTiltRangeX, //=14336;    // 4 periods
                 int scanTiltRangeY, //=14336;    // 4 periods
                 int scanTiltStepsX, //=24;
@@ -663,6 +665,7 @@ public class LensAdjustment {
 			
 			this.scanTiltEnable=scanTiltEnable; //=true;  // enable scanning tilt
 			this.scanTiltReverse=scanTiltReverse;
+			this.scanMeasureLast=scanMeasureLast;
 			this.scanTiltRangeX=scanTiltRangeX; //, //=14336;    // 4 periods
 			this.scanTiltRangeY=scanTiltRangeY; //, //=14336;    // 4 periods
 			this.scanTiltStepsX=scanTiltStepsX; //=24;
@@ -807,6 +810,7 @@ public class LensAdjustment {
     				
     				this.scanTiltEnable,  // enable scanning tilt
     				this.scanTiltReverse,
+    				this.scanMeasureLast,
     	    		this.scanTiltRangeX,    // 4 periods
     	    		this.scanTiltRangeY,    // 4 periods
     	    		this.scanTiltStepsX,
@@ -952,24 +956,18 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"scanStep",this.scanStep+"");
 			properties.setProperty(prefix+"scanNumber",this.scanNumber+"");
 			properties.setProperty(prefix+"scanNumberNegative",this.scanNumberNegative+"");
-
 			properties.setProperty(prefix+"scanHysteresis",this.scanHysteresis+"");
 			properties.setProperty(prefix+"scanHysteresisNumber",this.scanHysteresisNumber+"");
-			
 			properties.setProperty(prefix+"scanTiltEnable",this.scanTiltEnable+"");  // enable scanning tilt
 			properties.setProperty(prefix+"scanTiltReverse",this.scanTiltReverse+"");
-			
+			properties.setProperty(prefix+"scanMeasureLast",this.scanMeasureLast+"");
 			properties.setProperty(prefix+"scanTiltRangeX",this.scanTiltRangeX+"");    // 4 periods
 			properties.setProperty(prefix+"scanTiltRangeY",this.scanTiltRangeY+"");    // 4 periods
 			properties.setProperty(prefix+"scanTiltStepsX",this.scanTiltStepsX+"");
 			properties.setProperty(prefix+"scanTiltStepsY",this.scanTiltStepsY+"");
-			
-			
 			properties.setProperty(prefix+"motorHysteresis",this.motorHysteresis+"");
 			properties.setProperty(prefix+"measuredHysteresis",this.measuredHysteresis+"");
-
 			properties.setProperty(prefix+"motorCalm",this.motorCalm+"");
-			
 			properties.setProperty(prefix+"linearReductionRatio",this.linearReductionRatio+"");
 			properties.setProperty(prefix+"motorDebug",this.motorDebug+"");
 			properties.setProperty(prefix+"lensDistanceNumPoints",this.lensDistanceNumPoints+"");
@@ -1216,6 +1214,9 @@ public class LensAdjustment {
 			if (properties.getProperty(prefix+"scanTiltReverse")!=null)
 				this.scanTiltReverse=Boolean.parseBoolean(properties.getProperty(prefix+"scanTiltReverse"));
 			
+			
+			if (properties.getProperty(prefix+"scanMeasureLast")!=null)
+				this.scanMeasureLast=Boolean.parseBoolean(properties.getProperty(prefix+"scanMeasureLast"));
 						
 			if (properties.getProperty(prefix+"scanTiltRangeX")!=null)
 				this.scanTiltRangeX=Integer.parseInt(properties.getProperty(prefix+"scanTiltRangeX"));
@@ -1364,7 +1365,7 @@ public class LensAdjustment {
 
     		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
     		gd.addCheckbox    ("Scan for tilt measurement in both directions",                                   this.scanTiltReverse);
-    		
+    		gd.addCheckbox    ("Calculate PSF after returning to the initial position",                          this.scanMeasureLast);
     		
     		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
     		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
@@ -1386,6 +1387,8 @@ public class LensAdjustment {
 
     		this.scanTiltEnable=             gd.getNextBoolean();
     		this.scanTiltReverse=            gd.getNextBoolean();
+            this.scanMeasureLast=            gd.getNextBoolean();
+    		
     		this.scanTiltRangeX=       (int) gd.getNextNumber();
     		this.scanTiltRangeY=       (int) gd.getNextNumber();
     		this.scanTiltStepsX=       (int) gd.getNextNumber();
@@ -1518,6 +1521,8 @@ public class LensAdjustment {
 
     		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
     		gd.addCheckbox    ("Scan for tilt measurement in both directions",                                   this.scanTiltReverse);
+    		gd.addCheckbox    ("Calculate PSF after returning to the initial position",                          this.scanMeasureLast);
+    		
     		
     		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
     		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
@@ -1684,6 +1689,7 @@ public class LensAdjustment {
 			
     		this.scanTiltEnable=             gd.getNextBoolean();
     		this.scanTiltReverse=            gd.getNextBoolean();
+    		this.scanMeasureLast=            gd.getNextBoolean();
     		this.scanTiltRangeX=       (int) gd.getNextNumber();
     		this.scanTiltRangeY=       (int) gd.getNextNumber();
     		this.scanTiltStepsX=       (int) gd.getNextNumber();
