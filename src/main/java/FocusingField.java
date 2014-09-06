@@ -6643,12 +6643,12 @@ public boolean LevenbergMarquardt(
     			double zErr, // positive - away from lens
     			double tXErr,// positive - 1,2 away from lens, 3 - to the lens
     			double tYErr){// positive - 2 away from lens
-    		double [][] screws={ // right, down, thread pitch (pull)
-    				{ 20.5 ,17.5, -0.4},
+    		double [][] screws={ // right, down, thread pitch (pull) !!! Inverting Y!
     				{ 20.5,-17.5, -0.4},
+    				{ 20.5, 17.5, -0.4},
     				{-20.5,  0.0, -0.4},
-    				{  0.0, 17.5,  0.4},
-    				{  0.0,-17.5,  0.45}};
+    				{  0.0,-17.5,  0.4},
+    				{  0.0, 17.5,  0.45}};
     		double [] moveDownUm=new double [screws.length];
     		double [] turnCW=new double [screws.length];
     		for (int i=0;i<screws.length;i++){
