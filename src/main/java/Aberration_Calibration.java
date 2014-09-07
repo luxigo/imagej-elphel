@@ -4079,12 +4079,25 @@ if (MORE_BUTTONS) {
 					pY0,
 					sampleCoord,
 					this.SYNC_COMMAND.stopRequested);
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false);
 			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
-			System.out.println("Saving measurement history to "+path);
 			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
+			System.out.println("Saving measurement history to "+path);
 			FOCUSING_FIELD.saveXML(path);
-			
 			saveCurrentConfig();
+// for now just copying from "Restore History". TODO: Make both more automatic (move number of parameters outside?)			
+			if (!FOCUSING_FIELD.configureDataVector("Configure curvature - TODO: fix many settings restored from properties",true,true)) return;
+			System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
+			System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
+	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
+			double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+			System.out.println("rms="+rms+", rms_pure="+rms_pure+" - with old parameters may be well off.");
 			return;
 		}
 		
@@ -4408,13 +4421,6 @@ if (MORE_BUTTONS) {
 			if (!FOCUSING_FIELD.configureDataVector("Configure curvature - TODO: fix many settings restored from properties",true,true)) return;
 			System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
 			System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
-			///			FOCUSING_FIELD.fieldFitting.initSampleCorrChnParIndex(FOCUSING_FIELD.flattenSampleCoord()); //+
-///			FOCUSING_FIELD.setDataVector(
-///					true, // calibrate mode
-///					FOCUSING_FIELD.createDataVector());
-//			FOCUSING_FIELD.fieldFitting.initSampleCorrVector( //+
-//					FOCUSING_FIELD.flattenSampleCoord(), //double [][] sampleCoordinates,
-//					FOCUSING_FIELD.getSeriesWeights()); //double [][] sampleSeriesWeights);
 	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
 			FOCUSING_FIELD.setDataVector(
 					true, // calibrate mode

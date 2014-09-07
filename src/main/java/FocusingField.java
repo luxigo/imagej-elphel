@@ -4472,6 +4472,7 @@ public boolean LevenbergMarquardt(
             double tMax,
             double tStep
             ){
+		debugDerivativesFxDxDy=false;
     	int retryLimit=20;
     	fieldFitting.mechanicalFocusingModel.setAdjustMode(true);
     	setDataVector(
@@ -5635,9 +5636,6 @@ public boolean LevenbergMarquardt(
         }
         public boolean maskSetDialog(
         		String title//,
-//         		String strategyComment,
-//        		double lambda,
-//        		boolean lastInSeries
         		){
         	GenericDialog gd = new GenericDialog(title);
         	boolean editMechMask=false;
@@ -5647,6 +5645,7 @@ public boolean LevenbergMarquardt(
         	boolean setupCorrectionPars=false;
         	boolean commonCorrectionPars=true;
         	boolean disabledCorrectionPars=false;
+            gd.addCheckbox("Only use measurements acquired during parallel moves (false - use all)",parallelOnly); //parallelOnly - parent class 
         	if (centerSelect==null) centerSelect=centerSelectDefault.clone();
         	gd.addCheckbox("Adjust aberration center (pX0)", centerSelect[0]);
         	gd.addCheckbox("Adjust aberration center (pY0)", centerSelect[1]);
@@ -5674,6 +5673,7 @@ public boolean LevenbergMarquardt(
         	//         gd.enableYesNoCancel("Keep","Apply"); // default OK (on enter) - "Keep"
         	gd.showDialog();
         	if (gd.wasCanceled()) return false;
+        	parallelOnly=gd.getNextBoolean();
         	centerSelect[0]=gd.getNextBoolean();
         	centerSelect[1]=gd.getNextBoolean();
         	for (int i=0;i<channelSelect.length;i++) {
@@ -7290,6 +7290,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     		this.lastInSeries=fs.isStopAfterThis(strategyIndex);
     		this.keepCorrectionParameters=!fs.isResetCorrection(strategyIndex);
     		this.resetCenter=fs.isResetCenter(strategyIndex);
+    		this.parallelOnly=fs.isParallelOnly(strategyIndex);
     		return true;
     	} else return false;
     }
@@ -7365,6 +7366,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         		fs.setStopAfterThis(selectedStrategyIndex,this.lastInSeries);
         		fs.setResetCorrection(selectedStrategyIndex,!this.keepCorrectionParameters);
         		fs.setResetCenter(selectedStrategyIndex,this.resetCenter);
+        		fs.setParallelOnly(selectedStrategyIndex,this.parallelOnly);
         		break;
         	case 4:
         		fs.removeStrategy(selectedStrategyIndex);
@@ -7383,6 +7385,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         		fs.setStopAfterThis(selectedStrategyIndex,this.lastInSeries);
         		fs.setResetCorrection(selectedStrategyIndex,!this.keepCorrectionParameters);
         		fs.setResetCenter(selectedStrategyIndex,this.resetCenter);
+        		fs.setParallelOnly(selectedStrategyIndex,this.parallelOnly);
         		break;
         	}
         	
@@ -7480,7 +7483,12 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 				int strategyIndex) {
 			return strategies.get(strategyIndex).isResetCenter();
 		}
-				
+
+		public boolean isParallelOnly(
+				int strategyIndex) {
+			return strategies.get(strategyIndex).isParallelOnly();
+		}
+		
 		public boolean isLast(
 				int strategyIndex) {
 			if (strategyIndex < 0) return true;
@@ -7503,6 +7511,13 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 				boolean resetCenter) {
 			strategies.get(strategyIndex).setResetCenter(resetCenter);
 		}
+
+		public void setParallelOnly(
+				int strategyIndex,
+				boolean parallelOnly) {
+			strategies.get(strategyIndex).setParallelOnly(parallelOnly);
+		}
+
 		public String getComment(
 				int strategyIndex){
 			return strategies.get(strategyIndex).getComment();
@@ -7623,6 +7638,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 			private boolean stopAfterThis=true;
 			private boolean resetCorrection=false;
 			private boolean resetCenter=false;
+			private boolean parallelOnly=true;
 			private String strategyComment="";
 			private Properties properties=null;
 			private String prefix=null;
@@ -7634,13 +7650,15 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 					double lambda,
 					boolean lastInSeries,
 					boolean resetCorrection,
-					boolean resetCenter
+					boolean resetCenter,
+					boolean parallelOnly
 					){
 				this.strategyComment=strategyComment;
 				initialLambda=lambda;
 				stopAfterThis=lastInSeries;
 				this.resetCorrection=resetCorrection;
 				this.resetCenter=resetCenter;
+				this.parallelOnly=parallelOnly;
 				setDefaults();
 			}
 			private void setDefaults(){
@@ -7769,8 +7787,16 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 			public boolean isResetCenter() {
 				return resetCenter;
 			}
+			
 			public void setResetCenter(boolean resetCenter) {
 				this.resetCenter = resetCenter;
+			}
+
+			public boolean isParallelOnly() {
+				return parallelOnly;
+			}
+			public void setParallelOnly(boolean parallelOnly) {
+				this.parallelOnly = parallelOnly;
 			}
 
 			public void setStrategy( // any of the arguments can be null - do not set this array
@@ -7851,6 +7877,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 				properties.setProperty(prefix+"stopAfterThis",isStopAfterThis()+"");
 				properties.setProperty(prefix+"resetCorrection",isResetCorrection()+"");
 				properties.setProperty(prefix+"resetCenter",isResetCenter()+"");
+				properties.setProperty(prefix+"parallelOnly",isParallelOnly()+"");
 				properties.setProperty(prefix+"strategyComment","<![CDATA["+strategyComment+ "]]>");
             }
             public void getProperties(String prefix,Properties properties){
@@ -7872,6 +7899,8 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
             	if (s!=null) resetCorrection=Boolean.parseBoolean(s);
             	s=properties.getProperty(prefix+"resetCenter");
             	if (s!=null) resetCenter=Boolean.parseBoolean(s);
+            	s=properties.getProperty(prefix+"parallelOnly");
+            	if (s!=null) parallelOnly=Boolean.parseBoolean(s);
             	s=properties.getProperty(prefix+"strategyComment");
             	if (s!=null){
             		strategyComment=s;
