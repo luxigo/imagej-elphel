@@ -3100,15 +3100,22 @@ public class CalibrationHardwareInterface {
 		return null;
 	}
 	
-//	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
-//		this.focusingHistory.addCurrentHistory(focusingField);
-//	}
-	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
-		for (int i=0;i<historySize();i++){
+	public void addCurrentHistoryToFocusingField(
+			FocusingField focusingField,
+			int start,
+			int end){
+		for (int i=start;i<end;i++){
 			addCurrentHistoryToFocusingField(focusingField,i);
 		}        	 
-//		this.focusingHistory.addCurrentHistory(focusingField);
-	}
+	} 
+
+	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
+		addCurrentHistoryToFocusingField(
+				focusingField,
+				0,
+				historySize()
+				);
+	} 
 
 	public void addCurrentHistoryToFocusingField(
 			FocusingField focusingField,
@@ -5086,6 +5093,31 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
 			double [] polyCoeff=pa.polynomialApproximation1d(data, 1); // just linear
 			return polyCoeff;
      	}
+
+     	public double [] temperatureLinearApproximation(
+     			double [][] ZTM,            // Z, tXx, tY, m1,m2,m3 found with LMA 
+     			int numSamples             // number of last samples from history to use, 0 - use all
+     			){
+     		if (numSamples<=0) numSamples=this.history.size();
+     		if (numSamples>this.history.size()) numSamples=this.history.size();
+    		int firstSample=this.history.size()-numSamples;
+    		
+    		int numGoodSamples=0;
+     		for (int nSample=0;nSample<numSamples;nSample++){
+     			if (ZTM[firstSample+nSample]!=null) numGoodSamples++;
+     		}
+     		double [][] data =new double [numGoodSamples][2]; // no weights
+     		int index=0;
+     		for (int nSample=0;nSample<numSamples;nSample++) if (ZTM[firstSample+nSample]!=null) {
+				data[index][0]=this.history.get(firstSample+nSample).getTemperature();
+				data[index++][1]=ZTM[firstSample+nSample][0]; // Z
+     		}
+			PolynomialApproximation pa= new PolynomialApproximation(debugLevel);
+			double [] polyCoeff=pa.polynomialApproximation1d(data, 1); // just linear
+			return polyCoeff;
+     	}
+     	
+     	
 /**
  *  will return same coordinates if tolerances are met     	
  * @param useTheBest

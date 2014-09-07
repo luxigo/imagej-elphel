@@ -4373,7 +4373,31 @@ public boolean LevenbergMarquardt(
     }
     
 //,
+    public double [][] getAllZTM(
+    		boolean noTiltScan){
+    	double [][] result =new double[measurements.size()][6];
+    	for (int i=0;i<result.length;i++) result[i]=adjustLMA(noTiltScan,measurements.get(i),false);
+    	return result;
+    }
+
+    public double [] averageZTM(
+    		boolean noTiltScan){
+    	double [] result =new double[6];
+    	for (int i=0;i<result.length;i++) result[i]=0.0;
+    	int num=0;
+    	for (FocusingFieldMeasurement measurement:measurements){
+    		double [] ZTM = adjustLMA(noTiltScan,measurement,false);
+    		if (ZTM!=null) {
+    			for (int i=0;i<result.length;i++) result[i]+=ZTM[i];
+    			num++;
+    		}
+    	}
+    	if (num==0) return null;
+    	for (int i=0;i<result.length;i++) result[i]/=num;
+    	return result;
+    }
     public double [] adjustLMA (
+    		boolean noTiltScan,
     		FocusingFieldMeasurement measurement,
     		boolean parallelMove){
     	if (!testMeasurement(
@@ -4381,8 +4405,8 @@ public boolean LevenbergMarquardt(
 				zMin, //+best_qb_corr[0],
 		        zMax, //+best_qb_corr[0],
 		        zStep, 
-				tMin,
-		        tMax,
+		        (noTiltScan?0.0:tMin),
+		        (noTiltScan?0.0:tMax),
 		        tStep)) {
 			if (debugLevel>0) System.out.println("adjustLMA() failed");
     		return null;
