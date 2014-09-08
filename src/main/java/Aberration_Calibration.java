@@ -5094,8 +5094,9 @@ if (MORE_BUTTONS) {
 			double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates( //{x,y,r}
 					pX0,   // lens center on the sensor
 					pY0);
+			FocusingField ff= null;
 			if (useLMA){
-				FOCUSING_FIELD= new FocusingField(
+				ff= new FocusingField(
 						FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 						FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
 						FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
@@ -5103,15 +5104,15 @@ if (MORE_BUTTONS) {
 						pY0,
 						sampleCoord,
 						this.SYNC_COMMAND.stopRequested);
-				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-				FOCUSING_FIELD.setAdjustMode(false);
-				if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
+				ff.setDebugLevel(DEBUG_LEVEL);
+				ff.setAdjustMode(false);
+				if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES);
 				MOTORS.addCurrentHistoryToFocusingField(
-						FOCUSING_FIELD,
+						ff,
 						(runs==0)?0:(MOTORS.historySize()-runs),
 								MOTORS.historySize()); // all newly acquired
-				if (modeAverage){ // calculate/show average over the last run - only in "average" mode
-					double [] ZTM=FOCUSING_FIELD.averageZTM(noTiltScan); // no tilt scan - faster
+				if (modeAverage && (FOCUSING_FIELD!=null)){ // calculate/show average over the last run - only in "average" mode
+					double [] ZTM=FOCUSING_FIELD.averageZTM(noTiltScan,ff); // no tilt scan - faster
 					if (MASTER_DEBUG_LEVEL>0) {
 						String msg="Failed to calulate average focus/tilt";
 						if (ZTM!=null) msg="Average:\n"+
@@ -5159,13 +5160,13 @@ if (MORE_BUTTONS) {
 						FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,
 						FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT
 						);
-				if (useLMA){
+				if (useLMA && (ff!=null)){
 					String focusingPath=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
 					System.out.println("Saving measurement history to "+focusingPath);
-					FOCUSING_FIELD.saveXML(focusingPath);
+					ff.saveXML(focusingPath);
 				}
 			}
-// Calculate and showaverage distances and tilts for measured history			
+// Calculate and show average distances and tilts for measured history			
 			
 			if (!modeAverage) {
 				
@@ -5196,7 +5197,7 @@ if (MORE_BUTTONS) {
 				}
 // Now in LMA mode - recalculate and overwrite
 				if (useLMA){
-					FOCUSING_FIELD= new FocusingField(
+					ff= new FocusingField(
 							FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 							FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
 							FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
@@ -5204,14 +5205,14 @@ if (MORE_BUTTONS) {
 							pY0,
 							sampleCoord,
 							this.SYNC_COMMAND.stopRequested);
-					FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-					FOCUSING_FIELD.setAdjustMode(false);
-					if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
-					MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD); // all, not just newly acquired
+					ff.setDebugLevel(DEBUG_LEVEL);
+					ff.setAdjustMode(false);
+					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES);
+					MOTORS.addCurrentHistoryToFocusingField(ff); // all, not just newly acquired
 					if (MASTER_DEBUG_LEVEL>0){
 						System.out.println ("*** Calculating focal distance shift for each of "+MOTORS.historySize()+" recorded measurments ***");
 					}
-					double [][] allZTM=FOCUSING_FIELD.getAllZTM(noTiltScan); // no tilt scan (supposed to be adjusted
+					double [][] allZTM=FOCUSING_FIELD.getAllZTM(noTiltScan,ff); // no tilt scan (supposed to be adjusted
 					lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
 							allZTM,
 							runs

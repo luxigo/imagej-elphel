@@ -4374,18 +4374,20 @@ public boolean LevenbergMarquardt(
     
 //,
     public double [][] getAllZTM(
-    		boolean noTiltScan){
-    	double [][] result =new double[measurements.size()][6];
-    	for (int i=0;i<result.length;i++) result[i]=adjustLMA(noTiltScan,measurements.get(i),false);
+    		boolean noTiltScan,
+    		FocusingField ff){
+    	double [][] result =new double[ff.measurements.size()][6];
+    	for (int i=0;i<result.length;i++) result[i]=adjustLMA(noTiltScan,ff.measurements.get(i),false);
     	return result;
     }
 
     public double [] averageZTM(
-    		boolean noTiltScan){
+    		boolean noTiltScan,
+    		FocusingField ff){
     	double [] result =new double[6];
     	for (int i=0;i<result.length;i++) result[i]=0.0;
     	int num=0;
-    	for (FocusingFieldMeasurement measurement:measurements){
+    	for (FocusingFieldMeasurement measurement:ff.measurements){
     		double [] ZTM = adjustLMA(noTiltScan,measurement,false);
     		if (ZTM!=null) {
     			for (int i=0;i<result.length;i++) result[i]+=ZTM[i];
