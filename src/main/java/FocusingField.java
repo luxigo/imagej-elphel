@@ -85,6 +85,10 @@ public class FocusingField {
 	double  filterTiltedByValueScale; // filter tilted measurement samples if the spot FWHM is higher than scaled best FWHM
 	boolean filterByScanValue;        // filter adjustment samples if fwhm exceeds maximal used in focal scan mode
 	boolean filterTiltedByScanValue;  // filter tilted samples if fwhm exceeds maximal used in focal scan mode
+	int     filterByNeib;             // remove samples having less neighbors (same channel) that this during adjustment
+	int     filterCalibByNeib;        // remove samples having less neighbors (same channel) that this during calibration
+	double  filterSetsByRMS;          // remove complete sets (same timestamp) with RMS greater than scaled average
+	boolean filterSetsByRMSTiltOnly;  // only remove non-scan sets
 	int     minLeftSamples;       // minimal number of samples (channel/dir/location) for adjustment
 	int     minCenterSamplesBest; // minimal number of samples (channel/dir/location) for adjustment in the center, best channel
 	int     minCenterSamplesTotal; // minimal number of samples (channel/dir/location) for adjustment in the center, all channels total
@@ -238,7 +242,11 @@ public class FocusingField {
     	filterTiltedByValueScale=1.5;
     	filterByScanValue=true;        // filter adjustment samples if fwhm exceeds maximal used in focal scan mode
     	filterTiltedByScanValue=true;  // filter tilted samples if fwhm exceeds maximal used in focal scan mode
-
+    	filterByNeib=3;                // remove samples having less neighbors (same channel) that this during adjustment
+    	filterCalibByNeib=3;           // remove samples having less neighbors (same channel) that this during calibration
+    	filterSetsByRMS=0.0;           // remove complete sets (same timestamp) with RMS greater than scaled average
+    	filterSetsByRMSTiltOnly=true;  // only remove non-scan sets
+    	
     	minLeftSamples=10;      // minimal number of samples (channel/dir/location) for adjustment
     	minCenterSamplesBest=4; // minimal number of samples (channel/dir/location) for adjustment in the center, best channel
     	minCenterSamplesTotal=0;// minimal number of samples (channel/dir/location) for adjustment in the center, all channels total
@@ -377,6 +385,10 @@ public class FocusingField {
     		properties.setProperty(prefix+"filterTiltedByValueScale",filterTiltedByValueScale+"");
     		properties.setProperty(prefix+"filterByScanValue",filterByScanValue+"");
     		properties.setProperty(prefix+"filterTiltedByScanValue",filterTiltedByScanValue+"");
+    		properties.setProperty(prefix+"filterByNeib",filterByNeib+"");
+    		properties.setProperty(prefix+"filterCalibByNeib",filterCalibByNeib+"");
+    		properties.setProperty(prefix+"filterSetsByRMS",filterSetsByRMS+"");
+    		properties.setProperty(prefix+"filterSetsByRMSTiltOnly",filterSetsByRMSTiltOnly+"");
     		properties.setProperty(prefix+"minLeftSamples",minLeftSamples+"");
     		properties.setProperty(prefix+"minCenterSamplesBest",minCenterSamplesBest+"");
     		properties.setProperty(prefix+"minCenterSamplesTotal",minCenterSamplesTotal+"");
@@ -491,6 +503,14 @@ public class FocusingField {
 			filterByScanValue=Boolean.parseBoolean(properties.getProperty(prefix+"filterByScanValue"));
 		if (properties.getProperty(prefix+"filterTiltedByScanValue")!=null)
 			filterTiltedByScanValue=Boolean.parseBoolean(properties.getProperty(prefix+"filterTiltedByScanValue"));
+		if (properties.getProperty(prefix+"filterByNeib")!=null)
+			filterByNeib=Integer.parseInt(properties.getProperty(prefix+"filterByNeib"));
+		if (properties.getProperty(prefix+"filterCalibByNeib")!=null)
+			filterCalibByNeib=Integer.parseInt(properties.getProperty(prefix+"filterCalibByNeib"));
+		if (properties.getProperty(prefix+"filterSetsByRMS")!=null)
+			filterSetsByRMS=Double.parseDouble(properties.getProperty(prefix+"filterSetsByRMS"));
+		if (properties.getProperty(prefix+"filterSetsByRMSTiltOnly")!=null)
+			filterSetsByRMSTiltOnly=Boolean.parseBoolean(properties.getProperty(prefix+"filterSetsByRMSTiltOnly"));
 		if (properties.getProperty(prefix+"minLeftSamples")!=null)
 			minLeftSamples=Integer.parseInt(properties.getProperty(prefix+"minLeftSamples"));
 		if (properties.getProperty(prefix+"minCenterSamplesBest")!=null)
@@ -686,139 +706,158 @@ public class MeasuredSample{
         this.scan=scan;
     }
 }
-public boolean configureDataVector(String title, boolean forcenew, boolean enableReset){
-    if ((fieldFitting == null) && !forcenew){
-        forcenew=true;
-    }
-    boolean setupMasks=true,setupParameters=true,showDisabled=true;
-    FieldFitting tmpFieldFitting=fieldFitting;
-    if (tmpFieldFitting==null) tmpFieldFitting=    new FieldFitting(); // just to get field description
-    int [] numCurvPars=tmpFieldFitting.getNumCurvars();
-    GenericDialog gd = new GenericDialog(title+(forcenew?" RESETTING DATA":""));
-    gd.addCheckbox("Only use measurements acquired during parallel moves (false - use all)",parallelOnly);
-    
-    gd.addCheckbox("Remove \"crazy\" input data (small motor move causing large variations of FWHM)",filterInput);
-    gd.addNumericField("Maximal motor move to be considered small",filterInputMotorDiff,0,5,"steps (~90um/step)");
-    gd.addNumericField("Maximal allowed PSF FWHM variations fro the move above",filterInputDiff,3,5,"um");
-    gd.addCheckbox("Remove first/last in a series of measuremnts separated by small (see above) steps",filterInputFirstLast);
-    gd.addCheckbox("Remove measurements taken too far from the rest for the same channel/sample",filterInputTooFar);
-    gd.addNumericField("\"Too far\" ratio to the average distance to the center of measurements",filterInputFarRatio,3,5,"um");
+public boolean configureDataVector(
+		boolean silent,
+		String title,
+		boolean forcenew,
+		boolean enableReset){
+	if ((fieldFitting == null) && !forcenew){
+		forcenew=true;
+	}
+	boolean setupMasks=silent?false:true;
+	boolean setupParameters=silent?false:true;
+	boolean showDisabled=silent?false:true;
+	FieldFitting tmpFieldFitting=fieldFitting;
+	if (tmpFieldFitting==null) tmpFieldFitting=    new FieldFitting(); // just to get field description
+	int [] numCurvPars=tmpFieldFitting.getNumCurvars();
+	if (!silent) {
+		GenericDialog gd = new GenericDialog(title+(forcenew?" RESETTING DATA":""));
+		gd.addCheckbox("Only use measurements acquired during parallel moves (false - use all)",parallelOnly);
 
-    gd.addCheckbox("Filter non-concave areas from best focus for each sample",filterInputConcave);
-    gd.addNumericField("Concave filter sigma",filterInputConcaveSigma,3,5,"um");
-    gd.addCheckbox("Remove small series ",filterInputConcaveRemoveFew);
-    gd.addNumericField("Minimal number of samples (to remove / apply concave filter) ",filterInputConcaveMinSeries,3,5,"samples");
-    gd.addNumericField("Concave filter scale",filterInputConcaveScale,3,5,"<=1.0");
+		gd.addCheckbox("Remove \"crazy\" input data (small motor move causing large variations of FWHM)",filterInput);
+		gd.addNumericField("Maximal motor move to be considered small",filterInputMotorDiff,0,5,"steps (~90um/step)");
+		gd.addNumericField("Maximal allowed PSF FWHM variations fro the move above",filterInputDiff,3,5,"um");
+		gd.addCheckbox("Remove first/last in a series of measuremnts separated by small (see above) steps",filterInputFirstLast);
+		gd.addCheckbox("Remove measurements taken too far from the rest for the same channel/sample",filterInputTooFar);
+		gd.addNumericField("\"Too far\" ratio to the average distance to the center of measurements",filterInputFarRatio,3,5,"um");
 
-    gd.addCheckbox("Filter tilted samples/channels by Z",filterTiltedZ);
-    gd.addCheckbox("Filter tilted samples by value (leave lower than maximal fwhm used in focal scan mode)",filterTiltedByScanValue);
-    gd.addNumericField("Filter tilted samples by value (remove samples above scaled best FWHM for channel/location)",filterTiltedByValueScale,2,5,"x");
+		gd.addCheckbox("Filter non-concave areas from best focus for each sample",filterInputConcave);
+		gd.addNumericField("Concave filter sigma",filterInputConcaveSigma,3,5,"um");
+		gd.addCheckbox("Remove small series ",filterInputConcaveRemoveFew);
+		gd.addNumericField("Minimal number of samples (to remove / apply concave filter) ",filterInputConcaveMinSeries,3,5,"samples");
+		gd.addNumericField("Concave filter scale",filterInputConcaveScale,3,5,"<=1.0");
 
-    gd.addCheckbox("Sagittal channels are master channels (false - tangential are masters)",sagittalMaster);
-    gd.addMessage("=== Setting minimal measured PSF radius for different colors/directions ===");
-    
-        
-    for (int i=0;i<minMeas.length;i++){
-        gd.addNumericField(tmpFieldFitting.getDescription(i),this.minMeas[i],3,5,"pix");
-    }
-    gd.addCheckbox("Use minimal radius",useMinMeas);
-    gd.addMessage("=== Setting maximal measured PSF radius for different colors/directions ===");
-    for (int i=0;i<maxMeas.length;i++){
-        gd.addNumericField(tmpFieldFitting.getDescription(i),this.maxMeas[i],3,5,"pix");
-    }
-    gd.addCheckbox("Use maximal radius",useMaxMeas);
-    gd.addMessage("=== Setting maximal usable PSF radius for different colors/directions ===");
-    for (int i=0;i<thresholdMax.length;i++){
-        gd.addNumericField(tmpFieldFitting.getDescription(i),this.thresholdMax[i],3,5,"pix");
-    }
-    gd.addCheckbox("Discard measurements with PSF radius above specified above threshold",useThresholdMax);
-    if (forcenew) {
-        gd.addMessage("=== Setting number of parameters for approximation of the PSF dimensions ===");
-        gd.addNumericField("Number of parameters for psf(z) approximation (>=3)",numCurvPars[0],0);
-        gd.addNumericField("Number of parameters for radial dependence of PSF curves (>=1)",numCurvPars[1],0);
-    }
-    gd.addMessage("");
-    gd.addNumericField("Data weight mode (0 - equal mode, 1 -linear treshold diff, 2 - quadratic threshold diff)",weightMode,0);
-    gd.addNumericField("Data weight radius (multiply weight by Gaussian), 0 - no dependence on radius",weightRadius,3,5,"mm");
-    gd.addCheckbox("Setup parameter masks?",setupMasks);
-    gd.addCheckbox("Setup parameter values?",setupParameters);
-    gd.addCheckbox("Show/modify disabled for auto-adjustment parameters?",showDisabled);
-    gd.addCheckbox("Debug feature: update measurements and /dxc, /dyc if center is being fitted",correct_measurement_ST);
-    gd.addCheckbox("Debug feature: update sample weights during fitting",updateWeightWhileFitting);
-    if (enableReset) gd.enableYesNoCancel("OK","Reset to defaults, re-open"); // default OK (on enter) - "Apply"
-    WindowTools.addScrollBars(gd);
-    gd.showDialog();
-    if (gd.wasCanceled()) return false;
-    if (!gd.wasOKed()) {
-    	savedProperties=null;
-    	setDefaults();
-    	if (!configureDataVector(title, true,false)) return false;
-    	return true;
-    }
-    
- // boolean configureDataVector(String title, boolean forcenew, boolean moreset)   
-    
-    parallelOnly=            gd.getNextBoolean();
-    filterInput=             gd.getNextBoolean();
-    filterInputMotorDiff=    gd.getNextNumber();
-    filterInputDiff=         gd.getNextNumber();
-    
-    filterInputFirstLast=    gd.getNextBoolean();
-    filterInputTooFar=       gd.getNextBoolean();
-    filterInputFarRatio=     gd.getNextNumber();
-	filterInputConcave=      gd.getNextBoolean();
-	filterInputConcaveSigma= gd.getNextNumber();
-	filterInputConcaveRemoveFew=       gd.getNextBoolean();
-	filterInputConcaveMinSeries= (int) gd.getNextNumber();
-	filterInputConcaveScale=           gd.getNextNumber();
-	
-    filterTiltedZ=                     gd.getNextBoolean();
-    filterTiltedByScanValue=           gd.getNextBoolean();
-    filterTiltedByValueScale=          gd.getNextNumber();
-    
-    sagittalMaster= gd.getNextBoolean();
-    for (int i=0;i<minMeas.length;i++)this.minMeas[i]= gd.getNextNumber();
-    useMinMeas= gd.getNextBoolean();
-    for (int i=0;i<maxMeas.length;i++) this.maxMeas[i]= gd.getNextNumber();
-    useMaxMeas= gd.getNextBoolean();
-    for (int i=0;i<thresholdMax.length;i++) this.thresholdMax[i] = gd.getNextNumber();
-    useThresholdMax= gd.getNextBoolean();
-    if (forcenew) {
-        numCurvPars[0] = (int) gd.getNextNumber();
-        numCurvPars[1] = (int) gd.getNextNumber();
-    }
-    weightMode = (int) gd.getNextNumber();
-        weightRadius = gd.getNextNumber();
+		gd.addCheckbox("Filter tilted samples/channels by Z",filterTiltedZ);
+		gd.addCheckbox("Filter tilted samples by value (leave lower than maximal fwhm used in focal scan mode)",filterTiltedByScanValue);
+		gd.addNumericField("Filter tilted samples by value (remove samples above scaled best FWHM for channel/location)",filterTiltedByValueScale,2,5,"x");
+		
+		gd.addNumericField("Remove samples having less neighbors (same channel) than this",filterCalibByNeib,0,1,"");
+		
+		gd.addNumericField("Remove complete sets (same timestamp) with RMS greater than scaled average RMS",filterSetsByRMS,3,5,"x");
+		gd.addCheckbox("Only remove sets of tilt calibration, keep focus scanning ones",filterSetsByRMSTiltOnly);
+		
+		gd.addCheckbox("Sagittal channels are master channels (false - tangential are masters)",sagittalMaster);
+		gd.addMessage("=== Setting minimal measured PSF radius for different colors/directions ===");
 
-    setupMasks= gd.getNextBoolean();
-    setupParameters= gd.getNextBoolean();
-    showDisabled= gd.getNextBoolean();
-    correct_measurement_ST= gd.getNextBoolean();
-    updateWeightWhileFitting= gd.getNextBoolean();
-    if (forcenew) {
-        this.fieldFitting= new FieldFitting(
-                currentPX0,
-                currentPY0,
-                numCurvPars[0],
-                numCurvPars[1]);
-        if (savedProperties!=null){
-        	if (debugLevel>0) System.out.println("configureDataVector(): Applying properties");
-        	getProperties(propertiesPrefix,savedProperties); // overwrites parallelOnly!
-        }
-    }
+
+		for (int i=0;i<minMeas.length;i++){
+			gd.addNumericField(tmpFieldFitting.getDescription(i),this.minMeas[i],3,5,"pix");
+		}
+		gd.addCheckbox("Use minimal radius",useMinMeas);
+		gd.addMessage("=== Setting maximal measured PSF radius for different colors/directions ===");
+		for (int i=0;i<maxMeas.length;i++){
+			gd.addNumericField(tmpFieldFitting.getDescription(i),this.maxMeas[i],3,5,"pix");
+		}
+		gd.addCheckbox("Use maximal radius",useMaxMeas);
+		gd.addMessage("=== Setting maximal usable PSF radius for different colors/directions ===");
+		for (int i=0;i<thresholdMax.length;i++){
+			gd.addNumericField(tmpFieldFitting.getDescription(i),this.thresholdMax[i],3,5,"pix");
+		}
+		gd.addCheckbox("Discard measurements with PSF radius above specified above threshold",useThresholdMax);
+		if (forcenew) {
+			gd.addMessage("=== Setting number of parameters for approximation of the PSF dimensions ===");
+			gd.addNumericField("Number of parameters for psf(z) approximation (>=3)",numCurvPars[0],0);
+			gd.addNumericField("Number of parameters for radial dependence of PSF curves (>=1)",numCurvPars[1],0);
+		}
+		gd.addMessage("");
+		gd.addNumericField("Data weight mode (0 - equal mode, 1 -linear treshold diff, 2 - quadratic threshold diff)",weightMode,0);
+		gd.addNumericField("Data weight radius (multiply weight by Gaussian), 0 - no dependence on radius",weightRadius,3,5,"mm");
+		gd.addCheckbox("Setup parameter masks?",setupMasks);
+		gd.addCheckbox("Setup parameter values?",setupParameters);
+		gd.addCheckbox("Show/modify disabled for auto-adjustment parameters?",showDisabled);
+		gd.addCheckbox("Debug feature: update measurements and /dxc, /dyc if center is being fitted",correct_measurement_ST);
+		gd.addCheckbox("Debug feature: update sample weights during fitting",updateWeightWhileFitting);
+		if (enableReset) gd.enableYesNoCancel("OK","Reset to defaults, re-open"); // default OK (on enter) - "Apply"
+		WindowTools.addScrollBars(gd);
+		gd.showDialog();
+		if (gd.wasCanceled()) return false;
+		if (!gd.wasOKed()) {
+			savedProperties=null;
+			setDefaults();
+			if (!configureDataVector(false,title, true,false)) return false;
+			return true;
+		}
+
+		// boolean configureDataVector(String title, boolean forcenew, boolean moreset)   
+
+		parallelOnly=            gd.getNextBoolean();
+		filterInput=             gd.getNextBoolean();
+		filterInputMotorDiff=    gd.getNextNumber();
+		filterInputDiff=         gd.getNextNumber();
+
+		filterInputFirstLast=    gd.getNextBoolean();
+		filterInputTooFar=       gd.getNextBoolean();
+		filterInputFarRatio=     gd.getNextNumber();
+		filterInputConcave=      gd.getNextBoolean();
+		filterInputConcaveSigma= gd.getNextNumber();
+		filterInputConcaveRemoveFew=       gd.getNextBoolean();
+		filterInputConcaveMinSeries= (int) gd.getNextNumber();
+		filterInputConcaveScale=           gd.getNextNumber();
+
+		filterTiltedZ=                     gd.getNextBoolean();
+		filterTiltedByScanValue=           gd.getNextBoolean();
+		filterTiltedByValueScale=          gd.getNextNumber();
+		filterCalibByNeib=           (int) gd.getNextNumber();
+    	filterSetsByRMS=                   gd.getNextNumber();
+    	filterSetsByRMSTiltOnly=           gd.getNextBoolean();
+		
+
+		sagittalMaster= gd.getNextBoolean();
+		for (int i=0;i<minMeas.length;i++)this.minMeas[i]= gd.getNextNumber();
+		useMinMeas= gd.getNextBoolean();
+		for (int i=0;i<maxMeas.length;i++) this.maxMeas[i]= gd.getNextNumber();
+		useMaxMeas= gd.getNextBoolean();
+		for (int i=0;i<thresholdMax.length;i++) this.thresholdMax[i] = gd.getNextNumber();
+		useThresholdMax= gd.getNextBoolean();
+		if (forcenew) {
+			numCurvPars[0] = (int) gd.getNextNumber();
+			numCurvPars[1] = (int) gd.getNextNumber();
+		}
+		weightMode = (int) gd.getNextNumber();
+		weightRadius = gd.getNextNumber();
+
+		setupMasks= gd.getNextBoolean();
+		setupParameters= gd.getNextBoolean();
+		showDisabled= gd.getNextBoolean();
+		correct_measurement_ST= gd.getNextBoolean();
+		updateWeightWhileFitting= gd.getNextBoolean();
+	}
+	if (forcenew) {
+		this.fieldFitting= new FieldFitting(
+				currentPX0,
+				currentPY0,
+				numCurvPars[0],
+				numCurvPars[1]);
+		if (savedProperties!=null){
+			if (debugLevel>0) System.out.println("configureDataVector(): Applying properties");
+			getProperties(propertiesPrefix,savedProperties); // overwrites parallelOnly!
+		}
+	}
 	fieldFitting.setCenterXY(currentPX0,currentPY0);
-    if (setupMasks) {
-        if (!fieldFitting.maskSetDialog("Setup parameter masks")) return false;
-    }
-    if (setupParameters) {
-        if (!fieldFitting.showModifyParameterValues("Setup parameter values",showDisabled)) return false;
-    }
-    double [] centerXY=fieldFitting.getCenterXY();
-    currentPX0=centerXY[0];
-    currentPY0=centerXY[1];
-    this.savedVector=fieldFitting.createParameterVector(sagittalMaster);
-//     initialVector     
-    return true;
+	if (setupMasks) {
+		if (!fieldFitting.maskSetDialog("Setup parameter masks")) return false;
+	} else {
+       	fieldFitting.initSampleCorrChnParIndex(flattenSampleCoord());
+	}
+	if (setupParameters) {
+		if (!fieldFitting.showModifyParameterValues("Setup parameter values",showDisabled)) return false;
+	}
+	double [] centerXY=fieldFitting.getCenterXY();
+	currentPX0=centerXY[0];
+	currentPY0=centerXY[1];
+	this.savedVector=fieldFitting.createParameterVector(sagittalMaster);
+	//     initialVector     
+	return true;
 }
 
 private boolean [] dataWeightsToBoolean(){
@@ -1007,17 +1046,30 @@ private boolean [] filterByValue (
     		true, // boolean corrected,
     		true //boolean allChannels 
     		);
+	if (scale>1.0){
+		for (int chn=0;chn<fwhm.length;chn++) for (int sample=0;sample<fwhm[chn].length;sample++){
+			fwhm[chn][sample]*=scale;
+		}
+	} else {
+		if (zRanges==null) {
+			System.out.println("filterByValue(): scale <=1.0 and zRanges==null -> nothing filtered");
+			return enable_in.clone();
+		}
+		for (int chn=0;chn<fwhm.length;chn++) for (int sample=0;sample<fwhm[chn].length;sample++){
+			if ((zRanges[chn]!=null) && (zRanges[chn][sample]!=null)){
+				fwhm[chn][sample]+=scale*(zRanges[chn][sample][2]-fwhm[chn][sample]); // based on worst accepted during calibration
+			}
+		}
+	}
 	int numFiltered=0;
 //	int numLeft=0;
 	if (scale>0.0) {
 		for (int index=0;index<dataVector.length;index++) if ((index>=enable_masked.length) || enable_masked[index]){
 			int chn=dataVector[index].channel;
 			int sample=dataVector[index].sampleIndex;
-			if (dataVector[index].value > scale*fwhm[chn][sample]){
+			if (dataVector[index].value > fwhm[chn][sample]){
 				enable_out[index]=false;
 				numFiltered++;
-//			} else {
-//				numLeft++;
 			}
 		}
 	}
@@ -1458,6 +1510,120 @@ private boolean [] filterCrazyInput(
 	return enable_out;
 }
 
+private boolean [] filterSets(
+		boolean [] enable_in,
+		double scaleRMS,
+		boolean [] scanMask // if not null, will not touch samples where true
+		){
+	double [] sv=fieldFitting.createParameterVector(sagittalMaster);
+	double [] fX= createFXandJacobian(sv, false);
+	double maxRMS=        scaleRMS*calcErrorDiffY(fX, true);
+    int [] indices=getSetIndices();
+    double [] setRMA=calcErrorsPerSet(fX);
+
+	if (enable_in==null) {
+		enable_in=new boolean [dataVector.length];
+		for (int i=0;i<enable_in.length;i++)enable_in[i]=true;
+	}
+	boolean [] enable_masked=enable_in.clone();
+	if  (scanMask!=null) {
+		for (int i=0;i<enable_masked.length;i++) if ((i<scanMask.length) && scanMask[i]) enable_masked[i]=false;
+	}
+	boolean [] enable_out=enable_masked.clone();
+	int numFiltered=0;
+	for (int numSet=0;numSet<setRMA.length;numSet++) if (setRMA[numSet]>maxRMS){
+    	int nextIndex=(numSet==(indices.length-1)?dataVector.length:indices[numSet+1]);
+    	for (int i=indices[numSet];i<nextIndex;i++) if (enable_out[i]){
+    		numFiltered++;
+    		enable_out[i]=false;
+    	}
+	}
+	// restore masked out data
+	if  (scanMask!=null) {
+		for (int i=0;i<enable_out.length;i++) if (
+				(i<scanMask.length) &&
+				scanMask[i]  &&
+				enable_in[i]) enable_out[i]=true;
+	}
+	if (debugLevel>0) {
+		int numLeft=0;
+		for (int i=0;i<enable_out.length;i++) if (enable_out[i]) numLeft++;
+		System.out.println("filterSets(): Filtered "+numFiltered+" samples, left "+numLeft+" samples");
+	}
+	return enable_out;
+}
+
+
+private boolean [] filterLowNeighbors(
+		boolean [] enable_in, // [meas][cjn][sample] (or null) // can be shorter or longer than dataVector
+		int minNeib,
+		boolean calibMode
+		){
+	if (enable_in==null) {
+		enable_in=new boolean [dataVector.length];
+		for (int i=0;i<enable_in.length;i++)enable_in[i]=true;
+	}
+	boolean [] enable_out=enable_in.clone();
+	boolean [][] usedSamples=new boolean[getNumChannels()][getNumSamples()];
+	int height=sampleCoord.length;
+	int width= sampleCoord[0].length;
+	int numFiltered=0;
+	int lastIndex;
+	int firstIndex;
+	int nextIndex=0;
+	String lastTimestamp="";
+	int [][]dirs={{1,0},{1,1},{0,1},{-1,1},{-1,0},{-1,-1},{0,-1},{1,-1}};
+	while (nextIndex < dataVector.length){
+		// find first enabled sample
+		for(firstIndex=nextIndex;(firstIndex<dataVector.length) && ((firstIndex < enable_in.length) && !enable_in[firstIndex]); firstIndex++);
+//		if (firstIndex>=dataVector.length){
+//			break;
+//		}
+		lastTimestamp=dataVector[firstIndex].timestamp;
+		lastIndex=firstIndex;
+		for (nextIndex=firstIndex; nextIndex<dataVector.length;	nextIndex++) if ((nextIndex >= enable_in.length) || enable_in[nextIndex]){
+			if (dataVector[nextIndex].timestamp.equals(lastTimestamp)) lastIndex=nextIndex;
+			else break;
+		}
+    	for (int chn=0;chn<usedSamples.length;chn++) for (int sample=0;sample<usedSamples[chn].length;sample++) usedSamples[chn][sample]=false;
+    	for (int index=firstIndex;index<=lastIndex;index++) if ((index >= enable_in.length) || enable_in[index]){
+    		usedSamples[dataVector[index].channel][dataVector[index].sampleIndex]=true;
+    	}
+    	for (int chn=0;chn<usedSamples.length;chn++){
+    		boolean removed;
+    		do {
+    			removed=false;
+    			boolean [] left=usedSamples[chn].clone();
+    			for (int y=0;y<height;y++) for (int x=0;x<width;x++) if (usedSamples[chn][y*width+x]){
+    				int n=0;
+    				for (int d=0;d<dirs.length;d++){
+    					int [] dXY=dirs[d].clone();
+    					if (((x==0) && (dXY[0]<0)) || ((x==(width-1)) && (dXY[0]>0))) dXY[0]=-dXY[0];
+    					if (((y==0) && (dXY[1]<0)) || ((y==(height-1)) && (dXY[1]>0))) dXY[1]=-dXY[1];
+    					if (usedSamples[chn][(y+dXY[1])*width+(x+dXY[0])]) n++;
+    				}
+    				if (n<minNeib){
+    					removed=true;
+    					left[y*width+x]=false;
+    				}
+    			}
+    			usedSamples[chn]=left.clone();
+    		} while (removed);
+    	}
+    	for (int index=firstIndex;index<=lastIndex;index++) if ((index >= enable_in.length) || enable_in[index]){
+    		if (!usedSamples[dataVector[index].channel][dataVector[index].sampleIndex]){
+    			numFiltered++;
+    			enable_out[index]=false;
+    		};
+    	}
+	}
+	if (debugLevel+(calibMode?1:0)>1) {
+		int numLeft=0;
+		for (int i=0;i<enable_out.length;i++) if (enable_out[i]) numLeft++;
+		System.out.println("filterLowNeighbors("+minNeib+"): Filtered "+numFiltered+" samples, left "+numLeft+" samples");
+	}
+	return enable_out;
+}
 
 private int [] getParallelDiff(MeasuredSample [] vector){
 	HashMap<Point,AtomicInteger> map=new HashMap<Point,AtomicInteger>();
@@ -1617,6 +1783,25 @@ public void setDataVector(
 				scanMask);
 		maskDataWeights(en);
 	}
+
+	if (calibrateMode && (filterCalibByNeib>0)){
+		boolean [] en=dataWeightsToBoolean();
+		en= filterLowNeighbors(
+				en,
+				filterCalibByNeib,
+				true); // calibrate mode - for debug print
+		maskDataWeights(en);
+	}
+	
+	if (calibrateMode && (filterSetsByRMS>0)){
+		boolean [] en=dataWeightsToBoolean();
+		en= filterSets(
+				en,
+				filterSetsByRMS,
+				filterSetsByRMSTiltOnly?scanMask:null);
+		maskDataWeights(en);
+	}
+	
 
 // TODO: add filtering for tilt motor calibration
 	
@@ -2264,8 +2449,62 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
         }
         return Math.sqrt(result);
     }
+
+    public void printSetRMS(double [] fX){
+        int [] indices=getSetIndices();
+        double [] setRMA=calcErrorsPerSet(fX);
+        for (int numSet=0;numSet<indices.length;numSet++){
+        	System.out.println(numSet+" "+IJ.d2s(setRMA[numSet],3)+" "+
+        			dataVector[indices[numSet]].motors[0]+":"+dataVector[indices[numSet]].motors[1]+":"+dataVector[indices[numSet]].motors[2]+" "+
+        			dataVector[indices[numSet]].timestamp);
+        }        
+    }
+    
+    public double [] calcErrorsPerSet(double [] fX){
+        int [] indices=getSetIndices();
+        double [] setRMA=new double[indices.length];
+        double [] weights=this.dataWeights;
+        if (weights==null){
+        	weights=new double [fX.length];
+        	for (int i=0;i<weights.length;i++) weights[i]=1.0;
+        }
+        for (int numSet=0;numSet<indices.length;numSet++){
+        	int nextIndex=(numSet==(indices.length-1)?dataVector.length:indices[numSet+1]);
+            double result=0;
+            double sumWeights=0;
+            for (int i=indices[numSet];i<nextIndex;i++){
+                double diff=this.dataValues[i]-fX[i];
+                result+=diff*diff*weights[i];
+                sumWeights+=weights[i];
+            }
+            if (sumWeights>0) result/=sumWeights;
+            setRMA[numSet]=Math.sqrt(result);
+        }
+        return setRMA;
+    }
     
 
+    public int [] getSetIndices(){
+    	String lastTimestamp="";
+    	int numMeas=0;
+    	for (int i=0;i<dataVector.length;i++){
+    		if (!dataVector[i].timestamp.equals(lastTimestamp)){
+    			lastTimestamp=dataVector[i].timestamp;
+    			numMeas++;
+    		}
+    	}
+    	int [] indices= new int [numMeas];
+    	numMeas=0;
+    	for (int i=0;i<dataVector.length;i++){
+    		if (!dataVector[i].timestamp.equals(lastTimestamp)){
+    			lastTimestamp=dataVector[i].timestamp;
+    			indices[numMeas++]=i;
+    		}
+    	}
+    	return indices;
+    }
+    
+    
     public LMAArrays calculateJacobianArrays(double [] fX){
         // calculate JtJ
         double [] diff=calcYminusFx(fX);
@@ -3510,6 +3749,7 @@ public double getAdjustRMS(
 		boolean filterZ,
 		boolean filterByScanValue,
 		double filterByValueScale,
+		int minNeib,
 		double z,
 		double tx,
 		double ty){
@@ -3552,6 +3792,15 @@ public double getAdjustRMS(
     	int numEn=getNumEnabledSamples(en);
     	if (numEn<minLeftSamples) return Double.NaN;
 	}
+	if (minNeib>0){
+		boolean [] en=dataWeightsToBoolean();
+		en= filterLowNeighbors(
+				en,
+				minNeib,
+				false); // calib mode for debug print
+		maskDataWeights(en);
+	}
+	
 	if ((minCenterSamplesTotal>0) || (minCenterSamplesBest>0)){
 		boolean [] centerSampesMask= getCenterSamples(centerSamples);
 		boolean [] en=dataWeightsToBoolean();
@@ -3560,7 +3809,7 @@ public double getAdjustRMS(
 				en,
 				minCenterSamplesTotal, //int minTotalSamples,
 				minCenterSamplesBest )){ //int minBestChannelSamples)){
-			if (debugLevel>0) {
+			if (debugLevel>1) { //0
 				int [] numSamples=getNumCenterSamples( // per channel
 						centerSampesMask,
 						en);
@@ -3584,6 +3833,7 @@ public double [] findAdjustZ(
 		boolean filterZ,
 		boolean filterByScanValue,  
 		double filterByValueScale,
+		int minNeib,
 		double zMin,
 		double zMax,
 		double zStep,
@@ -3601,6 +3851,7 @@ public double [] findAdjustZ(
 				filterZ,
 				filterByScanValue,
 				filterByValueScale,
+				minNeib,
 				z,
 				tx,
 				ty);
@@ -3713,6 +3964,14 @@ public boolean LevenbergMarquardt(
        	    	int numEn=getNumEnabledSamples(en);
        	    	if (numEn<minLeftSamples) return false;
        		}       		
+       		if (filterByNeib>0){
+       			boolean [] en=dataWeightsToBoolean();
+       			en= filterLowNeighbors(
+       					en,
+       					filterByNeib,
+       					false); // calibrate mode - for debug print
+       			maskDataWeights(en);
+       		}
        		
        		if ((minCenterSamplesTotal>0) || (minCenterSamplesBest>0)){
        			boolean [] centerSampesMask= getCenterSamples(centerSamples);
@@ -3726,10 +3985,9 @@ public boolean LevenbergMarquardt(
        					int [] numSamples=getNumCenterSamples( // per channel
        							centerSampesMask,
        							en);
-       					System.out.println("Not enough center samples, requested "+minCenterSamplesBest+" best channel and "+minCenterSamplesTotal+" total.");
-       					System.out.print("Got:");
+       					System.out.print("Got (in LMA):");
        					for (int n:numSamples) System.out.print(" "+n);
-       					System.out.println();
+       					System.out.println(" - not enough center samples, requested "+minCenterSamplesBest+" best channel and "+minCenterSamplesTotal+" total.");
        				}
        				return false;
        			}
@@ -4166,6 +4424,7 @@ public boolean LevenbergMarquardt(
         gd.addCheckbox("Filter samples/channels by Z",filterZ);
         gd.addCheckbox("Filter by value (leave lower than maximal fwhm used in focal scan mode)",filterByScanValue);
         gd.addNumericField("Filter by value (remove samples above scaled best FWHM for channel/location)",filterByValueScale,2,5,"x");
+		gd.addNumericField("Remove samples having less neighbors (same channel) that this during ",filterByNeib,0,1,"");
         gd.addNumericField("Minimal required number of channels/samples",minLeftSamples,0,3,"samples");
         gd.addNumericField("... of them closest to the center, best channel",minCenterSamplesBest,0,3,"samples");
         gd.addNumericField("... of them closest to the center, total in all channels",minCenterSamplesTotal,0,3,"samples");
@@ -4188,30 +4447,32 @@ public boolean LevenbergMarquardt(
     	gd.showDialog();
     	if (gd.wasCanceled()) return;
     	
-    	nMeas=(int) gd.getNextNumber();
+    	nMeas=(int)                   gd.getNextNumber();
 
     	for (int i=0;i<fieldFitting.channelSelect.length;i++) {
     		fieldFitting.channelSelect[i]=gd.getNextBoolean();
     	}
-    	filterZ=           gd.getNextBoolean();
-    	filterByScanValue= gd.getNextBoolean();
-    	filterByValueScale=gd.getNextNumber();
-        minLeftSamples=(int) gd.getNextNumber();
-        minCenterSamplesBest=(int) gd.getNextNumber();
-        minCenterSamplesTotal=(int) gd.getNextNumber();
-        centerSamples=(int) gd.getNextNumber();
-        maxRMS=gd.getNextNumber();
-        zMin= gd.getNextNumber();
-        zMax= gd.getNextNumber();
-        zStep=gd.getNextNumber();
+    	filterZ=                      gd.getNextBoolean();
+    	filterByScanValue=            gd.getNextBoolean();
+    	filterByValueScale=           gd.getNextNumber();
+		filterByNeib=           (int) gd.getNextNumber();
+    	
+        minLeftSamples=         (int) gd.getNextNumber();
+        minCenterSamplesBest=   (int) gd.getNextNumber();
+        minCenterSamplesTotal=  (int) gd.getNextNumber();
+        centerSamples=          (int) gd.getNextNumber();
+        maxRMS=                       gd.getNextNumber();
+        zMin=                         gd.getNextNumber();
+        zMax=                         gd.getNextNumber();
+        zStep=                        gd.getNextNumber();
 
-        tMin= gd.getNextNumber();
-        tMax= gd.getNextNumber();
-        tStep=gd.getNextNumber();
+        tMin=                         gd.getNextNumber();
+        tMax=                         gd.getNextNumber();
+        tStep=                        gd.getNextNumber();
 
-        targetRelFocalShift=gd.getNextNumber();
-        targetTiltX=gd.getNextNumber(); // for testing, normally should be 0 um/mm
-        targetTiltY=gd.getNextNumber(); // for testing, normally should be 0 um/mm
+        targetRelFocalShift=          gd.getNextNumber();
+        targetTiltX=                  gd.getNextNumber(); // for testing, normally should be 0 um/mm
+        targetTiltY=                  gd.getNextNumber(); // for testing, normally should be 0 um/mm
        
         boolean OK;
     	fieldFitting.mechanicalFocusingModel.setAdjustMode(true); // to correctly find Z centers,
@@ -4231,6 +4492,8 @@ public boolean LevenbergMarquardt(
 
         boolean single= (nMeas>=0);
     	if (single){
+    		if (debugLevel>0) System.out.print("======== testMeasurement("+nMeas+") ======== ");
+    		
     		OK=testMeasurement(
     				measurements.get(nMeas),    				
 //    				nMeas,
@@ -4241,11 +4504,13 @@ public boolean LevenbergMarquardt(
 			        tMax,
 			        tStep 
 			        );
+    		if ((debugLevel>0)&& (dataVector.length>0)){
+    			System.out.println("Motors= "+dataVector[0].motors[0]+" : "+ dataVector[0].motors[1]+" : "+dataVector[0].motors[2]+" timestamp= "+dataVector[0].timestamp);
+    		}
     		if (!OK){
     			if (debugLevel>0) System.out.println("testMeasurement("+nMeas+") failed");
     		} else {
-    			
-        		if (debugLevel>0) System.out.print("======== testMeasurement("+nMeas+") ========");
+        		if (debugLevel>0) System.out.println(showSamples());
     			for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
     				if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
     					System.out.println(
@@ -4293,7 +4558,7 @@ public boolean LevenbergMarquardt(
     		}
     	} else {
     		for (nMeas=0;nMeas<measurements.size();nMeas++){
-        		if (debugLevel>0) System.out.print("======== testMeasurement("+nMeas+") ========      ");
+        		if (debugLevel>0) System.out.print("======== testMeasurement("+nMeas+") ======== ");
     			OK=testMeasurement(
     					measurements.get(nMeas),
     			        zMin, //+best_qb_corr[0],
@@ -4302,9 +4567,13 @@ public boolean LevenbergMarquardt(
         				tMin,
     			        tMax,
     			        tStep);
+        		if ((debugLevel>0)&& (dataVector.length>0)){
+        			System.out.println("Motors= "+dataVector[0].motors[0]+" : "+ dataVector[0].motors[1]+" : "+dataVector[0].motors[2]+" timestamp= "+dataVector[0].timestamp);
+        		}
         		if (!OK){
         			if (debugLevel>0) System.out.println("testMeasurement("+nMeas+") failed");
         		} else {
+            		if (debugLevel>0) System.out.println(showSamples());
         			for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
         				if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
         					System.out.println(
@@ -4373,6 +4642,28 @@ public boolean LevenbergMarquardt(
     }
     
 //,
+    public String showSamples(){
+    	boolean [][] usedSamples=new boolean[getNumChannels()][getNumSamples()];
+    	for (int chn=0;chn<usedSamples.length;chn++) for (int sample=0;sample<usedSamples[chn].length;sample++) usedSamples[chn][sample]=false;
+    	for (int i=0;i<dataVector.length;i++) if (dataWeights[i]>0.0){
+    		usedSamples[dataVector[i].channel][dataVector[i].sampleIndex]=true;
+    	}
+    	int height=sampleCoord.length;
+    	int width= sampleCoord[0].length;
+		String s="";
+    	for (int i=0;i<height;i++){
+    		for (int chn=0;chn<usedSamples.length;chn++){
+    		 for (int j=0;j<width;j++){
+    			 s+=usedSamples[chn][i*width+j]?"+":".";
+    			 s+=" ";
+    		 }
+    		 if (chn<(usedSamples.length-1)) s+="  ";
+    		}
+    		s+="\n";
+    	}
+    	return s;
+    }
+    
     public double [][] getAllZTM(
     		boolean noTiltScan,
     		FocusingField ff){
@@ -4511,6 +4802,7 @@ public boolean LevenbergMarquardt(
     			filterZ, //boolean filterZ,
     			filterByScanValue,
     			filterByValueScale,
+    			filterByNeib,
     			zMin,
     			zMax,
     			zStep,
@@ -4533,10 +4825,8 @@ public boolean LevenbergMarquardt(
     		boolean OK=LevenbergMarquardt(
     				measurement, 
     				false, // true, // open dialog
-//    				filterZ, // filterZ
     				debugLevel);
     		if (!OK){
-//        		if (debugLevel>0) System.out.println("testMeasurement("+nMeas+") failed");
         		if (debugLevel>1) System.out.println("testMeasurement() failed: LMA failed");
         		return false;
     		}

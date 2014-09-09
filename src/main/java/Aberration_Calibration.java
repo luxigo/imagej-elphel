@@ -796,6 +796,7 @@ if (MORE_BUTTONS) {
 		addButton("Scan Calib LMA", panelCurvature,color_process);
 		addButton("Save History",   panelCurvature,color_debug);
 		addButton("Restore History",panelCurvature,color_restore);
+		addButton("History RMS",    panelCurvature,color_report);
 		addButton("Modify LMA",     panelCurvature,color_configure);
 		addButton("Load strategies", panelCurvature,color_restore);
 		addButton("Organize strategies", panelCurvature,color_configure);
@@ -4088,7 +4089,12 @@ if (MORE_BUTTONS) {
 			FOCUSING_FIELD.saveXML(path);
 			saveCurrentConfig();
 // for now just copying from "Restore History". TODO: Make both more automatic (move number of parameters outside?)			
-			if (!FOCUSING_FIELD.configureDataVector("Configure curvature - TODO: fix many settings restored from properties",true,true)) return;
+			if (!FOCUSING_FIELD.configureDataVector(
+					true, //boolean silent
+					"Configure curvature - TODO: fix many settings restored from properties", // String title,
+					true, //boolean forcenew
+					true) // boolean enableReset
+					) return;
 			System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
 			System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
 	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
@@ -4419,7 +4425,12 @@ if (MORE_BUTTONS) {
 			FOCUSING_FIELD.setAdjustMode(false);
 			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
 			System.out.println("Loaded FocusingField");
-			if (!FOCUSING_FIELD.configureDataVector("Configure curvature - TODO: fix many settings restored from properties",true,true)) return;
+			if (!FOCUSING_FIELD.configureDataVector(
+					true, // boolean silent (maybe add option with false to change number of parameters?)
+					"Configure curvature - TODO: fix many settings restored from properties", // String title
+					true, // boolean forcenew,
+					true) // boolean enableReset
+					) return;
 			System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
 			System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
 	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
@@ -4433,12 +4444,34 @@ if (MORE_BUTTONS) {
 			return;
 		}
 /* ======================================================================== */
+		if       (label.equals("History RMS")) {
+			if (FOCUSING_FIELD==null) return;
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+//			FOCUSING_FIELD.setAdjustMode(false);
+	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
+			double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+			System.out.println("rms="+rms+", rms_pure="+rms_pure);
+			FOCUSING_FIELD.printSetRMS(focusing_fx);
+			return;
+		}
+/* ======================================================================== */
 		if       (label.equals("Modify LMA")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) return;
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.setAdjustMode(false);
-			if (!FOCUSING_FIELD.configureDataVector("Re-configure curvature parameters",false,true)) return;
+			if (!FOCUSING_FIELD.configureDataVector(
+					false, // boolean silent,
+					"Re-configure curvature parameters", // String title
+					false, // boolean forcenew
+					true)  // boolean enableReset
+					) return;
 			FOCUSING_FIELD.setDataVector(
 					true, // calibrate mode
 					FOCUSING_FIELD.createDataVector());
