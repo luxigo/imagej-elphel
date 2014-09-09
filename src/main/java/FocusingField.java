@@ -1596,6 +1596,9 @@ private boolean [] filterLowNeighbors(
     			boolean [] left=usedSamples[chn].clone();
     			for (int y=0;y<height;y++) for (int x=0;x<width;x++) if (usedSamples[chn][y*width+x]){
     				int n=0;
+//    				if ((chn==2) && (y==4)  && (x==0)){ // debugging
+//    					n=0;
+//    				}
     				for (int d=0;d<dirs.length;d++){
     					int [] dXY=dirs[d].clone();
     					if (((x==0) && (dXY[0]<0)) || ((x==(width-1)) && (dXY[0]>0))) dXY[0]=-dXY[0];
@@ -1794,6 +1797,9 @@ public void setDataVector(
 	}
 	
 	if (calibrateMode && (filterSetsByRMS>0)){
+		fieldFitting.initSampleCorrVector(
+				flattenSampleCoord(), //double [][] sampleCoordinates,
+				getSeriesWeights()); //double [][] sampleSeriesWeights);
 		boolean [] en=dataWeightsToBoolean();
 		en= filterSets(
 				en,
@@ -4485,6 +4491,7 @@ public boolean LevenbergMarquardt(
 			}
 		}
 		header+="\tRMS";
+		header+="\tZc\tTiltX\tTiltY";
         for (int i=0;i<3;i++) header+="\tmz"+i;
         for (int i=0;i<3;i++) header+="\tm"+i;
         StringBuffer sb = new StringBuffer();
@@ -4519,6 +4526,8 @@ public boolean LevenbergMarquardt(
     									fieldFitting.mechanicalFocusingModel.getUnits(i));
     				}
     			}
+    	        double [] zTilts=getCenterZTxTy(measurements.get(nMeas));
+
     			double [] dmz= getAdjustedMotors(
     					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
     		            targetRelFocalShift+best_qb_corr[0],
@@ -4544,6 +4553,14 @@ public boolean LevenbergMarquardt(
     				}
     			}
     			sb.append("\t"+IJ.d2s(currentRMSPure,3));
+    			if (zTilts!=null){
+    				sb.append("\t"+IJ.d2s(zTilts[0]-best_qb_corr[0],3));
+    				sb.append("\t"+IJ.d2s(zTilts[1],3));
+    				sb.append("\t"+IJ.d2s(zTilts[2],3));
+    				System.out.println("Z center="+IJ.d2s(zTilts[0]-best_qb_corr[0],3)+"um, TiltX="+IJ.d2s(zTilts[1],3)+"um/mm, TiltY="+IJ.d2s(zTilts[2],3)+"um/mm");
+    			}else {
+    				sb.append("\t---\t---\t---");
+    			}
     			if (dmz!=null){
     				for (int i=0;i<dmz.length;i++) sb.append("\t"+IJ.d2s(dmz[i],1)); 
     			} else {
@@ -4582,6 +4599,7 @@ public boolean LevenbergMarquardt(
         									fieldFitting.mechanicalFocusingModel.getUnits(i));
         				}
         			}
+        	        double [] zTilts=getCenterZTxTy(measurements.get(nMeas));
         			double [] dmz= getAdjustedMotors(
         					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
         		            targetRelFocalShift+best_qb_corr[0],
@@ -4614,6 +4632,14 @@ public boolean LevenbergMarquardt(
         				}
         			}
         			sb.append("\t"+IJ.d2s(currentRMSPure,3));
+        			if (zTilts!=null){
+        				sb.append("\t"+IJ.d2s(zTilts[0]-best_qb_corr[0],3));
+        				sb.append("\t"+IJ.d2s(zTilts[1],3));
+        				sb.append("\t"+IJ.d2s(zTilts[2],3));
+        				System.out.println("Z center="+IJ.d2s(zTilts[0]-best_qb_corr[0],3)+"um, TiltX="+IJ.d2s(zTilts[1],3)+"um/mm, TiltY="+IJ.d2s(zTilts[2],3)+"um/mm");
+        			}else {
+        				sb.append("\t---\t---\t---");
+        			}
         			if (dmz!=null){
         				for (int i=0;i<dmz.length;i++) sb.append("\t"+IJ.d2s(dmz[i],1)); 
         			} else {
