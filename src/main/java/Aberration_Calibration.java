@@ -51,6 +51,7 @@ import java.util.regex.Pattern;
 
 
 
+
 //import FocusingField.FocusingFieldMeasurement;
 //import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
@@ -8904,6 +8905,8 @@ if (MORE_BUTTONS) {
     			else  System.out.println("Suggested rotation for screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" (CCW)");
     		}
     		System.out.println("----- end of Focus/tilt measurement results -----");
+    		
+    		if (MASTER_DEBUG_LEVEL>0) System.out.println(FOCUSING_FIELD.showSamples());
     	}
     	GenericDialog gd = new GenericDialog("Adjusting focus/tilt");
     	if (zTxTyM1M2M3==null){
