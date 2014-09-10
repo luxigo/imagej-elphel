@@ -8901,8 +8901,11 @@ if (MORE_BUTTONS) {
         		System.out.println("Suggested for motor "+(i+1)+" "+newMotors[i]+" ("+currentMotors[i]+")");
     		}
     		if (manualScrewsCW!=null) for (int i=0;i<manualScrewsCW.length;i++){
-    			if (manualScrewsCW[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" (CW)");
-    			else  System.out.println("Suggested rotation for screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" (CCW)");
+    			double deg=360*Math.abs(manualScrewsCW[i]);
+    			if (manualScrewsCW[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
+    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"deg CW)");
+    			else  System.out.println("Suggested rotation for screw # "+(i+1)+
+    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"deg CCW)");
     		}
     		System.out.println("----- end of Focus/tilt measurement results -----");
     		
