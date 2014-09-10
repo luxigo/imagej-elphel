@@ -143,6 +143,7 @@ public class FocusingField {
 	private int numIterations; // maximal number of iterations
 	private double maxLambda; // max lambda to fail
 	private double lambda; // copied from series
+	private double adjustmentInitialLambda;
 	private String strategyComment;
 	private boolean lastInSeries;
 	private int currentStrategyStep; // -1 do not read from strategies
@@ -297,6 +298,7 @@ public class FocusingField {
     	boolean [] rslt_show_chnDflt={true,true,true,true,true,true};
     	rslt_show_chn=rslt_show_chnDflt.clone();
     	// not saved/restored
+    	adjustmentInitialLambda=0.001;
     	lambdaStepUp= 8.0; // multiply lambda by this if result is worse
     	lambdaStepDown= 0.5; // multiply lambda by this if result is better
     	thresholdFinish=0.001; // (copied from series) stop iterations if 2 last steps had less improvement (but not worsening )
@@ -4848,6 +4850,7 @@ public boolean LevenbergMarquardt(
     		if (debugLevel>0) System.out.println("testMeasurement(), run "+n+" (z="+zTxTy[0]+" tx="+zTxTy[1]+" ty="+zTxTy[2]+")");
     		boolean [] was2PrevEnable=(wasPrevEnable==null)?null:wasPrevEnable.clone();
     		wasPrevEnable=(prevEnable==null)?null:prevEnable.clone();
+    		this.lambda=this.adjustmentInitialLambda;
     		boolean OK=LevenbergMarquardt(
     				measurement, 
     				false, // true, // open dialog
