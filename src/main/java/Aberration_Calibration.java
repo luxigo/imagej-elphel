@@ -8903,9 +8903,9 @@ if (MORE_BUTTONS) {
     		if (manualScrewsCW!=null) for (int i=0;i<manualScrewsCW.length;i++){
     			double deg=360*Math.abs(manualScrewsCW[i]);
     			if (manualScrewsCW[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
-    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"deg CW)");
+    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
     			else  System.out.println("Suggested rotation for screw # "+(i+1)+
-    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"deg CCW)");
+    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
     		}
     		System.out.println("----- end of Focus/tilt measurement results -----");
     		
@@ -8925,8 +8925,8 @@ if (MORE_BUTTONS) {
 		gd.addMessage("Suggested rotation of the top screws, use if motor positions are out of limits - outside of +/-25,000");
 		if (manualScrewsCW!=null)  for (int i=0;i<manualScrewsCW.length;i++){
 			double deg=360*Math.abs(manualScrewsCW[i]);
-			if (manualScrewsCW[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"deg CW)");
-			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"deg CCW)");
+			if (manualScrewsCW[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
 		}
 		gd.addNumericField("Scale movement",scaleMovement,3,5,"x");
         gd.addCheckbox("Recalculate and apply parallel move only",parallelMove); // should be false after manual movement
