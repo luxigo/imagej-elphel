@@ -4084,7 +4084,7 @@ if (MORE_BUTTONS) {
 					this.SYNC_COMMAND.stopRequested);
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.setAdjustMode(false);
-			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
+			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES, true);
 			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
 			System.out.println("Saving measurement history to "+path);
 			FOCUSING_FIELD.saveXML(path);
@@ -4424,7 +4424,7 @@ if (MORE_BUTTONS) {
 					this.SYNC_COMMAND.stopRequested);
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.setAdjustMode(false);
-			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES);
+			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES,true); // keep distortions center from history
 			System.out.println("Loaded FocusingField");
 			if (!FOCUSING_FIELD.configureDataVector(
 					true, // boolean silent (maybe add option with false to change number of parameters?)
@@ -5140,7 +5140,7 @@ if (MORE_BUTTONS) {
 						this.SYNC_COMMAND.stopRequested);
 				ff.setDebugLevel(DEBUG_LEVEL);
 				ff.setAdjustMode(false);
-				if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES);
+				if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
 				MOTORS.addCurrentHistoryToFocusingField(
 						ff,
 						(runs==0)?0:(MOTORS.historySize()-runs),
@@ -5241,7 +5241,7 @@ if (MORE_BUTTONS) {
 							this.SYNC_COMMAND.stopRequested);
 					ff.setDebugLevel(DEBUG_LEVEL);
 					ff.setAdjustMode(false);
-					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES);
+					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
 					MOTORS.addCurrentHistoryToFocusingField(ff); // all, not just newly acquired
 					if (MASTER_DEBUG_LEVEL>0){
 						System.out.println ("*** Calculating focal distance shift for each of "+MOTORS.historySize()+" recorded measurments ***");
@@ -13510,10 +13510,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
        MOTORS.focusingHistory.getProperties("FOCUSING_HISTORY.", properties);
        GONIOMETER_PARAMETERS.getProperties("GONIOMETER_PARAMETERS.", properties);
        ABERRATIONS_PARAMETERS.getProperties("ABERRATIONS_PARAMETERS.", properties);
-       if (FOCUSING_FIELD!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", properties);
+       if (FOCUSING_FIELD!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", properties,false); // false -> overwrite distortions center
     }
-	
-	
 	
 	  private String selectSourceDirectory(String defaultPath) {
 		  return CalibrationFileManagement.selectDirectory(false, // save  

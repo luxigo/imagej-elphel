@@ -62,6 +62,7 @@ public class FocusingField {
 //    public String path;
 // restored from properties	
 	FieldFitting fieldFitting=null;
+	QualBOptimize qualBOptimize=new QualBOptimize();
 	public double pX0_distortions;
 	public double pY0_distortions;
 	public double currentPX0;
@@ -154,6 +155,7 @@ public class FocusingField {
 	private boolean showDisabledParams;
 	private boolean showCorrectionParams;
 	private boolean keepCorrectionParameters;
+	private boolean resetVariableParameters; // reset all SFE-dependent parameters before running LMA
 	private boolean resetCenter; // use distortion center
 	private boolean saveSeries; // just for the dialog
 	private boolean showMotors;
@@ -220,6 +222,8 @@ public class FocusingField {
 
 
     public void setDefaults(){
+    	pX0_distortions=Double.NaN;
+    	pY0_distortions=Double.NaN;
     	zRanges=null;
     	prevEnable=null;
 //    	changedEnable=true;
@@ -317,6 +321,8 @@ public class FocusingField {
     	showDisabledParams = false;
     	showCorrectionParams = false;
     	keepCorrectionParameters = true;
+		resetVariableParameters = false;
+
     	resetCenter=false;
     	saveSeries=false; // just for the dialog
 
@@ -447,7 +453,16 @@ public class FocusingField {
     	}
     }
 
-	public void getProperties(String prefix,Properties properties){
+	/**
+	 * Set parameters from properties
+	 * @param prefix property name prefix 
+	 * @param properties properties
+	 * @param keepFromHistory keep distortion center read from the history (file or structure)
+	 */
+	public void getProperties(String prefix,
+			Properties properties,
+			boolean keepFromHistory){
+		
 		savedProperties=properties;
 		propertiesPrefix=prefix;
 		if (debugLevel>1) System.out.println("FocusingField: getProperties()");
@@ -456,11 +471,14 @@ public class FocusingField {
 			return; //fieldFitting=new FieldFitting();
 		}
 		fieldFitting.getProperties(prefix+"fieldFitting.",properties);
-
-		if (properties.getProperty(prefix+"pX0_distortions")!=null)
-			pX0_distortions=Double.parseDouble(properties.getProperty(prefix+"pX0_distortions"));
-		if (properties.getProperty(prefix+"pY0_distortions")!=null)
-			pY0_distortions=Double.parseDouble(properties.getProperty(prefix+"pY0_distortions"));
+		if (!keepFromHistory || Double.isNaN(pX0_distortions)) {
+			if (properties.getProperty(prefix+"pX0_distortions")!=null)
+				pX0_distortions=Double.parseDouble(properties.getProperty(prefix+"pX0_distortions"));
+		}
+		if (!keepFromHistory || Double.isNaN(pY0_distortions)) {
+			if (properties.getProperty(prefix+"pY0_distortions")!=null)
+				pY0_distortions=Double.parseDouble(properties.getProperty(prefix+"pY0_distortions"));
+		}
 		if (properties.getProperty(prefix+"currentPX0")!=null)
 			currentPX0=Double.parseDouble(properties.getProperty(prefix+"currentPX0"));
 		if (properties.getProperty(prefix+"currentPY0")!=null)
@@ -842,7 +860,7 @@ public boolean configureDataVector(
 				numCurvPars[1]);
 		if (savedProperties!=null){
 			if (debugLevel>0) System.out.println("configureDataVector(): Applying properties");
-			getProperties(propertiesPrefix,savedProperties); // overwrites parallelOnly!
+			getProperties(propertiesPrefix,savedProperties,true); // overwrites parallelOnly! and distortions center
 		}
 	}
 	fieldFitting.setCenterXY(currentPX0,currentPY0);
@@ -3089,11 +3107,13 @@ public void listData(String title,
         if (showMeasCalc[1]){
         	for (int i=0;i<sampleCoord.length;i++)
         		for (int j=0;j<sampleCoord[0].length;j++) {
-        			
+
         			if ((i==0) &&  (j==3) && (ffm.motors[0]==2209)){
         				System.out.println("listData(), i="+i+", j="+j);
         			}
-        			
+  //      			if ((i==4) && (j==7)) {
+  //      				System.out.print("-");
+  //      			}
         			double [] subData=fieldFitting.getValsDerivatives(
         					flattenIndex(i,j),
         					sagittalMaster, // dependent channel does not have center parameters, but that is only used for derivs.
@@ -3907,17 +3927,23 @@ public boolean LevenbergMarquardt(
 		this.currentStrategyStep=-1;
 		fieldFitting.selectZTilt(false);
 		keepCorrectionParameters=true;
+		resetVariableParameters=false;
 		resetCenter=false;
 		if (!openDialog) stopEachStep=false;
 	}
 	this.iterationStepNumber=0;
 	this.firstRMS=-1; //undefined
 	while (true) { // loop for all series
+
+//TODO: reset firstRMS here only if enabled channels or enabled correction parameters are different
+		this.firstRMS=-1; //undefined
 		
         if (this.currentStrategyStep>=0){
         	if (!getStrategy(this.currentStrategyStep)) break; //invalid strategy
         }
         if (!keepCorrectionParameters) fieldFitting.resetSampleCorr();
+        if (resetVariableParameters) fieldFitting.resetSFEVariables();
+        
         if (resetCenter){
 			if (debugLevel>0) System.out.println("Resetting center: X "+IJ.d2s(currentPX0,2)+" -> "+IJ.d2s(pX0_distortions,2));
 			if (debugLevel>0) System.out.println("Resetting center: Y "+IJ.d2s(currentPY0,2)+" -> "+IJ.d2s(pY0_distortions,2));
@@ -5601,6 +5627,18 @@ public boolean LevenbergMarquardt(
             pXY[0]=px;
             pXY[1]=py;
         }
+        
+        public void resetSFEVariables(){
+        	if (mechanicalFocusingModel==null) return;
+        	if (debugLevel>0) System.out.println("---Resetting lens-specific variable parameters---");
+        	mechanicalFocusingModel.setZTxTy(0.0,0.0,0.0); 
+        	for (int chn=0;chn<curvatureModel.length;chn++){
+        		curvatureModel[chn].setDefaults();
+        	}
+        	resetSampleCorr(); // correction parameters should also be reset
+        }
+
+        
         public void setDefaultSampleCorr(){
 //            int numPars= getNumCurvars()[0]; // number of Z parameters ( [1] - numbnr of radial parameters).
             for (int n=0;n<channelDescriptions.length;n++){
@@ -5809,14 +5847,27 @@ public boolean LevenbergMarquardt(
             }
         }
         
-        public void setEstimatedZ0(
+        public void setEstimatedZ0( // needs filterConcave() to work
         		double [] z0,
         		boolean force){
-        	if ((z0==null)|| (curvatureModel==null)) return; // no estimation available
-        	for (int chn=0;chn<curvatureModel.length;chn++){
+        	if (curvatureModel==null) return;
+        	if (z0==null) {
+// verify that curvature model has non-NaN, set to zero if it does not
+            	for (int chn=0;chn<curvatureModel.length;chn++) if (channelSelect[chn]){
+            		if (!curvatureModel[chn].z0IsValid()){
+            			curvatureModel[chn].set_z0(0.0);
+            			if (debugLevel>0) System.out.println("*** Missing initial estimations for best focal positions,  setting "+chn+" to 0.0");
+            		}
+            	}
+        		return; // no estimation available
+        	}
+        	for (int chn=0;chn<curvatureModel.length;chn++) if (channelSelect[chn]){
         		if (!Double.isNaN(z0[chn]) && (!curvatureModel[chn].z0IsValid() || force)){
         			curvatureModel[chn].set_z0(z0[chn]);
         			if (debugLevel>1) System.out.println("Setting initial (estimated) best focal position for channel "+chn+" = "+z0[chn]);
+        		} else if (!curvatureModel[chn].z0IsValid()){
+        			curvatureModel[chn].set_z0(0.0);
+        			if (debugLevel>0) System.out.println("*** Missing initial estimation for best focal position for channel "+chn+", setting to 0.0");
         		}
         	}
         }
@@ -6013,6 +6064,7 @@ public boolean LevenbergMarquardt(
      		gd.addNumericField("Initial LMA lambda",lambda,3,5,"");
         	gd.addCheckbox("Reset optical center to distortions center", resetCenter);
         	gd.addCheckbox("Reset correction parameters before this LMA step", !keepCorrectionParameters);
+        	gd.addCheckbox("Reset All SFE-specific parameters before this LMA step", resetVariableParameters);
         	gd.addCheckbox("Stop after this LMA step", lastInSeries);
 
         	//         gd.enableYesNoCancel("Keep","Apply"); // default OK (on enter) - "Keep"
@@ -6036,6 +6088,7 @@ public boolean LevenbergMarquardt(
      		lambda=gd.getNextNumber();
      		resetCenter=gd.getNextBoolean();
         	keepCorrectionParameters=!gd.getNextBoolean();
+        	resetVariableParameters=gd.getNextBoolean();
         	lastInSeries=gd.getNextBoolean();
         	//         boolean OK;
         	if (editMechMask){
@@ -6416,6 +6469,9 @@ public boolean LevenbergMarquardt(
                 double py, // pixel y
                 double [][] deriv // array of (1..6[][], matching getNumberOfChannels) or null if derivatives are not required
                 ){
+//    		if (sampleIndex==39) {
+//    			System.out.print("?");
+//    		}
             
             double [][] corrPars=getCorrPar(sampleIndex);
 
@@ -6507,11 +6563,6 @@ public boolean LevenbergMarquardt(
             }
             return chnValues;
         }
-        
-        
-        
-        
-        
     }
     
     public class MechanicalFocusingModel{
@@ -6594,7 +6645,20 @@ public boolean LevenbergMarquardt(
     		paramValues[getIndex(MECH_PAR.tx)]=tx;
     		paramValues[getIndex(MECH_PAR.ty)]=ty;
     	}
+    	public void setZTxTy(double [] zTxTy){
+    		paramValues[getIndex(MECH_PAR.z0)]=zTxTy[0];
+    		paramValues[getIndex(MECH_PAR.tx)]=zTxTy[1];
+    		paramValues[getIndex(MECH_PAR.ty)]=zTxTy[2];
+    	}
 
+    	public double [] getZTxTy(){
+    		double [] vector={
+    				paramValues[getIndex(MECH_PAR.z0)],
+    				paramValues[getIndex(MECH_PAR.tx)],
+    				paramValues[getIndex(MECH_PAR.ty)]};
+    		return vector;
+    	}
+    	
     	public void setVector(double[] vector, boolean [] mask){
     		for (int i=0;i<vector.length;i++) if (mask[i]) paramValues[i]=vector[i];
     	}
@@ -6667,6 +6731,33 @@ public boolean LevenbergMarquardt(
     		}
     		return derivs;
 
+    	}
+
+    	/**
+    	 * return Z for specified pixel coordinates (assuming all motors at zero) and optionally calculate its derivatives for Zcf, Tx, Ty
+    	 * @param px pixel X
+    	 * @param py pixel Y
+    	 * @param calDerivs true if derivatives are needed
+    	 * @return either a single element array {z} or a 4-element one {z, dz/dz0, dz/dtx, dz/dty}
+    	 */
+    	public double [] getZdZ3(
+    			double px,
+    			double py,
+    			boolean calDerivs){
+    		double [] result= new double [calDerivs?4:1];
+    		double [] derivs=(calDerivs)? (new double [getNumPars()]):null;
+    		int [] zeroMot={0,0,0};
+    		result[0]=calc_ZdZ(
+    				zeroMot,
+        			px,
+        			py,
+        			derivs);
+    		if (calDerivs){
+    			result[1]=derivs[getIndex(MECH_PAR.z0)];
+    			result[1]=derivs[getIndex(MECH_PAR.tx)];
+    			result[1]=derivs[getIndex(MECH_PAR.ty)];
+    		}
+    		return result;
     	}
 
 
@@ -7634,6 +7725,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     		this.lambda=fs.getInitialLambda(strategyIndex);
     		this.lastInSeries=fs.isStopAfterThis(strategyIndex);
     		this.keepCorrectionParameters=!fs.isResetCorrection(strategyIndex);
+    		this.resetVariableParameters=fs.isResetVariables(strategyIndex);
     		this.resetCenter=fs.isResetCenter(strategyIndex);
     		this.parallelOnly=fs.isParallelOnly(strategyIndex);
     		return true;
@@ -7710,6 +7802,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         		fs.setInitialLambda(selectedStrategyIndex,this.lambda);
         		fs.setStopAfterThis(selectedStrategyIndex,this.lastInSeries);
         		fs.setResetCorrection(selectedStrategyIndex,!this.keepCorrectionParameters);
+        		fs.setResetVariables(selectedStrategyIndex, this.resetVariableParameters);
         		fs.setResetCenter(selectedStrategyIndex,this.resetCenter);
         		fs.setParallelOnly(selectedStrategyIndex,this.parallelOnly);
         		break;
@@ -7729,6 +7822,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         		fs.setInitialLambda(selectedStrategyIndex,this.lambda);
         		fs.setStopAfterThis(selectedStrategyIndex,this.lastInSeries);
         		fs.setResetCorrection(selectedStrategyIndex,!this.keepCorrectionParameters);
+        		fs.setResetVariables(selectedStrategyIndex, this.resetVariableParameters);
         		fs.setResetCenter(selectedStrategyIndex,this.resetCenter);
         		fs.setParallelOnly(selectedStrategyIndex,this.parallelOnly);
         		break;
@@ -7824,6 +7918,11 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 			return strategies.get(strategyIndex).isResetCorrection();
 		}
 
+		public boolean isResetVariables(
+				int strategyIndex) {
+			return strategies.get(strategyIndex).isResetVariables();
+		}
+
 		public boolean isResetCenter(
 				int strategyIndex) {
 			return strategies.get(strategyIndex).isResetCenter();
@@ -7850,6 +7949,11 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 				int strategyIndex,
 				boolean resetCorrection) {
 			strategies.get(strategyIndex).setResetCorrection(resetCorrection);
+		}
+		public void setResetVariables(
+				int strategyIndex,
+				boolean resetVariables) {
+			strategies.get(strategyIndex).setResetVariables(resetVariables);
 		}
 		public void setResetCenter(
 				int strategyIndex,
@@ -7982,6 +8086,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         	private double initialLambda=0.001;
 			private boolean stopAfterThis=true;
 			private boolean resetCorrection=false;
+			private boolean resetVariables=false; // reset all but mechanical parameters of the fixture (resets correction too)
 			private boolean resetCenter=false;
 			private boolean parallelOnly=true;
 			private String strategyComment="";
@@ -7995,6 +8100,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 					double lambda,
 					boolean lastInSeries,
 					boolean resetCorrection,
+					boolean resetVariables,
 					boolean resetCenter,
 					boolean parallelOnly
 					){
@@ -8002,6 +8108,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 				initialLambda=lambda;
 				stopAfterThis=lastInSeries;
 				this.resetCorrection=resetCorrection;
+				this.resetVariables=resetVariables;
 				this.resetCenter=resetCenter;
 				this.parallelOnly=parallelOnly;
 				setDefaults();
@@ -8129,10 +8236,15 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 			public void setResetCorrection(boolean resetCorrection) {
 				this.resetCorrection = resetCorrection;
 			}
+			public boolean isResetVariables() {
+				return resetVariables;
+			}
+			public void setResetVariables(boolean resetVariables) {
+				this.resetVariables = resetVariables;
+			}
 			public boolean isResetCenter() {
 				return resetCenter;
 			}
-			
 			public void setResetCenter(boolean resetCenter) {
 				this.resetCenter = resetCenter;
 			}
@@ -8221,6 +8333,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 				properties.setProperty(prefix+"initialLambda",getInitialLambda()+"");
 				properties.setProperty(prefix+"stopAfterThis",isStopAfterThis()+"");
 				properties.setProperty(prefix+"resetCorrection",isResetCorrection()+"");
+				properties.setProperty(prefix+"resetVariables",isResetVariables()+"");
 				properties.setProperty(prefix+"resetCenter",isResetCenter()+"");
 				properties.setProperty(prefix+"parallelOnly",isParallelOnly()+"");
 				properties.setProperty(prefix+"strategyComment","<![CDATA["+strategyComment+ "]]>");
@@ -8240,8 +8353,8 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
             	if (s!=null) initialLambda=Double.parseDouble(s);
             	s=properties.getProperty(prefix+"stopAfterThis");
             	if (s!=null) stopAfterThis=Boolean.parseBoolean(s);
-            	s=properties.getProperty(prefix+"resetCorrection");
-            	if (s!=null) resetCorrection=Boolean.parseBoolean(s);
+            	s=properties.getProperty(prefix+"resetVariables");
+            	if (s!=null) resetVariables=Boolean.parseBoolean(s);
             	s=properties.getProperty(prefix+"resetCenter");
             	if (s!=null) resetCenter=Boolean.parseBoolean(s);
             	s=properties.getProperty(prefix+"parallelOnly");
@@ -8255,6 +8368,128 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
             	}
             }
     	}
+    }
+    public class QualBOptimize{
+//    	public double [] saveZcTxTy=null; // save Zc, Tx, Ty to be restored in the end (just save calibration?)
+    	public double [] qVector=null;    // vector of 1..3 elements - parameters used in fitting (of Zc, Tx, Ty)
+    	public int [] qIndices=null;      // parameter index for each of qVector elements (0 - Zc, 1 - Tx, 2 - Ty)
+    	public double [] qSaveVector;
+    	public double qFirstRMS;
+    	public double qInitialLambda=0.001;
+    	public double qLambda;
+    	public double [] qWeights=null;
+    	double [][] sampleCoord;
+    	double [][] jacobian=null; // rows - parameters, columns - samples
+
+    	
+    	/**
+    	 * Generate weighs array for samples
+    	 * @param sampleCoord
+    	 * @param kr weight of red components (relative to green)
+    	 * @param kb weight of blue components (relative to green)
+    	 * @param ks weight of sagittal components
+    	 * @param kt weight of tangential components
+    	 * @param goodSamples array [channel][sample] of all samples taken into account, or null to use all
+    	 */
+    	public void initWeighs(
+    			double [][] sampleCoord,
+    			double kr,
+    			double kb,
+    			double ks,
+    			double kt,
+    			boolean [][] goodSamples){
+    		int numSamples=sampleCoord.length;
+    		this.sampleCoord=new double [numSamples][];
+    		for (int i=0;i<numSamples;i++) this.sampleCoord[i]=sampleCoord[i].clone();
+    		int numChannels=3*2;
+    		double [] colorWeights={kr,1.0,kb};
+    		double [] dirWeights={ks,kt};
+    		qWeights=new double [numChannels*sampleCoord.length];
+    		double sumWeights=0.0;
+    		for (int c=0;c<colorWeights.length;c++) for (int d=0;d<dirWeights.length;d++){
+    			int chn=c*dirWeights.length+d;
+    			double w=0.0;
+    			for (int sample=0;sample<numSamples;sample++){
+    				if ((goodSamples==null) || goodSamples[chn][sample]) {
+    					w=colorWeights[c]*dirWeights[d];
+    				}
+        			qWeights[numSamples*chn+sample]=w;
+        			sumWeights+=w;
+    			}
+    		}
+    		if (sumWeights>0.0) {
+    			for (int i=0;i<qWeights.length;i++) qWeights[i]/=sumWeights;
+    		}
+    	}
+
+    	/**
+    	 * Init parameter vextr (subset of Zc, Tx, Ty) using provided mask and values
+    	 * @param selectedPars boolean array of selected parameters {select_zc, select_tx, select_ty} or null for all
+    	 * @param vector parameter vector {zc,tx,ty} or null to use current values
+    	 * @return vector of 1..3 elements of selected parameter values
+    	 */
+    	public double [] initQPars(
+    			boolean [] selectedPars,
+    			double [] vector){
+    		if (vector==null) vector=fieldFitting.mechanicalFocusingModel.getZTxTy();
+    		int numPars=0;
+    		for (int i=0;i<vector.length;i++) if ((selectedPars==null) || selectedPars[i]) numPars++;
+    		qIndices=new int[numPars];
+    		qVector=new double[numPars];
+    		int index=0;
+    		for (int i=0;i<vector.length;i++) if ((selectedPars==null) || selectedPars[i]) {
+    			qIndices[index]=i;
+    			qVector[index++]=vector[i];
+    		}
+    		return qVector;
+    	}
+    	
+    	public double [] initQPars(
+    			double zc,
+    			double tx,
+    			double ty){
+    		double [] vector={zc,tx,ty};
+    		boolean [] selectedPars={true,true,true};
+    		for (int i=0;i<vector.length;i++) if (Double.isNaN(vector[i]))selectedPars[i]=false;
+    		return initQPars(selectedPars,vector);
+    	}
+    	
+    	public void commitQPars(double [] vector){
+    		if (vector!=null) qVector=vector.clone();
+    		double [] zTxTy=fieldFitting.mechanicalFocusingModel.getZTxTy(); // current values
+    		for (int i=0;i<qIndices.length;i++){
+    			zTxTy[qIndices[i]]=qVector[i]; // overwrite selected
+    			
+    		}
+    		fieldFitting.mechanicalFocusingModel.setZTxTy(zTxTy);
+    	}
+    	
+    	public void saveQPars(){ // may need to call  
+    		qSaveVector=qVector.clone();
+    	}
+    	public void restoreQPars(){ // may need to call  
+    		qVector=qSaveVector.clone();
+    		commitQPars(null);
+    	}
+    	
+    	// fX here - FWHM^2, then instaed of rms will be weighted average qualB
+    	/*
+    	     	public double [] createFXandJacobian(double [] vector, boolean createJacobian){
+    		commitQPars(vector);
+    		return createFXandJacobian(createJacobian);
+    		
+    	}
+
+    	public double [] createFXandJacobian(boolean createJacobian){
+    		int numSamples=sampleCoord.length;
+    		int numChannels=qWeights.length/numSamples;
+    		for (int sample=0;sample<numSamples;sample++){
+    			
+    			
+    		}
+    	}    	
+    	*/
+    	
     }
 }
 
