@@ -809,6 +809,7 @@ if (MORE_BUTTONS) {
 		addButton("List curv",      panelCurvature,color_report);
 		addButton("Show curv corr", panelCurvature,color_report);
 		addButton("Test measurement", panelCurvature,color_debug);
+		addButton("Optimize qualB", panelCurvature,color_debug);
 		addButton("Focus/Tilt LMA", panelCurvature,color_process);
 		add(panelCurvature);
 		
@@ -4075,6 +4076,9 @@ if (MORE_BUTTONS) {
 			}
 			path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
 			FOCUSING_FIELD= new FocusingField(
+					EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+					EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+					0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
 					FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 					FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
 					FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
@@ -4402,6 +4406,9 @@ if (MORE_BUTTONS) {
 			}
 			path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
 			FOCUSING_FIELD= new FocusingField(
+					EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+					EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+					0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
 					FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 					FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
 					FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
@@ -4568,6 +4575,17 @@ if (MORE_BUTTONS) {
 			FOCUSING_FIELD.testMeasurement();
 			return;
 		}
+/* ======================================================================== */
+		if       (label.equals("Optimize qualB")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) return;
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.testQualB(true); //     public double[] testQualB(boolean interactive)
+			return;
+		}
+		
+				
+		
 /* ======================================================================== */
 		if       (label.equals("Focus/Tilt LMA")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -5131,6 +5149,9 @@ if (MORE_BUTTONS) {
 			FocusingField ff= null;
 			if (useLMA){
 				ff= new FocusingField(
+						EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+						EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+						0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
 						FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 						FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
 						FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
@@ -5232,6 +5253,9 @@ if (MORE_BUTTONS) {
 // Now in LMA mode - recalculate and overwrite
 				if (useLMA){
 					ff= new FocusingField(
+							EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+							EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+							0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
 							FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 							FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
 							FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
@@ -8885,7 +8909,7 @@ if (MORE_BUTTONS) {
     	double [] targetTilts={0.0,0.0};
     	double [] manualScrewsCW=null;
     	if (zTxTyM1M2M3!=null){
-    		manualScrewsCW=FOCUSING_FIELD.fieldFitting.mechanicalFocusingModel. getManualScrews(
+    		manualScrewsCW=FOCUSING_FIELD.fieldFitting.mechanicalFocusingModel.getManualScrews(
     				zTxTy[0]-FOCUSING_FIELD.targetRelFocalShift, //double zErr, // positive - away from lens
     				zTxTy[1]-targetTilts[0],                     // double tXErr,// positive - 1,2 away from lens, 3 - to the lens
     				zTxTy[2]-targetTilts[1]);                    // double tYErr);
@@ -8916,9 +8940,15 @@ if (MORE_BUTTONS) {
     		gd.addMessage("**** Failed to determine focus/tilt, probably too far out of focus. ****");
     		gd.addMessage("**** You may cancel the command and try \"Auto pre-focus\" first. ****");
     	}
-        gd.addNumericField("Target focus (relative to best composirte)",FOCUSING_FIELD.targetRelFocalShift,2,5,"um ("+IJ.d2s(zTxTy[0],3)+")");
-        gd.addNumericField("Target horizontal tilt (normally 0)",targetTilts[0],2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
-        gd.addNumericField("Target vertical tilt (normally 0)",targetTilts[1],2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
+        gd.addNumericField("Target focus (relative to best composite)",FOCUSING_FIELD.targetRelFocalShift,2,5,"um ("+IJ.d2s(zTxTy[0],3)+")");
+        gd.addNumericField("Target horizontal tilt relative to optimal (normally 0)",targetTilts[0],2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
+        gd.addNumericField("Target vertical tilt  relative to optimal (normally 0)",targetTilts[1],2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
+
+        gd.addCheckbox("Optimize focal distance",(FOCUSING_FIELD.qualBOptimizeMode & 1) != 0);
+		gd.addCheckbox("Optimize tiltX",         (FOCUSING_FIELD.qualBOptimizeMode & 2) != 0);
+		gd.addCheckbox("Optimize tiltY",         (FOCUSING_FIELD.qualBOptimizeMode & 4) != 0);
+        
+        
 		gd.addNumericField("Motor 1",newMotors[0],0,5,"steps ("+currentMotors[0]+")");
 		gd.addNumericField("Motor 2",newMotors[1],0,5,"steps ("+currentMotors[1]+")");
 		gd.addNumericField("Motor 3",newMotors[2],0,5,"steps ("+currentMotors[2]+")");
@@ -8952,6 +8982,12 @@ if (MORE_BUTTONS) {
 		FOCUSING_FIELD.targetRelFocalShift=gd.getNextNumber();
 		targetTilts[0]=                    gd.getNextNumber();
 		targetTilts[1]=                    gd.getNextNumber();
+		
+		FOCUSING_FIELD.qualBOptimizeMode=0;
+		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?1:0;
+		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?2:0;
+		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?4:0;
+		
 		newMotors[0]=               (int)  gd.getNextNumber();
 		newMotors[1]=               (int)  gd.getNextNumber();
 		newMotors[2]=               (int)  gd.getNextNumber();
