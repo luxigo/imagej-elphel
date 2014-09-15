@@ -8540,20 +8540,20 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     	for (int i=0;i<sampleCoord.length;i++){
     		double fractHor= Math.abs((2*sampleCoord[i][0]-(this.sensorWidth-1.0))/(this.sensorWidth-1.0));
     		double fractVert=Math.abs((2*sampleCoord[i][1]-(this.sensorHeight-1.0))/(this.sensorHeight-1.0));
-    		System.out.println(i+": "+sampleCoord[i][0]+":"+sampleCoord[i][1]+" fractHor="+fractHor+" fractVert="+fractVert);
+    		if (interactive && (debugLevel>2)) System.out.println(i+": "+sampleCoord[i][0]+":"+sampleCoord[i][1]+" fractHor="+fractHor+" fractVert="+fractVert);
     		sampleWeights[i]=1.0;
     		if (fractHor>this.k_qualBFractionHor){
     			double w=(this.k_qualBFractionPeripheral*(fractHor-this.k_qualBFractionHor)+1.0*(1.0-fractHor))/(1.0-this.k_qualBFractionHor);
     			if (w<sampleWeights[i]) sampleWeights[i]=w;
-    			System.out.println("fractHor>this.k_qualBFractionHor, w="+w);
+    			if (interactive && (debugLevel>2)) System.out.println("fractHor>this.k_qualBFractionHor, w="+w);
     		}
     		if (fractVert>this.k_qualBFractionVert){
     			double w=(this.k_qualBFractionPeripheral*(fractVert-this.k_qualBFractionVert)+1.0*(1.0-fractVert))/(1.0-this.k_qualBFractionVert);
     			if (w<sampleWeights[i]) sampleWeights[i]=w;
-    			System.out.println("fractVert>this.k_qualBFractionVert, w="+w);
+    			if (interactive && (debugLevel>2)) System.out.println("fractVert>this.k_qualBFractionVert, w="+w);
     		}
     	}
-    	if (interactive && (debugLevel>3)){
+    	if (interactive && (debugLevel>1)){
     		for (int i=0;i<sampleCoord.length;i++){
     			System.out.print(" "+IJ.d2s(sampleWeights[i],3));
     			if (((i+1)%this.sampleCoord[0].length) == 0) System.out.println();  
