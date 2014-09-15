@@ -4390,8 +4390,8 @@ public boolean LevenbergMarquardt(
 //        if ((comment.length()>10) && comment.substring(0,9).equals("<![CDATA[")) comment=comment.substring(9,comment.length()-3);
         
         PIXEL_SIZE=Double.parseDouble(hConfig.getString("PIXEL_SIZE",PIXEL_SIZE+""));
-        sensorWidth=Integer.parseInt(hConfig.getString("sensorWidth","0"));
-        sensorHeight=Integer.parseInt(hConfig.getString("sensorHeight","0"));
+        sensorWidth=Integer.parseInt(hConfig.getString("sensorWidth",sensorWidth+""));
+        sensorHeight=Integer.parseInt(hConfig.getString("sensorHeight",sensorHeight+""));
         
         serialNumber= hConfig.getString("serialNumber","???");
         lensSerial= hConfig.getString("lensSerial","???");
@@ -8473,6 +8473,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     
     public double[] testQualB(boolean interactive){
     	double [] targetZTxTy={0.0,0.0,0.0};
+    	boolean debugScan=false;
     	if (interactive){ 
     		GenericDialog gd = new GenericDialog("Calculate optimal focus/tilt");
     		gd.addNumericField("Initial focus (relative to best composirte)",targetZTxTy[0],2,5,"um");
@@ -8493,6 +8494,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     		gd.addNumericField("Relative weight of peripheral areas",100*this.k_qualBFractionPeripheral, 1,7,"%");
     		gd.addNumericField("Reduce weight of peripheral areas outside of this fraction, linear, large sensor dimension",100*this.k_qualBFractionHor, 1,5,"%");
     		gd.addNumericField("Reduce weight of peripheral areas outside of this fraction, linear, small sensor dimension",100*this.k_qualBFractionVert, 1,5,"%");
+    		gd.addCheckbox("Debug scan",     debugScan);
     		WindowTools.addScrollBars(gd);
     		gd.showDialog();
     		if (gd.wasCanceled()) return null;
@@ -8515,6 +8517,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     		this.k_qualBFractionPeripheral= 0.01*gd.getNextNumber();
     		this.k_qualBFractionHor=        0.01*gd.getNextNumber();
     		this.k_qualBFractionVert=       0.01*gd.getNextNumber();
+    		debugScan=gd.getNextBoolean();
     	}
     	boolean [] selectQualBPars={
     			((this.qualBOptimizeMode & 1) != 0),
@@ -8581,13 +8584,16 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     			selectQualBPars);
 // Set all 3 parameter values, even if some are not selected    	
    		fieldFitting.mechanicalFocusingModel.setZTxTy(zTxTy);
+   		if (debugScan){
+   			qualBOptimize.runDebugScan(-20.0,20.0,1.0);
+   		}
     	boolean OK= qualBOptimize.qLevenbergMarquardt(
     			interactive, // boolean openDialog,
         		debugLevel+1);
     	if (OK){
     		zTxTy=fieldFitting.mechanicalFocusingModel.getZTxTy();
     		System.out.println("qualBOptimize returned:\n"+
-    		 "zc="+IJ.d2s((zTxTy[0]-best_qb_corr[0]),3)+"um\n"+
+    		 "zc="+IJ.d2s((zTxTy[0]),3)+"um ("+IJ.d2s((zTxTy[0]-best_qb_corr[0]),3)+"um from best_qb_corr)\n"+
     		 "tX="+IJ.d2s(zTxTy[1],3)+"um/mm\n"+
     		 "tY="+IJ.d2s(zTxTy[2],3)+"um/mm");
     	} else {
@@ -8670,8 +8676,8 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     		double sumWeights=0.0;
     		for (int c=0;c<colorWeights.length;c++) for (int d=0;d<dirWeights.length;d++){
     			int chn=c*dirWeights.length+d;
-    			double w=0.0;
     			for (int sample=0;sample<numSamples;sample++){
+        			double w=0.0;
     				if ((goodSamples==null) || goodSamples[chn][sample]) {
     					w=colorWeights[c]*dirWeights[d];
     				}
@@ -9026,10 +9032,10 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         		gd.addMessage("Lambda="+this.qLambda);
         	}
         	gd.addNumericField("Lambda ", this.qLambda, 5);
-        	gd.addNumericField("Multiply lambda on success", this.qLambdaStepDown, 5);
+        	gd.addNumericField("Multiply lambda on success", this.qLambdaStepDown, 10);
         	gd.addNumericField("Threshold RMS to exit LMA", this.qThresholdFinish, 7,9,"pix");
-        	gd.addNumericField("Multiply lambda on failure", this.qLambdaStepUp, 5);
-        	gd.addNumericField("Threshold lambda to fail", this.qMaxLambda, 5);
+        	gd.addNumericField("Multiply lambda on failure", this.qLambdaStepUp, 10);
+        	gd.addNumericField("Threshold lambda to fail", this.qMaxLambda, 10);
         	gd.addNumericField("Maximal number of iterations", this.qNumIterations, 0);
         	gd.addCheckbox("Dialog after each iteration step", this.qStopEachStep);
         	gd.addCheckbox("Dialog after each failure", this.qStopOnFailure);
@@ -9090,6 +9096,30 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
              this.showDisabledQParams=   gd.getNextBoolean();
           return true;
      }
+        public void runDebugScan(
+        		double low,
+        		double high,
+        		double step){
+        	double [] best_qb_corr= fieldFitting.getBestQualB(
+        			k_red,
+        			k_blue,
+        			true);
+
+        	double [] saveZTxTy=fieldFitting.mechanicalFocusingModel.getZTxTy();
+        	double [] zTxTy=saveZTxTy.clone();
+            String header="Z absolute\tZ relative\tqualB";
+            StringBuffer sb = new StringBuffer();
+
+        	for (double dz=low;dz<=high;dz+=step){
+        		zTxTy[0]=best_qb_corr[0]+dz;
+        		fieldFitting.mechanicalFocusingModel.setZTxTy(zTxTy);
+        		double qualB=getQualB();
+        		sb.append(IJ.d2s(zTxTy[0],3)+"\t"+IJ.d2s(dz,3)+"\t"+IJ.d2s(qualB,5)+"\n");
+        	}
+        	
+        	fieldFitting.mechanicalFocusingModel.setZTxTy(saveZTxTy);
+            new TextWindow("qualB scan, Tx="+IJ.d2s(zTxTy[1],3)+" Ty="+IJ.d2s(zTxTy[1],3), header, sb.toString(), 800,1000);
+        }
         
         public boolean qLevenbergMarquardt(
         		boolean openDialog,
