@@ -220,6 +220,9 @@ public class FocusingField {
 	double [] nextVector=null;
 	double [] savedVector=null;
 	
+	boolean [][] goodCalibratedSamples=null;
+	
+	
 	private LMAArrays lMAArrays=null;
 	private LMAArrays savedLMAArrays=null;
 	// temporarily changing visibility of currentfX
@@ -235,6 +238,7 @@ public class FocusingField {
 
 
     public void setDefaults(){
+    	goodCalibratedSamples=null;
     	sensorWidth=  2592;
     	sensorHeight= 1936;
     	PIXEL_SIZE=   0.0022; // mm
@@ -482,6 +486,15 @@ public class FocusingField {
     				}
     			}
     		}
+    		if (goodCalibratedSamples !=null){
+    			properties.setProperty(prefix+"goodCalibratedSamples_length",goodCalibratedSamples.length+"");
+    			for (int chn=0;chn<goodCalibratedSamples.length;chn++){
+    				String s="";
+    				if (goodCalibratedSamples[chn]!=null) for (int j=0;j<goodCalibratedSamples[chn].length;j++) s+=goodCalibratedSamples[chn][j]?"+":"-";
+        			properties.setProperty(prefix+"goodCalibratedSamples_"+chn,s);
+    			}
+    			
+    		}
     	}
     }
 
@@ -678,6 +691,20 @@ public class FocusingField {
 							if (ss.length>2) zRanges[chn][sample][2]=Double.parseDouble(ss[2]);
 							else  zRanges[chn][sample][2]=0.0;
 						}
+					}
+				}
+			}
+		}
+		if (properties.getProperty(prefix+"goodCalibratedSamples_length")!=null){
+			goodCalibratedSamples=new boolean [Integer.parseInt(properties.getProperty(prefix+"goodCalibratedSamples_length"))][];
+			for (int chn=0;chn<goodCalibratedSamples.length;chn++){
+				String s=properties.getProperty(prefix+"goodCalibratedSamples_"+chn);
+				if ((s==null) || (s.length()==0)){
+					goodCalibratedSamples[chn]=null;
+				} else {
+					goodCalibratedSamples[chn]=new boolean [s.length()];
+					for (int i=0;i<goodCalibratedSamples[chn].length;i++){
+						goodCalibratedSamples[chn][i]=s.charAt(i)=='+';
 					}
 				}
 			}
@@ -3950,6 +3977,19 @@ public double [] findAdjustZ(
 	return result;
 }
 
+public void calculateGoodSamples(){
+	this.goodCalibratedSamples=new boolean[getNumChannels()][getNumSamples()];
+    for (int chn=0;chn<this.goodCalibratedSamples.length;chn++)
+    	for (int sample=0;sample<this.goodCalibratedSamples[0].length;sample++)
+    		this.goodCalibratedSamples[chn][sample]=false;
+    for (int n=0;n<dataVector.length;n++) if (dataWeights[n]>0.0){
+    	this.goodCalibratedSamples[dataVector[n].channel][dataVector[n].sampleIndex]=true;
+    }
+	if (debugLevel>0) {
+		System.out.println("Calculated good samples:");
+		System.out.println(showSamples(this.goodCalibratedSamples));
+	}
+}
 
 
 public boolean LevenbergMarquardt(
@@ -4201,9 +4241,12 @@ public boolean LevenbergMarquardt(
 	}
 	this.savedVector=this.currentVector.clone();
 	commitParameterVector(this.savedVector);
-	if (calibrate) zRanges=calcZRanges(
-			true, // boolean scanOnly, // do not use non-scan samples
-			dataWeightsToBoolean());
+	if (calibrate){
+		zRanges=calcZRanges(
+				true, // boolean scanOnly, // do not use non-scan samples
+				dataWeightsToBoolean());
+		calculateGoodSamples();		
+	}
 	return true; // all series done
 }
 
@@ -4766,6 +4809,10 @@ public boolean LevenbergMarquardt(
     	for (int i=0;i<dataVector.length;i++) if (dataWeights[i]>0.0){
     		usedSamples[dataVector[i].channel][dataVector[i].sampleIndex]=true;
     	}
+    	return showSamples(usedSamples);
+    }
+
+    public String showSamples(boolean [][] usedSamples){
     	int height=sampleCoord.length;
     	int width= sampleCoord[0].length;
 		String s="";
@@ -5465,17 +5512,18 @@ public boolean LevenbergMarquardt(
         		){
         	double [] sampleCorrRadius=getSampleRadiuses();
             int numSamples=sampleCorrRadius.length;
-            boolean [][] goodSamples=new boolean[getNumChannels()][getNumSamples()];
-            for (int i=0;i<goodSamples.length;i++) for (int j=0;j<goodSamples[0].length;j++) goodSamples[i][j]=false;
-            for (int n=0;n<dataVector.length;n++) if (dataWeights[n]>0.0){
-            	goodSamples[dataVector[n].channel][dataVector[n].sampleIndex]=true;
-            }
+//            boolean [][] goodSamples=new boolean[getNumChannels()][getNumSamples()];
+//            for (int i=0;i<goodSamples.length;i++) for (int j=0;j<goodSamples[0].length;j++) goodSamples[i][j]=false;
+//            for (int n=0;n<dataVector.length;n++) if (dataWeights[n]>0.0){
+//            	goodSamples[dataVector[n].channel][dataVector[n].sampleIndex]=true;
+//            }
             double [][] result=new double [6][];
             for (int chn=0;chn<result.length;chn++) {
                 if ((curvatureModel[chn]!=null) && (allChannels || channelSelect[chn])){
                     result[chn]=new double [numSamples];
                     for (int sampleIndex=0;sampleIndex<numSamples;sampleIndex++) {
-                    	if (goodSamples[chn][sampleIndex]) {
+                    	if ((goodCalibratedSamples==null) || ((goodCalibratedSamples[chn]!=null) && goodCalibratedSamples[chn][sampleIndex])) {
+//                    	if (goodSamples[chn][sampleIndex]) {
 /*                    		
                         result[chn][sampleIndex]=curvatureModel[chn].getAr(
                                 sampleCorrRadius[sampleIndex],
@@ -5512,17 +5560,20 @@ public boolean LevenbergMarquardt(
         		){
         	double [] sampleCorrRadius=getSampleRadiuses();
             int numSamples=sampleCorrRadius.length;
+/*            
             boolean [][] goodSamples=new boolean[getNumChannels()][getNumSamples()];
             for (int i=0;i<goodSamples.length;i++) for (int j=0;j<goodSamples[0].length;j++) goodSamples[i][j]=false;
             for (int n=0;n<dataVector.length;n++) if (dataWeights[n]>0.0){
             	goodSamples[dataVector[n].channel][dataVector[n].sampleIndex]=true;
             }
+*/            
             double [][] result=new double [6][];
             for (int chn=0;chn<result.length;chn++) {
                 if ((curvatureModel[chn]!=null) && (allChannels || channelSelect[chn])){
                     result[chn]=new double [numSamples];
                     for (int sampleIndex=0;sampleIndex<numSamples;sampleIndex++) {
-                    	if (goodSamples[chn][sampleIndex]) {
+                    	if ((goodCalibratedSamples==null) || ((goodCalibratedSamples[chn]!=null) && goodCalibratedSamples[chn][sampleIndex])) {
+//                    	if (goodSamples[chn][sampleIndex]) {
                         result[chn][sampleIndex]=getChannelBestFWHM(
                         		chn,         // int channel,
                         		sampleIndex, // int sampleIndex,
@@ -5563,18 +5614,23 @@ public boolean LevenbergMarquardt(
             double [] qualB = {0.0,0.0,0.0};
         	double [] sampleCorrRadius=getSampleRadiuses();
             int numSamples=sampleCorrRadius.length;
+            if (goodCalibratedSamples==null) calculateGoodSamples();
+/*
             boolean [][] goodSamples=new boolean[getNumChannels()][getNumSamples()];
             for (int i=0;i<goodSamples.length;i++) for (int j=0;j<goodSamples[0].length;j++) goodSamples[i][j]=false;
             for (int n=0;n<dataVector.length;n++) if (dataWeights[n]>0.0){
             	goodSamples[dataVector[n].channel][dataVector[n].sampleIndex]=true;
             }
+*/            
             for (int c=0;c<3;c++) {
                 if ((data[2*c]!=null) && (data[2*c+1]!=null)){
                 	int nSamp=0;
                     qualB[c]=0.0;
                     for (int i=0;i<numSamples;i++){
                     	for (int dir=0;dir<2;dir++) {
-                        	if (goodSamples[2*c+dir][i]){
+//                        	if (goodSamples[2*c+dir][i]){
+                    		int chn=2*c+dir;
+                    		if ((goodCalibratedSamples[chn]!=null) && goodCalibratedSamples[chn][i]) {
                                 qualB[c]+=data[2*c+dir][i]*data[2*c+dir][i]*data[2*c+dir][i]*data[2*c+dir][i];
                                 nSamp++;
                         	}
@@ -5591,9 +5647,17 @@ public boolean LevenbergMarquardt(
             //TODO: Move to a separate function
             int [] numBad={0,0,0,0,0,0};
             boolean hasBad=false;
-            for (int i=0;i<goodSamples.length;i++) for (int j=0;j<goodSamples[0].length;j++) if (!goodSamples[i][j]){
-            	numBad[i]++;
-            	hasBad=true;
+            //            for (int i=0;i<goodSamples.length;i++) for (int j=0;j<goodSamples[0].length;j++) if (!goodSamples[i][j]){
+            for (int i=0;i<goodCalibratedSamples.length;i++){
+            	if (goodCalibratedSamples[i]==null) {
+            		numBad[i]+=getNumSamples();
+            		hasBad=true;
+            	} else {
+            		for (int j=0;j<goodCalibratedSamples[i].length;j++) if (!goodCalibratedSamples[i][j]){
+            			numBad[i]++;
+            			hasBad=true;
+            		}
+            	}
             }
             if ((debugLevel>1) && hasBad){ // was 0
             	for (int i=0;i<numBad.length;i++) if (numBad[i]>0){
@@ -8577,7 +8641,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     			this.k_blue,
     			this.k_sag,
     			this.k_tan,
-    			goodSamples,
+    			this.qualBRemoveBadSamples?this.goodCalibratedSamples:null, //goodSamples,
     			sampleWeights);
     	qualBOptimize.initQPars(
     			zTxTy,
@@ -8678,7 +8742,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     			int chn=c*dirWeights.length+d;
     			for (int sample=0;sample<numSamples;sample++){
         			double w=0.0;
-    				if ((goodSamples==null) || goodSamples[chn][sample]) {
+    				if ((goodSamples==null) || ((goodSamples[chn]!=null) && goodSamples[chn][sample])) {
     					w=colorWeights[c]*dirWeights[d];
     				}
     				if (sampleWeights!=null){
