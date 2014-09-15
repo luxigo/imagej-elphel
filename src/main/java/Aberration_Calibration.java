@@ -774,7 +774,7 @@ if (MORE_BUTTONS) {
 		}
 		addButton("Lens Center",panelFocusing,color_process);
 //		if (MORE_BUTTONS) {		
-			addButton("Find Grid",panelFocusing,color_lenses);
+			addButton("Find Grid",panelFocusing,color_process);
 //		}
         addButton("Select WOI",panelFocusing,color_lenses);
         addButton("Reset Histories",panelFocusing,color_lenses);

@@ -4858,6 +4858,13 @@ public boolean LevenbergMarquardt(
     		boolean noTiltScan,
     		FocusingFieldMeasurement measurement,
     		boolean parallelMove){
+    	if (debugLevel>0) System.out.println("Calculating optimal focal/tilt, qualBOptimizeMode="+this.qualBOptimizeMode);
+    	testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+    	if (debugLevel>0) {
+    		System.out.println("Optimal absolute Zc="+this.qualBOptimizationResults[0]);
+    		System.out.println("Optimal Tx="+this.qualBOptimizationResults[1]);
+    		System.out.println("Optimal Ty="+this.qualBOptimizationResults[2]);
+    	}
     	if (!testMeasurement(
     			measurement,    				
 				zMin, //+best_qb_corr[0],
@@ -4870,13 +4877,6 @@ public boolean LevenbergMarquardt(
     		return null;
     	}
     	double [] result=new double [6];
-    	if (debugLevel>0) System.out.println("Calculating optimal focal/tilt, qualBOptimizeMode="+this.qualBOptimizeMode);
-    	testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
-    	if (debugLevel>0) {
-    		System.out.println("Optimal absolute Zc="+this.qualBOptimizationResults[0]);
-    		System.out.println("Optimal Tx="+this.qualBOptimizationResults[1]);
-    		System.out.println("Optimal Ty="+this.qualBOptimizationResults[2]);
-    	}
     	
 //        double [] best_qb_corr= fieldFitting.getBestQualB(
 //                k_red,
@@ -5023,6 +5023,17 @@ public boolean LevenbergMarquardt(
     			}
     			if (!changedEnable) {
     				if (debugLevel>0) System.out.println("No filter cnange, finished in "+(n+1)+" step"+((n==0)?"":"s"));
+    				if (debugLevel>0) {
+    					System.out.println("=== Absolute shift/tilt from the measuremet ===");
+    					for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
+    						if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
+    							System.out.println(
+    									fieldFitting.mechanicalFocusingModel.getDescription(i)+": "+
+    											IJ.d2s(fieldFitting.mechanicalFocusingModel.paramValues[i],3)+" "+
+    											fieldFitting.mechanicalFocusingModel.getUnits(i));
+    						}
+    					}
+    				}
     				return true;
     			} else {
     				if ((was2PrevEnable!=null) && (prevEnable!=null) && (was2PrevEnable.length==prevEnable.length)){
