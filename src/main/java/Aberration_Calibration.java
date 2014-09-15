@@ -5198,6 +5198,17 @@ if (MORE_BUTTONS) {
 				String path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+
 				(modeAverage?"-summary.csv":"-tempscan.csv");
 				if (MASTER_DEBUG_LEVEL>0) System.out.println ((modeAverage?"Saving averaged measurements to ":"Saving temperature measurement log data to ")+path);
+				int sensorWidth=2992,sensorHeight=1936;
+				if ((LENS_DISTORTIONS!=null) && (LENS_DISTORTIONS.fittingStrategy!=null) && (LENS_DISTORTIONS.fittingStrategy!=null)&&
+						(LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData!=null) &&
+						(LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters!=null)){
+					sensorWidth=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorWidth;
+					sensorHeight=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorHeight;
+				}
+				if (FOCUSING_FIELD!=null){
+					sensorWidth=FOCUSING_FIELD.sensorWidth;
+					sensorHeight=FOCUSING_FIELD.sensorHeight;
+				}
 				MOTORS.listHistory(
 						path, // on screen, path - to csv
 						FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
@@ -5210,8 +5221,8 @@ if (MORE_BUTTONS) {
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY,
 						label.equals("Focus Average"),
-						FOCUS_MEASUREMENT_PARAMETERS.result_PX0-LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorWidth/2,
-						FOCUS_MEASUREMENT_PARAMETERS.result_PY0-LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorHeight/2,
+						FOCUS_MEASUREMENT_PARAMETERS.result_PX0-sensorWidth/2,
+						FOCUS_MEASUREMENT_PARAMETERS.result_PY0-sensorHeight/2,
 						FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,
 						FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT
 						);

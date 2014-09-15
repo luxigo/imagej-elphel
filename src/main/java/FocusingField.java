@@ -8589,7 +8589,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
    		}
     	boolean OK= qualBOptimize.qLevenbergMarquardt(
     			interactive, // boolean openDialog,
-        		debugLevel+1);
+        		debugLevel+(interactive?1:0));
     	if (OK){
     		zTxTy=fieldFitting.mechanicalFocusingModel.getZTxTy();
     		System.out.println("qualBOptimize returned:\n"+
