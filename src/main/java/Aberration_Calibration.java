@@ -5171,9 +5171,9 @@ if (MORE_BUTTONS) {
 					if (MASTER_DEBUG_LEVEL>0) {
 						String msg="Failed to calulate average focus/tilt";
 						if (ZTM!=null) msg="Average:\n"+
-								"Relative focal shift "+IJ.d2s(ZTM[0],3)+"um\n"+
-								"Horizontal tilt "+IJ.d2s(ZTM[1],3)+"um/mm\n"+
-								"Vertical tilt "+IJ.d2s(ZTM[2],3)+"um/mm\n"+
+								"Relative focal shift "+IJ.d2s(ZTM[0],3)+"um (absolute - "+IJ.d2s(ZTM[0]+FOCUSING_FIELD.qualBOptimizationResults[0],3)+"um)\n"+
+								"Relative horizontal tilt "+IJ.d2s(ZTM[1],3)+"um/mm (absolute - "+IJ.d2s(ZTM[1]+FOCUSING_FIELD.qualBOptimizationResults[1],3)+"um.mm)\n"+
+								"Relative vertical tilt "+IJ.d2s(ZTM[2],3)+"um/mm (absolute - "+IJ.d2s(ZTM[2]+FOCUSING_FIELD.qualBOptimizationResults[2],3)+"um.mm)\n"+
 								"Suggested M1 "+IJ.d2s(ZTM[3],0)+"steps\n"+
 								"Suggested M2 "+IJ.d2s(ZTM[4],0)+"steps\n"+
 								"Suggested M3 "+IJ.d2s(ZTM[5],0)+"steps";
@@ -8928,10 +8928,15 @@ if (MORE_BUTTONS) {
     	double scaleMovement=1.0; // calculate automatically - reduce when close
     	boolean parallelMove=false;
     	if (MASTER_DEBUG_LEVEL>0){
+    		System.out.println("----- Optimal (for qualB) focus/tilt -----");
+    		System.out.println("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+    		System.out.println("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+    		System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
+
     		System.out.println("----- Focus/tilt measurement results -----");
-    		System.out.println("Relative focal shift "+IJ.d2s(zTxTy[0],3)+" um ("+IJ.d2s(FOCUSING_FIELD.targetRelFocalShift,3)+"um)");
-    		System.out.println("Horizontal tilt "+IJ.d2s(zTxTy[1],3)+" um/mm ("+IJ.d2s(targetTilts[0],3)+"um/mm)");
-    		System.out.println("Vertical tilt "+IJ.d2s(zTxTy[2],3)+" um/mm ("+IJ.d2s(targetTilts[1],3)+"um/mm)");
+    		System.out.println("Relative to optimal focal shift "+IJ.d2s(zTxTy[0],3)+" um ("+IJ.d2s(FOCUSING_FIELD.targetRelFocalShift,3)+"um)");
+    		System.out.println("Relative to optimal horizontal tilt "+IJ.d2s(zTxTy[1],3)+" um/mm ("+IJ.d2s(targetTilts[0],3)+"um/mm)");
+    		System.out.println("Relative to optimal vertical tilt "+IJ.d2s(zTxTy[2],3)+" um/mm ("+IJ.d2s(targetTilts[1],3)+"um/mm)");
     		for (int i=0;i<newMotors.length;i++){
         		System.out.println("Suggested for motor "+(i+1)+" "+newMotors[i]+" ("+currentMotors[i]+")");
     		}
@@ -8955,6 +8960,10 @@ if (MORE_BUTTONS) {
         gd.addNumericField("Target horizontal tilt relative to optimal (normally 0)",targetTilts[0],2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
         gd.addNumericField("Target vertical tilt  relative to optimal (normally 0)",targetTilts[1],2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
 
+        gd.addMessage("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+        gd.addMessage("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+        gd.addMessage("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
+        
         gd.addCheckbox("Optimize focal distance",(FOCUSING_FIELD.qualBOptimizeMode & 1) != 0);
 		gd.addCheckbox("Optimize tiltX",         (FOCUSING_FIELD.qualBOptimizeMode & 2) != 0);
 		gd.addCheckbox("Optimize tiltY",         (FOCUSING_FIELD.qualBOptimizeMode & 4) != 0);

@@ -4790,7 +4790,7 @@ public boolean LevenbergMarquardt(
     	return result;
     }
 
-    public double [] averageZTM(
+    public double [] averageZTM(// results relative to optimal
     		boolean noTiltScan,
     		FocusingField ff){
     	double [] result =new double[6];
@@ -4807,7 +4807,7 @@ public boolean LevenbergMarquardt(
     	for (int i=0;i<result.length;i++) result[i]/=num;
     	return result;
     }
-    public double [] adjustLMA (
+    public double [] adjustLMA ( // result relative to optimal
     		boolean noTiltScan,
     		FocusingFieldMeasurement measurement,
     		boolean parallelMove){
@@ -4826,9 +4826,9 @@ public boolean LevenbergMarquardt(
     	if (debugLevel>0) System.out.println("Calculating optimal focal/tilt, qualBOptimizeMode="+this.qualBOptimizeMode);
     	testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
     	if (debugLevel>0) {
-    		System.out.println("Target Zc="+this.qualBOptimizationResults[0]);
-    		System.out.println("Target Tx="+this.qualBOptimizationResults[1]);
-    		System.out.println("Target Ty="+this.qualBOptimizationResults[2]);
+    		System.out.println("Optimal absolute Zc="+this.qualBOptimizationResults[0]);
+    		System.out.println("Optimal Tx="+this.qualBOptimizationResults[1]);
+    		System.out.println("Optimal Ty="+this.qualBOptimizationResults[2]);
     	}
     	
 //        double [] best_qb_corr= fieldFitting.getBestQualB(
