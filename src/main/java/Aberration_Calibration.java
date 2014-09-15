@@ -773,9 +773,9 @@ if (MORE_BUTTONS) {
 			addButton("Head Orientation",panelFocusing);
 		}
 		addButton("Lens Center",panelFocusing,color_process);
-		if (MORE_BUTTONS) {		
+//		if (MORE_BUTTONS) {		
 			addButton("Find Grid",panelFocusing,color_lenses);
-		}
+//		}
         addButton("Select WOI",panelFocusing,color_lenses);
         addButton("Reset Histories",panelFocusing,color_lenses);
         addButton("Motors Home",panelFocusing,color_lenses);
