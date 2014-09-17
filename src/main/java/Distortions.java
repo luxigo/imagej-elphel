@@ -12398,7 +12398,7 @@ Which parameters affect which matrices
         public int getGoniometerHorizontalIndex(){return 6;}
         public int getGoniometerAxialIndex(){return 7;}
         public int getSensorWidth() { return this.sensorWidth;}
-        public int getSensorHeight() { return this.sensorWidth;}
+        public int getSensorHeight() { return this.sensorHeight;}
         public int getSensorWidth(int subCam) { return this.sensorWidth;} // for the future? different sensors
         public int getSensorHeight(int subCam) { return this.sensorHeight;}// for the future? different sensors
         public double getPixelSize(int subCamNumber){return  this.eyesisSubCameras[0][subCamNumber].pixelSize;} // use station 0's pixel size
@@ -13952,6 +13952,33 @@ Which parameters affect which matrices
 			this.flipVertical=flipVertical;
 			recalcCommons();
 		}
+		public void setIntrincicFromSubcamera(EyesisSubCameraParameters pars){
+			setLensDistortionParameters(
+					pars.focalLength,
+					pars.pixelSize,  //um
+					pars.distortionRadius, // mm
+					pars.distortionA8, // r^7
+					pars.distortionA7, // r^6
+					pars.distortionA6, // r^5
+					pars.distortionA5, // r^4
+					pars.distortionA,  // r^4
+					pars.distortionB,  // r^3
+					pars.distortionC,  // r^2
+					// orientation/position parameters
+					this.yaw,          // (keep) angle in degrees from perpendicular to the pattern, 0 - towards wall, positive - clockwise from top
+					this.pitch,        // (keep) angle in degrees from perpendicular to the pattern, 0 - towards wall, positive - up
+					this.roll,         // (keep) angle in degrees rotation around camera optical axis (perpendicular to pattern if yaw==0, pitch==0), positive - clockwise
+					this.x0,           // (keep) lens axis from pattern center, mm (to the right)
+					this.y0,           // (keep) lens axis from pattern center, mm (down)
+					this.z0,           // (keep) lens axis from pattern center, mm (away)
+					this.distance,     // (keep) distance from the lens input pupil to the pattern plane along the camera axis, mm
+					pars.px0,          //        center of the lens on the sensor, pixels
+					pars.py0,          // center of the lens on the sensor, pixels
+					this.flipVertical  // (keep)  acquired image is mirrored vertically (mirror used)
+			);
+		}
+		
+		
 		public void setLensDistortionParameters(LensDistortionParameters ldp
 		){
 			this.focalLength=ldp.focalLength;

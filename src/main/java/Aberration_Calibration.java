@@ -45,13 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
-
-
-
-
-
-
 //import FocusingField.FocusingFieldMeasurement;
 //import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
@@ -3441,6 +3434,21 @@ if (MORE_BUTTONS) {
 				return;
 			}
 			double [][][][][] rFullResults=new double [1][][][][];
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 			double [][] metrics=measurePSFMetrics(
 					imp_sel,
 					LENS_DISTORTION_PARAMETERS,
@@ -3452,6 +3460,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					rFullResults,
 					THREADS_MAX,
 					UPDATE_STATUS,
@@ -3481,6 +3490,8 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("Error","Image with selection is required");
 				return;
 			}
+		Rectangle oldWOI=FOCUS_MEASUREMENT_PARAMETERS.margins;
+		System.out.println("Old WOI="+oldWOI);
 			FOCUS_MEASUREMENT_PARAMETERS.margins=imp_sel.getRoi().getBounds();
 			return;
 		}
@@ -3732,6 +3743,12 @@ if (MORE_BUTTONS) {
 			   	FOCUS_MEASUREMENT_PARAMETERS.result_PY0=camPars.eyesisSubCameras[stationNumber][0].py0;
 			   	FOCUS_MEASUREMENT_PARAMETERS.result_PSI=-camPars.eyesisSubCameras[stationNumber][0].psi; // "-" to show the current rotation (error), not where to rotate to correct
 			   	FOCUS_MEASUREMENT_PARAMETERS.result_FocalLength=camPars.eyesisSubCameras[stationNumber][0].focalLength;
+			   	
+			   	
+			   	// Update calcualted LENS_DISTORTION_PARAMETERS - especially px0, py0 - they were used to generate samples (not anymore)
+			   	
+			   	LENS_DISTORTION_PARAMETERS.setIntrincicFromSubcamera(camPars.eyesisSubCameras[stationNumber][0]);
+			   	
 // Use rotation from head lasers
 			   	if (FOCUS_MEASUREMENT_PARAMETERS.useHeadLasers){
 			   		psi=-headPointersTilt; // "-" - correction, instead of the target tilt
@@ -3938,6 +3955,21 @@ if (MORE_BUTTONS) {
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 //			int historyFrom=MOTORS.historySize()-1; // before scanning
 			int historyFrom=MOTORS.historySize();  // first during scanning (not yet exist)
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 			double[] range= ScanFocus(
 					null, // center at current position
 					MOTORS,
@@ -3951,6 +3983,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					THREADS_MAX,
 					UPDATE_STATUS,
 					MASTER_DEBUG_LEVEL,
@@ -4016,6 +4049,7 @@ if (MORE_BUTTONS) {
 						COMPONENTS,
 						OTF_FILTER,
 						PSF_PARS,
+						sampleCoord,
 						THREADS_MAX,
 						UPDATE_STATUS,
 						MASTER_DEBUG_LEVEL,
@@ -4031,6 +4065,14 @@ if (MORE_BUTTONS) {
 			if (!FOCUS_MEASUREMENT_PARAMETERS.showScanningSetup("Setup scanning parameters for LMA")) return;
 			MOTORS.setHysteresis(FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis);
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
+
+//			FOCUSING_FIELD=null;
+			 // Here re-generate measurement sample coordinates, in other places - try to use existent
+			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+			double [][][] 	sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+					pX0,
+					pY0);
 			double[] range= ScanFocusTilt(
 					null, // center at current position
 					MOTORS,
@@ -4044,6 +4086,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					THREADS_MAX,
 					UPDATE_STATUS,
 					MASTER_DEBUG_LEVEL,
@@ -4054,12 +4097,6 @@ if (MORE_BUTTONS) {
 				IJ.showMessage(msg);
 				return;
 			}
-
-			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
-			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
-			double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates( //{x,y,r}
-					pX0,   // lens center on the sensor
-					pY0);
 			// set file path
 			String path=null;
 			String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
@@ -4154,6 +4191,23 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("LENS_DISTORTION_PARAMETERS is not set");
 				return;
 			}
+
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
+			
 			int mode=autoMove? (FOCUS_MEASUREMENT_PARAMETERS.confirmFirstAuto?2:3):1;
 			if (fineFocus) mode=FOCUS_MEASUREMENT_PARAMETERS.confirmFirstAuto?4:5;
 			int [] newPos=null;
@@ -4174,6 +4228,7 @@ if (MORE_BUTTONS) {
 									COMPONENTS,
 									OTF_FILTER,
 									PSF_PARS,
+									sampleCoord,
 									THREADS_MAX,
 									UPDATE_STATUS,
 									MASTER_DEBUG_LEVEL,
@@ -4200,6 +4255,7 @@ if (MORE_BUTTONS) {
 									COMPONENTS,
 									OTF_FILTER,
 									PSF_PARS,
+									sampleCoord,
 									THREADS_MAX,
 									UPDATE_STATUS,
 									MASTER_DEBUG_LEVEL,
@@ -4238,6 +4294,7 @@ if (MORE_BUTTONS) {
 							COMPONENTS,
 							OTF_FILTER,
 							PSF_PARS,
+							sampleCoord,
 							THREADS_MAX,
 							UPDATE_STATUS,
 							MASTER_DEBUG_LEVEL,
@@ -4270,6 +4327,7 @@ if (MORE_BUTTONS) {
 							COMPONENTS,
 							OTF_FILTER,
 							PSF_PARS,
+							sampleCoord,
 							THREADS_MAX,
 							UPDATE_STATUS,
 							MASTER_DEBUG_LEVEL,
@@ -4345,7 +4403,21 @@ if (MORE_BUTTONS) {
 					FOCUS_MEASUREMENT_PARAMETERS,
 	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
 	    			DEBUG_LEVEL);
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
 
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 			moveAndMaybeProbe(
 					false,
 					MOTORS.readElphel10364Motors().clone(), // null OK
@@ -4360,6 +4432,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					THREADS_MAX,
 					UPDATE_STATUS,
 					MASTER_DEBUG_LEVEL+1,
@@ -4387,6 +4460,10 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
 			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+// temporary - for generating correction files			
+//			pX0=LENS_DISTORTION_PARAMETERS.px0; // pixel coordinate of the the optical center
+//	       	pY0=LENS_DISTORTION_PARAMETERS.py0; // pixel coordinate of the the optical center
+
 			double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates( //{x,y,r}
 					pX0,   // lens center on the sensor
 					pY0);
@@ -4522,7 +4599,7 @@ if (MORE_BUTTONS) {
 			FOCUSING_FIELD.LevenbergMarquardt(
 					null, // measurement
 					true, // open dialog
-//					false, // filterZ
+    				true,// boolean autoSel,
 					DEBUG_LEVEL); //boolean openDialog, int debugLevel){
 			return;
 		}
@@ -4690,6 +4767,21 @@ if (MORE_BUTTONS) {
 				if (MASTER_DEBUG_LEVEL>0) System.out.println("Measured hysteresis is "+measuredHysteresis+" steps, configured hysteresis is set to "+
 						FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis+" motor steps");
 			}
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 
 			if (FOCUS_MEASUREMENT_PARAMETERS.lensDistanceMoveToGoal && (newPos!=null)){
 				moveAndMaybeProbe(
@@ -4706,6 +4798,7 @@ if (MORE_BUTTONS) {
 						COMPONENTS,
 						OTF_FILTER,
 						PSF_PARS,
+						sampleCoord,
 						THREADS_MAX,
 						UPDATE_STATUS,
 						MASTER_DEBUG_LEVEL,
@@ -5043,6 +5136,15 @@ if (MORE_BUTTONS) {
 					return;
 				}
 			}
+			double [][][] sampleCoord=null;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+			} else {
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
+						FOCUS_MEASUREMENT_PARAMETERS.result_PY0);
+			}
+			
 			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
 					FOCUS_MEASUREMENT_PARAMETERS,
 	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
@@ -5061,6 +5163,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					THREADS_MAX,
 					UPDATE_STATUS,
 					MASTER_DEBUG_LEVEL,
@@ -5090,7 +5193,7 @@ if (MORE_BUTTONS) {
 			gd.addCheckbox("Erase previous measurement history",modeAverage);
 			gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
 			gd.addCheckbox("Use LMA calculations for focus/tilt",useLMA);
-			double scanMinutes=modeAverage?1.0:30.0;
+			double scanMinutes=modeAverage?2.0:30.0;
     		gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
     		gd.showDialog();
     		if (gd.wasCanceled()) return;
@@ -5108,9 +5211,22 @@ if (MORE_BUTTONS) {
 			long endTime=startTime+(long) (6E10*scanMinutes);
 			if (MASTER_DEBUG_LEVEL>0) System.out.println(" startTime= "+startTime+", endTime="+endTime);
 			int runs=0;
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 			while (System.nanoTime()<endTime){
-
-
 				moveAndMaybeProbe(
 						true, // just move, not probe
 						null, // no move, just measure
@@ -5125,6 +5241,7 @@ if (MORE_BUTTONS) {
 						COMPONENTS,
 						OTF_FILTER,
 						PSF_PARS,
+						sampleCoord,
 						THREADS_MAX,
 						UPDATE_STATUS,
 						MASTER_DEBUG_LEVEL,
@@ -5141,11 +5258,6 @@ if (MORE_BUTTONS) {
 			}
 			// LMA version
 			
-			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
-			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
-			double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates( //{x,y,r}
-					pX0,   // lens center on the sensor
-					pY0);
 			FocusingField ff= null;
 			if (useLMA){
 				ff= new FocusingField(
@@ -8882,7 +8994,16 @@ if (MORE_BUTTONS) {
     			MOTORS.getMicronsPerStep(), //double micronsPerStep,
     			DEBUG_LEVEL);
 */    			
+		double [][][] sampleCoord=null;
+		if (FOCUSING_FIELD!=null){
+			sampleCoord=FOCUSING_FIELD.getSampleCoord();
+		} else {
+			sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+					FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
+					FOCUS_MEASUREMENT_PARAMETERS.result_PY0);
+		}
 		// No-move measure, add to history
+	
 		moveAndMaybeProbe(
 				true, // just move, not probe
 				null, // no move, just measure
@@ -8897,6 +9018,7 @@ if (MORE_BUTTONS) {
 				COMPONENTS,
 				OTF_FILTER,
 				PSF_PARS,
+				sampleCoord,
 				THREADS_MAX,
 				UPDATE_STATUS,
 				MASTER_DEBUG_LEVEL,
@@ -9354,6 +9476,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9377,6 +9500,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9414,6 +9538,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9453,6 +9578,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9496,6 +9622,7 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				threadsMax,
 				updateStatus,
 				debugLevel,
@@ -9596,6 +9723,7 @@ if (MORE_BUTTONS) {
 						colorComponents,
 						otfFilterParameters,
 						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
 						threadsMax,
 						updateStatus,
 						debugLevel,
@@ -9640,6 +9768,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9677,6 +9806,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9745,6 +9875,7 @@ if (MORE_BUTTONS) {
 						colorComponents,
 						otfFilterParameters,
 						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
 						threadsMax,
 						updateStatus,
 						debugLevel,
@@ -9799,6 +9930,7 @@ if (MORE_BUTTONS) {
 						colorComponents,
 						otfFilterParameters,
 						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
 						threadsMax,
 						updateStatus,
 						debugLevel,
@@ -9844,6 +9976,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9864,6 +9997,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9914,6 +10048,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -10024,6 +10159,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -10066,6 +10202,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -10108,6 +10245,7 @@ if (MORE_BUTTONS) {
 							colorComponents,
 							otfFilterParameters,
 							psfParameters,
+							sampleCoord, // restored from history or null - will create old way
 							threadsMax,
 							updateStatus,
 							debugLevel,
@@ -10145,6 +10283,7 @@ if (MORE_BUTTONS) {
 								colorComponents,
 								otfFilterParameters,
 								psfParameters,
+								sampleCoord, // restored from history or null - will create old way
 								threadsMax,
 								updateStatus,
 								debugLevel,
@@ -10185,6 +10324,7 @@ if (MORE_BUTTONS) {
 							colorComponents,
 							otfFilterParameters,
 							psfParameters,
+							sampleCoord, // restored from history or null - will create old way
 							threadsMax,
 							updateStatus,
 							debugLevel,
@@ -10222,6 +10362,7 @@ if (MORE_BUTTONS) {
 								colorComponents,
 								otfFilterParameters,
 								psfParameters,
+								sampleCoord, // restored from history or null - will create old way
 								threadsMax,
 								updateStatus,
 								debugLevel,
@@ -10268,6 +10409,7 @@ if (MORE_BUTTONS) {
 						colorComponents,
 						otfFilterParameters,
 						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
 						threadsMax,
 						updateStatus,
 						debugLevel,
@@ -10308,6 +10450,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -10348,6 +10491,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -10396,6 +10540,7 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				threadsMax,
 				updateStatus,
 				debugLevel,
@@ -10426,6 +10571,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -10447,6 +10593,7 @@ if (MORE_BUTTONS) {
 			colorComponents,
 			otfFilterParameters,
 			psfParameters,
+			sampleCoord, // restored from history or null - will create old way
 			threadsMax,
 			updateStatus,
 			debugLevel,
@@ -10474,6 +10621,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -10493,6 +10641,7 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				threadsMax,
 				updateStatus,
 				debugLevel,
@@ -10513,6 +10662,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -10597,6 +10747,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					rFullResults,
 					threadsMax,
 					updateStatus,
@@ -10677,6 +10828,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -10707,6 +10859,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					1, //debugLevel,
@@ -10745,6 +10898,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel, //debugLevel, // 1,
@@ -10768,6 +10922,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -10805,7 +10960,7 @@ if (MORE_BUTTONS) {
 			throw new IllegalArgumentException (msg);
 		}
 		matchSimulatedPattern.debugLevel=debugLevel;
-		if (debugLevel>2){
+		if (debugLevel>1){
 			System.out.println("Samples Map:\n"+
 					focusMeasurementParameters.showSamplesMap(
 							lensDistortionParameters.px0, // pixel coordinate of the the optical center
@@ -10824,6 +10979,7 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				rFullResults,
 				threadsMax,
 				updateStatus,
@@ -10960,6 +11116,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			double [][][][][] returnFullResults, // null OK =- will return [0][i][j][0,1,2(r/g/b)][0,1]
 			int       threadsMax,
 			boolean   updateStatus,
@@ -10997,10 +11154,13 @@ if (MORE_BUTTONS) {
 				updateStatus,
 				loopDebugLevel); // debug level
 //		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-    	double [][][] sampleCoord=focusMeasurementParameters.sampleCoordinates(
-				lensDistortionParameters.px0, // pixel coordinate of the the optical center
-				lensDistortionParameters.py0); // pixel coordinate of the the optical center
-    	
+		if (sampleCoord==null){ // old way
+			System.out.println ("***** sampleCoord==null, genearting from lensDistortionParameters.p{x,y}0) *****");
+			sampleCoord=focusMeasurementParameters.sampleCoordinates(
+					lensDistortionParameters.px0, // pixel coordinate of the the optical center
+					lensDistortionParameters.py0); // pixel coordinate of the the optical center
+		}
+		if (debugLevel>0) System.out.println ("Top left sample coordinates: x="+IJ.d2s(sampleCoord[0][0][0],3)+", y="+IJ.d2s(sampleCoord[0][0][1],3));
 		double [][][] anglePerPixel=pixToAngles(
 				sampleCoord,
 				lensDistortionParameters.px0, // pixel coordinate of the the optical center

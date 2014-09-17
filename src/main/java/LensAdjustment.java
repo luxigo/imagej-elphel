@@ -297,13 +297,13 @@ public class LensAdjustment {
         public double motorsPreSigma=3584.0; // when fitting parabola for focusing sharpness in the center, far measurements decay with this sigma
         public double maxLinearStep= 3584.0; // If there are insufficient measurements to fit parabola - make this step
         
-        public int scanStep=200;             // motor step (all 3 motors) in scan focus mode (signed value)
+        public int scanStep=320; // 200;             // motor step (all 3 motors) in scan focus mode (signed value)
         public int scanNumber=50;            // number of scanStep steps to run
-        public int scanNumberNegative=15;    // number of scanStep steps negative from the start 
-        public boolean scanHysteresis=true;  // scan both ways
+        public int scanNumberNegative=20; // 15;    // number of scanStep steps negative from the start 
+        public boolean scanHysteresis=false; // true;  // scan both ways
         public int scanHysteresisNumber=5;   // number of test points for the Hysteresis measurement
         
-        public boolean scanTiltEnable=true;  // enable scanning tilt
+        public boolean scanTiltEnable=false; //true;  // enable scanning tilt
         public boolean scanTiltReverse=false;  // enable scanning tilt in both directions
         public boolean scanMeasureLast=false;  // Calculate PSF after last move (to original position)
         public int scanTiltRangeX=14336;    // 4 periods

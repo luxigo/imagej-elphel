@@ -765,6 +765,9 @@ public double [][] flattenSampleCoord(){
     for (int i=0;i<sampleCoord.length;i++) for (int j=0;j<sampleCoord[0].length;j++) flatSampleCoord[index++]= sampleCoord[i][j];
     return flatSampleCoord; // last dimension is not cloned
 }
+public double [][][] getSampleCoord(){
+	return this.sampleCoord;
+}
 public class MeasuredSample{
     public int [] motors = new int[3];
     public String timestamp;
@@ -2890,23 +2893,31 @@ public void stepLevenbergMarquardtAction(int debugLevel){//
 
 /**
 * Dialog to select Levenberg-Marquardt algorithm and related parameters
+* @param autoSel - disable default stop, suggest strategy 0
 * @return true if OK, false if canceled
+* 
 */
-public boolean selectLMAParameters(){
+public boolean selectLMAParameters(boolean autoSel){
 //     int numSeries=fittingStrategy.getNumSeries();
 //    boolean resetCorrections=false;
      GenericDialog gd = new GenericDialog("Levenberg-Marquardt algorithm parameters lens aberrations approxiamtion");
      
      //TODO: change to selection using series comments
 //     	gd.addNumericField("Fitting series number", this.currentStrategyStep, 0, 3," (-1 - current)");
+     int suggestStep=this.currentStrategyStep;
+     boolean suggestStopEachStep=this.stopEachStep;
+     	if (autoSel){
+     		suggestStep=0;
+     		suggestStopEachStep=false;
+     	}
     	FieldStrategies fs=fieldFitting.fieldStrategies;
         String [] indices=new String[fs.getNumStrategies()+1];
         indices[0]="current strategy";
         for (int i=0;i<fs.getNumStrategies();i++) {
         	indices[i+1]=i+": "+fs.getComment(i)+" ("+(fs.isStopAfterThis(i)?"STOP":"CONTINUE")+")";
         }
-        if (this.currentStrategyStep>=(indices.length-1)) this.currentStrategyStep=indices.length-2;
-        gd.addChoice("Fitting series", indices,indices[this.currentStrategyStep+1]);
+        if (suggestStep>=(indices.length-1)) suggestStep=indices.length-2; // last one
+        gd.addChoice("Fitting series", indices,indices[suggestStep+1]);
      	
         gd.addCheckbox("Debug df/dX0, df/dY0", false);
         gd.addNumericField("Debug Jacobian for point number", this.debugPoint, 0, 5,"(-1 - none)");
@@ -2920,7 +2931,7 @@ public boolean selectLMAParameters(){
         gd.addNumericField("Threshold lambda to fail", this.maxLambda, 5);
         gd.addNumericField("Maximal number of iterations", this.numIterations, 0);
 
-        gd.addCheckbox("Dialog after each iteration step", this.stopEachStep);
+        gd.addCheckbox("Dialog after each iteration step", suggestStopEachStep); //this.stopEachStep);
         gd.addCheckbox("Dialog after each iteration series", this.stopEachSeries);
         gd.addCheckbox("Dialog after each failure", this.stopOnFailure);
         gd.addCheckbox("Show modified parameters", this.showParams);
@@ -3995,12 +4006,13 @@ public void calculateGoodSamples(){
 public boolean LevenbergMarquardt(
 		FocusingFieldMeasurement measurement, // null in calibrate mode
 		boolean openDialog,
+		boolean autoSel,
 //		boolean filterZ, // for adjust mode
 		int debugLevel){
 	boolean calibrate=measurement==null;
 	double savedLambda=this.lambda;
 	this.debugLevel=debugLevel;
-	if (openDialog && !selectLMAParameters()) return false;
+	if (openDialog && !selectLMAParameters(autoSel)) return false;
 	this.startTime=System.nanoTime();
 	// create savedVector (it depends on parameter masks), restore from it if aborted
 //	fieldFitting.initSampleCorrVector(
@@ -5000,6 +5012,7 @@ public boolean LevenbergMarquardt(
     		boolean OK=LevenbergMarquardt(
     				measurement, 
     				false, // true, // open dialog
+    				true,// boolean autoSel,
     				debugLevel);
     		if (!OK){
         		if (debugLevel>1) System.out.println("testMeasurement() failed: LMA failed");
@@ -8675,7 +8688,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
     		System.out.println("qualBOptimize LMA failed");
     	}
 //    	zTxTy[0]-=best_qb_corr[0]; - absolute, no need to calculate best_qb_corr;
-    	this.qualBOptimizationResults=zTxTy;
+    	this.qualBOptimizationResults=zTxTy.clone();
     	return zTxTy;
     }
     
