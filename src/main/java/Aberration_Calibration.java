@@ -3865,6 +3865,10 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("LENS_DISTORTION_PARAMETERS is not set");
 				return;
 			}
+			// CLear histories anyway
+			MOTORS.clearPreFocus();
+			MOTORS.clearHistory();
+			
 			int mode=autoMove? (FOCUS_MEASUREMENT_PARAMETERS.confirmFirstAuto?2:3):1;
 // not to forget to reset history after forcusing lens by thread 			
 			if (autoMove) MOTORS.clearPreFocus();

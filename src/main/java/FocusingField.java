@@ -4900,12 +4900,25 @@ public boolean LevenbergMarquardt(
         result[1]=zTilts[1]-this.qualBOptimizationResults[1];
         result[2]=zTilts[2]-this.qualBOptimizationResults[2];
         double [] zm=null;
-        if (parallelMove){
+//        if (parallelMove){
         	zm=new double [3];
         	for (int i=0;i<zm.length;i++) zm[i]=fieldFitting.mechanicalFocusingModel.mToZm(measurement.motors[i], i);
+//        }
+        	
+        if (this.debugLevel>0){
+        	System.out.println("Current linearized motor positions:");
+        	for (int i=0;i<zm.length;i++) {
+            	System.out.println(i+": "+zm[i]+" um");
+        	}
+        	System.out.println("Checking back to motor positions:");
+        	double [] rzm=new double [3];
+        	for (int i=0;i<zm.length;i++) zm[i]=fieldFitting.mechanicalFocusingModel.zmToM(zm[i], i);
+        	for (int i=0;i<zm.length;i++) {
+            	System.out.println(i+": "+rzm[i]+" um (was "+measurement.motors[i]);
+        	}
         }
 		double [] dm= getAdjustedMotors(
-				zm,
+				parallelMove?zm:null,
 				targetRelFocalShift+this.qualBOptimizationResults[0] , //targetRelFocalShift+best_qb_corr[0],
 				this.qualBOptimizationResults[1], //0.0, // targetTiltX, // for testing, normally should be 0 um/mm
 				this.qualBOptimizationResults[2], //0.0, // targetTiltY,
