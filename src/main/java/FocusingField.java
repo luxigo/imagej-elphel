@@ -4906,15 +4906,16 @@ public boolean LevenbergMarquardt(
 //        }
         	
         if (this.debugLevel>0){
-        	System.out.println("Current linearized motor positions:");
+        	System.out.println("Current linearized motor positions, center="+(0.25*zm[0]+0.25*zm[1]+0.5*zm[2]));
         	for (int i=0;i<zm.length;i++) {
             	System.out.println(i+": "+zm[i]+" um");
         	}
-        	System.out.println("Checking back to motor positions:");
         	double [] rzm=new double [3];
-        	for (int i=0;i<zm.length;i++) zm[i]=fieldFitting.mechanicalFocusingModel.zmToM(zm[i], i);
+        	for (int i=0;i<zm.length;i++) rzm[i]=fieldFitting.mechanicalFocusingModel.zmToM(zm[i], i);
+        	System.out.println("Checking back to motor positions, center="+(0.25*rzm[0]+0.25*rzm[1]+0.5*rzm[2])+
+        			"steps (current="+(0.25*measurement.motors[0]+0.25*measurement.motors[1]+0.5*measurement.motors[2])+" steps)");
         	for (int i=0;i<zm.length;i++) {
-            	System.out.println(i+": "+rzm[i]+" um (was "+measurement.motors[i]);
+            	System.out.println(i+": "+rzm[i]+" steps (was "+measurement.motors[i]+" steps)");
         	}
         }
 		double [] dm= getAdjustedMotors(
@@ -4968,12 +4969,25 @@ public boolean LevenbergMarquardt(
     			targetTiltY);
     	if (zM==null) return null; // not yet used
     	if (!motorSteps) return zM;
+    	if (debugLevel>0){
+    		System.out.println("getAdjustedMotors(): Suggested linearized motor positions, center="+(0.25*zM[0]+0.25*zM[1]+0.5*zM[2]));
+    		for (int i=0;i<zM.length;i++) {
+    			System.out.println(i+": "+zM[i]+" um");
+    		}
+    	}
+    	
 //		if (debugLevel>0) System.out.println("Suggested motor linearized positions: "+IJ.d2s(zM[0],2)+":"+IJ.d2s(zM[1],2)+":"+IJ.d2s(zM[2],2));
     	double [] dm=new double[zM.length];
     	for (int index=0;index<dm.length;index++){
     		dm[index]=fieldFitting.mechanicalFocusingModel.zmToM(
         			zM[index],
         			index);
+    	}
+    	if (debugLevel>0){
+    		System.out.println("getAdjustedMotors(): Suggested motor positions, center="+(0.25*dm[0]+0.25*dm[1]+0.5*dm[2]));
+    		for (int i=0;i<dm.length;i++) {
+    			System.out.println(i+": "+dm[i]+" steps");
+    		}
     	}
     	return dm;
     }
@@ -7216,7 +7230,7 @@ public boolean LevenbergMarquardt(
         		break;
     		}
     		m=zm/kM; // without thread sin/cos
-    		double eps=0.1;
+    		double eps=0.000001;
     		int maxRetries=100;
 //     		aM=(m + getValue(MECH_PAR.sM3)*p2pi*Math.sin(m/p2pi) + getValue(MECH_PAR.cM3)*p2pi*Math.cos(m/p2pi));
 //	double dzM1_dm1=kM1*(1.0+getValue(MECH_PAR.sM1)*Math.cos(m1/p2pi)-getValue(MECH_PAR.cM1)*Math.sin(m1/p2pi));
