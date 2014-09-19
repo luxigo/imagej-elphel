@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
 //import FocusingField.FocusingFieldMeasurement;
 //import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
@@ -923,6 +924,14 @@ if (MORE_BUTTONS) {
 			}
 			this.SYNC_COMMAND.isRunning=false;
 			this.SYNC_COMMAND.stopRequested.set(0);
+			String shellCommand="ssh andrey@192.168.0.137 paplay /usr/share/sounds/KDE-Im-Error-On-Connection.ogg";
+			try {
+//				Process p = Runtime.getRuntime().exec("shell command");
+				Runtime.getRuntime().exec(shellCommand);
+			} catch (IOException e) {
+				System.out.println("Failed shell command: \""+shellCommand+"\"");
+			}
+			Toolkit.getDefaultToolkit().beep();			
 		}
 		
 	}
