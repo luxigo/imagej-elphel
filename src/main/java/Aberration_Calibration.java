@@ -924,14 +924,16 @@ if (MORE_BUTTONS) {
 			}
 			this.SYNC_COMMAND.isRunning=false;
 			this.SYNC_COMMAND.stopRequested.set(0);
-			String shellCommand="ssh andrey@192.168.0.137 paplay /usr/share/sounds/KDE-Im-Error-On-Connection.ogg";
-			try {
-//				Process p = Runtime.getRuntime().exec("shell command");
-				Runtime.getRuntime().exec(shellCommand);
-			} catch (IOException e) {
-				System.out.println("Failed shell command: \""+shellCommand+"\"");
-			}
-			Toolkit.getDefaultToolkit().beep();			
+		}
+		
+	}
+	public void remoteNotifyComplete(){
+		String shellCommand="ssh andrey@192.168.0.137 paplay /usr/share/sounds/KDE-Im-Error-On-Connection.ogg";
+		try {
+//			Process p = Runtime.getRuntime().exec("shell command");
+			Runtime.getRuntime().exec(shellCommand);
+		} catch (IOException e) {
+			System.out.println("Failed shell command: \""+shellCommand+"\"");
 		}
 		
 	}
@@ -4160,6 +4162,7 @@ if (MORE_BUTTONS) {
 			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
 			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
 			System.out.println("rms="+rms+", rms_pure="+rms_pure+" - with old parameters may be well off.");
+			remoteNotifyComplete();
 			return;
 		}
 		
