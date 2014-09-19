@@ -526,6 +526,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 	public static LensAdjustment.FocusMeasurementParameters FOCUS_MEASUREMENT_PARAMETERS= new LensAdjustment.FocusMeasurementParameters(MOTORS.curpos);
 	public static CalibrationHardwareInterface.GoniometerMotors GONIOMETER_MOTORS= new CalibrationHardwareInterface.GoniometerMotors();
 	public static FocusingField FOCUSING_FIELD=null;
+//	public String FOCUSING_FIELD_HISTORY_PATH=null;
 	//GoniometerParameters
 	public static Goniometer.GoniometerParameters GONIOMETER_PARAMETERS= new Goniometer.GoniometerParameters(GONIOMETER_MOTORS);
 	
@@ -4144,6 +4145,8 @@ if (MORE_BUTTONS) {
 			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
 			System.out.println("Saving measurement history to "+path);
 			FOCUSING_FIELD.saveXML(path);
+//			FOCUSING_FIELD_HISTORY_PATH=path;
+			FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile=path;
 			saveCurrentConfig();
 // for now just copying from "Restore History". TODO: Make both more automatic (move number of parameters outside?)			
 			if (!FOCUSING_FIELD.configureDataVector(
@@ -4513,14 +4516,20 @@ if (MORE_BUTTONS) {
 			System.out.println("Saving measurement history to "+path);
 			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
 			FOCUSING_FIELD.saveXML(path);
+//			FOCUSING_FIELD_HISTORY_PATH=path;
+			FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile=path;
+
 			return;
 		}
 /* ======================================================================== */
 		if       (label.equals("Restore History")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			restoreFocusingHistory(true); //boolean interactive)
+/*			
+	change - blank file - no autoload		
 			FOCUSING_FIELD=new FocusingField(
-					true, // boolean smart,       // do not open dialog if default matches 
-					"",//); //String defaultPath); //			AtomicInteger stopRequested
+					false, // true, // boolean smart,       // do not open dialog if default matches 
+					FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile, // FOCUSING_FIELD_HISTORY_PATH, //"",//); //String defaultPath); //			AtomicInteger stopRequested
 					this.SYNC_COMMAND.stopRequested);
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.setAdjustMode(false);
@@ -4542,12 +4551,17 @@ if (MORE_BUTTONS) {
 			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
 			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
 			System.out.println("rms="+rms+", rms_pure="+rms_pure);
+*/			
 			return;
 		}
 /* ======================================================================== */
 		if       (label.equals("History RMS")) {
-			if (FOCUSING_FIELD==null) return;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 //			FOCUSING_FIELD.setAdjustMode(false);
 	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
@@ -4564,7 +4578,10 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Modify LMA")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.setAdjustMode(false);
 			if (!FOCUSING_FIELD.configureDataVector(
@@ -4581,7 +4598,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Load strategies")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.fieldFitting.fieldStrategies.loadStrategies(null,PROCESS_PARAMETERS.kernelsDirectory);
 			return;
@@ -4589,7 +4610,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Save strategies")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.fieldFitting.fieldStrategies.saveStrategies(null,PROCESS_PARAMETERS.kernelsDirectory);
 			return;
@@ -4597,7 +4622,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Organize strategies")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			int resp=0;
 			while (resp==0){
@@ -4609,20 +4638,29 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("LMA History")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.setAdjustMode(false);
-			FOCUSING_FIELD.LevenbergMarquardt(
+			boolean OK=FOCUSING_FIELD.LevenbergMarquardt(
 					null, // measurement
 					true, // open dialog
     				true,// boolean autoSel,
 					DEBUG_LEVEL); //boolean openDialog, int debugLevel){
+			if (OK)	saveCurrentConfig();
 			return;
 		}
 /* ======================================================================== */
 		if       (label.equals("List curv pars")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.listParameters("Field curvature measurement parameters",null); // to screen
 			return;
@@ -4630,7 +4668,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("List curv data")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.listData("Field curvature measurement data",null); // to screen
 			return;
@@ -4639,7 +4681,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("List qualB")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.listScanQB(); // to screen
 			return;
@@ -4647,7 +4693,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("List curv")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.listCombinedResults(); // to screen
 			return;
@@ -4655,7 +4705,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Show curv corr")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.showCurvCorr(); // to screen
 			return;
@@ -4663,7 +4717,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Test measurement")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.testMeasurement();
 			return;
@@ -4671,7 +4729,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Optimize qualB")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			FOCUSING_FIELD.testQualB(true); //     public double[] testQualB(boolean interactive)
 			return;
@@ -4682,7 +4744,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Focus/Tilt LMA")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			if (FOCUSING_FIELD==null) return;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
 				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
@@ -5356,7 +5422,7 @@ if (MORE_BUTTONS) {
 						);
 				if (useLMA && (ff!=null)){
 					String focusingPath=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
-					System.out.println("Saving measurement history to "+focusingPath);
+					System.out.println("Saving measurement history to "+focusingPath); // Do not save history here
 					ff.saveXML(focusingPath);
 				}
 			}
@@ -9002,6 +9068,41 @@ if (MORE_BUTTONS) {
 	}
 	
 /* ===== Other methods ==================================================== */
+	public boolean restoreFocusingHistory(boolean interactive){
+		if (!interactive && ((FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile==null) || (FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile.length()==0))){
+			System.out.println("*** No focusing history to load!");
+			return false;
+		}
+		FOCUSING_FIELD=new FocusingField(
+				!interactive, // false, // true, // boolean smart,       // do not open dialog if default matches 
+				FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile, // FOCUSING_FIELD_HISTORY_PATH, //"",//); //String defaultPath); //			AtomicInteger stopRequested
+				this.SYNC_COMMAND.stopRequested);
+		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+		FOCUSING_FIELD.setAdjustMode(false);
+		if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES,true); // keep distortions center from history
+		System.out.println("Loaded FocusingField");
+		if (!FOCUSING_FIELD.configureDataVector(
+				true, // boolean silent (maybe add option with false to change number of parameters?)
+				"Configure curvature - TODO: fix many settings restored from properties", // String title
+				true, // boolean forcenew,
+				true) // boolean enableReset
+				) return false;
+		System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
+		System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
+    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+		FOCUSING_FIELD.setDataVector(
+				true, // calibrate mode
+				FOCUSING_FIELD.createDataVector());
+		double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+		double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+		double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+		System.out.println("rms="+rms+", rms_pure="+rms_pure);
+		
+		
+		return true; // add OK/fail
+	}
+	
+	
 	public boolean adjustFocusTiltLMA(){
 		// just for reporting distance old way
 /*		

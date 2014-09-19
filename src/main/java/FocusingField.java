@@ -4480,6 +4480,9 @@ public boolean LevenbergMarquardt(
                     motors,
                     sampleStrings));
         }
+        if (debugLevel>0){
+        	System.out.println("Loaded measurement history "+pathname);
+        }
         return true;
     }
     public void saveXML(

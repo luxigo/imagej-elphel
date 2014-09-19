@@ -194,6 +194,7 @@ public class LensAdjustment {
     public static class FocusMeasurementParameters {
     	public String gridGeometryFile="";
     	public String initialCalibrationFile="";
+    	public String focusingHistoryFile="";
     	public String strategyFile="";
     	public String resultsSuperDirectory=""; // directory with subdirectories named as serial numbers to stro results
     	public int EEPROM_channel=1; // EEPROM channel to read serial number from
@@ -414,7 +415,7 @@ public class LensAdjustment {
 	    	this.result_tiltY=Double.NaN; // last measured tilt Y
 	    	this.result_R50=Double.NaN;   // last measured R50 (average PSF 50% level radius, pixels - somewhat larged than actual because of measurement settings)
 	    	this.result_A50=Double.NaN;   // last measured A50 (simailar, but R^2 are averaged) 
-	    	this.result_B50=Double.NaN;   // last measured B50 (simailar, but R^4 are averaged)
+	    	this.result_B50=Double.NaN;   // last measured B50 (similar, but R^4 are averaged)
 	    	this.result_RC50=Double.NaN;  // last measured RC50(R50 calculated only for the 2 center samples)
 	    	this.result_PX0=Double.NaN; // lens center shift, X
 	    	this.result_PY0=Double.NaN; // lens center shift, Y
@@ -427,6 +428,7 @@ public class LensAdjustment {
     	    	String initialCalibrationFile,
     	    	String strategyFile,
     	    	String resultsSuperDirectory, // directory with subdirectories named as serial numbers to stro results
+    	    	String focusingHistoryFile,
     	    	int EEPROM_channel, // EEPROM channel to read serial number from
     	    	boolean saveResults, // save focusing results
     	    	boolean showResults, // show focusing (includingh intermediate) results
@@ -572,6 +574,7 @@ public class LensAdjustment {
     		this.initialCalibrationFile=initialCalibrationFile;
     		this.strategyFile=strategyFile;
     		this.resultsSuperDirectory=resultsSuperDirectory; // directory with subdirectories named as serial numbers to stro results
+    		this.focusingHistoryFile=focusingHistoryFile;
     		this.EEPROM_channel=EEPROM_channel; // EEPROM channel to read serial number from
     		this.saveResults=saveResults; // save focusing results
     		this.showResults=showResults; // show focusing (includingh intermediate) results
@@ -718,6 +721,7 @@ public class LensAdjustment {
     	    		this.initialCalibrationFile,
     	    		this.strategyFile,
     	    		this.resultsSuperDirectory, // directory with subdirectories named as serial numbers to stro results
+    	    		this.focusingHistoryFile,
     	    		this.EEPROM_channel,// EEPROM channel to read serial number from
     	    		this.saveResults, // save focusing results
     	    		this.showResults, // show focusing (includingh intermediate) results
@@ -862,6 +866,7 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"initialCalibrationFile",this.initialCalibrationFile+"");
 			properties.setProperty(prefix+"strategyFile",this.strategyFile+"");
 			properties.setProperty(prefix+"resultsSuperDirectory",this.resultsSuperDirectory+"");
+			properties.setProperty(prefix+"focusingHistoryFile",this.focusingHistoryFile+"");
 			properties.setProperty(prefix+"serialNumber",this.serialNumber+"");
 			if (!Double.isNaN(this.sensorTemperature))properties.setProperty(prefix+"sensorTemperature",this.sensorTemperature+"");
 			if (!Double.isNaN(this.result_lastKT))properties.setProperty(prefix+"result_lastKT",this.result_lastKT+"");
@@ -1017,6 +1022,9 @@ public class LensAdjustment {
 				this.strategyFile=properties.getProperty(prefix+"strategyFile");
 			if (properties.getProperty(prefix+"resultsSuperDirectory")!=null)
 				this.resultsSuperDirectory=properties.getProperty(prefix+"resultsSuperDirectory");
+			if (properties.getProperty(prefix+"focusingHistoryFile")!=null)
+				this.focusingHistoryFile=properties.getProperty(prefix+"focusingHistoryFile");
+			
 			if (properties.getProperty(prefix+"serialNumber")!=null)
 				this.serialNumber=properties.getProperty(prefix+"serialNumber");
 			//	this.serialNumber is only written, but never read from the configuration file (only from devivce)
@@ -1422,6 +1430,7 @@ public class LensAdjustment {
 			gd.addStringField  ("Initial camera intrinsic/extrinsic parametres file", this.initialCalibrationFile,40);
 			gd.addStringField  ("Levenberg-Marquardt algorithm strategy file",        this.strategyFile,40);
 			gd.addStringField  ("Focusing results superdirectory (individual will be named by serial numbers)", this.resultsSuperDirectory,40);
+			gd.addStringField  ("Measurement history (acquired during \"Scan Calib LMA\" file", this.focusingHistoryFile,80);
 			gd.addNumericField("EEPROM channel to read sensor serial number from",    this.EEPROM_channel, 0,4,"");
 			gd.addCheckbox    ("Save SFE focusing results (including intermediate) ", this.saveResults);
 			gd.addCheckbox    ("Show SFE focusing results (including intermediate) ", this.showResults);
@@ -1597,6 +1606,7 @@ public class LensAdjustment {
 			this.initialCalibrationFile=     gd.getNextString();
 			this.strategyFile=               gd.getNextString();
     		this.resultsSuperDirectory=      gd.getNextString();
+    		this.focusingHistoryFile=        gd.getNextString();
     		this.EEPROM_channel=       (int) gd.getNextNumber();
 			this.saveResults=                gd.getNextBoolean();
 			this.showResults=                gd.getNextBoolean();
