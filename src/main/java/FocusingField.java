@@ -237,7 +237,7 @@ public class FocusingField {
 	private double firstRMS=-1.0; // RMS before current series of LMA started
 	private double firstRMSPure=-1.0; // RMS before current series of LMA started
 	
-    public int threadsMax=0; // 0 - old code
+    public int threadsMax=100; // 0 - old code
 	private boolean multiJacobian=true; // to try multithreaded mode
 
 
