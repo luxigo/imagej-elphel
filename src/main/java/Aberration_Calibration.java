@@ -4165,6 +4165,15 @@ if (MORE_BUTTONS) {
 			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
 			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
 			System.out.println("rms="+rms+", rms_pure="+rms_pure+" - with old parameters may be well off.");
+			if (FOCUS_MEASUREMENT_PARAMETERS.scanRunLMA){
+				FOCUSING_FIELD.setAdjustMode(false);
+				boolean OK=FOCUSING_FIELD.LevenbergMarquardt(
+						null, // measurement
+						false, // true, // open dialog
+	    				true,// boolean autoSel,
+						DEBUG_LEVEL); //boolean openDialog, int debugLevel){
+				if (OK)	saveCurrentConfig();
+			}
 			remoteNotifyComplete();
 			return;
 		}

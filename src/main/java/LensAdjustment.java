@@ -307,6 +307,7 @@ public class LensAdjustment {
         public boolean scanTiltEnable=false; //true;  // enable scanning tilt
         public boolean scanTiltReverse=false;  // enable scanning tilt in both directions
         public boolean scanMeasureLast=false;  // Calculate PSF after last move (to original position)
+        public boolean scanRunLMA=true;  // Calculate PSF after last move (to original position)
         public int scanTiltRangeX=14336;    // 4 periods
         public int scanTiltRangeY=14336;    // 4 periods
         public int scanTiltStepsX=24;
@@ -524,6 +525,7 @@ public class LensAdjustment {
                 boolean scanTiltEnable, //=true;  // enable scanning tilt
                 boolean scanTiltReverse,
                 boolean scanMeasureLast,
+                boolean scanRunLMA,
                 int scanTiltRangeX, //=14336;    // 4 periods
                 int scanTiltRangeY, //=14336;    // 4 periods
                 int scanTiltStepsX, //=24;
@@ -669,6 +671,7 @@ public class LensAdjustment {
 			this.scanTiltEnable=scanTiltEnable; //=true;  // enable scanning tilt
 			this.scanTiltReverse=scanTiltReverse;
 			this.scanMeasureLast=scanMeasureLast;
+			this.scanRunLMA=scanRunLMA;
 			this.scanTiltRangeX=scanTiltRangeX; //, //=14336;    // 4 periods
 			this.scanTiltRangeY=scanTiltRangeY; //, //=14336;    // 4 periods
 			this.scanTiltStepsX=scanTiltStepsX; //=24;
@@ -815,6 +818,7 @@ public class LensAdjustment {
     				this.scanTiltEnable,  // enable scanning tilt
     				this.scanTiltReverse,
     				this.scanMeasureLast,
+    				this.scanRunLMA,
     	    		this.scanTiltRangeX,    // 4 periods
     	    		this.scanTiltRangeY,    // 4 periods
     	    		this.scanTiltStepsX,
@@ -966,6 +970,7 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"scanTiltEnable",this.scanTiltEnable+"");  // enable scanning tilt
 			properties.setProperty(prefix+"scanTiltReverse",this.scanTiltReverse+"");
 			properties.setProperty(prefix+"scanMeasureLast",this.scanMeasureLast+"");
+			properties.setProperty(prefix+"scanRunLMA",this.scanRunLMA+"");
 			properties.setProperty(prefix+"scanTiltRangeX",this.scanTiltRangeX+"");    // 4 periods
 			properties.setProperty(prefix+"scanTiltRangeY",this.scanTiltRangeY+"");    // 4 periods
 			properties.setProperty(prefix+"scanTiltStepsX",this.scanTiltStepsX+"");
@@ -1225,7 +1230,10 @@ public class LensAdjustment {
 			
 			if (properties.getProperty(prefix+"scanMeasureLast")!=null)
 				this.scanMeasureLast=Boolean.parseBoolean(properties.getProperty(prefix+"scanMeasureLast"));
-						
+
+			if (properties.getProperty(prefix+"scanRunLMA")!=null)
+				this.scanRunLMA=Boolean.parseBoolean(properties.getProperty(prefix+"scanRunLMA"));
+			
 			if (properties.getProperty(prefix+"scanTiltRangeX")!=null)
 				this.scanTiltRangeX=Integer.parseInt(properties.getProperty(prefix+"scanTiltRangeX"));
 			if (properties.getProperty(prefix+"scanTiltRangeY")!=null)
@@ -1374,6 +1382,8 @@ public class LensAdjustment {
     		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
     		gd.addCheckbox    ("Scan for tilt measurement in both directions",                                   this.scanTiltReverse);
     		gd.addCheckbox    ("Calculate PSF after returning to the initial position",                          this.scanMeasureLast);
+    		gd.addCheckbox    ("Calculate model parameters after scanning",                                      this.scanRunLMA);
+    		
     		
     		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
     		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
@@ -1396,6 +1406,7 @@ public class LensAdjustment {
     		this.scanTiltEnable=             gd.getNextBoolean();
     		this.scanTiltReverse=            gd.getNextBoolean();
             this.scanMeasureLast=            gd.getNextBoolean();
+            this.scanRunLMA=                 gd.getNextBoolean();
     		
     		this.scanTiltRangeX=       (int) gd.getNextNumber();
     		this.scanTiltRangeY=       (int) gd.getNextNumber();
