@@ -3018,15 +3018,15 @@ d_s2/d_x0= 2*delta_x*delta_y^2/r2^2
 			String msg="initial Jacobian matrix calculation. Points:"+this.dataValues.length+" Parameters:"+this.currentVector.length;
 			if (debugLevel>1) System.out.println(msg);
 			if (this.updateStatus) IJ.showStatus(msg);
-			System.out.println("*** 1 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
+			if (debugLevel>1) System.out.println("*** 1 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
             this.currentfX=createFXandJacobian(this.currentVector, true); // is it always true here (this.jacobian==null)
-			System.out.println("*** 2 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
+            if (debugLevel>1) System.out.println("*** 2 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
             this.lMAArrays=calculateJacobianArrays(this.currentfX);
-			System.out.println("*** 3 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
+            if (debugLevel>1) System.out.println("*** 3 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
             this.currentRMS= calcErrorDiffY(this.currentfX,false);
-			System.out.println("*** 4 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
+            if (debugLevel>1) System.out.println("*** 4 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
             this.currentRMSPure=calcErrorDiffY(this.currentfX, true);
-			System.out.println("*** 5 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
+            if (debugLevel>1) System.out.println("*** 5 @ "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),5));
 			msg=this.currentStrategyStep+": initial RMS="+IJ.d2s(this.currentRMS,8)+" (pure RMS="+IJ.d2s(this.currentRMSPure,8)+")"+
 					". Calculating next Jacobian. Points:"+this.dataValues.length+" Parameters:"+this.currentVector.length;
 			if (debugLevel>1) System.out.println(msg);
@@ -3164,97 +3164,97 @@ public void stepLevenbergMarquardtAction(int debugLevel){//
 * 
 */
 public boolean selectLMAParameters(boolean autoSel){
-//     int numSeries=fittingStrategy.getNumSeries();
-//    boolean resetCorrections=false;
-     GenericDialog gd = new GenericDialog("Levenberg-Marquardt algorithm parameters lens aberrations approxiamtion");
-     
-     //TODO: change to selection using series comments
-//     	gd.addNumericField("Fitting series number", this.currentStrategyStep, 0, 3," (-1 - current)");
-     int suggestStep=this.currentStrategyStep;
-     boolean suggestStopEachStep=this.stopEachStep;
-     	if (autoSel){
-     		suggestStep=0;
-     		suggestStopEachStep=false;
-     	}
-    	FieldStrategies fs=fieldFitting.fieldStrategies;
-        String [] indices=new String[fs.getNumStrategies()+1];
-        indices[0]="current strategy";
-        for (int i=0;i<fs.getNumStrategies();i++) {
-        	indices[i+1]=i+": "+fs.getComment(i)+" ("+(fs.isStopAfterThis(i)?"STOP":"CONTINUE")+")";
-        }
-        if (suggestStep>=(indices.length-1)) suggestStep=indices.length-2; // last one
-        gd.addChoice("Fitting series", indices,indices[suggestStep+1]);
-     	
-        gd.addCheckbox("Debug df/dX0, df/dY0", false);
-        gd.addNumericField("Debug Jacobian for point number", this.debugPoint, 0, 5,"(-1 - none)");
-        gd.addNumericField("Debug Jacobian for parameter number", this.debugParameter, 0, 5,"(-1 - none)");
-        
-//        gd.addCheckbox("Keep current correction parameters (do not reset)", this.keepCorrectionParameters);
-        gd.addNumericField("Initial LMA Lambda ", 0.0, 5, 8, "0 - keep, last was "+this.lambda);
-        gd.addNumericField("Multiply lambda on success", this.lambdaStepDown, 5);
-        gd.addNumericField("Threshold RMS to exit LMA", this.thresholdFinish, 7,9,"pix");
-        gd.addNumericField("Multiply lambda on failure", this.lambdaStepUp, 5);
-        gd.addNumericField("Threshold lambda to fail", this.maxLambda, 5);
-        gd.addNumericField("Maximal number of iterations", this.numIterations, 0);
+	//     int numSeries=fittingStrategy.getNumSeries();
+	//    boolean resetCorrections=false;
+	GenericDialog gd = new GenericDialog("Levenberg-Marquardt algorithm parameters lens aberrations approxiamtion");
 
-        gd.addCheckbox("Dialog after each iteration step", suggestStopEachStep); //this.stopEachStep);
-        gd.addCheckbox("Dialog after each iteration series", this.stopEachSeries);
-        gd.addCheckbox("Dialog after each failure", this.stopOnFailure);
-        gd.addCheckbox("Show modified parameters", this.showParams);
-        gd.addCheckbox("Show disabled parameters", this.showDisabledParams);
-        gd.addCheckbox("Show per-sample correction parameters", this.showCorrectionParams);
-        gd.addNumericField("Maximal number of threads (0 - old code)", this.threadsMax, 0);
-        //threadsMax
+	//TODO: change to selection using series comments
+	//     	gd.addNumericField("Fitting series number", this.currentStrategyStep, 0, 3," (-1 - current)");
+	int suggestStep=this.currentStrategyStep;
+	boolean suggestStopEachStep=this.stopEachStep;
+	if (autoSel){
+		suggestStep=0;
+		suggestStopEachStep=false;
+	}
+	FieldStrategies fs=fieldFitting.fieldStrategies;
+	String [] indices=new String[fs.getNumStrategies()+1];
+	indices[0]="current strategy";
+	for (int i=0;i<fs.getNumStrategies();i++) {
+		indices[i+1]=i+": "+fs.getComment(i)+" ("+(fs.isStopAfterThis(i)?"STOP":"CONTINUE")+")";
+	}
+	if (suggestStep>=(indices.length-1)) suggestStep=indices.length-2; // last one
+	gd.addChoice("Fitting series", indices,indices[suggestStep+1]);
 
-        //        gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
+	gd.addCheckbox("Debug df/dX0, df/dY0", false);
+	gd.addNumericField("Debug Jacobian for point number", this.debugPoint, 0, 5,"(-1 - none)");
+	gd.addNumericField("Debug Jacobian for parameter number", this.debugParameter, 0, 5,"(-1 - none)");
 
-        //        gd.addCheckbox("Show debug images before correction",this.showThisImages);
-        //        gd.addCheckbox("Show debug images after correction", this.showNextImages);
-        //        gd.addNumericField("Maximal number of threads", this.threadsMax, 0);
-        //        gd.addCheckbox("Use memory-saving/multithreaded version", this.threadedLMA);
-        gd.showDialog();
-        if (gd.wasCanceled()) return false;
-        this.currentStrategyStep= gd.getNextChoiceIndex()-1; //(int) gd.getNextNumber();
-        if (this.currentStrategyStep>=0){
-        	getStrategy(this.currentStrategyStep);
-        }
-        this.debugDerivativesFxDxDy=gd.getNextBoolean();
+	//        gd.addCheckbox("Keep current correction parameters (do not reset)", this.keepCorrectionParameters);
+	gd.addNumericField("Initial LMA Lambda ", 0.0, 5, 8, "0 - keep, last was "+this.lambda);
+	gd.addNumericField("Multiply lambda on success", this.lambdaStepDown, 5);
+	gd.addNumericField("Threshold RMS to exit LMA", this.thresholdFinish, 7,9,"pix");
+	gd.addNumericField("Multiply lambda on failure", this.lambdaStepUp, 5);
+	gd.addNumericField("Threshold lambda to fail", this.maxLambda, 5);
+	gd.addNumericField("Maximal number of iterations", this.numIterations, 0);
 
-        debugPoint=     (int) gd.getNextNumber();
-        debugParameter= (int) gd.getNextNumber();
+	gd.addCheckbox("Dialog after each iteration step", suggestStopEachStep); //this.stopEachStep);
+	gd.addCheckbox("Dialog after each iteration series", this.stopEachSeries);
+	gd.addCheckbox("Dialog after each failure", this.stopOnFailure);
+	gd.addCheckbox("Show modified parameters", this.showParams);
+	gd.addCheckbox("Show disabled parameters", this.showDisabledParams);
+	gd.addCheckbox("Show per-sample correction parameters", this.showCorrectionParams);
+	gd.addNumericField("Maximal number of threads (0 - old code)", this.threadsMax, 0);
+	//threadsMax
 
-//        this.keepCorrectionParameters = gd.getNextBoolean();
-        double preLambda=gd.getNextNumber();
-        if (preLambda>0.0) this.lambda= preLambda;
-        this.lambdaStepDown= gd.getNextNumber();
-        this.thresholdFinish= gd.getNextNumber();
-        this.lambdaStepUp= gd.getNextNumber();
-        this.maxLambda= gd.getNextNumber();
-        this.numIterations= (int) gd.getNextNumber();
-        this.stopEachStep= gd.getNextBoolean();
-        this.stopEachSeries= gd.getNextBoolean();
-        this.stopOnFailure= gd.getNextBoolean();
-        this.showParams= gd.getNextBoolean();
-        this.showDisabledParams= gd.getNextBoolean();
-        this.showCorrectionParams= gd.getNextBoolean();
-        this.threadsMax= (int) gd.getNextNumber();
-//    if (!keepCorrectionParameters) fieldFitting.resetSampleCorr();
-     return true;
+	//        gd.addCheckbox("Reset all per-sample corrections to zero", resetCorrections);
+
+	//        gd.addCheckbox("Show debug images before correction",this.showThisImages);
+	//        gd.addCheckbox("Show debug images after correction", this.showNextImages);
+	//        gd.addNumericField("Maximal number of threads", this.threadsMax, 0);
+	//        gd.addCheckbox("Use memory-saving/multithreaded version", this.threadedLMA);
+	gd.showDialog();
+	if (gd.wasCanceled()) return false;
+	this.currentStrategyStep= gd.getNextChoiceIndex()-1; //(int) gd.getNextNumber();
+	if (this.currentStrategyStep>=0){
+		getStrategy(this.currentStrategyStep);
+	}
+	this.debugDerivativesFxDxDy=gd.getNextBoolean();
+
+	debugPoint=     (int) gd.getNextNumber();
+	debugParameter= (int) gd.getNextNumber();
+
+	//        this.keepCorrectionParameters = gd.getNextBoolean();
+	double preLambda=gd.getNextNumber();
+	if (preLambda>0.0) this.lambda= preLambda;
+	this.lambdaStepDown= gd.getNextNumber();
+	this.thresholdFinish= gd.getNextNumber();
+	this.lambdaStepUp= gd.getNextNumber();
+	this.maxLambda= gd.getNextNumber();
+	this.numIterations= (int) gd.getNextNumber();
+	this.stopEachStep= gd.getNextBoolean();
+	this.stopEachSeries= gd.getNextBoolean();
+	this.stopOnFailure= gd.getNextBoolean();
+	this.showParams= gd.getNextBoolean();
+	this.showDisabledParams= gd.getNextBoolean();
+	this.showCorrectionParams= gd.getNextBoolean();
+	this.threadsMax= (int) gd.getNextNumber();
+	//    if (!keepCorrectionParameters) fieldFitting.resetSampleCorr();
+	return true;
 }
 
 public void listParameters(String title, String path){
-    String header="State\tDescription\tValue\tUnits";
-        StringBuffer sb = new StringBuffer();
-        for (String s:this.fieldFitting.getParameterValueStrings(true,true)){ //this.showDisabledParams)){ //
-        sb.append(s+"\n");
-        }
-        if (path!=null) {
-            CalibrationFileManagement.saveStringToFile (
-                    path,
-                    header+"\n"+sb.toString());
-        } else {
-            new TextWindow(title, header, sb.toString(), 800,1000);
-        }
+	String header="State\tDescription\tValue\tUnits";
+	StringBuffer sb = new StringBuffer();
+	for (String s:this.fieldFitting.getParameterValueStrings(true,true)){ //this.showDisabledParams)){ //
+		sb.append(s+"\n");
+	}
+	if (path!=null) {
+		CalibrationFileManagement.saveStringToFile (
+				path,
+				header+"\n"+sb.toString());
+	} else {
+		new TextWindow(title, header, sb.toString(), 800,1000);
+	}
 }
 
 public void listData(String title, String path){
@@ -4282,6 +4282,12 @@ public boolean LevenbergMarquardt(
 	double savedLambda=this.lambda;
 	this.debugLevel=debugLevel;
 	if (openDialog && !selectLMAParameters(autoSel)) return false;
+	
+	if (!openDialog && autoSel) {
+		this.stopEachStep= false;
+		this.stopEachSeries= false;
+		this.currentStrategyStep=0;		
+	}
 	this.startTime=System.nanoTime();
 	// create savedVector (it depends on parameter masks), restore from it if aborted
 //	fieldFitting.initSampleCorrVector(
