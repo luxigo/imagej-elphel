@@ -2025,7 +2025,7 @@ public double [] createFXandJacobianMulti(
 							derivs);
 					for (int n=startMeas;n<endMeas;n++){
 						int chn=selChanIndices[ms.channel];
-						if (centerSelect!=null){
+						if (createJacobian && (centerSelect!=null)){
 							int np=0;
 							for (int i=0;i<2;i++) if (centerSelect[i]){
 								derivs[chn][np++]-=ms.dPxyc[i]; // subtract, as effect is opposite to fX
@@ -2033,7 +2033,7 @@ public double [] createFXandJacobianMulti(
 						}
 						PartialFXJac partialFXJac = new PartialFXJac(n,
 								subData[chn],
-								derivs[chn]);
+								createJacobian?derivs[chn]:null);
 						fxList.get(threadIndex).add(partialFXJac);
 					}
 
