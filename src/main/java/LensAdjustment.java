@@ -1349,6 +1349,8 @@ public class LensAdjustment {
 				gd.addNumericField("Optional manufacturing state modifier (0.."+maxMod+")",      manufacturingIndexMod[1], 0,1,"");
 
 				gd.addCheckbox     ("Ask lens serial number on each camera power cycle",this.askLensSerial);
+				gd.addNumericField("Required X-shift between the lens axis and the sensor center",      this.centerDeltaX, 0,4,"pix (180 for tilted)");
+				gd.addNumericField("Required Y-shift between the lens axis and the sensor center",      this.centerDeltaY, 0,4,"pix");
 				gd.showDialog();
 				if (gd.wasCanceled()) return false;
 				this.comment=                    gd.getNextString();
@@ -1359,6 +1361,8 @@ public class LensAdjustment {
 				int manIndex=                    gd.getNextChoiceIndex();
 				int manMod=                (int) gd.getNextNumber();
 				this.askLensSerial=              gd.getNextBoolean();
+	    		this.centerDeltaX=               gd.getNextNumber(); 
+		    	this.centerDeltaY=               gd.getNextNumber();
 				if (manMod<0)           manMod=0;
 				else if (manMod>maxMod) manMod=maxMod;
 				if (manIndex<manufacturingIndexMod[0]){
@@ -1443,7 +1447,7 @@ public class LensAdjustment {
     		
     		gd.addCheckbox     ("Ask lens serial number on each camera power cycle",this.askLensSerial);
     		gd.addCheckbox     ("Add lens serial number to filenames",this.includeLensSerial);
-			gd.addNumericField("Required X-shift between the lens axis and the sensor center",      this.centerDeltaX, 0,4,"pix");
+			gd.addNumericField("Required X-shift between the lens axis and the sensor center",      this.centerDeltaX, 0,4,"pix (180 for tilted)");
 			gd.addNumericField("Required Y-shift between the lens axis and the sensor center",      this.centerDeltaY, 0,4,"pix");
     		gd.addStringField  ("Grid geometry file",                                 this.gridGeometryFile,40);
 			gd.addStringField  ("Initial camera intrinsic/extrinsic parametres file", this.initialCalibrationFile,40);
