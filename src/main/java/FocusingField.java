@@ -5121,20 +5121,39 @@ public boolean LevenbergMarquardt(
     
     public double [][] getAllZTM(
     		boolean noTiltScan,
-    		FocusingField ff){
-    	double [][] result =new double[ff.measurements.size()][6];
-    	for (int i=0;i<result.length;i++) result[i]=adjustLMA(noTiltScan,ff.measurements.get(i),false);
+    		FocusingField ff,
+    		boolean noMotors){
+    	double [][] result =new double[ff.measurements.size()][];
+    	for (int i=0;i<result.length;i++) result[i]=adjustLMA(
+    			noTiltScan,
+    			ff.measurements.get(i),
+				false, // boolean parallelMove,
+				true, // boolean noQualB,   // do not re-claculate testQualB 
+				noMotors); // boolean noAdjust) // do not calculate correction
     	return result;
     }
 
     public double [] averageZTM(// results relative to optimal
     		boolean noTiltScan,
-    		FocusingField ff){
-    	double [] result =new double[6];
+    		FocusingField ff,
+    		boolean noMotors){
+		if (debugLevel>0) System.out.println("Calculating optimal focal/tilt, qualBOptimizeMode="+this.qualBOptimizeMode);
+		testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+		if (debugLevel>0) {
+			System.out.println("Optimal absolute Zc="+this.qualBOptimizationResults[0]);
+			System.out.println("Optimal Tx="+this.qualBOptimizationResults[1]);
+			System.out.println("Optimal Ty="+this.qualBOptimizationResults[2]);
+		}
+    	double [] result =new double[noMotors?3:6];
     	for (int i=0;i<result.length;i++) result[i]=0.0;
     	int num=0;
     	for (FocusingFieldMeasurement measurement:ff.measurements){
-    		double [] ZTM = adjustLMA(noTiltScan,measurement,false);
+    		double [] ZTM = adjustLMA(
+    				noTiltScan,
+    				measurement,
+    				false, // boolean parallelMove,
+    				true, // boolean noQualB,   // do not re-claculate testQualB 
+    				noMotors); // boolean noAdjust) // do not calculate correction
     		if (ZTM!=null) {
     			for (int i=0;i<result.length;i++) result[i]+=ZTM[i];
     			num++;
@@ -5147,13 +5166,17 @@ public boolean LevenbergMarquardt(
     public double [] adjustLMA ( // result relative to optimal
     		boolean noTiltScan,
     		FocusingFieldMeasurement measurement,
-    		boolean parallelMove){
-    	if (debugLevel>0) System.out.println("Calculating optimal focal/tilt, qualBOptimizeMode="+this.qualBOptimizeMode);
-    	testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
-    	if (debugLevel>0) {
-    		System.out.println("Optimal absolute Zc="+this.qualBOptimizationResults[0]);
-    		System.out.println("Optimal Tx="+this.qualBOptimizationResults[1]);
-    		System.out.println("Optimal Ty="+this.qualBOptimizationResults[2]);
+    		boolean parallelMove,
+    		boolean noQualB,   // do not re-claculate testQualB 
+    		boolean noAdjust){ // do not calculate correction
+    	if (!noQualB) {
+    		if (debugLevel>0) System.out.println("Calculating optimal focal/tilt, qualBOptimizeMode="+this.qualBOptimizeMode);
+    		testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+    		if (debugLevel>0) {
+    			System.out.println("Optimal absolute Zc="+this.qualBOptimizationResults[0]);
+    			System.out.println("Optimal Tx="+this.qualBOptimizationResults[1]);
+    			System.out.println("Optimal Ty="+this.qualBOptimizationResults[2]);
+    		}
     	}
     	if (!testMeasurement(
     			measurement,    				
@@ -5166,55 +5189,49 @@ public boolean LevenbergMarquardt(
 			if (debugLevel>0) System.out.println("adjustLMA() failed");
     		return null;
     	}
-    	double [] result=new double [6];
-    	
-//        double [] best_qb_corr= fieldFitting.getBestQualB(
-//                k_red,
-//                k_blue,
-//                true);
+    	double [] result=new double [noAdjust?3:6];
         
         double [] zTilts=getCenterZTxTy(measurement);
         result[0]=zTilts[0]-this.qualBOptimizationResults[0]; //best_qb_corr[0];
         result[1]=zTilts[1]-this.qualBOptimizationResults[1];
         result[2]=zTilts[2]-this.qualBOptimizationResults[2];
-        double [] zm=null;
-//        if (parallelMove){
+        if (!noAdjust) {
+        	double [] zm=null;
         	zm=new double [3];
         	for (int i=0;i<zm.length;i++) zm[i]=fieldFitting.mechanicalFocusingModel.mToZm(measurement.motors[i], i);
-//        }
-        	
-        if (this.debugLevel>0){
-        	System.out.println("Current linearized motor positions, center="+(0.25*zm[0]+0.25*zm[1]+0.5*zm[2]));
-        	for (int i=0;i<zm.length;i++) {
-            	System.out.println(i+": "+zm[i]+" um");
+        	if (this.debugLevel>0){
+        		System.out.println("Current linearized motor positions, center="+(0.25*zm[0]+0.25*zm[1]+0.5*zm[2]));
+        		for (int i=0;i<zm.length;i++) {
+        			System.out.println(i+": "+zm[i]+" um");
+        		}
+        		double [] rzm=new double [3];
+        		for (int i=0;i<zm.length;i++) rzm[i]=fieldFitting.mechanicalFocusingModel.zmToM(zm[i], i);
+        		System.out.println("Checking back to motor positions, center="+(0.25*rzm[0]+0.25*rzm[1]+0.5*rzm[2])+
+        				"steps (current="+(0.25*measurement.motors[0]+0.25*measurement.motors[1]+0.5*measurement.motors[2])+" steps)");
+        		for (int i=0;i<zm.length;i++) {
+        			System.out.println(i+": "+rzm[i]+" steps (was "+measurement.motors[i]+" steps)");
+        		}
         	}
-        	double [] rzm=new double [3];
-        	for (int i=0;i<zm.length;i++) rzm[i]=fieldFitting.mechanicalFocusingModel.zmToM(zm[i], i);
-        	System.out.println("Checking back to motor positions, center="+(0.25*rzm[0]+0.25*rzm[1]+0.5*rzm[2])+
-        			"steps (current="+(0.25*measurement.motors[0]+0.25*measurement.motors[1]+0.5*measurement.motors[2])+" steps)");
-        	for (int i=0;i<zm.length;i++) {
-            	System.out.println(i+": "+rzm[i]+" steps (was "+measurement.motors[i]+" steps)");
+        	double [] dm= getAdjustedMotors(
+        			parallelMove?zm:null,
+        					targetRelFocalShift+this.qualBOptimizationResults[0] , //targetRelFocalShift+best_qb_corr[0],
+        					this.qualBOptimizationResults[1], //0.0, // targetTiltX, // for testing, normally should be 0 um/mm
+        					this.qualBOptimizationResults[2], //0.0, // targetTiltY,
+        					true); // motor steps
+        	if ((dm!=null) && (debugLevel>1)){
+        		System.out.println("Suggested motor positions: "+IJ.d2s(dm[0],0)+":"+IJ.d2s(dm[1],0)+":"+IJ.d2s(dm[2],0));
+        	}
+        	if (dm!=null) {
+        		result[3]=dm[0];
+        		result[4]=dm[1];
+        		result[5]=dm[2];
+        	} else {
+        		result[3]=Double.NaN;
+        		result[4]=Double.NaN;
+        		result[5]=Double.NaN;
         	}
         }
-		double [] dm= getAdjustedMotors(
-				parallelMove?zm:null,
-				targetRelFocalShift+this.qualBOptimizationResults[0] , //targetRelFocalShift+best_qb_corr[0],
-				this.qualBOptimizationResults[1], //0.0, // targetTiltX, // for testing, normally should be 0 um/mm
-				this.qualBOptimizationResults[2], //0.0, // targetTiltY,
-	            true); // motor steps
-		if ((dm!=null) && (debugLevel>1)){
-			System.out.println("Suggested motor positions: "+IJ.d2s(dm[0],0)+":"+IJ.d2s(dm[1],0)+":"+IJ.d2s(dm[2],0));
-		}
-		if (dm!=null) {
-			result[3]=dm[0];
-			result[4]=dm[1];
-			result[5]=dm[2];
-		} else {
-			result[3]=Double.NaN;
-			result[4]=Double.NaN;
-			result[5]=Double.NaN;
-		}
-    	return result;
+        return result;
     }
     
     // add tx, ty?
@@ -5310,7 +5327,7 @@ public boolean LevenbergMarquardt(
     		zTxTy[0]=fieldFitting.mechanicalFocusingModel.getValue(MECH_PAR.z0);
     		zTxTy[1]=fieldFitting.mechanicalFocusingModel.getValue(MECH_PAR.tx);
     		zTxTy[2]=fieldFitting.mechanicalFocusingModel.getValue(MECH_PAR.ty);
-    		if (debugLevel>0) System.out.println("testMeasurement(), run "+n+" (z="+zTxTy[0]+" tx="+zTxTy[1]+" ty="+zTxTy[2]+")");
+    		if (debugLevel>1) System.out.println("testMeasurement(), run "+n+" (z="+zTxTy[0]+" tx="+zTxTy[1]+" ty="+zTxTy[2]+")");
     		boolean [] was2PrevEnable=(wasPrevEnable==null)?null:wasPrevEnable.clone();
     		wasPrevEnable=(prevEnable==null)?null:prevEnable.clone();
     		this.lambda=this.adjustmentInitialLambda;
@@ -5340,8 +5357,8 @@ public boolean LevenbergMarquardt(
     				break;
     			}
     			if (!changedEnable) {
-    				if (debugLevel>0) System.out.println("No filter cnange, finished in "+(n+1)+" step"+((n==0)?"":"s"));
-    				if (debugLevel>0) {
+    				if (debugLevel>1) System.out.println("No filter cnange, finished in "+(n+1)+" step"+((n==0)?"":"s"));
+    				if (debugLevel>1) {
     					System.out.println("=== Absolute shift/tilt from the measuremet ===");
     					for (int i=0;i<fieldFitting.mechanicalFocusingModel.paramValues.length;i++){
     						if ((fieldFitting.mechanicalSelect==null) || fieldFitting.mechanicalSelect[i] ) {
@@ -9609,7 +9626,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
 
         	String msg="QualB="+this.currentQualB+" ("+this.firstQualB+") "+
         			" at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.qStartTime),3);
-        	if (debugLevel>0) System.out.println("qStepLevenbergMarquardtAction() "+msg);
+        	if (debugLevel>1) System.out.println("qStepLevenbergMarquardtAction() "+msg);
         	//    	if (this.updateStatus) IJ.showStatus(msg);
         	if (updateStatus){
         		IJ.showStatus("Done: Step #"+this.iterationStepNumber+

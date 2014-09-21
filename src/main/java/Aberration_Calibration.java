@@ -46,6 +46,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
+
 //import FocusingField.FocusingFieldMeasurement;
 //import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
@@ -4388,6 +4389,7 @@ if (MORE_BUTTONS) {
 				String path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+"-focus.csv";
 				if (MASTER_DEBUG_LEVEL>0) System.out.println ("Saving focusing log data to "+path);
 				MOTORS.listHistory(
+						FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null),
 						path, // on screen, path - to csv
 						FOCUS_MEASUREMENT_PARAMETERS.lensSerial,
 						FOCUS_MEASUREMENT_PARAMETERS.comment,
@@ -4473,6 +4475,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("List History")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.listHistory(
+					FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null),
 					null, // on screen, path - to csv
 					FOCUS_MEASUREMENT_PARAMETERS.lensSerial,
 					FOCUS_MEASUREMENT_PARAMETERS.comment,
@@ -5268,7 +5271,7 @@ if (MORE_BUTTONS) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
 			boolean modeAverage=label.equals("Focus Average");
 			boolean noTiltScan=true;
-			boolean useLMA=true;
+//			boolean useLMA=true;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
 					FOCUS_MEASUREMENT_PARAMETERS,
@@ -5285,7 +5288,8 @@ if (MORE_BUTTONS) {
 			}
 			gd.addCheckbox("Erase previous measurement history",modeAverage);
 			gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
-			gd.addCheckbox("Use LMA calculations for focus/tilt",useLMA);
+			gd.addCheckbox     ("Use lens aberration model (if available) for focal distance and tilts", FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics);
+//			gd.addCheckbox("Use LMA calculations for focus/tilt",useLMA);
 			double scanMinutes=modeAverage?2.0:30.0;
     		gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
     		gd.showDialog();
@@ -5297,7 +5301,17 @@ if (MORE_BUTTONS) {
     		}
 			if (gd.getNextBoolean()) MOTORS.clearHistory();
 			noTiltScan=!gd.getNextBoolean();
-			useLMA=gd.getNextBoolean();
+			FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics=gd.getNextBoolean();
+			// Only try to read history if useLMAMetrics is set
+			if (FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD==null)) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	{  // try to restore from the saved history file
+					System.out.println("Failed to restore history, disabling use of lens aberration model");					
+				}
+				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			}
+			boolean useLMA=FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null);
+		
 //			int startHistPos=MOTORS.historySize();
 			scanMinutes=gd.getNextNumber();
 			long startTime=System.nanoTime();
@@ -5318,6 +5332,14 @@ if (MORE_BUTTONS) {
 				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
 						pX0,
 						pY0);
+			}
+			if (useLMA){
+				FOCUSING_FIELD.testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+				if (MASTER_DEBUG_LEVEL>0) {
+					System.out.println("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+					System.out.println("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+					System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
+				}
 			}
 			while (System.nanoTime()<endTime){
 				moveAndMaybeProbe(
@@ -5350,7 +5372,6 @@ if (MORE_BUTTONS) {
 
 			}
 			// LMA version
-			
 			FocusingField ff= null;
 			if (useLMA){
 				ff= new FocusingField(
@@ -5371,22 +5392,34 @@ if (MORE_BUTTONS) {
 						ff,
 						(runs==0)?0:(MOTORS.historySize()-runs),
 								MOTORS.historySize()); // all newly acquired
+//	TODO: Remove after checking average	
+/*				
 				if (modeAverage && (FOCUSING_FIELD!=null)){ // calculate/show average over the last run - only in "average" mode
-					double [] ZTM=FOCUSING_FIELD.averageZTM(noTiltScan,ff); // no tilt scan - faster
+					double [] ZTM=FOCUSING_FIELD.averageZTM(
+							noTiltScan,
+							ff,  // no tilt scan - faster
+							true); // noMotors
 					if (MASTER_DEBUG_LEVEL>0) {
 						String msg="Failed to calulate average focus/tilt";
-						if (ZTM!=null) msg="Average:\n"+
-								"Relative focal shift "+IJ.d2s(ZTM[0],3)+"um (absolute - "+IJ.d2s(ZTM[0]+FOCUSING_FIELD.qualBOptimizationResults[0],3)+"um)\n"+
-								"Relative horizontal tilt "+IJ.d2s(ZTM[1],3)+"um/mm (absolute - "+IJ.d2s(ZTM[1]+FOCUSING_FIELD.qualBOptimizationResults[1],3)+"um.mm)\n"+
-								"Relative vertical tilt "+IJ.d2s(ZTM[2],3)+"um/mm (absolute - "+IJ.d2s(ZTM[2]+FOCUSING_FIELD.qualBOptimizationResults[2],3)+"um.mm)\n"+
-								"Suggested M1 "+IJ.d2s(ZTM[3],0)+"steps\n"+
-								"Suggested M2 "+IJ.d2s(ZTM[4],0)+"steps\n"+
-								"Suggested M3 "+IJ.d2s(ZTM[5],0)+"steps";
+						if (ZTM!=null) {
+							msg="Average:\n"+
+									"Relative focal shift "+IJ.d2s(ZTM[0],3)+"um (absolute - "+IJ.d2s(ZTM[0]+FOCUSING_FIELD.qualBOptimizationResults[0],3)+"um)\n"+
+									"Relative horizontal tilt "+IJ.d2s(ZTM[1],3)+"um/mm (absolute - "+IJ.d2s(ZTM[1]+FOCUSING_FIELD.qualBOptimizationResults[1],3)+"um.mm)\n"+
+									"Relative vertical tilt "+IJ.d2s(ZTM[2],3)+"um/mm (absolute - "+IJ.d2s(ZTM[2]+FOCUSING_FIELD.qualBOptimizationResults[2],3)+"um.mm)\n";
+							if (ZTM.length>3) {
+								msg+="Suggested M1 "+IJ.d2s(ZTM[3],0)+"steps\n"+
+										"Suggested M2 "+IJ.d2s(ZTM[4],0)+"steps\n"+
+										"Suggested M3 "+IJ.d2s(ZTM[5],0)+"steps";
+							}
+						}
 						System.out.println(msg);
 						IJ.showMessage(msg);
 					}
 				}
+*/				
+//				
 			}
+			
 			if (FOCUS_MEASUREMENT_PARAMETERS.saveResults) {
 				String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
 				File dFile=new File(dir);
@@ -5415,6 +5448,7 @@ if (MORE_BUTTONS) {
 					sensorHeight=FOCUSING_FIELD.sensorHeight;
 				}
 				MOTORS.listHistory(
+						useLMA,
 						path, // on screen, path - to csv
 						FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 						FOCUS_MEASUREMENT_PARAMETERS.lensSerial,
@@ -5442,11 +5476,13 @@ if (MORE_BUTTONS) {
 			if (!modeAverage) {
 				
 				double [] lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+						useLMA,
 						runs,             // number of last samples from history to use, 0 - use all
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
 				);
 				double [] allKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+						useLMA,
 						0,             // number of last samples from history to use, 0 - use all
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
@@ -5467,6 +5503,7 @@ if (MORE_BUTTONS) {
 					IJ.showMessage("Info",msg);
 				}
 // Now in LMA mode - recalculate and overwrite
+/*				
 				if (useLMA){
 					ff= new FocusingField(
 							EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
@@ -5486,7 +5523,12 @@ if (MORE_BUTTONS) {
 					if (MASTER_DEBUG_LEVEL>0){
 						System.out.println ("*** Calculating focal distance shift for each of "+MOTORS.historySize()+" recorded measurments ***");
 					}
-					double [][] allZTM=FOCUSING_FIELD.getAllZTM(noTiltScan,ff); // no tilt scan (supposed to be adjusted
+					boolean noMotors=true;
+					double [][] allZTM=FOCUSING_FIELD.getAllZTM(
+							noTiltScan,
+							ff, // no tilt scan (supposed to be adjusted
+		    				noMotors); // boolean noMotors) // do not calculate correction
+							
 					lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
 							allZTM,
 							runs
@@ -5511,6 +5553,7 @@ if (MORE_BUTTONS) {
 						IJ.showMessage("Info",msg);
 					}
 				}
+*/				
 			}
 			saveCurrentConfig();
 			return;
@@ -9125,6 +9168,12 @@ if (MORE_BUTTONS) {
 		double [][][] sampleCoord=null;
 		if (FOCUSING_FIELD!=null){
 			sampleCoord=FOCUSING_FIELD.getSampleCoord();
+			FOCUSING_FIELD.testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+			if (MASTER_DEBUG_LEVEL>0) {
+				System.out.println("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+				System.out.println("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+				System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
+			}
 		} else {
 			sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
 					FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
@@ -9154,7 +9203,12 @@ if (MORE_BUTTONS) {
 		//get measurement
 		FocusingField.FocusingFieldMeasurement fFMeasurement=MOTORS.getThisFFMeasurement(FOCUSING_FIELD);	
 		// calculate z, tx, ty, m1,m2,m3
-	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(false,fFMeasurement,false); // allow tilt scan
+	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
+	    		false,  // allow tilt scan
+	    		fFMeasurement,
+	    		false, // parallel move
+	    		true, // boolean noQualB,   // do not re-claculate testQualB 
+	    		false); // boolean noAdjust); // do not calculate correction
 		// show dialog: Apply, re-calculate, exit
     	int [] currentMotors=fFMeasurement.motors;
     	int [] newMotors=currentMotors.clone();
@@ -9279,7 +9333,13 @@ if (MORE_BUTTONS) {
 		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 		if (parallelMove){ // ignore/recalculate newMotors data 
-		    zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(false,fFMeasurement,true); // recalculate with parallel move only, allow tilt scan
+			zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
+					false,// disable tilt scan
+					fFMeasurement,
+					true, // recalculate with parallel move only
+					false, // boolean noQualB,   // do not re-claculate testQualB - OPTIMIZE to do once
+					false); // boolean noAdjust); // do not calculate correction
+		    		
 	    	newMotors=currentMotors.clone();
 	    	if (zTxTyM1M2M3!=null){
 	    		newMotors[0]=(int) Math.round(zTxTyM1M2M3[3]);
@@ -11114,6 +11174,34 @@ if (MORE_BUTTONS) {
 				debugLevel,
 				loopDebugLevel);
 		//			System.out.println(">>"+focusingMotors.historySize()+": "+focusingMotors.curpos[0]+", "+focusingMotors.curpos[1]+", "+focusingMotors.curpos[2]);
+		int ca=6;
+		double [] zTxTy=null; // {Double.NaN,Double.NaN,Double.NaN};
+		double oldTx=Double.NaN,oldTy=Double.NaN,oldFarNear=Double.NaN;
+		if (metrics!=null ){
+			oldFarNear=metrics[ca][0];
+			oldTx= metrics[ca][1];
+			oldTy= metrics[ca][2];
+		}
+		if (FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null)){
+			FocusingField.FocusingFieldMeasurement fFMeasurement= FOCUSING_FIELD.getFocusingFieldMeasurement(
+					ts,   //focusingState.getTimestamp(),
+					focusMeasurementParameters.sensorTemperature,
+					focusingMotors.readElphel10364Motors(), //focusingHistory.getPosition(), //null?
+					rFullResults[0]); //focusingState.getSamples());
+
+			zTxTy=FOCUSING_FIELD.adjustLMA(
+					true, // false, // noTiltScan
+					fFMeasurement,
+					false, // parallel move
+					true, // boolean noQualB,   // do not re-claculate testQualB 
+					true); // boolean noAdjust); // do not calculate correction
+			if (zTxTy!=null){
+				metrics[ca][0]=zTxTy[0]; // was far/near
+				metrics[ca][1]=zTxTy[1];
+				metrics[ca][2]=zTxTy[2];
+			}
+
+		}
 
 		focusingMotors.addToHistory(ts,focusMeasurementParameters.sensorTemperature,metrics,rFullResults[0]);
 //		System.out.println("focusMeasurementParameters.lensDistanceWeightK="+focusMeasurementParameters.lensDistanceWeightK);
@@ -11121,7 +11209,7 @@ if (MORE_BUTTONS) {
 		if ((debugLevel>0) && (metrics!=null)){
 			// see if lens is calibrated
 			double [] resolutions={1.0/metrics[1][6],1.0/metrics[5][6],1.0/metrics[2][6]}; // R,G,B
-			double fDistance=focusingMotors.focusingHistory.getLensDistance(
+			double fDistanceOld=focusingMotors.focusingHistory.getLensDistance(
 					resolutions, // {R-sharpness,G-sharpness,B-sharpness}
 					true, // boolean absolute, // return absolutely calibrated data
 					focusMeasurementParameters.lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
@@ -11129,18 +11217,25 @@ if (MORE_BUTTONS) {
 					debugLevel
 			);
 
-			int ca=6;
+//			int ca=6;
+			String sZTxTy="";
+			if (zTxTy!=null){
+				sZTxTy="z="+IJ.d2s(zTxTy[0],3)+"um"+" tX="+IJ.d2s(zTxTy[1],3)+"um/mm"+" tY="+IJ.d2s(zTxTy[2],3)+"um/mm";
+			}
 			int [] actualPosition=focusingMotors.focusingHistory.getPosition();
 			System.out.println("##"+focusingMotors.historySize()+": "+actualPosition[0]+", "+actualPosition[1]+", "+actualPosition[2]+
-					": fDistance="+IJ.d2s(fDistance,3)+"um"+
-					"  Far/Near="+IJ.d2s(metrics[ca][0],3)+
-					"  Tilt X="+IJ.d2s(metrics[ca][1],3)+
-					"  Tilt Y="+IJ.d2s(metrics[ca][2],3)+
+					": "+
+					sZTxTy+
+					" fDistanceOld="+IJ.d2s(fDistanceOld,3)+"um"+
+					"  Far/Near="+IJ.d2s(oldFarNear,3)+
+					"  Tilt X="+IJ.d2s(oldTx,3)+
+					"  Tilt Y="+IJ.d2s(oldTy,3)+
 					"  R50% average="+IJ.d2s(metrics[ca][3],3)+" sensor pixels,"+
 					"  A50% average="+IJ.d2s(metrics[ca][4],3)+" sensor pixels,"+
 					"  B50% average="+IJ.d2s(metrics[ca][5],3)+" sensor pixels,"+
 					"  R50%Center="+IJ.d2s(metrics[ca][6],3)+" sensor pixels"+
 					" temp="+focusMeasurementParameters.sensorTemperature);
+			double fDistance=(zTxTy==null)?fDistanceOld:zTxTy[0];
 			if (debugLevel>1){
 				String [] compColors={"green","red","blue","green","green","green","AVERAGE"};
 				for (int c=0;c<metrics.length-1;c++) if (metrics[c]!=null){
@@ -11162,7 +11257,6 @@ if (MORE_BUTTONS) {
 			focusMeasurementParameters.result_B50=metrics[ca][5];   // last measured B50 (simailar, but R^4 are averaged)
 			focusMeasurementParameters.result_RC50=metrics[ca][6];  // last measured RC50(R50 calculated only for the 2 center samples)
 		}
-
 	}
 	
 	

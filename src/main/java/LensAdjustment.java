@@ -195,6 +195,7 @@ public class LensAdjustment {
     	public String gridGeometryFile="";
     	public String initialCalibrationFile="";
     	public String focusingHistoryFile="";
+    	public boolean useLMAMetrics=true; // measure/report focal distance and tilts using lens model/LMA (when available)
     	public String strategyFile="";
     	public String resultsSuperDirectory=""; // directory with subdirectories named as serial numbers to stro results
     	public int EEPROM_channel=1; // EEPROM channel to read serial number from
@@ -430,6 +431,7 @@ public class LensAdjustment {
     	    	String strategyFile,
     	    	String resultsSuperDirectory, // directory with subdirectories named as serial numbers to stro results
     	    	String focusingHistoryFile,
+    	    	boolean useLMAMetrics, // measure/report focal distance and tilts using lens model/LMA (when available)
     	    	int EEPROM_channel, // EEPROM channel to read serial number from
     	    	boolean saveResults, // save focusing results
     	    	boolean showResults, // show focusing (includingh intermediate) results
@@ -577,6 +579,7 @@ public class LensAdjustment {
     		this.strategyFile=strategyFile;
     		this.resultsSuperDirectory=resultsSuperDirectory; // directory with subdirectories named as serial numbers to stro results
     		this.focusingHistoryFile=focusingHistoryFile;
+    		this.useLMAMetrics=useLMAMetrics; // measure/report focal distance and tilts using lens model/LMA (when available)
     		this.EEPROM_channel=EEPROM_channel; // EEPROM channel to read serial number from
     		this.saveResults=saveResults; // save focusing results
     		this.showResults=showResults; // show focusing (includingh intermediate) results
@@ -725,6 +728,7 @@ public class LensAdjustment {
     	    		this.strategyFile,
     	    		this.resultsSuperDirectory, // directory with subdirectories named as serial numbers to stro results
     	    		this.focusingHistoryFile,
+    	    		this.useLMAMetrics, // measure/report focal distance and tilts using lens model/LMA (when available)
     	    		this.EEPROM_channel,// EEPROM channel to read serial number from
     	    		this.saveResults, // save focusing results
     	    		this.showResults, // show focusing (includingh intermediate) results
@@ -871,6 +875,7 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"strategyFile",this.strategyFile+"");
 			properties.setProperty(prefix+"resultsSuperDirectory",this.resultsSuperDirectory+"");
 			properties.setProperty(prefix+"focusingHistoryFile",this.focusingHistoryFile+"");
+			properties.setProperty(prefix+"useLMAMetrics",this.useLMAMetrics+"");
 			properties.setProperty(prefix+"serialNumber",this.serialNumber+"");
 			if (!Double.isNaN(this.sensorTemperature))properties.setProperty(prefix+"sensorTemperature",this.sensorTemperature+"");
 			if (!Double.isNaN(this.result_lastKT))properties.setProperty(prefix+"result_lastKT",this.result_lastKT+"");
@@ -1029,6 +1034,9 @@ public class LensAdjustment {
 				this.resultsSuperDirectory=properties.getProperty(prefix+"resultsSuperDirectory");
 			if (properties.getProperty(prefix+"focusingHistoryFile")!=null)
 				this.focusingHistoryFile=properties.getProperty(prefix+"focusingHistoryFile");
+
+			if (properties.getProperty(prefix+"useLMAMetrics")!=null)
+				this.useLMAMetrics=Boolean.parseBoolean(properties.getProperty(prefix+"useLMAMetrics"));
 			
 			if (properties.getProperty(prefix+"serialNumber")!=null)
 				this.serialNumber=properties.getProperty(prefix+"serialNumber");
@@ -1441,7 +1449,8 @@ public class LensAdjustment {
 			gd.addStringField  ("Initial camera intrinsic/extrinsic parametres file", this.initialCalibrationFile,40);
 			gd.addStringField  ("Levenberg-Marquardt algorithm strategy file",        this.strategyFile,40);
 			gd.addStringField  ("Focusing results superdirectory (individual will be named by serial numbers)", this.resultsSuperDirectory,40);
-			gd.addStringField  ("Measurement history (acquired during \"Scan Calib LMA\" file", this.focusingHistoryFile,80);
+			gd.addStringField  ("Measurement history (acquired during \"Scan Calib LMA\") file", this.focusingHistoryFile,80);
+			gd.addCheckbox     ("Use lens aberration model (if available) for focal distance and tilts", this.useLMAMetrics);
 			gd.addNumericField("EEPROM channel to read sensor serial number from",    this.EEPROM_channel, 0,4,"");
 			gd.addCheckbox    ("Save SFE focusing results (including intermediate) ", this.saveResults);
 			gd.addCheckbox    ("Show SFE focusing results (including intermediate) ", this.showResults);
@@ -1618,6 +1627,8 @@ public class LensAdjustment {
 			this.strategyFile=               gd.getNextString();
     		this.resultsSuperDirectory=      gd.getNextString();
     		this.focusingHistoryFile=        gd.getNextString();
+			this.useLMAMetrics =             gd.getNextBoolean();
+
     		this.EEPROM_channel=       (int) gd.getNextNumber();
 			this.saveResults=                gd.getNextBoolean();
 			this.showResults=                gd.getNextBoolean();

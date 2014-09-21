@@ -2977,7 +2977,25 @@ public class CalibrationHardwareInterface {
     			fullResults
     	);
     }
+    
+	public FocusingField.FocusingFieldMeasurement getThisFFMeasurement(
+			FocusingField focusingField,
+			String sTimestamp,
+			double temperature,
+			double[][] psfMetrics,
+			double [][][][] fullResults){
+		
+		return focusingField.getFocusingFieldMeasurement(
+				sTimestamp,   //focusingState.getTimestamp(),
+				temperature, //focusingState.getTemperature(),
+				this.curpos,      //focusingState.motorsPos,
+				fullResults); //focusingState.getSamples());
+	}    
+    
+    
+    
 /*
+ * FocusingHistory.FocusingState focusingState
     public void addToHistory( String sTimestamp,double temperature, double[][] psfMetrics){ // null OK
     	this.focusingHistory.add(
     			sTimestamp,
@@ -3004,6 +3022,7 @@ public class CalibrationHardwareInterface {
     }
 
     public void listHistory(
+    		boolean useLMA,
     		String path,
     		String lensSerial,
     		String comment,
@@ -3015,6 +3034,7 @@ public class CalibrationHardwareInterface {
 			double weightY // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
 			){
     	listHistory(
+    			useLMA,
     			path,
     			"",
     			lensSerial,
@@ -3033,6 +3053,7 @@ public class CalibrationHardwareInterface {
     }
     
     public void listHistory(
+    		boolean useLMA,
     		String path,
     		String serialNumber,
     		String lensSerial,
@@ -3051,6 +3072,7 @@ public class CalibrationHardwareInterface {
 			){
 
     	this.focusingHistory.list(
+        		useLMA,
     			path,
         		serialNumber,
     			lensSerial,
@@ -3084,6 +3106,7 @@ public class CalibrationHardwareInterface {
     			pY0,
     			sampleCoord);
 	}
+
 	public FocusingField.FocusingFieldMeasurement getThisFFMeasurement(FocusingField focusingField){
 		return getThisFFMeasurement(focusingField, -1);
 	}    
@@ -3895,10 +3918,18 @@ public class CalibrationHardwareInterface {
     		if (this.history.size()<1) return null;
     		return getCenterResolutions(this.history.size()-1);
     	}
-		public double [] getCenterResolutions(int index){
+    	public double [] getCenterResolutions(int index){
     		if ((index<0) || (index>=this.history.size())) return null;
     		return this.history.get(index).getCenterResolutions();
-			}
+    	}
+    	public double [] getzTxTy(int index){
+    		if ((index<0) || (index>=this.history.size())) return null;
+    		return this.history.get(index).getzTxTy();
+    	}
+    	public double [] getzTxTy(){
+    		if (this.history.size()<1) return null;
+    		return getzTxTy(this.history.size()-1);
+    	}
     	public int size(){
     		return this.history.size();
     	}
@@ -5067,6 +5098,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
  * @return array of 2 elements - {length at 0C, microns/degree}
  */
      	public double [] temperatureLinearApproximation(
+     			boolean useLMA,
      			int numSamples,             // number of last samples from history to use, 0 - use all
     			double lensDistanceWeightK, // used in distance calculation 
     			double lensDistanceWeightY // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
@@ -5079,15 +5111,19 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     		int firstSample=this.history.size()-numSamples;
 
      		for (int nSample=0;nSample<numSamples;nSample++){
-				resolutions= this.history.get(firstSample+nSample).getCenterResolutions();
 				data[nSample][0]=this.history.get(firstSample+nSample).getTemperature();
-				data[nSample][1]=getLensDistance(
-						resolutions, // {R-sharpness,G-sharpness,B-sharpness}
-						true, // boolean absolute, // return absolutely calibrated data
-						lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
-						lensDistanceWeightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-						1 //debugLevel
-				);
+				if (useLMA){
+					data[nSample][1]=this.history.get(firstSample+nSample).getzTxTy()[0];
+				} else {
+					resolutions= this.history.get(firstSample+nSample).getCenterResolutions();
+					data[nSample][1]=getLensDistance(
+							resolutions, // {R-sharpness,G-sharpness,B-sharpness}
+							true, // boolean absolute, // return absolutely calibrated data
+							lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
+							lensDistanceWeightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
+							1 //debugLevel
+							);
+				}
      		}
 			PolynomialApproximation pa= new PolynomialApproximation(debugLevel);
 			double [] polyCoeff=pa.polynomialApproximation1d(data, 1); // just linear
@@ -5524,6 +5560,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     	// todo - add "probe around" - 6/3 points, +/- for each direction (fraction of sigma?)    	    	
 
     	public void list(
+    			boolean useLMA,
     			String path,
     			String lensSerial, // if null - do not add average
         		String comment,
@@ -5533,8 +5570,10 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			double weightRatioBlueToGreen,
     			double weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
     			double weightY){ // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-    		list (path,
-    				"",
+    		list (
+    				useLMA,
+    				path,
+    				"", // serial; number
     				lensSerial, // if null - do not add average
     				comment,
     				showIndividualComponents,
@@ -5641,6 +5680,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
         	 
     	}
      	public void list(
+        		boolean useLMA,
     			String path,
         		String serialNumber,
     			String lensSerial, // if null - do not add average
@@ -5701,15 +5741,22 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     		if (showIndividualComponents) {
     			for (int i=0;i<this.history.size();i++){
     				FocusingState focusingState=this.history.get(i);
+    				double [] zTxTy=useLMA?focusingState.getzTxTy():null;
     				double [][] metrics=focusingState.getMetrics(weightRatioRedToGreen,weightRatioBlueToGreen);
     				double [][] resolution=focusingState.getSharpness(weightRatioRedToGreen,weightRatioBlueToGreen);
-    				double dist= getLensDistance(
+    				double dist= (zTxTy==null)?getLensDistance(
     						focusingState.getCenterResolutions(), // {R-sharpness,G-sharpness,B-sharpness}
     		    			true, //boolean absolute, // return absolutely calibrated data
     		    			weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
     		    			weightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-    		    			1); //int debugLevel
+    		    			1): //int debugLevel
+    		    				zTxTy[0];
     				double []   averageMetrics=metrics[3];
+    				if (zTxTy!=null){
+        				averageMetrics=metrics[3].clone(); // to modify w/o changing original
+    					averageMetrics[1]=zTxTy[1]; // tiltX
+    					averageMetrics[2]=zTxTy[2]; // tiltY
+    				}
     				double []   averageResolution=resolution[3];
     				sb.append((i+1)+"\t");
     				String timestamp=focusingState.getTimestamp();
@@ -5779,9 +5826,15 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			for (int i=0;i<this.history.size();i++){
 //    				int parIndex=0;
     				FocusingState focusingState=this.history.get(i);
+    				double [] zTxTy=useLMA?focusingState.getzTxTy():null;
     				double [][] metrics=focusingState.getMetrics(weightRatioRedToGreen,weightRatioBlueToGreen);
     				double [][] resolution=focusingState.getSharpness(weightRatioRedToGreen,weightRatioBlueToGreen);
     				double []   averageMetrics=metrics[3];
+    				if (zTxTy!=null){
+        				averageMetrics=metrics[3].clone(); // to modify w/o changing original
+    					averageMetrics[1]=zTxTy[1]; // tiltX
+    					averageMetrics[2]=zTxTy[2]; // tiltY
+    				}
     				double []   averageResolution=resolution[3];
     				if (!justSummary) sb.append((i+1)+"\t");
     				String timestamp=focusingState.getTimestamp();
@@ -5806,12 +5859,13 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
 					sums[4]+=focusingState.motorsPos[0];
 					sums[5]+=focusingState.motorsPos[1];
 					sums[6]+=focusingState.motorsPos[2];
-    				double dist= getLensDistance(
-    						focusingState.getCenterResolutions(), // {R-sharpness,G-sharpness,B-sharpness}
-    		    			true, //boolean absolute, // return absolutely calibrated data
-    		    			weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
-    		    			weightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-    		    			1); //int debugLevel
+					double dist= (zTxTy==null)?getLensDistance(
+							focusingState.getCenterResolutions(), // {R-sharpness,G-sharpness,B-sharpness}
+							true, //boolean absolute, // return absolutely calibrated data
+							weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
+							weightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
+							1): //int debugLevel
+								zTxTy[0];
     				if (Double.isNaN(dist)){
     					if (!justSummary) sb.append("\t---");
     				} else {
@@ -6199,7 +6253,19 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     					1.0,
     					weightRatioBlueToGreen);
     		}
+    		// alternative mode (from aberration model) ising metrics[6][]
+    		public double [] getzTxTy(){
+    			if (this.psfMetricses==null){
+    				return null;
+    			}
+    			if ((this.psfMetricses.length<7) || (this.psfMetricses[6]==null)) {
+    				System.out.println("BUG? psfMetrics does not have line 6 with lens berration model z, tx, ty");
+    				return null;
+    			}
+    			double [] zTxTy={this.psfMetricses[6][0],this.psfMetricses[6][1],this.psfMetricses[6][2]};
+    			return zTxTy;
 
+    		}
     		public double [][] getMetrics(
     				double weightRed,
     				double weightGreen,
