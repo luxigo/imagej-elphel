@@ -106,6 +106,8 @@ public class FocusingField {
     double tStep;
 	
 	double targetRelFocalShift; // target focal shift relative to best composite "sharpness" 
+	double targetRelTiltX; // target tilt Horizontal 
+	double targetRelTiltY; // target tilt Vertical 
 
 	// when false - tangential is master
 	double [] minMeas; // pixels
@@ -292,7 +294,9 @@ public class FocusingField {
         tMax= 10.0;
         tStep=2.0;
     	
-    	targetRelFocalShift=8.0; // target focal shift relative to best composite "sharpness" 
+    	targetRelFocalShift=0.0; // target focal shift relative to best composite "sharpness"
+    	targetRelTiltX=0.0; // target tilt Horizontal 
+    	targetRelTiltY=0.0; // target tilt Vertical 
     	// when false - tangential is master
     	double [] minMeasDflt= {0.5,0.5,0.5,0.5,0.5,0.5}; // pixels
     	minMeas= minMeasDflt; // pixels
@@ -446,6 +450,10 @@ public class FocusingField {
     		properties.setProperty(prefix+"tStep",tStep+"");
 
     		properties.setProperty(prefix+"targetRelFocalShift",targetRelFocalShift+"");
+    		
+    		properties.setProperty(prefix+"targetRelTiltX",targetRelTiltX+"");
+    		properties.setProperty(prefix+"targetRelTiltY",targetRelTiltY+"");
+    		
     		for (int chn=0; chn<minMeas.length; chn++) properties.setProperty(prefix+"minMeas_"+chn,minMeas[chn]+"");
     		for (int chn=0; chn<maxMeas.length; chn++) properties.setProperty(prefix+"maxMeas_"+chn,maxMeas[chn]+"");
     		for (int chn=0; chn<thresholdMax.length; chn++) properties.setProperty(prefix+"thresholdMax_"+chn,thresholdMax[chn]+"");
@@ -607,6 +615,12 @@ public class FocusingField {
 			tStep=Double.parseDouble(properties.getProperty(prefix+"tStep"));
 		if (properties.getProperty(prefix+"targetRelFocalShift")!=null)
 			targetRelFocalShift=Double.parseDouble(properties.getProperty(prefix+"targetRelFocalShift"));
+		
+		if (properties.getProperty(prefix+"targetRelTiltX")!=null)
+			targetRelTiltX=Double.parseDouble(properties.getProperty(prefix+"targetRelTiltX"));
+		if (properties.getProperty(prefix+"targetRelTiltY")!=null)
+			targetRelTiltY=Double.parseDouble(properties.getProperty(prefix+"targetRelTiltY"));
+		
 		for (int chn=0; chn<minMeas.length; chn++) if (properties.getProperty(prefix+"minMeas_"+chn)!=null)
 			minMeas[chn]=Double.parseDouble(properties.getProperty(prefix+"minMeas_"+chn));
 		for (int chn=0; chn<maxMeas.length; chn++) if (properties.getProperty(prefix+"maxMeas_"+chn)!=null)
@@ -4815,8 +4829,8 @@ public boolean LevenbergMarquardt(
 //        double zMin=-40.0;
 //        double zMax= 40.0;
 //        double zStep=2.0;
-        double targetTiltX=0.0; // for testing, normally should be 0 um/mm
-        double targetTiltY=0.0; // for testing, normally should be 0 um/mm
+//        double targetTiltX=0.0; // for testing, normally should be 0 um/mm
+//        double targetTiltY=0.0; // for testing, normally should be 0 um/mm
         
 //    	fieldFitting.mechanicalFocusingModel.setZTxTy(0.0,0.0,0.0); // to correctly find Z centers,
     	fieldFitting.mechanicalFocusingModel.setAdjustMode(false); // to correctly find Z centers,
@@ -4872,8 +4886,9 @@ public boolean LevenbergMarquardt(
         gd.addNumericField("Tilt step",tStep,2,5,"um/mm");
         
         gd.addNumericField("Target focus (relative to best composirte)",targetRelFocalShift,2,5,"um");
-        gd.addNumericField("Target horizontal tilt (normally 0)",targetTiltX,2,5,"um/mm");
-        gd.addNumericField("Target vertical tilt (normally 0)",targetTiltY,2,5,"um/mm");
+        
+        gd.addNumericField("Target horizontal tilt (normally 0)",targetRelTiltX,2,5,"um/mm");
+        gd.addNumericField("Target vertical tilt (normally 0)",targetRelTiltY,2,5,"um/mm");
     	WindowTools.addScrollBars(gd);
     	gd.showDialog();
     	if (gd.wasCanceled()) return;
@@ -4902,8 +4917,8 @@ public boolean LevenbergMarquardt(
         tStep=                        gd.getNextNumber();
 
         targetRelFocalShift=          gd.getNextNumber();
-        targetTiltX=                  gd.getNextNumber(); // for testing, normally should be 0 um/mm
-        targetTiltY=                  gd.getNextNumber(); // for testing, normally should be 0 um/mm
+        targetRelTiltX=               gd.getNextNumber(); // for testing, normally should be 0 um/mm
+        targetRelTiltY=               gd.getNextNumber(); // for testing, normally should be 0 um/mm
        
         boolean OK;
     	fieldFitting.mechanicalFocusingModel.setAdjustMode(true); // to correctly find Z centers,
@@ -4956,8 +4971,8 @@ public boolean LevenbergMarquardt(
     			double [] dmz= getAdjustedMotors(
     					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
     		            targetRelFocalShift+best_qb_corr[0],
-    		            targetTiltX, // for testing, normally should be 0 um/mm
-    		            targetTiltY,
+    		            targetRelTiltX, // for testing, normally should be 0 um/mm
+    		            targetRelTiltY,
     		            false);
     			if ((dmz!=null) && (debugLevel>0)){
     				System.out.println("Suggested motor linearized positions: "+IJ.d2s(dmz[0],2)+":"+IJ.d2s(dmz[1],2)+":"+IJ.d2s(dmz[2],2));
@@ -4965,8 +4980,8 @@ public boolean LevenbergMarquardt(
     			double [] dm= getAdjustedMotors(
     					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
     		            targetRelFocalShift+best_qb_corr[0],
-    		            targetTiltX, // for testing, normally should be 0 um/mm
-    		            targetTiltY,
+    		            targetRelTiltX, // for testing, normally should be 0 um/mm
+    		            targetRelTiltY,
     		            true);
     			if ((dm!=null) && (debugLevel>0)){
     				System.out.println("Suggested motor positions: "+IJ.d2s(dm[0],0)+":"+IJ.d2s(dm[1],0)+":"+IJ.d2s(dm[2],0));
@@ -5028,8 +5043,8 @@ public boolean LevenbergMarquardt(
         			double [] dmz= getAdjustedMotors(
         					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
         		            targetRelFocalShift+best_qb_corr[0],
-        		            targetTiltX, // for testing, normally should be 0 um/mm
-        		            targetTiltY,
+        		            targetRelTiltX, // for testing, normally should be 0 um/mm
+        		            targetRelTiltY,
         		            false);
         			if ((dmz!=null) && (debugLevel>0)){
         				System.out.println("Suggested motor linearized positions: "+IJ.d2s(dmz[0],2)+":"+IJ.d2s(dmz[1],2)+":"+IJ.d2s(dmz[2],2));
@@ -5037,8 +5052,8 @@ public boolean LevenbergMarquardt(
         			double [] dm= getAdjustedMotors(
         					null, // double [] zM0, //  current linearized motors (or null for full adjustment) 
         		            targetRelFocalShift+best_qb_corr[0],
-        		            targetTiltX, // for testing, normally should be 0 um/mm
-        		            targetTiltY,
+        		            targetRelTiltX, // for testing, normally should be 0 um/mm
+        		            targetRelTiltY,
         		            true);
         			if ((dm!=null) && (debugLevel>0)){
         				System.out.println("Suggested motor positions: "+IJ.d2s(dm[0],0)+":"+IJ.d2s(dm[1],0)+":"+IJ.d2s(dm[2],0));
