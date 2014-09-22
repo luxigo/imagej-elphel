@@ -9164,7 +9164,7 @@ if (MORE_BUTTONS) {
 				FOCUS_MEASUREMENT_PARAMETERS,
     			MOTORS.getMicronsPerStep(), //double micronsPerStep,
     			DEBUG_LEVEL);
-*/    			
+*/    	boolean showPSF=false;		
 		double [][][] sampleCoord=null;
 		if (FOCUSING_FIELD!=null){
 			sampleCoord=FOCUSING_FIELD.getSampleCoord();
@@ -9296,6 +9296,7 @@ if (MORE_BUTTONS) {
         gd.addNumericField("Tilt min",FOCUSING_FIELD.tMin,2,5,"um/mm");
         gd.addNumericField("Tilt max",FOCUSING_FIELD.tMax,2,5,"um/mm");
         gd.addNumericField("Tilt step",FOCUSING_FIELD.tStep,2,5,"um/mm");
+        gd.addCheckbox("Show current PSF",showPSF);
 		
 		gd.addNumericField("Motor anti-hysteresis travel (last measured was "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.measuredHysteresis,0)+")", FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis, 0,7,"motors steps");
 		gd.addNumericField("Debug Level:",                                MASTER_DEBUG_LEVEL, 0);
@@ -9328,10 +9329,34 @@ if (MORE_BUTTONS) {
         FOCUSING_FIELD.tMin=               gd.getNextNumber();
         FOCUSING_FIELD.tMax=               gd.getNextNumber();
         FOCUSING_FIELD.tStep=              gd.getNextNumber();
+        showPSF=                           gd.getNextBoolean();
 		FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis= (int) gd.getNextNumber();
 		MASTER_DEBUG_LEVEL=(         int)  gd.getNextNumber();
 		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+		if (showPSF){
+			if (PSF_KERNEL_MAP==null){
+				IJ.showMessage("Warning","PSF_KERNEL_MAP is null, nothing to show" );
+			} else {
+				double [][][][] psfRGB=new double [PSF_KERNEL_MAP.length][PSF_KERNEL_MAP[0].length][][];
+				int [] rgbChn={1,5,2};
+				String [] rgbNames={"Red","Green","Blue"};
+				for (int tileY=0;tileY< PSF_KERNEL_MAP.length;tileY++) for (int tileX=0;tileX< PSF_KERNEL_MAP[0].length;tileX++){
+					if (PSF_KERNEL_MAP[tileY][tileX]!=null){
+						psfRGB[tileY][tileX]=new double [3][];
+						for (int rgbi=0;rgbi<3;rgbi++) psfRGB[tileY][tileX][rgbi]=PSF_KERNEL_MAP[tileY][tileX][rgbChn[rgbi]];
+
+					} else psfRGB[tileY][tileX]=null;
+				}
+				ImageStack mergedStack=mergeKernelsToStack(psfRGB,rgbNames);
+				if (mergedStack==null) {
+					IJ.showMessage("Error","No PSF kernels to show");
+				} else {
+//				ImagePlus imp_psf=SDFA_INSTANCE.showImageStack(mergedStack, imp_sel.getTitle()+"-FOCUS-PSF");
+				SDFA_INSTANCE.showImageStack(mergedStack, imp_sel.getTitle()+"-FOCUS-PSF");
+				}
+			}
+		}
 		if (parallelMove){ // ignore/recalculate newMotors data 
 			zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
 					false,// disable tilt scan
