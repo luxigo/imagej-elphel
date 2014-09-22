@@ -9306,7 +9306,7 @@ if (MORE_BUTTONS) {
 		if (gd.wasCanceled()) return false;
 		FOCUSING_FIELD.targetRelFocalShift=gd.getNextNumber();
 		FOCUSING_FIELD.targetRelTiltX=     gd.getNextNumber();
-		FOCUSING_FIELD.targetRelTiltX=     gd.getNextNumber();
+		FOCUSING_FIELD.targetRelTiltY=     gd.getNextNumber();
 		
 		FOCUSING_FIELD.qualBOptimizeMode=0;
 		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?1:0;
