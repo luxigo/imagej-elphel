@@ -9221,13 +9221,13 @@ if (MORE_BUTTONS) {
     		zTxTy[1]=zTxTyM1M2M3[1];
     		zTxTy[2]=zTxTyM1M2M3[2];
     	}
-    	double [] targetTilts={0.0,0.0};
+//    	double [] targetTilts={0.0,0.0};
     	double [] manualScrewsCW=null;
     	if (zTxTyM1M2M3!=null){
     		manualScrewsCW=FOCUSING_FIELD.fieldFitting.mechanicalFocusingModel.getManualScrews(
     				zTxTy[0]-FOCUSING_FIELD.targetRelFocalShift, //double zErr, // positive - away from lens
-    				zTxTy[1]-targetTilts[0],                     // double tXErr,// positive - 1,2 away from lens, 3 - to the lens
-    				zTxTy[2]-targetTilts[1]);                    // double tYErr);
+    				zTxTy[1]-FOCUSING_FIELD.targetRelTiltX, //targetTilts[0],                     // double tXErr,// positive - 1,2 away from lens, 3 - to the lens
+    				zTxTy[2]-FOCUSING_FIELD.targetRelTiltY); //targetTilts[1]);                    // double tYErr);
     	}
     	double scaleMovement=1.0; // calculate automatically - reduce when close
     	boolean parallelMove=false;
@@ -9239,8 +9239,8 @@ if (MORE_BUTTONS) {
 
     		System.out.println("----- Focus/tilt measurement results -----");
     		System.out.println("Relative to optimal focal shift "+IJ.d2s(zTxTy[0],3)+" um ("+IJ.d2s(FOCUSING_FIELD.targetRelFocalShift,3)+"um)");
-    		System.out.println("Relative to optimal horizontal tilt "+IJ.d2s(zTxTy[1],3)+" um/mm ("+IJ.d2s(targetTilts[0],3)+"um/mm)");
-    		System.out.println("Relative to optimal vertical tilt "+IJ.d2s(zTxTy[2],3)+" um/mm ("+IJ.d2s(targetTilts[1],3)+"um/mm)");
+    		System.out.println("Relative to optimal horizontal tilt "+IJ.d2s(zTxTy[1],3)+" um/mm ("+IJ.d2s(FOCUSING_FIELD.targetRelTiltX,3)+"um/mm)");
+    		System.out.println("Relative to optimal vertical tilt "+IJ.d2s(zTxTy[2],3)+" um/mm ("+IJ.d2s(FOCUSING_FIELD.targetRelTiltY,3)+"um/mm)");
     		for (int i=0;i<newMotors.length;i++){
         		System.out.println("Suggested for motor "+(i+1)+" "+newMotors[i]+" ("+currentMotors[i]+")");
     		}
@@ -9261,8 +9261,8 @@ if (MORE_BUTTONS) {
     		gd.addMessage("**** You may cancel the command and try \"Auto pre-focus\" first. ****");
     	}
         gd.addNumericField("Target focus (relative to best composite)",FOCUSING_FIELD.targetRelFocalShift,2,5,"um ("+IJ.d2s(zTxTy[0],3)+")");
-        gd.addNumericField("Target horizontal tilt relative to optimal (normally 0)",targetTilts[0],2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
-        gd.addNumericField("Target vertical tilt  relative to optimal (normally 0)",targetTilts[1],2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
+        gd.addNumericField("Target horizontal tilt relative to optimal (normally 0)",FOCUSING_FIELD.targetRelTiltX,2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
+        gd.addNumericField("Target vertical tilt  relative to optimal (normally 0)",FOCUSING_FIELD.targetRelTiltY,2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
 
         gd.addMessage("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
         gd.addMessage("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
@@ -9305,8 +9305,8 @@ if (MORE_BUTTONS) {
     	gd.showDialog();
 		if (gd.wasCanceled()) return false;
 		FOCUSING_FIELD.targetRelFocalShift=gd.getNextNumber();
-		targetTilts[0]=                    gd.getNextNumber();
-		targetTilts[1]=                    gd.getNextNumber();
+		FOCUSING_FIELD.targetRelTiltX=     gd.getNextNumber();
+		FOCUSING_FIELD.targetRelTiltX=     gd.getNextNumber();
 		
 		FOCUSING_FIELD.qualBOptimizeMode=0;
 		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?1:0;
