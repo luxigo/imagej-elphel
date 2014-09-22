@@ -5229,9 +5229,9 @@ public boolean LevenbergMarquardt(
         	}
         	double [] dm= getAdjustedMotors(
         			parallelMove?zm:null,
-        					targetRelFocalShift+this.qualBOptimizationResults[0] , //targetRelFocalShift+best_qb_corr[0],
-        					this.qualBOptimizationResults[1], //0.0, // targetTiltX, // for testing, normally should be 0 um/mm
-        					this.qualBOptimizationResults[2], //0.0, // targetTiltY,
+        					this.targetRelFocalShift+this.qualBOptimizationResults[0] , //targetRelFocalShift+best_qb_corr[0],
+        					this.targetRelTiltX+this.qualBOptimizationResults[1], //0.0, // targetTiltX, // for testing, normally should be 0 um/mm
+        					this.targetRelTiltY+this.qualBOptimizationResults[2], //0.0, // targetTiltY,
         					true); // motor steps
         	if ((dm!=null) && (debugLevel>1)){
         		System.out.println("Suggested motor positions: "+IJ.d2s(dm[0],0)+":"+IJ.d2s(dm[1],0)+":"+IJ.d2s(dm[2],0));
