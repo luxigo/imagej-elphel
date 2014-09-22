@@ -5828,7 +5828,13 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     				FocusingState focusingState=this.history.get(i);
     				double [] zTxTy=useLMA?focusingState.getzTxTy():null;
     				double [][] metrics=focusingState.getMetrics(weightRatioRedToGreen,weightRatioBlueToGreen);
-    				double [][] resolution=focusingState.getSharpness(weightRatioRedToGreen,weightRatioBlueToGreen);
+    				double [][] resolution={{Double.NaN,Double.NaN},{Double.NaN,Double.NaN},{Double.NaN,Double.NaN},{Double.NaN,Double.NaN}};
+    				try {
+    					resolution=focusingState.getSharpness(weightRatioRedToGreen,weightRatioBlueToGreen);
+    				} catch (Exception e){
+    					System.out.println("Failed to get resolution for history("+i+")");
+    					continue; // skip the whole line
+    				}
     				double []   averageMetrics=metrics[3];
     				if (zTxTy!=null){
         				averageMetrics=metrics[3].clone(); // to modify w/o changing original
@@ -6226,7 +6232,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     				double weightBlue){
     			double [][] metrics=getMetrics(weightRed, weightGreen, weightBlue);
     			double [][]sharpness={
-    					{1.0/metrics[0][this.indexR50All],1.0/metrics[0][this.indexR50Center]},
+    					{1.0/metrics[0][this.indexR50All],1.0/metrics[0][this.indexR50Center]}, //java.lang.NullPointerException
     					{1.0/metrics[1][this.indexR50All],1.0/metrics[1][this.indexR50Center]},
     					{1.0/metrics[2][this.indexR50All],1.0/metrics[2][this.indexR50Center]},
     					{0.0,0.0}};
