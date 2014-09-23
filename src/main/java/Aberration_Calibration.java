@@ -1123,7 +1123,8 @@ if (MORE_BUTTONS) {
 							DEBUG_LEVEL);
 
 		    		
-		    	}	    		
+		    	}
+		    	restoreFocusingHistory(false);
 	    	}
 	    	return;
 		
