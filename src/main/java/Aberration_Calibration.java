@@ -9478,6 +9478,7 @@ if (MORE_BUTTONS) {
 		} 
 		String configPath=fileList[index].getAbsolutePath();
     	loadProperties(configPath, null, true, PROPERTIES);
+    	restoreFocusingHistory(false);
     	return true;
 	}
 	
