@@ -5383,6 +5383,13 @@ if (MORE_BUTTONS) {
 				stateEndTime=startTime+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes);
 			}
 			int scanState=(!modeAverage && FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable)?1:-1;
+			if (scanState>=0){
+				endTime=startTime+(long) (6E10*(
+						FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
+						FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
+						FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes));
+			}
+			String [] stateNames={"IDLE","HEATING","WAITING","COOLING","FINISHED"};
 			while (System.nanoTime()<endTime){
 				moveAndMaybeProbe(
 						true, // just move, not probe
@@ -5417,7 +5424,6 @@ if (MORE_BUTTONS) {
 				if (secondsLeft<0) secondsLeft=0;
 				long secondsLeftState=(long) (0.000000001*(stateEndTime-System.nanoTime()));
 				if (secondsLeftState<0) secondsLeftState=0;
-				if (MASTER_DEBUG_LEVEL>0) System.out.println(" Measured "+runs+", "+secondsLeftState+" seconds left ("+secondsLeft+")");
 
 				boolean timerOver=(System.nanoTime()>=stateEndTime) || 
 						((scanState==1) && (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature));
@@ -5437,6 +5443,14 @@ if (MORE_BUTTONS) {
 						
 					}
 					// nothing specific is needed for case 4 - it will end anyway
+				}
+				if (MASTER_DEBUG_LEVEL>0) {
+					if (scanState>=0){
+						System.out.println(" Measured "+runs+", state="+stateNames[scanState]+",  t="+
+					FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ("+secondsLeft+")");
+					} else {
+						System.out.println(" Measured "+runs+",  t="+FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ");
+					}
 				}
 			}
 			if (!modeAverage) {
