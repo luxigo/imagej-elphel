@@ -519,6 +519,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 	public float [][] SIM_ARRAY=null; // first index - 0 - main, 1 - shifted by 0.5 pixel diagonally (to extract checker greens)
 
 	public static CalibrationHardwareInterface.LaserPointers LASERS=new CalibrationHardwareInterface.LaserPointers(LASER_POINTERS);
+	public static CalibrationHardwareInterface.PowerControl POWER_CONTROL=new CalibrationHardwareInterface.PowerControl();
 	public static CalibrationHardwareInterface.CamerasInterface CAMERAS=new CalibrationHardwareInterface.CamerasInterface(26,LASERS);
 	public static CalibrationHardwareInterface.FocusingMotors MOTORS=new CalibrationHardwareInterface.FocusingMotors();
 	
@@ -781,6 +782,7 @@ if (MORE_BUTTONS) {
 		addButton("Auto Focus/Tilt",panelFocusing,color_process);
 //		addButton("List Pre-focus",panelFocusing);
 		addButton("Focus Average",panelFocusing,color_report);
+		addButton("Power Control",panelFocusing,color_configure);
 		addButton("Temp. Scan",panelFocusing,color_process);
 		//
 		addButton("List History",panelFocusing,color_report);
@@ -3766,6 +3768,7 @@ if (MORE_BUTTONS) {
 // Use rotation from head lasers
 			   	if (FOCUS_MEASUREMENT_PARAMETERS.useHeadLasers){
 			   		psi=-headPointersTilt; // "-" - correction, instead of the target tilt
+				   	FOCUS_MEASUREMENT_PARAMETERS.result_PSI=psi; // Was not here, using relative to the pattern (w/o head lasers)
 			   	}
 			   	
 			   	double diffY=12*Math.sin(Math.PI/180.0*psi);
@@ -5069,7 +5072,8 @@ if (MORE_BUTTONS) {
 					Matcher matcher=fileNameFormat.matcher(fileList[i].getName());
 					if (matcher.find()){
 						if ((matcher.group(1)!=null) && multiLensPerSFE) lens= Integer.parseInt(matcher.group(1));
-						if ((matcher.group(2)!=null) && stageResults && multiLensPerSFE) manState=Integer.parseInt(matcher.group(2));
+//						if ((matcher.group(2)!=null) && stageResults && multiLensPerSFE) manState=Integer.parseInt(matcher.group(2));
+						if ((matcher.group(2)!=null) && stageResults) manState=Integer.parseInt(matcher.group(2));
 					} else {
 						matcher=fileNameFormat0.matcher(fileList[i].getName());
 						if (matcher.find()){
@@ -5085,6 +5089,7 @@ if (MORE_BUTTONS) {
 						ts=Double.parseDouble(sts);
 					} else {
 						System.out.println("Failed to find timestamp in "+fileList[i].getName()+", lens="+lens+" manState="+manState);
+						continue;
 					}
 					if (DEBUG_LEVEL>1){
 						System.out.println (i+": "+fileList[i].getName()+ " lens="+lens+" manState="+manState+" timestamp="+ts);
@@ -5187,8 +5192,8 @@ if (MORE_BUTTONS) {
     					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_B50,3));
     					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_RC50,3));
     					//    	    	if (iState==0) { // to visually separate different lenses
-    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PX0-0.5*sensorDimensions[iSFE][0],3));
-    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PY0-0.5*sensorDimensions[iSFE][1],3));
+    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PX0-0.5*sensorDimensions[iSFE][0]-sfeParameters[iSFE][iLens][iState].centerDeltaX,3));
+    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PY0-0.5*sensorDimensions[iSFE][1]-sfeParameters[iSFE][iLens][iState].centerDeltaY,3));
     					//    	    	} else {
     					//    	    		sb.append("\t\t");
     					//    	    	}
@@ -5266,7 +5271,15 @@ if (MORE_BUTTONS) {
 					MASTER_DEBUG_LEVEL,
 					DISTORTION.loop_debug_level);
 			return;
-		}	
+		}
+/* ======================================================================== */
+		//"Power Control"
+		if       (label.equals("Power Control")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			POWER_CONTROL.setDebugLevel(DEBUG_LEVEL);
+			POWER_CONTROL.showDialog("Configure power control", true);
+			return;
+		}
 /* ======================================================================== */
 		if       (label.equals("Temp. Scan") || label.equals("Focus Average")) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -5286,16 +5299,27 @@ if (MORE_BUTTONS) {
 				gd.addMessage("Temperature has to be varied separately.");
 				gd.addMessage("Use \"List History\" to see the results.");
 				gd.addCheckbox("Turn lasers off to protect from overheating",true);
+				if (!POWER_CONTROL.isPowerControlEnabled()){
+					gd.addMessage("Power control hardware is disabled, use \"Power Control\" command to enable it before proceeding");
+				}
 			}
 			gd.addCheckbox("Erase previous measurement history",modeAverage);
 			gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
 			gd.addCheckbox     ("Use lens aberration model (if available) for focal distance and tilts", FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics);
 //			gd.addCheckbox("Use LMA calculations for focus/tilt",useLMA);
 			double scanMinutes=modeAverage?2.0:30.0;
-    		gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
+			if (modeAverage) {
+	    		gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
+			} else {
+	    		gd.addCheckbox    ("Enable power control for heater and fan", FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable);
+	    		gd.addNumericField("Maximal allowed temperature",             FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature,  3,5,"C");
+	    		gd.addNumericField("Heater ON time",                          FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes,  1,5,"min");
+	    		gd.addNumericField("Both heater and fan OFF time",            FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes,  1,5,"min");
+	    		gd.addNumericField("Fan ON time",                             FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes,  1,5,"min");
+			}
     		gd.showDialog();
     		if (gd.wasCanceled()) return;
-    		if (!modeAverage && gd.getNextBoolean()){
+    		if (!modeAverage && gd.getNextBoolean()){ // was only asked in thermal scan mode
     			UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
     			UV_LED_LASERS.lasersOff(FOCUS_MEASUREMENT_PARAMETERS);
 				if (MASTER_DEBUG_LEVEL>0) System.out.println ("Turned laser pointers off to protect from overheating");
@@ -5312,9 +5336,19 @@ if (MORE_BUTTONS) {
 				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			}
 			boolean useLMA=FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null);
-		
-//			int startHistPos=MOTORS.historySize();
-			scanMinutes=gd.getNextNumber();
+			if (modeAverage) {
+				scanMinutes=gd.getNextNumber();
+			} else {
+	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable=gd.getNextBoolean();
+	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature=gd.getNextNumber();
+	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes=gd.getNextNumber();
+	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes=gd.getNextNumber();
+	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes=gd.getNextNumber();
+	    		scanMinutes=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature+
+	    				FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
+	    				FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
+	    				FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes;
+			}
 			long startTime=System.nanoTime();
 			long endTime=startTime+(long) (6E10*scanMinutes);
 			if (MASTER_DEBUG_LEVEL>0) System.out.println(" startTime= "+startTime+", endTime="+endTime);
@@ -5342,6 +5376,13 @@ if (MORE_BUTTONS) {
 					System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
 				}
 			}
+			long stateEndTime=endTime;
+			if (!modeAverage) {
+				POWER_CONTROL.setPower("fan","off");
+				POWER_CONTROL.setPower("heater","on");
+				stateEndTime=startTime+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes);
+			}
+			int scanState=(!modeAverage && FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable)?1:-1;
 			while (System.nanoTime()<endTime){
 				moveAndMaybeProbe(
 						true, // just move, not probe
@@ -5363,15 +5404,48 @@ if (MORE_BUTTONS) {
 						MASTER_DEBUG_LEVEL,
 						DISTORTION.loop_debug_level);
 				runs++;
-				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
-				if (secondsLeft<0) secondsLeft=0;
-				if (MASTER_DEBUG_LEVEL>0) System.out.println(" Measured "+runs+", "+secondsLeft+" seconds left");
 				if (this.SYNC_COMMAND.stopRequested.get()>0) {
 					System.out.println("User requested stop");
 					break;
 				}
+				// Temperature within limits?
+				if (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature){
+					POWER_CONTROL.setPower("heater","off");
+				}
+//				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
+				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
+				if (secondsLeft<0) secondsLeft=0;
+				long secondsLeftState=(long) (0.000000001*(stateEndTime-System.nanoTime()));
+				if (secondsLeftState<0) secondsLeftState=0;
+				if (MASTER_DEBUG_LEVEL>0) System.out.println(" Measured "+runs+", "+secondsLeftState+" seconds left ("+secondsLeft+")");
 
+				boolean timerOver=(System.nanoTime()>=stateEndTime) || 
+						((scanState==1) && (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature));
+				if ((scanState>0) && timerOver) {
+					scanState++;
+					switch (scanState) {
+					case 2:
+						POWER_CONTROL.setPower("heater","off");
+						POWER_CONTROL.setPower("fan","off");
+						stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes);
+						break;
+					case 3:
+						POWER_CONTROL.setPower("heater","off");
+						POWER_CONTROL.setPower("fan","on");
+						stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes);
+						break;
+						
+					}
+					// nothing specific is needed for case 4 - it will end anyway
+				}
 			}
+			if (!modeAverage) {
+				if (DEBUG_LEVEL>0) System.out.println("Turning both heater and fan off");
+				POWER_CONTROL.setPower("fan","off");
+				POWER_CONTROL.setPower("heater","off");
+			}
+			
+			
 			// LMA version
 			FocusingField ff= null;
 			if (useLMA){
@@ -5475,7 +5549,7 @@ if (MORE_BUTTONS) {
 // Calculate and show average distances and tilts for measured history			
 			
 			if (!modeAverage) {
-				
+				remoteNotifyComplete();
 				double [] lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
 						useLMA,
 						runs,             // number of last samples from history to use, 0 - use all
@@ -13820,6 +13894,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
     	boolean select_GONIOMETER_PARAMETERS=!select;
     	boolean select_ABERRATIONS_PARAMETERS=!select;
     	boolean select_FOCUSING_FIELD=!select;
+    	boolean select_POWER_CONTROL=!select;
     	if (select) {
     		GenericDialog gd = new GenericDialog("Select parameters to save");
     		gd.addMessage("===== Individual parameters ======");
@@ -13859,6 +13934,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
         	gd.addCheckbox("GONIOMETER_PARAMETERS",select_GONIOMETER_PARAMETERS);
         	gd.addCheckbox("ABERRATIONS_PARAMETERS",select_ABERRATIONS_PARAMETERS);
         	gd.addCheckbox("FOCUSING_FIELD",select_FOCUSING_FIELD);
+        	gd.addCheckbox("POWER_CONTROL",select_POWER_CONTROL);
+        	
             WindowTools.addScrollBars(gd);
             gd.showDialog();
             if (gd.wasCanceled()) return;
@@ -13898,6 +13975,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
         	select_GONIOMETER_PARAMETERS=gd.getNextBoolean();
         	select_ABERRATIONS_PARAMETERS=gd.getNextBoolean();
         	select_FOCUSING_FIELD=gd.getNextBoolean();
+        	select_POWER_CONTROL=gd.getNextBoolean();
     	}
     	
        	if (select_MASTER_DEBUG_LEVEL) properties.setProperty("MASTER_DEBUG_LEVEL", MASTER_DEBUG_LEVEL+"");
@@ -13936,6 +14014,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
         if (select_GONIOMETER_PARAMETERS) GONIOMETER_PARAMETERS.setProperties("GONIOMETER_PARAMETERS.", properties);
         if (select_ABERRATIONS_PARAMETERS) ABERRATIONS_PARAMETERS.setProperties("ABERRATIONS_PARAMETERS.", properties);
         if ((select_FOCUSING_FIELD) && (FOCUSING_FIELD!=null)) FOCUSING_FIELD.setProperties("FOCUSING_FIELD.", properties);
+        if (select_POWER_CONTROL) POWER_CONTROL.setProperties("POWER_CONTROL.", properties);
+        
     	if (select) properties.remove("selected");
     }
 /* ======================================================================== */
@@ -13976,6 +14056,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
        GONIOMETER_PARAMETERS.getProperties("GONIOMETER_PARAMETERS.", properties);
        ABERRATIONS_PARAMETERS.getProperties("ABERRATIONS_PARAMETERS.", properties);
        if (FOCUSING_FIELD!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", properties,false); // false -> overwrite distortions center
+       POWER_CONTROL.getProperties("POWER_CONTROL.", properties);
     }
 	
 	  private String selectSourceDirectory(String defaultPath) {

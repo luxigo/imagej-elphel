@@ -330,6 +330,12 @@ public class LensAdjustment {
         public boolean lensDistanceShowResults=true; // show results window from foca
         public boolean lensDistanceMoveToGoal=true;  // Move to targetMicrons
         
+        public boolean powerControlEnable=true;
+        public double powerControlMaximalTemperature=60.0;
+        public double powerControlHeaterOnMinutes=10.0;
+        public double powerControlNeitherOnMinutes=5.0;
+        public double powerControlFanOnMinutes=15.0;
+        
         public String uvLasersIP="192.168.0.236"; // IP address of the camera with UV LEDs and aiming lasers are connected
         public int    uvLasersBus=0;              // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
         public double [] uvLasersCurrents={40.0,40.0,40.0,40.0}; // default LED on currents (mA)
@@ -546,6 +552,11 @@ public class LensAdjustment {
                 boolean lensDistanceInteractive, // Open dialog when calibrating focal distance
                 boolean lensDistanceShowResults, // show results window from foca
                 boolean lensDistanceMoveToGoal,  // Move to targetMicrons
+                boolean powerControlEnable,
+                double powerControlMaximalTemperature,
+                double powerControlHeaterOnMinutes,
+                double powerControlNeitherOnMinutes,
+                double powerControlFanOnMinutes,
                 String uvLasersIP, // IP address of the camera with UV LEDs and aiming lasers are connected
                 int    uvLasersBus,             // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
                 double [] uvLasersCurrents, // default LED on currents (mA)
@@ -692,6 +703,11 @@ public class LensAdjustment {
 			this.lensDistanceInteractive=lensDistanceInteractive; // Open dialog when calibrating focal distance
 			this.lensDistanceShowResults=lensDistanceShowResults; // show results window from foca
 			this.lensDistanceMoveToGoal=lensDistanceMoveToGoal;  // Move to targetMicrons
+			this.powerControlEnable=powerControlEnable;
+			this.powerControlMaximalTemperature=powerControlMaximalTemperature;
+			this.powerControlHeaterOnMinutes=powerControlHeaterOnMinutes;
+			this.powerControlNeitherOnMinutes=powerControlNeitherOnMinutes;
+			this.powerControlFanOnMinutes=powerControlFanOnMinutes;
             this.uvLasersIP=new String(uvLasersIP); // IP address of the camera with UV LEDs and aiming lasers are connected
             this.uvLasersBus=uvLasersBus; // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
             this.uvLasersCurrents=uvLasersCurrents.clone(); // default LED on currents (mA)
@@ -840,6 +856,11 @@ public class LensAdjustment {
     				this.lensDistanceInteractive, // Open dialog when calibrating focal distance
     				this.lensDistanceShowResults, // show results window from foca
     				this.lensDistanceMoveToGoal,  // Move to targetMicrons
+    				this.powerControlEnable,
+    				this.powerControlMaximalTemperature,
+    				this.powerControlHeaterOnMinutes,
+    				this.powerControlNeitherOnMinutes,
+    				this.powerControlFanOnMinutes,
                     this.uvLasersIP,              // IP address of the camera with UV LEDs and aiming lasers are connected
                     this.uvLasersBus,             // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
                     this.uvLasersCurrents,        // default LED on currents (mA)
@@ -992,7 +1013,13 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"lensDistanceInteractive",this.lensDistanceInteractive+"");
 			properties.setProperty(prefix+"lensDistanceShowResults",this.lensDistanceShowResults+"");
 			properties.setProperty(prefix+"lensDistanceMoveToGoal",this.lensDistanceMoveToGoal+"");
-
+			
+			properties.setProperty(prefix+"powerControlEnable",this.powerControlEnable+"");
+			properties.setProperty(prefix+"powerControlMaximalTemperature",this.powerControlMaximalTemperature+"");
+			properties.setProperty(prefix+"powerControlHeaterOnMinutes",this.powerControlHeaterOnMinutes+"");
+			properties.setProperty(prefix+"powerControlNeitherOnMinutes",this.powerControlNeitherOnMinutes+"");
+			properties.setProperty(prefix+"powerControlFanOnMinutes",this.powerControlFanOnMinutes+"");
+			
 			properties.setProperty(prefix+"uvLasersIP",this.uvLasersIP);
 			properties.setProperty(prefix+"uvLasersBus",this.uvLasersBus+"");
 			properties.setProperty(prefix+"uvLasersCurrents_0",this.uvLasersCurrents[0]+"");
@@ -1275,6 +1302,18 @@ public class LensAdjustment {
 				this.lensDistanceShowResults=Boolean.parseBoolean(properties.getProperty(prefix+"lensDistanceShowResults"));
 			if (properties.getProperty(prefix+"lensDistanceMoveToGoal")!=null)
 				this.lensDistanceMoveToGoal=Boolean.parseBoolean(properties.getProperty(prefix+"lensDistanceMoveToGoal"));
+
+			
+			if (properties.getProperty(prefix+"powerControlEnable")!=null)
+				this.powerControlEnable=Boolean.parseBoolean(properties.getProperty(prefix+"powerControlEnable"));
+			if (properties.getProperty(prefix+"powerControlMaximalTemperature")!=null)
+				this.powerControlMaximalTemperature=Double.parseDouble(properties.getProperty(prefix+"powerControlMaximalTemperature"));
+			if (properties.getProperty(prefix+"powerControlHeaterOnMinutes")!=null)
+				this.powerControlHeaterOnMinutes=Double.parseDouble(properties.getProperty(prefix+"powerControlHeaterOnMinutes"));
+			if (properties.getProperty(prefix+"powerControlNeitherOnMinutes")!=null)
+				this.powerControlNeitherOnMinutes=Double.parseDouble(properties.getProperty(prefix+"powerControlNeitherOnMinutes"));
+			if (properties.getProperty(prefix+"powerControlFanOnMinutes")!=null)
+				this.powerControlFanOnMinutes=Double.parseDouble(properties.getProperty(prefix+"powerControlFanOnMinutes"));
 			
 			if (properties.getProperty(prefix+"uvLasersIP")!=null)
 				this.uvLasersIP=properties.getProperty(prefix+"uvLasersIP");
@@ -1528,12 +1567,18 @@ public class LensAdjustment {
     		gd.addCheckbox    ("Show results window from focal distance calibration",                            this.lensDistanceShowResults);
     		gd.addCheckbox    ("Move motors together to the requested microns from the \"best focus\"",          this.lensDistanceMoveToGoal);
     		
+    		gd.addCheckbox    ("Enable power control for heater and fan",                                        this.powerControlEnable);
+    		gd.addNumericField("Maximal allowed temperature",                                                    this.powerControlMaximalTemperature,  3,5,"C");
+    		gd.addNumericField("Heater ON time",                                                                 this.powerControlHeaterOnMinutes,  1,5,"min");
+    		gd.addNumericField("Both heater and fan OFF time",                                                   this.powerControlNeitherOnMinutes,  1,5,"min");
+    		gd.addNumericField("Fan ON time",                                                                    this.powerControlFanOnMinutes,  1,5,"min");
+    		
 			gd.addStringField  ("IP address of the camera with 103641 board (UV LEDs and lasers) are attached",  this.uvLasersIP,40);
     		gd.addNumericField("I2C bus where LED/laser board is attached (0 - through 10359, 1 - through 10369)",this.uvLasersBus,        0);
-    		gd.addNumericField("UV LED1 \"on\" current (left/near  when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
-    		gd.addNumericField("UV LED2 \"on\" current (right/near when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
-    		gd.addNumericField("UV LED3 \"on\" current (right/far  when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
-    		gd.addNumericField("UV LED4 \"on\" current (left/far   when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED1 \"on\" current (left/near  when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED2 \"on\" current (right/near when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED3 \"on\" current (right/far  when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED4 \"on\" current (left/far   when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
 			
     		gd.addMessage("");
     		gd.addNumericField("Minimal correction movement to initiate final series of corrections - focus/tilt mode",            this.minCorr,        1,5,"motors steps");
@@ -1700,6 +1745,12 @@ public class LensAdjustment {
 			this.lensDistanceInteractive=    gd.getNextBoolean();
 			this.lensDistanceShowResults=    gd.getNextBoolean();
 			this.lensDistanceMoveToGoal=     gd.getNextBoolean();
+
+			this.powerControlEnable=            gd.getNextBoolean();
+			this.powerControlMaximalTemperature=gd.getNextNumber();
+			this.powerControlHeaterOnMinutes=   gd.getNextNumber();
+			this.powerControlNeitherOnMinutes=  gd.getNextNumber();
+			this.powerControlFanOnMinutes=      gd.getNextNumber();
 			
 			this.uvLasersIP=                 gd.getNextString();
 			this.uvLasersBus=          (int) gd.getNextNumber();

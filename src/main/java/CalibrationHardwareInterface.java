@@ -1797,12 +1797,99 @@ public class CalibrationHardwareInterface {
 				throw new RuntimeException(ie);
 			}
 		}
-
-	    
-	    
-	   	
 	}
 	
+	public static class PowerControl{
+    	public int debugLevel=1;
+    	private String powerIP="192.168.0.80";
+    	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s";
+    	private final String rootElement="Document";
+    	public boolean powerConrtolEnabled=false;
+    	public void setProperties(String prefix,Properties properties){
+    		properties.setProperty(prefix+"powerIP",this.powerIP+"");
+    		properties.setProperty(prefix+"powerConrtolEnabled",this.powerConrtolEnabled+"");
+    	}
+    	//Integer.decode(string)
+    	public void getProperties(String prefix,Properties properties){
+    		if (properties.getProperty(prefix+"powerIP")!=null)
+    			this.powerIP=properties.getProperty(prefix+"powerIP");
+       		if (properties.getProperty(prefix+"powerConrtolEnabled")!=null)
+			this.powerConrtolEnabled=Boolean.parseBoolean(properties.getProperty(prefix+"powerConrtolEnabled"));
+    	}
+    	
+    	public boolean setPower (String group, String state){
+    		if (!powerConrtolEnabled) {
+    			System.out.println("=== Power control is disabled ===");
+    			return false;
+    		}
+    			String url=String.format(urlFormat,this.powerIP,state,group);    	
+    			if (this.debugLevel>2) System.out.println("setPower: "+url); 
+    			Document dom=null;
+    			try {
+    				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+    				DocumentBuilder db = dbf.newDocumentBuilder();
+    				dom = db.parse(url);
+    				if (!dom.getDocumentElement().getNodeName().equals(rootElement)) {
+    					System.out.println("Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\"");
+    					IJ.showMessage("Error","Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\""); 
+    					return false;
+    				}
+//    				boolean responceError= (dom.getDocumentElement().getElementsByTagName("error").getLength()!=0);
+//    				if (responceError) {
+//    					System.out.println("ERROR: register write ("+url+") FAILED" );
+//    					IJ.showMessage("Error","register write ("+url+") FAILED"); 
+//    					return false;  
+//    				}
+    			} catch(MalformedURLException e){
+    				System.out.println("Please check the URL:" + e.toString() );
+    				return false;
+    			} catch(IOException  e1){
+    				IJ.showStatus("");
+    				String error = e1.getMessage();
+    				if (error==null || error.equals(""))  error = ""+e1;
+    				IJ.showMessage("setPower ERROR", ""+error);
+    				return false;
+    			}catch(ParserConfigurationException pce) {
+    				pce.printStackTrace();
+    				return false;
+    			}catch(SAXException se) {
+    				se.printStackTrace(); 
+    				return false;
+    			}
+    		return true;
+    	}
+    	public boolean showDialog(String title, boolean control) {
+    		GenericDialog gd = new GenericDialog(title);
+    		boolean heaterOn=false, fanOn=false;
+			gd.addCheckbox("Enable power control (heater, fan) ", this.powerConrtolEnabled);
+    		gd.addStringField("IP address of the power control",this.powerIP,15);
+    		if (control){
+    			gd.addCheckbox("Heater On", heaterOn);
+    			gd.addCheckbox("Fan On", fanOn);
+    		}
+    	    WindowTools.addScrollBars(gd);
+			if (control) gd.enableYesNoCancel("OK", "Control Power");
+    	    gd.showDialog();
+    	    if (gd.wasCanceled()) return false;
+    	    this.powerConrtolEnabled=gd.getNextBoolean();
+    	    this.powerIP=gd.getNextString();
+    	    if (control){
+    	    	heaterOn=gd.getNextBoolean();
+    	    	fanOn=gd.getNextBoolean();
+    	    	if (!gd.wasOKed()) {
+    	    		 setPower("heater",heaterOn?"on":"off");
+    	    		 setPower("fan",fanOn?"on":"off");
+    	    	}
+    	    }
+            return true;
+    	}
+    	public boolean isPowerControlEnabled(){
+    		return this.powerConrtolEnabled;
+    	}
+		public void setDebugLevel(int debugLevel){
+			this.debugLevel=debugLevel;
+		}
+	}
 	
     public static class LaserPointers{
     	public int debugLevel=1;
