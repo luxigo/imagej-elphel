@@ -6331,11 +6331,15 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			return sharpness;
     		}
     		public double [] getCenterResolutions(){
+    			try {
     			double [] resolutions={
     					1.0/this.psfMetricses[this.indices[0]][this.indexR50Center],  // red, r50% center
     					1.0/this.psfMetricses[this.indices[1]][this.indexR50Center],  // green, r50% center
     					1.0/this.psfMetricses[this.indices[2]][this.indexR50Center]}; // blue, r50% center
     			return resolutions;
+    			} catch (Exception e){
+    				return null;
+    			}
     		}
     		
     		public double [][] getMetrics(
