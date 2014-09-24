@@ -4435,6 +4435,10 @@ public boolean LevenbergMarquardt(
 		//     while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
 		this.currentVector=null; // invalidate for the new series
 		//         boolean wasLastSeries=false;
+		
+		int saveStopRequested=this.stopRequested.get(); // preserve from caller stop requested (like temp. scan)
+		this.stopRequested.set(0); // remove caller stop request
+		
 		while (true) { // loop for the same series
 	        
 			boolean [] state=stepLevenbergMarquardtFirst(debugLevel);
@@ -4444,6 +4448,7 @@ public boolean LevenbergMarquardt(
 				System.out.println(msg);
 				commitParameterVector(this.savedVector);
 				this.lambda=savedLambda;
+				this.stopRequested.set(saveStopRequested); // restore caller stop request
 				return false;
 			}
 
@@ -4461,6 +4466,7 @@ public boolean LevenbergMarquardt(
 					(this.stopEachSeries && state[1]) ||
 					(this.stopOnFailure && state[1] && !state[0])){
 				if (state[1] && !state[0] && !calibrate){
+					this.stopRequested.set(saveStopRequested); // restore caller stop request
 					return false;
 				}
 
@@ -4499,6 +4505,7 @@ public boolean LevenbergMarquardt(
 				// if RMS was decreased. this.saveSeries==false after dialogLMAStep(state) only if "cancel" was pressed
 				commitParameterVector(this.savedVector); // either new or original
 				this.lambda=savedLambda;
+				this.stopRequested.set(saveStopRequested); // restore caller stop request
 				return this.saveSeries; // TODO: Maybe change result?
 			}
 			//stepLevenbergMarquardtAction();             
@@ -4506,6 +4513,7 @@ public boolean LevenbergMarquardt(
 				if (!state[0]) {
 					commitParameterVector(this.savedVector);
 					this.lambda=savedLambda;
+					this.stopRequested.set(saveStopRequested); // restore caller stop request
 					return false; // sequence failed
 				}
 				this.savedVector=this.currentVector.clone();
@@ -4516,6 +4524,7 @@ public boolean LevenbergMarquardt(
 				//                 this.seriesNumber++;
 				break; // while (true), proceed to the next series
 			}
+			this.stopRequested.set(saveStopRequested); // restore caller stop request
 		} // while true - same series
 		//         if (wasLastSeries) break;
 		//     } // while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
@@ -9565,6 +9574,8 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         		qCompareDrDerivatives(this.qSavedVector);
         	}
         	this.qCurrentVector=null; // invalidate for the new series
+    		int saveStopRequested=stopRequested.get(); // preserve from caller stop requested (like temp. scan)
+    		stopRequested.set(0); // remove caller stop request
         	while (true) { // loop for the same series
         		boolean [] state=stepQLevenbergMarquardtFirst(debugLevel);
         		if (state==null) {
@@ -9574,6 +9585,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         			restoreQPars();
         			//        				commitParameterVector(this.savedVector);
         			this.qLambda=savedLambda;
+        			stopRequested.set(saveStopRequested); // restore caller stop request        			
         			return false;
         		}
 
@@ -9623,6 +9635,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         			//        				commitParameterVector(this.savedVector); // either new or original
         			commitQPars(this.qSavedVector);
         			this.qLambda=savedLambda;
+        			stopRequested.set(saveStopRequested); // restore caller stop request        			
         			return this.qSaveSeries; // TODO: Maybe change result?
         		}
         		//stepLevenbergMarquardtAction();             
@@ -9631,6 +9644,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         				//        					commitParameterVector(this.savedVector);
         				commitQPars(this.qSavedVector);
         				this.qLambda=savedLambda;
+        				stopRequested.set(saveStopRequested); // restore caller stop request        				
         				return false; // sequence failed
         			}
         			//        				this.savedVector=this.currentVector.clone();
@@ -9653,6 +9667,7 @@ f_corr: d_fcorr/d_zcorr=0, other: a, reff, kx ->  ar[1], ar[2], ar[3],  ar[4]
         	//        	commitParameterVector(this.savedVector);
         	saveQPars();        	
         	commitQPars(this.qSavedVector);
+        	stopRequested.set(saveStopRequested); // restore caller stop request        	
         	return true; // all series done
         }
         public void qCompareDrDerivatives(double [] vector){
