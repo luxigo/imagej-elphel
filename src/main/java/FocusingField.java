@@ -202,6 +202,7 @@ public class FocusingField {
 	public String serialNumber;
 	public String lensSerial; // if null - do not add average
 	public String comment;
+	public String historyPath=null;
 	public int sensorWidth;
 	public int sensorHeight;
 //	public static final double PIXEL_SIZE=0.0022; // mm
@@ -4781,6 +4782,7 @@ public boolean LevenbergMarquardt(
         if (debugLevel>0){
         	System.out.println("Loaded measurement history "+pathname);
         }
+        this.historyPath=pathname;
         return true;
     }
     public void saveXML(
@@ -4831,6 +4833,10 @@ public boolean LevenbergMarquardt(
     		// TODO Auto-generated catch block
     		e.printStackTrace();
     	}
+        this.historyPath=path;
+    }
+    public String getHistoryPath(){
+    	return this.historyPath;
     }
     public void testMeasurement(){
         GenericDialog gd = new GenericDialog("Select measurement");

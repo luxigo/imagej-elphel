@@ -9220,10 +9220,13 @@ if (MORE_BUTTONS) {
 				!interactive, // false, // true, // boolean smart,       // do not open dialog if default matches 
 				FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile, // FOCUSING_FIELD_HISTORY_PATH, //"",//); //String defaultPath); //			AtomicInteger stopRequested
 				this.SYNC_COMMAND.stopRequested);
+		String path=FOCUSING_FIELD.getHistoryPath();
+		if (path==null) return false; // did not load
+		FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile=path;
 		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 		FOCUSING_FIELD.setAdjustMode(false);
 		if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES,true); // keep distortions center from history
-		System.out.println("Loaded FocusingField");
+		System.out.println("Loaded FocusingField from "+path);
 		if (!FOCUSING_FIELD.configureDataVector(
 				true, // boolean silent (maybe add option with false to change number of parameters?)
 				"Configure curvature - TODO: fix many settings restored from properties", // String title
@@ -9240,8 +9243,6 @@ if (MORE_BUTTONS) {
 		double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
 		double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
 		System.out.println("rms="+rms+", rms_pure="+rms_pure);
-		
-		
 		return true; // add OK/fail
 	}
 	
