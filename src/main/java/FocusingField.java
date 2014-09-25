@@ -4525,8 +4525,8 @@ public boolean LevenbergMarquardt(
 				//                 this.seriesNumber++;
 				break; // while (true), proceed to the next series
 			}
-			this.stopRequested.set(saveStopRequested); // restore caller stop request
 		} // while true - same series
+		this.stopRequested.set(saveStopRequested); // restore caller stop request
 		//         if (wasLastSeries) break;
 		//     } // while (this.fittingStrategy.isSeriesValid(this.seriesNumber)){ // TODO: Add "stop" tag to series
 		if (fieldFitting.fieldStrategies.isLast(this.currentStrategyStep)) break;
@@ -4536,6 +4536,7 @@ public boolean LevenbergMarquardt(
 		if (debugLevel>0) System.out.println("stepLevenbergMarquardtAction() "+msg);
 		this.currentStrategyStep++;
 		this.iterationStepNumber=0;
+		this.stopRequested.set(saveStopRequested); // restore caller stop request
 	} // for all series
 	String msg="RMS="+this.currentRMS+" ("+this.firstRMS+") "+
 			", pure RMS="+this.currentRMSPure+" ("+this.firstRMSPure+") "+
