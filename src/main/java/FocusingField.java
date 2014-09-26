@@ -4267,7 +4267,8 @@ public double [] findAdjustZ(
 			System.out.println("findAdjustZ(): z="+z+" tx="+tx+" ty="+ty+" rms="+rms+" used "+numEn+" samples");
 		}
 	}
-	if (debugLevel>0) System.out.println("findAdjustZ()-> z="+zBest+" tx="+tXBest+" ty="+tYBest+" (best RMS = "+bestRMS+" used "+bestEn+" samples)");
+//	if (debugLevel>0) System.out.println("findAdjustZ()-> z(absolute)="+zBest+" tx="+tXBest+" ty="+tYBest+" (best RMS = "+bestRMS+" used "+bestEn+" samples)");
+	if (debugLevel>1) System.out.println("findAdjustZ()-> z(absolute)="+zBest+" tx="+tXBest+" ty="+tYBest+" (best RMS = "+bestRMS+" used "+bestEn+" samples)");
 	double [] result={zBest,tXBest,tYBest};
 	return result;
 }

@@ -5241,6 +5241,7 @@ if (MORE_BUTTONS) {
 			double [][][] sampleCoord=null;
 			if (FOCUSING_FIELD!=null){
 				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				FOCUSING_FIELD.testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
 			} else {
 				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
 						FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
