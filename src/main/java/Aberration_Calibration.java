@@ -5453,6 +5453,7 @@ if (MORE_BUTTONS) {
 						System.out.println(" Measured "+runs+",  t="+FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ");
 					}
 				}
+				if (scanState>=(stateNames.length-1)) break; // last state is "Finished"
 			}
 			if (!modeAverage) {
 				if (DEBUG_LEVEL>0) System.out.println("Turning both heater and fan off");
