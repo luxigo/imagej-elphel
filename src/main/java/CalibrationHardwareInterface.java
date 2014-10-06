@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -1800,21 +1801,27 @@ public class CalibrationHardwareInterface {
 	}
 	
 	public static class PowerControl{
+		public boolean [] states={false,false,false};
+		public String [] groups={"heater","fan","light"};
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
+    	private double lightsDelay=5.0;
     	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s";
     	private final String rootElement="Document";
     	public boolean powerConrtolEnabled=false;
     	public void setProperties(String prefix,Properties properties){
     		properties.setProperty(prefix+"powerIP",this.powerIP+"");
     		properties.setProperty(prefix+"powerConrtolEnabled",this.powerConrtolEnabled+"");
+    		properties.setProperty(prefix+"lightsDelay",this.lightsDelay+"");
     	}
     	//Integer.decode(string)
     	public void getProperties(String prefix,Properties properties){
     		if (properties.getProperty(prefix+"powerIP")!=null)
     			this.powerIP=properties.getProperty(prefix+"powerIP");
-       		if (properties.getProperty(prefix+"powerConrtolEnabled")!=null)
-			this.powerConrtolEnabled=Boolean.parseBoolean(properties.getProperty(prefix+"powerConrtolEnabled"));
+    		if (properties.getProperty(prefix+"powerConrtolEnabled")!=null)
+    			this.powerConrtolEnabled=Boolean.parseBoolean(properties.getProperty(prefix+"powerConrtolEnabled"));
+    		if (properties.getProperty(prefix+"lightsDelay")!=null)
+    			this.lightsDelay=Double.parseDouble(properties.getProperty(prefix+"lightsDelay"));
     	}
     	
     	public boolean setPower (String group, String state){
@@ -1822,6 +1829,7 @@ public class CalibrationHardwareInterface {
     			System.out.println("=== Power control is disabled ===");
     			return false;
     		}
+			System.out.println("=== Power control: "+group+":"+state+" ===");
     			String url=String.format(urlFormat,this.powerIP,state,group);    	
     			if (this.debugLevel>2) System.out.println("setPower: "+url); 
     			Document dom=null;
@@ -1856,16 +1864,22 @@ public class CalibrationHardwareInterface {
     				se.printStackTrace(); 
     				return false;
     			}
+    		for (int i=0;i<this.groups.length;i++) if (this.groups[i].equals(group)){
+    			this.states[i]=state.equals("on");
+    		}
     		return true;
     	}
     	public boolean showDialog(String title, boolean control) {
     		GenericDialog gd = new GenericDialog(title);
-    		boolean heaterOn=false, fanOn=false;
-			gd.addCheckbox("Enable power control (heater, fan) ", this.powerConrtolEnabled);
+    		boolean heaterOn=false, fanOn=false, lightOn=false;
+			gd.addCheckbox("Enable power control (heater, fan, lights) ", this.powerConrtolEnabled);
     		gd.addStringField("IP address of the power control",this.powerIP,15);
+			gd.addNumericField("Delay after lights on", this.lightsDelay,  1,4,"sec");
+  		    		
     		if (control){
     			gd.addCheckbox("Heater On", heaterOn);
     			gd.addCheckbox("Fan On", fanOn);
+    			gd.addCheckbox("Lights On", lightOn);
     		}
     	    WindowTools.addScrollBars(gd);
 			if (control) gd.enableYesNoCancel("OK", "Control Power");
@@ -1873,16 +1887,33 @@ public class CalibrationHardwareInterface {
     	    if (gd.wasCanceled()) return false;
     	    this.powerConrtolEnabled=gd.getNextBoolean();
     	    this.powerIP=gd.getNextString();
+			this.lightsDelay=gd.getNextNumber();
     	    if (control){
     	    	heaterOn=gd.getNextBoolean();
     	    	fanOn=gd.getNextBoolean();
+    	    	lightOn=gd.getNextBoolean();
     	    	if (!gd.wasOKed()) {
     	    		 setPower("heater",heaterOn?"on":"off");
     	    		 setPower("fan",fanOn?"on":"off");
+    	    		 setPower("light",lightOn?"on":"off");
     	    	}
     	    }
             return true;
     	}
+    	public void lightsOnWithDelay(){
+    		if (this.states[2] || !this.powerConrtolEnabled) return; // already on
+			setPower("light","on");
+			System.out.print("Sleeping "+this.lightsDelay+" seconds to let lights stibilize on...");
+    		try {
+				TimeUnit.MILLISECONDS.sleep((long) (1000*this.lightsDelay));
+			} catch (InterruptedException e) {
+				System.out.println("Sleep was interrupted");
+				// TODO Auto-generated catch block
+			}
+			System.out.println(" Done");
+
+    	}
+    	
     	public boolean isPowerControlEnabled(){
     		return this.powerConrtolEnabled;
     	}
@@ -5218,22 +5249,26 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
      	}
 
      	public double [] temperatureLinearApproximation(
-     			double [][] ZTM,            // Z, tXx, tY, m1,m2,m3 found with LMA 
+     			double [][] ZTT,            // Z, tXx, tY, m1,m2,m3 found with LMA - may contain NaN
      			int numSamples             // number of last samples from history to use, 0 - use all
      			){
-     		if (numSamples<=0) numSamples=this.history.size();
-     		if (numSamples>this.history.size()) numSamples=this.history.size();
-    		int firstSample=this.history.size()-numSamples;
+//     		if (numSamples<=0)  this.history.size();
+//     		if (numSamples>this.history.size()) numSamples=this.history.size();
+//    		int firstSample=this.history.size()-numSamples;
     		
+     		if (numSamples<=0) numSamples=ZTT.length;
+     		if (numSamples>ZTT.length) numSamples=ZTT.length;
+    		int firstSample=ZTT.length-numSamples;
     		int numGoodSamples=0;
      		for (int nSample=0;nSample<numSamples;nSample++){
-     			if (ZTM[firstSample+nSample]!=null) numGoodSamples++;
+     			if (ZTT[firstSample+nSample]!=null) numGoodSamples++;
      		}
      		double [][] data =new double [numGoodSamples][2]; // no weights
      		int index=0;
-     		for (int nSample=0;nSample<numSamples;nSample++) if (ZTM[firstSample+nSample]!=null) {
-				data[index][0]=this.history.get(firstSample+nSample).getTemperature();
-				data[index++][1]=ZTM[firstSample+nSample][0]; // Z
+     		for (int nSample=0;nSample<numSamples;nSample++) if (ZTT[firstSample+nSample]!=null) {
+//				data[index][0]=this.history.get(firstSample+nSample).getTemperature();
+				data[index][0]=ZTT[firstSample+nSample][3];
+				data[index++][1]=ZTT[firstSample+nSample][0]; // Z
      		}
 			PolynomialApproximation pa= new PolynomialApproximation(debugLevel);
 			double [] polyCoeff=pa.polynomialApproximation1d(data, 1); // just linear

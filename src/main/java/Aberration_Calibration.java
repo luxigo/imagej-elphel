@@ -784,6 +784,7 @@ if (MORE_BUTTONS) {
 		addButton("Focus Average",panelFocusing,color_report);
 		addButton("Power Control",panelFocusing,color_configure);
 		addButton("Temp. Scan",panelFocusing,color_process);
+		addButton("Replay Hist",panelFocusing,color_debug);
 		//
 		addButton("List History",panelFocusing,color_report);
 		addButton("Show PSF",panelFocusing,color_report);
@@ -1006,6 +1007,7 @@ if (MORE_BUTTONS) {
 		if (DEBUG_LEVEL>0) System.out.println("--- Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")");
 
 		if (label==null) return;
+		if (FOCUSING_FIELD!=null) FOCUSING_FIELD.setThreads(THREADS_MAX);
 /* ======================================================================== */
 		if       (label.equals("Configure Globals")) {
 			showConfigureGlobalsDialog();
@@ -2540,6 +2542,7 @@ if (MORE_BUTTONS) {
 			// reset histories
 			MOTORS.clearPreFocus();
 			MOTORS.clearHistory();
+			POWER_CONTROL.lightsOnWithDelay();
 			return;
 		}
 /* ======================================================================== */
@@ -2550,6 +2553,7 @@ if (MORE_BUTTONS) {
 			
 			CAMERAS.probeCameraState(); // testing detection
 			CAMERAS.setupCameraAcquisition();
+			POWER_CONTROL.lightsOnWithDelay();
 			return;
 		}
 /* ======================================================================== */
@@ -2557,8 +2561,8 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
 			CAMERAS.setNumberOfThreads(THREADS_MAX);
+			POWER_CONTROL.lightsOnWithDelay();
 			CAMERAS.test1(true);
-			
 			return;
 		}
 /* ======================================================================== */
@@ -2566,6 +2570,7 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
 			CAMERAS.setNumberOfThreads(THREADS_MAX);
+			POWER_CONTROL.lightsOnWithDelay();
 			CAMERAS.test1(false);
 			return;
 		}
@@ -2598,6 +2603,7 @@ if (MORE_BUTTONS) {
 			}
 			// acquire camera image here, no lasers.
 			FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
+			POWER_CONTROL.lightsOnWithDelay();
 			imp_sel= CAMERAS.acquireSingleImage (
 					false, //boolean useLasers,
 					UPDATE_STATUS);
@@ -2625,6 +2631,7 @@ if (MORE_BUTTONS) {
 			}
 			DISTORTION_PROCESS_CONFIGURATION.sourceDirectory=src_dir;
 			CAMERAS.setNumberOfThreads(THREADS_MAX);
+			POWER_CONTROL.lightsOnWithDelay();
 			long startTime=System.nanoTime();
 			CAMERAS.acquire(DISTORTION_PROCESS_CONFIGURATION.sourceDirectory,true, UPDATE_STATUS); // true - use lasers
 			System.out.println("\"Acquire\" command finished in ("+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+" sec");
@@ -3419,6 +3426,7 @@ if (MORE_BUTTONS) {
 				}
 // acquire camera image here, no lasers.
 				FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
+				POWER_CONTROL.lightsOnWithDelay();
 				imp_sel= CAMERAS.acquireSingleImage (
 						false, //boolean useLasers,
 						UPDATE_STATUS);
@@ -3533,6 +3541,7 @@ if (MORE_BUTTONS) {
 //			long 	  startTime=System.nanoTime();
 			FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
 			CAMERAS.debugLevel=DEBUG_LEVEL;
+			POWER_CONTROL.lightsOnWithDelay();
 			imp_sel= CAMERAS.acquireSingleImage (
 					UV_LED_LASERS,
 					UPDATE_STATUS);
@@ -3587,6 +3596,7 @@ if (MORE_BUTTONS) {
 					return;
 				}
 			}
+			POWER_CONTROL.lightsOnWithDelay();
 			long 	  startTime=System.nanoTime();
 			FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
 			imp_sel= CAMERAS.acquireSingleImage (
@@ -3874,6 +3884,7 @@ if (MORE_BUTTONS) {
 					return;
 				}
 			}
+			POWER_CONTROL.lightsOnWithDelay();
 			if (matchSimulatedPattern==null) {
 				matchSimulatedPattern= new MatchSimulatedPattern(DISTORTION.FFTSize); // new instance, all reset
 			}
@@ -4145,7 +4156,7 @@ if (MORE_BUTTONS) {
 					sampleCoord,
 					this.SYNC_COMMAND.stopRequested);
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-			FOCUSING_FIELD.setAdjustMode(false);
+			FOCUSING_FIELD.setAdjustMode(false,null);
 			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES, true);
 			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
 			System.out.println("Saving measurement history to "+path);
@@ -4171,10 +4182,12 @@ if (MORE_BUTTONS) {
 			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
 			System.out.println("rms="+rms+", rms_pure="+rms_pure+" - with old parameters may be well off.");
 			remoteNotifyComplete();
+			POWER_CONTROL.setPower("light","off");
 			if (FOCUS_MEASUREMENT_PARAMETERS.scanRunLMA){
-				FOCUSING_FIELD.setAdjustMode(false);
+				FOCUSING_FIELD.setAdjustMode(false,null);
 				boolean OK=FOCUSING_FIELD.LevenbergMarquardt(
-						null, // measurement
+						null, //int [] zTxTyAdjustMode, // z, tx, ty - 0 - fixed, 1 - common, 2 - individual
+						null, // measurements
 						false, // true, // open dialog
 	    				true,// boolean autoSel,
 						DEBUG_LEVEL); //boolean openDialog, int debugLevel){
@@ -4601,7 +4614,7 @@ if (MORE_BUTTONS) {
 				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
 			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-			FOCUSING_FIELD.setAdjustMode(false);
+			FOCUSING_FIELD.setAdjustMode(false,null);
 			if (!FOCUSING_FIELD.configureDataVector(
 					false, // boolean silent,
 					"Re-configure curvature parameters", // String title
@@ -4662,9 +4675,10 @@ if (MORE_BUTTONS) {
 
 			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-			FOCUSING_FIELD.setAdjustMode(false);
+			FOCUSING_FIELD.setAdjustMode(false,null);
 			boolean OK=FOCUSING_FIELD.LevenbergMarquardt(
-					null, // measurement
+					null, // int [] zTxTyAdjustMode, // z, tx, ty - 0 - fixed, 1 - common, 2 - individual					
+					null, // measurements
 					true, // open dialog
     				true,// boolean autoSel,
 					DEBUG_LEVEL); //boolean openDialog, int debugLevel){
@@ -4871,10 +4885,10 @@ if (MORE_BUTTONS) {
 			double pX0;
 			double pY0;
 			if (FOCUSING_FIELD!=null){
+				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 				sampleCoord=FOCUSING_FIELD.getSampleCoord();
 				pX0=FOCUSING_FIELD.pX0_distortions;
 				pY0=FOCUSING_FIELD.pY0_distortions;
-
 			} else {
 				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
 				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
@@ -5240,6 +5254,7 @@ if (MORE_BUTTONS) {
 			}
 			double [][][] sampleCoord=null;
 			if (FOCUSING_FIELD!=null){
+				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 				sampleCoord=FOCUSING_FIELD.getSampleCoord();
 				FOCUSING_FIELD.testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
 			} else {
@@ -5281,75 +5296,140 @@ if (MORE_BUTTONS) {
 			POWER_CONTROL.showDialog("Configure power control", true);
 			return;
 		}
+		//"Replay Hist"
+/* ======================================================================== */
+		FocusingField ffReplay=null; // will be passed to a next command
+		if       (label.equals("Replay Hist")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				String msg="FOCUSING_FIELD is null";
+				System.out.println("msg");
+				IJ.showMessage("Error",msg);
+				return;
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			ffReplay=new FocusingField(
+					false, // true, // boolean smart,       // do not open dialog if default matches 
+					FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile, // FOCUSING_FIELD_HISTORY_PATH, //"",//); //String defaultPath); //			AtomicInteger stopRequested
+					this.SYNC_COMMAND.stopRequested);
+			String path=FOCUSING_FIELD.getHistoryPath();
+			if (path==null) return; // did not load
+			GenericDialog gd=new GenericDialog("Select Replay mode");
+			boolean modeTempScan=true;
+			gd.addCheckbox("Calculate Thermal parameters from the restored history (false - just average)", modeTempScan);
+			gd.showDialog();
+			if (gd.wasCanceled()) return;
+			modeTempScan=gd.getNextBoolean();
+			label=modeTempScan?"Temp. Scan":"Focus Average";
+			 FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics=true;
+			// And fall through to the next command
+		}
+		// "Restore History"
+
 /* ======================================================================== */
 		if       (label.equals("Temp. Scan") || label.equals("Focus Average")) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
 			boolean modeAverage=label.equals("Focus Average");
 			boolean noTiltScan=true;
+			boolean replayMode= ffReplay != null;
+	      	String [] zTxTyAdjustModeNames={"keep", "common","individual"};
+	    	String [] zTxTyNames={"z", "tx","ty"};
 //			boolean useLMA=true;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
 					FOCUS_MEASUREMENT_PARAMETERS,
 	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
 	    			DEBUG_LEVEL);
-			GenericDialog gd = new GenericDialog("Temperature Scan");
-			if (modeAverage) {
-				gd.addMessage("This program will repetitively measure focal distance for specified time and average (and record) results.");
-			} else {
-				gd.addMessage("This program will repetitively measure focal distance and temperature, recording the results.");
-				gd.addMessage("Temperature has to be varied separately.");
-				gd.addMessage("Use \"List History\" to see the results.");
-				gd.addCheckbox("Turn lasers off to protect from overheating",true);
-				if (!POWER_CONTROL.isPowerControlEnabled()){
-					gd.addMessage("Power control hardware is disabled, use \"Power Control\" command to enable it before proceeding");
-				}
-			}
-			gd.addCheckbox("Erase previous measurement history",modeAverage);
-			gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
-			gd.addCheckbox     ("Use lens aberration model (if available) for focal distance and tilts", FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics);
-//			gd.addCheckbox("Use LMA calculations for focus/tilt",useLMA);
+			GenericDialog gd = new GenericDialog(modeAverage?"Averaging measurements":"Temperature Scan");
+			//replayMode
 			double scanMinutes=modeAverage?2.0:30.0;
-			if (modeAverage) {
-	    		gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
+			if (replayMode){
+
 			} else {
-	    		gd.addCheckbox    ("Enable power control for heater and fan", FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable);
-	    		gd.addNumericField("Maximal allowed temperature",             FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature,  3,5,"C");
-	    		gd.addNumericField("Heater ON time",                          FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes,  1,5,"min");
-	    		gd.addNumericField("Both heater and fan OFF time",            FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes,  1,5,"min");
-	    		gd.addNumericField("Fan ON time",                             FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes,  1,5,"min");
-			}
-    		gd.showDialog();
-    		if (gd.wasCanceled()) return;
-    		if (!modeAverage && gd.getNextBoolean()){ // was only asked in thermal scan mode
-    			UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
-    			UV_LED_LASERS.lasersOff(FOCUS_MEASUREMENT_PARAMETERS);
-				if (MASTER_DEBUG_LEVEL>0) System.out.println ("Turned laser pointers off to protect from overheating");
-    		}
-			if (gd.getNextBoolean()) MOTORS.clearHistory();
-			noTiltScan=!gd.getNextBoolean();
-			FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics=gd.getNextBoolean();
-			// Only try to read history if useLMAMetrics is set
-			if (FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD==null)) {
-				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
-				if (!restoreFocusingHistory(false))	{  // try to restore from the saved history file
-					System.out.println("Failed to restore history, disabling use of lens aberration model");					
+				if (modeAverage) {
+					gd.addMessage("This program will repetitively measure focal distance for specified time and average (and record) results.");
+				} else {
+					gd.addMessage("This program will repetitively measure focal distance and temperature, recording the results.");
+					gd.addMessage("Temperature has to be varied separately.");
+					gd.addMessage("Use \"List History\" to see the results.");
+					gd.addCheckbox("Turn lasers off to protect from overheating",true);
+					if (!POWER_CONTROL.isPowerControlEnabled()){
+						gd.addMessage("Power control hardware is disabled, use \"Power Control\" command to enable it before proceeding");
+					}
 				}
+				gd.addCheckbox("Erase previous measurement history",modeAverage);
+//				gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
+				gd.addCheckbox     ("Use lens aberration model (if available) for focal distance and tilts", FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics);
+				//			gd.addCheckbox("Use LMA calculations for focus/tilt",useLMA);
+				if (modeAverage) {
+					gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
+				} else {
+					gd.addCheckbox    ("Enable power control for heater and fan", FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable);
+					gd.addNumericField("Maximal allowed temperature",             FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature,  3,5,"C");
+					gd.addNumericField("Heater ON time",                          FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes,  1,5,"min");
+					gd.addNumericField("Both heater and fan OFF time",            FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes,  1,5,"min");
+					gd.addNumericField("Fan ON time",                             FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes,  1,5,"min");
+		    		gd.addNumericField("Report focal length at this temperature", FOCUS_MEASUREMENT_PARAMETERS.reportTemperature, 1,5,"C");
+				}
+			}
+			gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
+
+			if (FOCUSING_FIELD!=null) {
 				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+				for (int n=0;n<FOCUSING_FIELD.zTxTyAdjustMode.length;n++){
+					gd.addChoice("Adjust "+zTxTyNames[n]+" mode",zTxTyAdjustModeNames,zTxTyAdjustModeNames[FOCUSING_FIELD.zTxTyAdjustMode[n]]);
+				}
+				gd.addChoice("Recalculate tilts during averaging",zTxTyAdjustModeNames,zTxTyAdjustModeNames[FOCUSING_FIELD.recalculateAverageTilts]);
+//	    		gd.addCheckbox    ("Store new calculated (during averaging) tilts", FOCUSING_FIELD.updateAverageTilts);
+				
+			}
+			gd.showDialog();
+			if (gd.wasCanceled()) return;
+			if (replayMode){
+			} else {
+				if (!modeAverage && gd.getNextBoolean()){ // was only asked in thermal scan mode
+					UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
+					UV_LED_LASERS.lasersOff(FOCUS_MEASUREMENT_PARAMETERS);
+					if (MASTER_DEBUG_LEVEL>0) System.out.println ("Turned laser pointers off to protect from overheating");
+				}
+				if (gd.getNextBoolean()) MOTORS.clearHistory();
+				//			noTiltScan=!gd.getNextBoolean();
+				FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics=gd.getNextBoolean();
+				// Only try to read history if useLMAMetrics is set
+				if (FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD==null)) {
+					if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+					if (!restoreFocusingHistory(false))	{  // try to restore from the saved history file
+						System.out.println("Failed to restore history, disabling use of lens aberration model");					
+					}
+					FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+				}
+//				boolean useLMA=FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null);
+				if (modeAverage) {
+					scanMinutes=gd.getNextNumber();
+				} else {
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable=gd.getNextBoolean();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature=gd.getNextNumber();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes=gd.getNextNumber();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes=gd.getNextNumber();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes=gd.getNextNumber();
+		    		FOCUS_MEASUREMENT_PARAMETERS.reportTemperature=gd.getNextNumber();
+
+					scanMinutes=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes;
+				}
+			}
+			noTiltScan=!gd.getNextBoolean();
+
+			if (FOCUSING_FIELD!=null) {
+				for (int n=0;n<FOCUSING_FIELD.zTxTyAdjustMode.length;n++){
+					FOCUSING_FIELD.zTxTyAdjustMode[n]=gd.getNextChoiceIndex();
+				}
+				FOCUSING_FIELD.recalculateAverageTilts=gd.getNextChoiceIndex();
+				//	    		FOCUSING_FIELD.updateAverageTilts=gd.getNextBoolean();
 			}
 			boolean useLMA=FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null);
-			if (modeAverage) {
-				scanMinutes=gd.getNextNumber();
-			} else {
-	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable=gd.getNextBoolean();
-	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature=gd.getNextNumber();
-	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes=gd.getNextNumber();
-	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes=gd.getNextNumber();
-	    		FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes=gd.getNextNumber();
-	    		scanMinutes=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature+
-	    				FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
-	    				FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
-	    				FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes;
-			}
 			long startTime=System.nanoTime();
 			long endTime=startTime+(long) (6E10*scanMinutes);
 			if (MASTER_DEBUG_LEVEL>0) System.out.println(" startTime= "+startTime+", endTime="+endTime);
@@ -5377,141 +5457,139 @@ if (MORE_BUTTONS) {
 					System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
 				}
 			}
-			long stateEndTime=endTime;
-			if (!modeAverage) {
-				POWER_CONTROL.setPower("fan","off");
-				POWER_CONTROL.setPower("heater","on");
-				stateEndTime=startTime+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes);
-			}
-			int scanState=(!modeAverage && FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable)?1:-1;
-			if (scanState>=0){
-				endTime=startTime+(long) (6E10*(
-						FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
-						FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
-						FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes));
-			}
-			String [] stateNames={"IDLE","HEATING","WAITING","COOLING","FINISHED"};
-			while (System.nanoTime()<endTime){
-				moveAndMaybeProbe(
-						true, // just move, not probe
-						null, // no move, just measure
-						MOTORS,
-						CAMERAS,
-						LENS_DISTORTION_PARAMETERS,
-						matchSimulatedPattern, // should not be null
-						FOCUS_MEASUREMENT_PARAMETERS,
-						PATTERN_DETECT,
-						DISTORTION,
-						SIMUL,
-						COMPONENTS,
-						OTF_FILTER,
-						PSF_PARS,
-						sampleCoord,
-						THREADS_MAX,
-						UPDATE_STATUS,
-						MASTER_DEBUG_LEVEL,
-						DISTORTION.loop_debug_level);
-				runs++;
-				if (this.SYNC_COMMAND.stopRequested.get()>0) {
-					System.out.println("User requested stop");
-					break;
+			if (!replayMode){
+				long stateEndTime=endTime;
+				String [] stateNames={"IDLE","HEATING","WAITING","COOLING","FINISHED"};
+				if (!modeAverage) {
+					POWER_CONTROL.setPower("fan","off");
+					POWER_CONTROL.setPower("heater","on");
+					stateEndTime=startTime+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes);
 				}
-				// Temperature within limits?
-				if (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature){
+				int scanState=(!modeAverage && FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable)?1:-1;
+				if (scanState>=0){
+					endTime=startTime+(long) (6E10*(
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes));
+				}
+				while (System.nanoTime()<endTime){
+					moveAndMaybeProbe(
+							true, // just move, not probe
+							null, // no move, just measure
+							MOTORS,
+							CAMERAS,
+							LENS_DISTORTION_PARAMETERS,
+							matchSimulatedPattern, // should not be null
+							FOCUS_MEASUREMENT_PARAMETERS,
+							PATTERN_DETECT,
+							DISTORTION,
+							SIMUL,
+							COMPONENTS,
+							OTF_FILTER,
+							PSF_PARS,
+							sampleCoord,
+							THREADS_MAX,
+							UPDATE_STATUS,
+							MASTER_DEBUG_LEVEL,
+							DISTORTION.loop_debug_level);
+					runs++;
+					if (this.SYNC_COMMAND.stopRequested.get()>0) {
+						System.out.println("User requested stop");
+						break;
+					}
+					// Temperature within limits?
+					if (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature){
+						POWER_CONTROL.setPower("heater","off");
+					}
+					//				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
+					long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
+					if (secondsLeft<0) secondsLeft=0;
+					long secondsLeftState=(long) (0.000000001*(stateEndTime-System.nanoTime()));
+					if (secondsLeftState<0) secondsLeftState=0;
+
+					boolean timerOver=(System.nanoTime()>=stateEndTime) || 
+							((scanState==1) && (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature));
+					if ((scanState>0) && timerOver) {
+						scanState++;
+						switch (scanState) {
+						case 2:
+							POWER_CONTROL.setPower("heater","off");
+							POWER_CONTROL.setPower("fan","off");
+							stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes);
+							break;
+						case 3:
+							POWER_CONTROL.setPower("heater","off");
+							POWER_CONTROL.setPower("fan","on");
+							stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes);
+							break;
+
+						}
+						// nothing specific is needed for case 4 - it will end anyway
+					}
+					if (MASTER_DEBUG_LEVEL>0) {
+						if (scanState>=0){
+							System.out.println(" Measured "+runs+", state="+stateNames[scanState]+",  t="+
+									FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ("+secondsLeft+")");
+						} else {
+							System.out.println(" Measured "+runs+",  t="+FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ");
+						}
+					}
+					if (scanState>=(stateNames.length-1)) break; // last state is "Finished"
+				}
+				if (!modeAverage) {
+					if (DEBUG_LEVEL>0) System.out.println("Turning both heater and fan off");
+					POWER_CONTROL.setPower("fan","off");
 					POWER_CONTROL.setPower("heater","off");
 				}
-//				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
-				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
-				if (secondsLeft<0) secondsLeft=0;
-				long secondsLeftState=(long) (0.000000001*(stateEndTime-System.nanoTime()));
-				if (secondsLeftState<0) secondsLeftState=0;
-
-				boolean timerOver=(System.nanoTime()>=stateEndTime) || 
-						((scanState==1) && (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature));
-				if ((scanState>0) && timerOver) {
-					scanState++;
-					switch (scanState) {
-					case 2:
-						POWER_CONTROL.setPower("heater","off");
-						POWER_CONTROL.setPower("fan","off");
-						stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes);
-						break;
-					case 3:
-						POWER_CONTROL.setPower("heater","off");
-						POWER_CONTROL.setPower("fan","on");
-						stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes);
-						break;
-						
-					}
-					// nothing specific is needed for case 4 - it will end anyway
-				}
-				if (MASTER_DEBUG_LEVEL>0) {
-					if (scanState>=0){
-						System.out.println(" Measured "+runs+", state="+stateNames[scanState]+",  t="+
-					FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ("+secondsLeft+")");
-					} else {
-						System.out.println(" Measured "+runs+",  t="+FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ");
-					}
-				}
-				if (scanState>=(stateNames.length-1)) break; // last state is "Finished"
 			}
-			if (!modeAverage) {
-				if (DEBUG_LEVEL>0) System.out.println("Turning both heater and fan off");
-				POWER_CONTROL.setPower("fan","off");
-				POWER_CONTROL.setPower("heater","off");
-			}
-			
 			
 			// LMA version
 			FocusingField ff= null;
+			double [] ZTM=null;
 			if (useLMA){
-				ff= new FocusingField(
-						EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
-						EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
-						0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
-						FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
-						FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
-						FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
-						pX0,
-						pY0,
-						sampleCoord,
-						this.SYNC_COMMAND.stopRequested);
-				ff.setDebugLevel(DEBUG_LEVEL);
-				ff.setAdjustMode(false);
-				if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
-				MOTORS.addCurrentHistoryToFocusingField(
-						ff,
-						(runs==0)?0:(MOTORS.historySize()-runs),
-								MOTORS.historySize()); // all newly acquired
-//	TODO: Remove after checking average	
-/*				
+//			boolean replayMode= ffReplay != null;
+				
+				if (replayMode) {
+					ff=ffReplay;
+					ff.setDebugLevel(DEBUG_LEVEL);
+					ff.setAdjustMode(false,null);
+					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+					runs=ff.measurements.size();
+				} else {
+					ff= new FocusingField(
+							EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+							EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+							0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
+							FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+							FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+							FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+							pX0,
+							pY0,
+							sampleCoord,
+							this.SYNC_COMMAND.stopRequested);
+
+					ff.setDebugLevel(DEBUG_LEVEL);
+					ff.setAdjustMode(false,null);
+					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+					MOTORS.addCurrentHistoryToFocusingField(
+							ff,
+							(runs==0)?0:(MOTORS.historySize()-runs),
+									MOTORS.historySize()); // all newly acquired
+				}
+//	TODO: Remove after checking average - no, it is needed again as it calculates average through LMA simultaneously
+				
+				
 				if (modeAverage && (FOCUSING_FIELD!=null)){ // calculate/show average over the last run - only in "average" mode
-					double [] ZTM=FOCUSING_FIELD.averageZTM(
+					ZTM= FOCUSING_FIELD.averageZTM( // finds zc, not z0
 							noTiltScan,
 							ff,  // no tilt scan - faster
-							true); // noMotors
+							FOCUSING_FIELD.recalculateAverageTilts); // boolean keepTilt){ // keep existent tilt
 					if (MASTER_DEBUG_LEVEL>0) {
-						String msg="Failed to calulate average focus/tilt";
-						if (ZTM!=null) {
-							msg="Average:\n"+
-									"Relative focal shift "+IJ.d2s(ZTM[0],3)+"um (absolute - "+IJ.d2s(ZTM[0]+FOCUSING_FIELD.qualBOptimizationResults[0],3)+"um)\n"+
-									"Relative horizontal tilt "+IJ.d2s(ZTM[1],3)+"um/mm (absolute - "+IJ.d2s(ZTM[1]+FOCUSING_FIELD.qualBOptimizationResults[1],3)+"um.mm)\n"+
-									"Relative vertical tilt "+IJ.d2s(ZTM[2],3)+"um/mm (absolute - "+IJ.d2s(ZTM[2]+FOCUSING_FIELD.qualBOptimizationResults[2],3)+"um.mm)\n";
-							if (ZTM.length>3) {
-								msg+="Suggested M1 "+IJ.d2s(ZTM[3],0)+"steps\n"+
-										"Suggested M2 "+IJ.d2s(ZTM[4],0)+"steps\n"+
-										"Suggested M3 "+IJ.d2s(ZTM[5],0)+"steps";
-							}
-						}
-						System.out.println(msg);
-						IJ.showMessage(msg);
 					}
 				}
-*/				
-//				
 			}
 			
-			if (FOCUS_MEASUREMENT_PARAMETERS.saveResults) {
+			if (FOCUS_MEASUREMENT_PARAMETERS.saveResults && !replayMode) {
 				String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
 				File dFile=new File(dir);
 				if (!dFile.isDirectory() &&  !dFile.mkdirs()) {
@@ -5521,7 +5599,6 @@ if (MORE_BUTTONS) {
 				}
 				String lensPrefix="";
 				if (FOCUS_MEASUREMENT_PARAMETERS.includeLensSerial && (FOCUS_MEASUREMENT_PARAMETERS.lensSerial.length()>0)){
-//					lensPrefix=String.format("LENS%S-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial);
 					lensPrefix=String.format("LENS%S-S%02d-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial,FOCUS_MEASUREMENT_PARAMETERS.manufacturingState);
 				}
 				String path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+
@@ -5565,68 +5642,22 @@ if (MORE_BUTTONS) {
 // Calculate and show average distances and tilts for measured history			
 			
 			if (!modeAverage) {
-				remoteNotifyComplete();
-				double [] lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
-						useLMA,
-						runs,             // number of last samples from history to use, 0 - use all
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
-				);
-				double [] allKT=MOTORS.focusingHistory.temperatureLinearApproximation(
-						useLMA,
-						0,             // number of last samples from history to use, 0 - use all
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
-				);
-				FOCUS_MEASUREMENT_PARAMETERS.result_lastKT=lastKT[1];   // focal distance temperature coefficient (um/C), measured from last run 
-				FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20=lastKT[0]+20*lastKT[1]; // focal distance for 20C, measured from last run 
-				FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT=allKT[1];   // focal distance temperature coefficient (um/C), measured from all the measurement histgory 
-				FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20=allKT[0]+20*allKT[1]; // focal distance for 20C, measured from  all the measurement histgory
-				if (MASTER_DEBUG_LEVEL>0){
-					String msg=
-						"Focal distance temperature expansion is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,2)+
-						" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,2)+")"+
-						" microns per C, measured from this run (measured from all the history)\n"+
-						"Focal distance at 20C is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20,2)+
-						" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20,2)+")"+
-						" microns, measured from this run (measured from all the history)";
-					System.out.println(msg);
-					IJ.showMessage("Info",msg);
-				}
-// Now in LMA mode - recalculate and overwrite
-/*				
-				if (useLMA){
-					ff= new FocusingField(
-							EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
-							EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
-							0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
-							FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
-							FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
-							FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
-							pX0,
-							pY0,
-							sampleCoord,
-							this.SYNC_COMMAND.stopRequested);
-					ff.setDebugLevel(DEBUG_LEVEL);
-					ff.setAdjustMode(false);
-					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
-					MOTORS.addCurrentHistoryToFocusingField(ff); // all, not just newly acquired
-					if (MASTER_DEBUG_LEVEL>0){
-						System.out.println ("*** Calculating focal distance shift for each of "+MOTORS.historySize()+" recorded measurments ***");
-					}
-					boolean noMotors=true;
-					double [][] allZTM=FOCUSING_FIELD.getAllZTM(
-							noTiltScan,
-							ff, // no tilt scan (supposed to be adjusted
-		    				noMotors); // boolean noMotors) // do not calculate correction
-							
+				double [] lastKT;
+				double [] allKT;
+				if (!replayMode){
+					remoteNotifyComplete();
+					POWER_CONTROL.setPower("light","off");
 					lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
-							allZTM,
-							runs
+							useLMA,
+							runs,             // number of last samples from history to use, 0 - use all
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
 							);
 					allKT=MOTORS.focusingHistory.temperatureLinearApproximation(
-							allZTM,
-							0
+							useLMA,
+							0,             // number of last samples from history to use, 0 - use all
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
 							);
 					FOCUS_MEASUREMENT_PARAMETERS.result_lastKT=lastKT[1];   // focal distance temperature coefficient (um/C), measured from last run 
 					FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20=lastKT[0]+20*lastKT[1]; // focal distance for 20C, measured from last run 
@@ -5634,23 +5665,131 @@ if (MORE_BUTTONS) {
 					FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20=allKT[0]+20*allKT[1]; // focal distance for 20C, measured from  all the measurement histgory
 					if (MASTER_DEBUG_LEVEL>0){
 						String msg=
-								"Determined by LMA: Focal distance temperature expansion is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,2)+
-								" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,2)+")"+
+								"Focal distance temperature expansion is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,3)+
+								" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,3)+")"+
 								" microns per C, measured from this run (measured from all the history)\n"+
 								"Focal distance at 20C is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20,2)+
 								" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20,2)+")"+
+								" microns, measured from this run (measured from all the history)\n"+
+								"Focal distance at "+FOCUS_MEASUREMENT_PARAMETERS.reportTemperature+ "C is "+
+								IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20+
+										(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,2)+
+								" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20+
+										(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,2)+")"+
 								" microns, measured from this run (measured from all the history)";
 						System.out.println(msg);
 						IJ.showMessage("Info",msg);
 					}
 				}
-*/				
+// Now in LMA mode - recalculate and overwrite
+/* */				
+				if (useLMA){
+					if (replayMode) {
+						ff=ffReplay;
+						ff.setDebugLevel(DEBUG_LEVEL);
+						ff.setAdjustMode(false,null);
+						if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+						runs=ff.measurements.size();
+					} else {
+						ff= new FocusingField(
+								EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+								EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+								0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
+								FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+								FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+								FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+								pX0,
+								pY0,
+								sampleCoord,
+								this.SYNC_COMMAND.stopRequested);
+
+						ff.setDebugLevel(DEBUG_LEVEL);
+						ff.setAdjustMode(false,null);
+						if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+						MOTORS.addCurrentHistoryToFocusingField(ff); // all, not just newly acquired
+						if (MASTER_DEBUG_LEVEL>0){
+							System.out.println ("*** Calculating focal distance shift for each of "+MOTORS.historySize()+" recorded measurments ***");
+						}
+					}
+					// finds zc, not z0
+					double [][] allZTT=FOCUSING_FIELD.getAllZTT( // z, tx, ty, temperature - may contain null for bad measurements
+							noTiltScan,
+							ff,  // no tilt scan - faster
+							FOCUSING_FIELD.recalculateAverageTilts); // boolean keepTilt){ // keep existent tilt
+							
+					lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+							allZTT,
+							runs
+							);
+					allKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+							allZTT,
+							0
+							);
+					FOCUS_MEASUREMENT_PARAMETERS.result_lastKT=lastKT[1];   // focal distance temperature coefficient (um/C), measured from last run 
+					FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20=lastKT[0]+20*lastKT[1]; // focal distance for 20C, measured from last run 
+					FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT=allKT[1];   // focal distance temperature coefficient (um/C), measured from all the measurement histgory 
+					FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20=allKT[0]+20*allKT[1]; // focal distance for 20C, measured from  all the measurement histgory
+				}
+/* */				
+			}
+			if (useLMA){
+				gd=new GenericDialog(modeAverage?"Averaging results":"Thermal scanning results");
+				String msg="";
+				if (modeAverage){
+					if (ZTM!=null) {
+						msg="Average (through LMA):\n"+
+								"Relative focal shift "+IJ.d2s(ZTM[0],3)+"um (absolute - "+IJ.d2s(ZTM[0]+FOCUSING_FIELD.qualBOptimizationResults[0],3)+"um)\n"+
+								"Relative horizontal tilt "+IJ.d2s(ZTM[1],3)+"um/mm (absolute - "+IJ.d2s(ZTM[1]+FOCUSING_FIELD.qualBOptimizationResults[1],3)+"um.mm)\n"+
+								"Relative vertical tilt "+IJ.d2s(ZTM[2],3)+"um/mm (absolute - "+IJ.d2s(ZTM[2]+FOCUSING_FIELD.qualBOptimizationResults[2],3)+"um.mm)\n";
+					} else {
+						msg="Failed to calulate average focus/tilt";
+					}
+				}else {
+					msg=
+							"Determined by LMA: Focal distance temperature expansion is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,3)+
+							" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,3)+")"+
+							" microns per C, measured from this run (measured from all the history)\n"+
+							"Focal distance at 20C is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20,2)+
+							" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20,2)+")"+
+							" microns, measured from this run (measured from all the history)\n"+
+							"Focal distance at "+FOCUS_MEASUREMENT_PARAMETERS.reportTemperature+ "C is "+
+							IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20+
+									(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,2)+
+							" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20+
+									(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,2)+")"+
+							" microns, measured from this run (measured from all the history)";
+				}
+				System.out.println(msg);
+				gd.addMessage(msg);
+				double [][] zTxTyAbsRel=null;
+				if (FOCUSING_FIELD.recalculateAverageTilts==1){ // only if recalculated
+					zTxTyAbsRel=FOCUSING_FIELD.getZ0TxTyAbsRel(); // z - z0, not zc here !
+					double [][] zcZ0TxTy=FOCUSING_FIELD.getZcZ0TxTy(ff.measurements);
+					gd.addMessage("----------------------");
+					msg=    "Average relative z0 parameter: "+IJ.d2s(zTxTyAbsRel[1][0],3)+"um    (absolute: "+IJ.d2s(zTxTyAbsRel[0][0],3)+"um\n"+
+							"Average relative tx parameter: "+IJ.d2s(zTxTyAbsRel[1][1],3)+"um/mm (absolute: "+IJ.d2s(zTxTyAbsRel[0][1],3)+"um/mm\n"+
+							"Average relative ty parameter: "+IJ.d2s(zTxTyAbsRel[1][2],3)+"um/mm (absolute: "+IJ.d2s(zTxTyAbsRel[0][2],3)+"um/mm\n\n";
+					msg+=   "Average zc:     "+IJ.d2s(zcZ0TxTy[0][0],3)+"um\n"+
+							"Average Tilt x: "+IJ.d2s(zcZ0TxTy[0][1],3)+"um/mm\n"+
+							"Average Tilt y: "+IJ.d2s(zcZ0TxTy[0][2],3)+"um/mm\n";
+					System.out.println(msg);
+					gd.addMessage(msg);
+					gd.addCheckbox("Store calculated tilts, defaultValue",FOCUSING_FIELD.updateAverageTilts);
+				}
+				gd.showDialog();
+	    		if (!gd.wasCanceled()){
+					if (FOCUSING_FIELD.recalculateAverageTilts==1){ // only if recalculated
+			    		FOCUSING_FIELD.updateAverageTilts=gd.getNextBoolean();
+			    		if (FOCUSING_FIELD.updateAverageTilts){
+			    			FOCUSING_FIELD.avgTx=zTxTyAbsRel[0][1]; // average absolute tilt X (optionally used when finding Z of the glued SFE)
+			    			FOCUSING_FIELD.avgTy=zTxTyAbsRel[0][2]; // average absolute tilt Y (optionally used when finding Z of the glued SFE)
+			    		}
+					}
+	    		}
 			}
 			saveCurrentConfig();
 			return;
 		}	
-///	"No-move measure"	
-		
 /* ======================================================================== */
 		if       (label.equals("Configure Goniometer")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -5710,12 +5849,14 @@ if (MORE_BUTTONS) {
 					"Taget angular size vertical:   "+IJ.d2s(targetAngleVertical,1)+" degrees\n"
 			);
 			GONIOMETER.debugLevel=DEBUG_LEVEL;
+			POWER_CONTROL.lightsOnWithDelay();
 			boolean goniometerScanOK=GONIOMETER.scanAndAcquire(
 					targetAngleHorizontal,
 					targetAngleVertical,
 					this.SYNC_COMMAND.stopRequested,
 					UPDATE_STATUS);
 			System.out.println ("GONIOMETER.scanAndAcquireI() "+(goniometerScanOK?"finished OK":"failed"));
+			POWER_CONTROL.setPower("light","off");
 			return;
 		}		
 		
@@ -9226,7 +9367,8 @@ if (MORE_BUTTONS) {
 		if (path==null) return false; // did not load
 		FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile=path;
 		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
-		FOCUSING_FIELD.setAdjustMode(false);
+		FOCUSING_FIELD.setThreads(THREADS_MAX);
+		FOCUSING_FIELD.setAdjustMode(false, null);
 		if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES,true); // keep distortions center from history
 		System.out.println("Loaded FocusingField from "+path);
 		if (!FOCUSING_FIELD.configureDataVector(
@@ -9295,7 +9437,9 @@ if (MORE_BUTTONS) {
 		//get measurement
 		FocusingField.FocusingFieldMeasurement fFMeasurement=MOTORS.getThisFFMeasurement(FOCUSING_FIELD);	
 		// calculate z, tx, ty, m1,m2,m3
+		int [] adjustModeAllCommon={1,1,1};
 	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
+	    		adjustModeAllCommon, // FOCUSING_FIELD.zTxTyAdjustMode,
 	    		false,  // allow tilt scan
 	    		fFMeasurement,
 	    		false, // parallel move
@@ -9450,7 +9594,9 @@ if (MORE_BUTTONS) {
 			}
 		}
 		if (parallelMove){ // ignore/recalculate newMotors data 
+			int [] adjustZOnly={1,0,0};
 			zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
+					adjustZOnly, // adjustAll,
 					false,// disable tilt scan
 					fFMeasurement,
 					true, // recalculate with parallel move only
@@ -11247,6 +11393,7 @@ if (MORE_BUTTONS) {
 				"",   //String message,
 				!noHysteresis); //false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
 		focusMeasurementParameters.sensorTemperature=camerasInterface.getSensorTemperature(0,focusMeasurementParameters.EEPROM_channel);
+		POWER_CONTROL.lightsOnWithDelay();
 		ImagePlus imp= camerasInterface.acquireSingleImage (
 				false, //boolean useLasers,
 				updateStatus);
@@ -11306,13 +11453,17 @@ if (MORE_BUTTONS) {
 					focusMeasurementParameters.sensorTemperature,
 					focusingMotors.readElphel10364Motors(), //focusingHistory.getPosition(), //null?
 					rFullResults[0]); //focusingState.getSamples());
-
-			zTxTy=FOCUSING_FIELD.adjustLMA(
-					true, // false, // noTiltScan
-					fFMeasurement,
-					false, // parallel move
-					true, // boolean noQualB,   // do not re-claculate testQualB 
-					true); // boolean noAdjust); // do not calculate correction
+			try{
+				zTxTy=FOCUSING_FIELD.adjustLMA(
+						FOCUSING_FIELD.zTxTyAdjustMode,
+						true, // false, // noTiltScan
+						fFMeasurement,
+						false, // parallel move
+						true, // boolean noQualB,   // do not re-claculate testQualB 
+						true); // boolean noAdjust); // do not calculate correction
+			} catch (Exception e){
+				System.out.println("FOCUSING_FIELD.adjustLMA() failed");
+			}
 			if (zTxTy!=null){
 				metrics[ca][0]=zTxTy[0]; // was far/near
 				metrics[ca][1]=zTxTy[1];
@@ -11402,6 +11553,7 @@ if (MORE_BUTTONS) {
 				focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
 		}
 		focusMeasurementParameters.sensorTemperature=camerasInterface.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
+		POWER_CONTROL.lightsOnWithDelay();
 		ImagePlus imp= camerasInterface.acquireSingleImage (
 				false, //boolean useLasers,
 				updateStatus);

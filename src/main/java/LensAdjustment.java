@@ -226,13 +226,14 @@ public class LensAdjustment {
     	public int lensSerialLength=4;
     	public String lensSerial=""; // Lens serial number
     	public boolean  askLensSerial=true; // Ask lens serial on camera power cycle
+    	public double reportTemperature=50;      // temperature to report focal length  
 
     	public boolean includeLensSerial=true; // add lens serial to config filename
     	public double centerDeltaX=0.0; // required X-difference between lens center and sensor center 
     	public double centerDeltaY=0.0; // required Y-difference between lens center and sensor center
     	// with the seam in the middle - make even # of samples horizontally
     	public Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
-    	public int [] numSamples={4,3};       // number of samples in x and y directions
+    	public int [] numSamples={8,5};       // number of samples in x and y directions
     	public int    sampleSize=256;// 512;       // size of square (2^n), in sensor pixels (twice FFT size)
     	public int    numInCenter=(numSamples[0]-2)*(numSamples[1]-2);// 2 - number of "center" samples
     	public boolean centerSamples=true; // Select samples in the WOI symmetrical around the lens center
@@ -583,7 +584,8 @@ public class LensAdjustment {
                 int    numIterations, // maximal number of iterations
 				boolean cameraIsConfigured,
 				int [] motorPos,
-	        	double [] ampsSeconds // cumulative Amps*seconds (read only, but will be saved/restored)
+	        	double [] ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
+	        	double reportTemperature      // temperature to report focal length  
     			){
     		this.gridGeometryFile=gridGeometryFile;
     		this.initialCalibrationFile=initialCalibrationFile;
@@ -734,7 +736,7 @@ public class LensAdjustment {
             this.cameraIsConfigured=cameraIsConfigured;
             this.motorPos=motorPos;
         	this.ampsSeconds=ampsSeconds; // cumulative Amps*seconds (read only, but will be saved/restored)
-
+        	this.reportTemperature=reportTemperature;
 			
     	}
     	public FocusMeasurementParameters clone(){
@@ -887,7 +889,8 @@ public class LensAdjustment {
     				this.numIterations,
     				this.cameraIsConfigured,
     				this.motorPos,
-    	        	this.ampsSeconds // cumulative Amps*seconds (read only, but will be saved/restored)
+    	        	this.ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
+    	        	this.reportTemperature
         			);
     	}
 		public void setProperties(String prefix,Properties properties){
@@ -1049,6 +1052,7 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"numIterations",this.numIterations+"");
 			for (int i=0;i<this.ampsSeconds.length;i++) 
 				properties.setProperty(prefix+"ampsSeconds_"+i,this.ampsSeconds[i]+"");
+			properties.setProperty(prefix+"reportTemperature",this.reportTemperature+"");
 		}    	
 		public void getProperties(String prefix,Properties properties){
 			if (properties.getProperty(prefix+"gridGeometryFile")!=null)
@@ -1368,9 +1372,10 @@ public class LensAdjustment {
 				this.thresholdFinish=Double.parseDouble(properties.getProperty(prefix+"thresholdFinish"));
 			if (properties.getProperty(prefix+"numIterations")!=null)
 				this.numIterations=Integer.parseInt(properties.getProperty(prefix+"numIterations"));
-			
 			for (int i=0;i<this.ampsSeconds.length;i++) if (properties.getProperty(prefix+"ampsSeconds_"+i)!=null)
 				this.ampsSeconds[i]=Double.parseDouble(properties.getProperty(prefix+"ampsSeconds_"+i));
+			if (properties.getProperty(prefix+"reportTemperature")!=null)
+				this.reportTemperature=Double.parseDouble(properties.getProperty(prefix+"reportTemperature"));
 		}
 		public boolean getLensSerial(){
 			while (true) { // loop until OK-ed
@@ -1628,13 +1633,23 @@ public class LensAdjustment {
 			gd.addNumericField("Expand during extrapolation (relative to the average grid period)", this.flatFieldExpand, 3);
 			gd.addNumericField("Threshold RMS to exit LMA",                this.thresholdFinish, 7,9,"pix");
 			gd.addNumericField("Maximal number of LMA iterations per series",this.numIterations, 0);
+    		gd.addMessage("-----");
+    		gd.addNumericField("Report focal length at this temperature", this.reportTemperature, 1,5,"C");
 			
     		if (!Double.isNaN(this.sensorTemperature)) gd.addMessage("Last measured sensor temperature is "+this.sensorTemperature+" C");
 
     		if (!Double.isNaN(this.result_lastKT)) gd.addMessage("Temperature focal distance coefficient measured in last run is "+this.result_lastKT+"microns/C");
     		if (!Double.isNaN(this.result_lastFD20)) gd.addMessage("Focal distance @20C measured at last run is "+this.result_lastFD20+" microns");
+    		if (!Double.isNaN(this.result_lastKT) && !Double.isNaN(this.result_lastFD20)){
+    			gd.addMessage("Focal distance @"+this.reportTemperature+"C measured at last run is "+
+    					(this.result_lastFD20+(this.reportTemperature-20.0)*this.result_lastKT)+" microns");	
+    		}
     		if (!Double.isNaN(this.result_allHistoryKT)) gd.addMessage("Temperature focal distance coefficient calculated from all measurements is "+this.result_allHistoryKT+" microns");
     		if (!Double.isNaN(this.result_allHistoryFD20)) gd.addMessage("Focal distance @20C calculated from all measurements is "+this.result_allHistoryFD20+" microns");
+    		if (!Double.isNaN(this.result_allHistoryKT) && !Double.isNaN(this.result_allHistoryFD20)){
+    			gd.addMessage("Focal distance @"+this.reportTemperature+"C calculated from all measurements is "+
+    					(this.result_allHistoryFD20+(this.reportTemperature-20.0)*this.result_allHistoryKT)+" microns");	
+    		}
     		if (!Double.isNaN(this.result_fDistance)) gd.addMessage("Focal distance is "+this.result_fDistance+" microns");
     		if (!Double.isNaN(this.result_tiltX)) gd.addMessage("Horizontal angular/tangential asymmetry "+this.result_tiltX);
     		if (!Double.isNaN(this.result_tiltY)) gd.addMessage("Vertical angular/tangential asymmetry "+this.result_tiltY);
@@ -1650,6 +1665,7 @@ public class LensAdjustment {
     		if (!Double.isNaN(this.result_FocalLength)) gd.addMessage("Lens focal length "+this.result_FocalLength+" mm");
 			gd.addMessage("Cumulative currents that ran through UV LEDs:");
 			for (int i=0;i<this.ampsSeconds.length;i++) gd.addMessage("UV LED "+(i+1)+":"+IJ.d2s(this.ampsSeconds[i],3)+" coulombs  (amp-seconds)");
+			
     		WindowTools.addScrollBars(gd);
     		gd.showDialog();
     		if (gd.wasCanceled()) return false;
@@ -1803,6 +1819,7 @@ public class LensAdjustment {
 			this.flatFieldExpand=            gd.getNextNumber();
 			this.thresholdFinish=            gd.getNextNumber();
 			this.numIterations=        (int) gd.getNextNumber();
+    		this.reportTemperature=          gd.getNextNumber();
     		return true;
     	}
 /* ======================================================================== */
