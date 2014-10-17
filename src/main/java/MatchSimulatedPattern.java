@@ -5332,6 +5332,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   if (mask[i]<maskCutOff) mask[i]=0.0;
 			   int size = (int) Math.sqrt(psf.length);
 			   int hsize=size/2;
+//			   int nn=0;
 			   double S0=0.0, SR=0.0, ST=0.0,SR2=0.0,ST2=0.0; //,SRT=0.0;
 			   for (int i=0;i<mask.length;i++)  if (mask[i]>0.0) {
 				   double x=(i % size) - hsize;
@@ -5344,13 +5345,62 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   ST+=d*tc;
 				   SR2+=d*rc*rc;
 				   ST2+=d*tc*tc;
-//				   SRT+=d*rc*tc;
+//				   nn++;
 			   }
 			   if (S0==0.0) return null; // make sure it is OK
 			   double  [] result={ Math.sqrt(ST2*S0 - ST*ST)/S0, Math.sqrt(SR2*S0 - SR*SR)/S0};
+//			   System.out.println(" mask.length="+mask.length+" nn="+nn+" S0="+S0+" SR="+SR+" ST="+ST+" SR2="+SR2+" ST2="+ST2+
+//					   " result={"+result[0]+","+result[1]+"}");
 			   return result;
 		   }
 
+		 //====================================================
+		   public double [] x2y2xySizes(
+				   double []       psf,     // PSF function, square array, nominally positive
+				   double cutoffEnergy,     // fraction of energy in the pixels to be used
+				   double cutoffLevel,      // minimal level as a fraction of maximal
+				   int         minArea,      // minimal selected area in pixels
+				   double      blurSigma,    // optionally blur the selection
+				   double      maskCutOff,
+				   int           debugLevel, // debug level
+				   String        title) {    // prefix used for debug images
+			   double [] mask=findClusterOnPSF(
+					   psf,
+					   cutoffEnergy,
+					   cutoffLevel,
+					   minArea,
+					   blurSigma,
+					   debugLevel,
+					   title);
+			   for (int i=0;i<mask.length;i++)
+				   if (mask[i]<maskCutOff) mask[i]=0.0;
+			   int size = (int) Math.sqrt(psf.length);
+			   int hsize=size/2;
+//			   int nn=0;
+			   double S0=0.0, SX=0.0, SY=0.0,SX2=0.0,SY2=0.0,SXY=0.0;
+			   for (int i=0;i<mask.length;i++)  if (mask[i]>0.0) {
+				   double x=(i % size) - hsize;
+				   double y=(i / size) - hsize;
+				   double d=psf[i]*mask[i];
+				   S0+=d;
+				   SX+=d*x;
+				   SY+=d*y;
+				   SX2+=d*x*x;
+				   SY2+=d*y*y;
+				   SXY+=d*x*y;
+//				   nn++;
+			   }
+			   if (S0==0.0) return null; // make sure it is OK
+			   double  [] result={
+					   (SX2*S0 - SX*SX)/S0/S0,
+					   (SY2*S0 - SY*SY)/S0/S0,
+					   (SXY*S0 - SX*SY)/S0/S0}; // this may be negative
+//			   System.out.println(" mask.length="+mask.length+" nn="+nn+" S0="+S0+" SX="+SX+" SY="+SY+" SX2="+SXR2+" SY2="+SY2+" SXY="+SXY+
+//					   " result={"+result[0]+","+result[1]+","+result[2]+"}");
+			   return result;
+		   }
+		   
+		   
 //====================================================
 		   
 			public double [] findClusterOnPSF(
@@ -5382,7 +5432,8 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				}
 				if (maxValue<=0.0){
 	    		  String msg="psf array does not contain any positive values";
-	    		  IJ.showMessage("Error",msg);
+//	    		  IJ.showMessage("Error",msg);
+	    		  System.out.println("Error "+msg);
 	    		  throw new IllegalArgumentException (msg);
 				}
 				ix=Index % size;
@@ -8506,6 +8557,7 @@ d()/dy=C*x+2*B*y+E=0
 				IJ.showMessage("Error",msg);
 				throw new IllegalArgumentException (msg);
 			}
+			if (this.PATTERN_GRID.length==0) return null;
 			double x1=x0,y1=y0;
 			double x2=x1+size;
 			double y2=y1+size;

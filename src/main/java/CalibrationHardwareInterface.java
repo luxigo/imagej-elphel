@@ -31,9 +31,12 @@ import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.text.TextWindow;
 
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -44,12 +47,15 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.XMLConfiguration;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
@@ -1792,12 +1798,129 @@ public class CalibrationHardwareInterface {
 				throw new RuntimeException(ie);
 			}
 		}
-
-	    
-	    
-	   	
 	}
 	
+	public static class PowerControl{
+		public boolean [] states={false,false,false};
+		public String [] groups={"heater","fan","light"};
+    	public int debugLevel=1;
+    	private String powerIP="192.168.0.80";
+    	private double lightsDelay=5.0;
+    	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s";
+    	private final String rootElement="Document";
+    	public boolean powerConrtolEnabled=false;
+    	public void setProperties(String prefix,Properties properties){
+    		properties.setProperty(prefix+"powerIP",this.powerIP+"");
+    		properties.setProperty(prefix+"powerConrtolEnabled",this.powerConrtolEnabled+"");
+    		properties.setProperty(prefix+"lightsDelay",this.lightsDelay+"");
+    	}
+    	//Integer.decode(string)
+    	public void getProperties(String prefix,Properties properties){
+    		if (properties.getProperty(prefix+"powerIP")!=null)
+    			this.powerIP=properties.getProperty(prefix+"powerIP");
+    		if (properties.getProperty(prefix+"powerConrtolEnabled")!=null)
+    			this.powerConrtolEnabled=Boolean.parseBoolean(properties.getProperty(prefix+"powerConrtolEnabled"));
+    		if (properties.getProperty(prefix+"lightsDelay")!=null)
+    			this.lightsDelay=Double.parseDouble(properties.getProperty(prefix+"lightsDelay"));
+    	}
+    	
+    	public boolean setPower (String group, String state){
+    		if (!powerConrtolEnabled) {
+    			System.out.println("=== Power control is disabled ===");
+    			return false;
+    		}
+			System.out.println("=== Power control: "+group+":"+state+" ===");
+    			String url=String.format(urlFormat,this.powerIP,state,group);    	
+    			if (this.debugLevel>2) System.out.println("setPower: "+url); 
+    			Document dom=null;
+    			try {
+    				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+    				DocumentBuilder db = dbf.newDocumentBuilder();
+    				dom = db.parse(url);
+    				if (!dom.getDocumentElement().getNodeName().equals(rootElement)) {
+    					System.out.println("Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\"");
+    					IJ.showMessage("Error","Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\""); 
+    					return false;
+    				}
+//    				boolean responceError= (dom.getDocumentElement().getElementsByTagName("error").getLength()!=0);
+//    				if (responceError) {
+//    					System.out.println("ERROR: register write ("+url+") FAILED" );
+//    					IJ.showMessage("Error","register write ("+url+") FAILED"); 
+//    					return false;  
+//    				}
+    			} catch(MalformedURLException e){
+    				System.out.println("Please check the URL:" + e.toString() );
+    				return false;
+    			} catch(IOException  e1){
+    				IJ.showStatus("");
+    				String error = e1.getMessage();
+    				if (error==null || error.equals(""))  error = ""+e1;
+    				IJ.showMessage("setPower ERROR", ""+error);
+    				return false;
+    			}catch(ParserConfigurationException pce) {
+    				pce.printStackTrace();
+    				return false;
+    			}catch(SAXException se) {
+    				se.printStackTrace(); 
+    				return false;
+    			}
+    		for (int i=0;i<this.groups.length;i++) if (this.groups[i].equals(group)){
+    			this.states[i]=state.equals("on");
+    		}
+    		return true;
+    	}
+    	public boolean showDialog(String title, boolean control) {
+    		GenericDialog gd = new GenericDialog(title);
+    		boolean heaterOn=false, fanOn=false, lightOn=false;
+			gd.addCheckbox("Enable power control (heater, fan, lights) ", this.powerConrtolEnabled);
+    		gd.addStringField("IP address of the power control",this.powerIP,15);
+			gd.addNumericField("Delay after lights on", this.lightsDelay,  1,4,"sec");
+  		    		
+    		if (control){
+    			gd.addCheckbox("Heater On", heaterOn);
+    			gd.addCheckbox("Fan On", fanOn);
+    			gd.addCheckbox("Lights On", lightOn);
+    		}
+    	    WindowTools.addScrollBars(gd);
+			if (control) gd.enableYesNoCancel("OK", "Control Power");
+    	    gd.showDialog();
+    	    if (gd.wasCanceled()) return false;
+    	    this.powerConrtolEnabled=gd.getNextBoolean();
+    	    this.powerIP=gd.getNextString();
+			this.lightsDelay=gd.getNextNumber();
+    	    if (control){
+    	    	heaterOn=gd.getNextBoolean();
+    	    	fanOn=gd.getNextBoolean();
+    	    	lightOn=gd.getNextBoolean();
+    	    	if (!gd.wasOKed()) {
+    	    		 setPower("heater",heaterOn?"on":"off");
+    	    		 setPower("fan",fanOn?"on":"off");
+    	    		 setPower("light",lightOn?"on":"off");
+    	    	}
+    	    }
+            return true;
+    	}
+    	public void lightsOnWithDelay(){
+    		if (this.states[2] || !this.powerConrtolEnabled) return; // already on
+			setPower("light","on");
+			System.out.print("Sleeping "+this.lightsDelay+" seconds to let lights stibilize on...");
+    		try {
+				TimeUnit.MILLISECONDS.sleep((long) (1000*this.lightsDelay));
+			} catch (InterruptedException e) {
+				System.out.println("Sleep was interrupted");
+				// TODO Auto-generated catch block
+			}
+			System.out.println(" Done");
+
+    	}
+    	
+    	public boolean isPowerControlEnabled(){
+    		return this.powerConrtolEnabled;
+    	}
+		public void setDebugLevel(int debugLevel){
+			this.debugLevel=debugLevel;
+		}
+	}
 	
     public static class LaserPointers{
     	public int debugLevel=1;
@@ -2513,7 +2636,7 @@ public class CalibrationHardwareInterface {
     public FocusingSharpness focusingSharpness=new FocusingSharpness(1000);
     public int debugLevel=1;
     public String motorsStatePath="lensAdjustmentMotorPosition.xml"; // will be saved in ~/.imagej/
-    public String prefsDirectory=Prefs.getPrefsDir()+Prefs.getFileSeparator(); // "~/.imagej/" 
+    public String prefsDirectory=null; // prefs.getPrefsDir()+Prefs.getFileSeparator(); // "~/.imagej/" - too early !!! 
     private Properties motorProperties=new Properties();
     public boolean interactiveRestore=true; // ask for confirmation to restore motor position
     public boolean stateValid=false;
@@ -2528,6 +2651,12 @@ public class CalibrationHardwareInterface {
     public double getMicronsPerStep(){return  1000.0*this.threadPitch*this.linearReductionRatio/stepsPerRevolution;}
     public void   setLinearReductionRatio(double lrr){this.linearReductionRatio=lrr;}
     
+    public String getPrefsDir(){
+    	if (prefsDirectory==null) prefsDirectory=Prefs.getPrefsDir();
+    	if (prefsDirectory!=null) prefsDirectory+=Prefs.getFileSeparator(); // "~/.imagej/"
+    	return prefsDirectory;
+    }
+
     public boolean isInitialized(){
     	return this.stateValid;
     }
@@ -2568,7 +2697,7 @@ public class CalibrationHardwareInterface {
     public void saveMotorState() throws IOException{
     	if (!this.stateValid) return; // do not save until allowed 
     	for (int i=0;i<curpos.length;i++) this.motorProperties.setProperty("motor"+(i+1),this.curpos[i]+"");
-    	String path=this.prefsDirectory+this.motorsStatePath;
+    	String path=this.getPrefsDir()+this.motorsStatePath;
     	OutputStream os;
     	try {
     		os = new FileOutputStream(path);
@@ -2600,7 +2729,7 @@ public class CalibrationHardwareInterface {
     }
     
     public int [] loadMotorState() throws IOException{
-    	String path=this.prefsDirectory+this.motorsStatePath;
+    	String path=this.getPrefsDir()+this.motorsStatePath;
     	InputStream is;
     	try {
     		is = new FileInputStream(path);
@@ -2756,7 +2885,7 @@ public class CalibrationHardwareInterface {
         	if (this.debugLevel>2) System.out.println("--savedPosition="+((savedPosition==null)?"null":("{"+savedPosition[0]+","+savedPosition[1]+","+savedPosition[2]+"}")));
 			if (this.interactiveRestore){
 	    		gd = new GenericDialog("Missing motor position file");
-	    		gd.addMessage("No motor position file ("+this.prefsDirectory+this.motorsStatePath+") found.");
+	    		gd.addMessage("No motor position file ("+this.getPrefsDir()+this.motorsStatePath+") found.");
 	    		gd.addMessage("If you run the program for the first time it is normal, you may click \"OK\" and the new file will be created");
 	    		gd.addMessage("If you select \"Cancel\" the current command will be aborted, you may check the file and restart the program.");
 	    	    gd.showDialog();
@@ -2966,7 +3095,25 @@ public class CalibrationHardwareInterface {
     			fullResults
     	);
     }
+    
+	public FocusingField.FocusingFieldMeasurement getThisFFMeasurement(
+			FocusingField focusingField,
+			String sTimestamp,
+			double temperature,
+			double[][] psfMetrics,
+			double [][][][] fullResults){
+		
+		return focusingField.getFocusingFieldMeasurement(
+				sTimestamp,   //focusingState.getTimestamp(),
+				temperature, //focusingState.getTemperature(),
+				this.curpos,      //focusingState.motorsPos,
+				fullResults); //focusingState.getSamples());
+	}    
+    
+    
+    
 /*
+ * FocusingHistory.FocusingState focusingState
     public void addToHistory( String sTimestamp,double temperature, double[][] psfMetrics){ // null OK
     	this.focusingHistory.add(
     			sTimestamp,
@@ -2993,6 +3140,7 @@ public class CalibrationHardwareInterface {
     }
 
     public void listHistory(
+    		boolean useLMA,
     		String path,
     		String lensSerial,
     		String comment,
@@ -3004,6 +3152,7 @@ public class CalibrationHardwareInterface {
 			double weightY // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
 			){
     	listHistory(
+    			useLMA,
     			path,
     			"",
     			lensSerial,
@@ -3022,6 +3171,7 @@ public class CalibrationHardwareInterface {
     }
     
     public void listHistory(
+    		boolean useLMA,
     		String path,
     		String serialNumber,
     		String lensSerial,
@@ -3040,6 +3190,7 @@ public class CalibrationHardwareInterface {
 			){
 
     	this.focusingHistory.list(
+        		useLMA,
     			path,
         		serialNumber,
     			lensSerial,
@@ -3056,7 +3207,84 @@ public class CalibrationHardwareInterface {
     			result_lastKT,
     			result_allHistoryKT);
     }
-    public int historySize(){
+	public void saveHistoryXML(
+			String path,
+    		String serialNumber,
+			String lensSerial, // if null - do not add average
+    		String comment,
+			double pX0,
+			double pY0,
+			double [][][] sampleCoord){ // x,y,r
+		this.focusingHistory.saveXML(
+    			path,
+        		serialNumber,
+    			lensSerial, // if null - do not add average
+        		comment,
+    			pX0,
+    			pY0,
+    			sampleCoord);
+	}
+
+	public FocusingField.FocusingFieldMeasurement getThisFFMeasurement(FocusingField focusingField){
+		return getThisFFMeasurement(focusingField, -1);
+	}    
+	public FocusingField.FocusingFieldMeasurement getThisFFMeasurement(FocusingField focusingField, int index){
+		return focusingField. getFocusingFieldMeasurement(
+				historyGetTimestamp(index),   //focusingState.getTimestamp(),
+				historyGetTemperature(index), //focusingState.getTemperature(),
+				historyGetMotors(index),      //focusingState.motorsPos,
+				historyGetSamples(index)); //focusingState.getSamples());
+	}
+	private FocusingHistory.FocusingState getFocusingState(int index){
+		if (index<0) index+=historySize();
+		if ((index>=0) && (index<historySize())) return this.focusingHistory.history.get(index);
+		return null;
+	}
+	
+	public void addCurrentHistoryToFocusingField(
+			FocusingField focusingField,
+			int start,
+			int end){
+		for (int i=start;i<end;i++){
+			addCurrentHistoryToFocusingField(focusingField,i);
+		}        	 
+	} 
+
+	public void addCurrentHistoryToFocusingField(FocusingField focusingField){
+		addCurrentHistoryToFocusingField(
+				focusingField,
+				0,
+				historySize()
+				);
+	} 
+
+	public void addCurrentHistoryToFocusingField(
+			FocusingField focusingField,
+			int index){ // -1 - last (negative - from length)
+		focusingField.addSample(
+				historyGetTimestamp(index),   //focusingState.getTimestamp(),
+				historyGetTemperature(index), //focusingState.getTemperature(),
+				historyGetMotors(index),      //focusingState.motorsPos,
+				historyGetSamples(index)); //focusingState.getSamples());
+	}
+	
+	
+	public String historyGetTimestamp(int index){
+		return getFocusingState(index).getTimestamp();
+	}
+
+	public double historyGetTemperature(int index){
+		return getFocusingState(index).getTemperature();
+	}
+	public int [] historyGetMotors(int index){
+		return getFocusingState(index).getMotors();
+	}
+	
+	public double [][][][] historyGetSamples(int index){
+		return getFocusingState(index).getSamples();
+	}
+
+	public int historySize(){
     	return this.focusingHistory.history.size();
     }
     public void setLastProbed(){
@@ -3808,10 +4036,18 @@ public class CalibrationHardwareInterface {
     		if (this.history.size()<1) return null;
     		return getCenterResolutions(this.history.size()-1);
     	}
-		public double [] getCenterResolutions(int index){
+    	public double [] getCenterResolutions(int index){
     		if ((index<0) || (index>=this.history.size())) return null;
     		return this.history.get(index).getCenterResolutions();
-			}
+    	}
+    	public double [] getzTxTy(int index){
+    		if ((index<0) || (index>=this.history.size())) return null;
+    		return this.history.get(index).getzTxTy();
+    	}
+    	public double [] getzTxTy(){
+    		if (this.history.size()<1) return null;
+    		return getzTxTy(this.history.size()-1);
+    	}
     	public int size(){
     		return this.history.size();
     	}
@@ -4688,6 +4924,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     					if ((x<xMin) || (x>xMax)) continue; // out of range point
     					data[i][0]= scale*(x - x0); // interval center
     					double [][] metrics= this.history.get(i).getMetrics(0.0,0.0,0.0); // average is not used, any scales
+    					if (metrics==null) continue;
     					double l2=
     						1.0/metrics[0][indexR50]/metrics[0][indexR50]+
     						1.0/metrics[1][indexR50]/metrics[1][indexR50]+
@@ -4979,6 +5216,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
  * @return array of 2 elements - {length at 0C, microns/degree}
  */
      	public double [] temperatureLinearApproximation(
+     			boolean useLMA,
      			int numSamples,             // number of last samples from history to use, 0 - use all
     			double lensDistanceWeightK, // used in distance calculation 
     			double lensDistanceWeightY // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
@@ -4991,20 +5229,53 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     		int firstSample=this.history.size()-numSamples;
 
      		for (int nSample=0;nSample<numSamples;nSample++){
-				resolutions= this.history.get(firstSample+nSample).getCenterResolutions();
 				data[nSample][0]=this.history.get(firstSample+nSample).getTemperature();
-				data[nSample][1]=getLensDistance(
-						resolutions, // {R-sharpness,G-sharpness,B-sharpness}
-						true, // boolean absolute, // return absolutely calibrated data
-						lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
-						lensDistanceWeightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-						1 //debugLevel
-				);
+				if (useLMA){
+					data[nSample][1]=this.history.get(firstSample+nSample).getzTxTy()[0];
+				} else {
+					resolutions= this.history.get(firstSample+nSample).getCenterResolutions();
+					data[nSample][1]=getLensDistance(
+							resolutions, // {R-sharpness,G-sharpness,B-sharpness}
+							true, // boolean absolute, // return absolutely calibrated data
+							lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
+							lensDistanceWeightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
+							1 //debugLevel
+							);
+				}
      		}
 			PolynomialApproximation pa= new PolynomialApproximation(debugLevel);
 			double [] polyCoeff=pa.polynomialApproximation1d(data, 1); // just linear
 			return polyCoeff;
      	}
+
+     	public double [] temperatureLinearApproximation(
+     			double [][] ZTT,            // Z, tXx, tY, m1,m2,m3 found with LMA - may contain NaN
+     			int numSamples             // number of last samples from history to use, 0 - use all
+     			){
+//     		if (numSamples<=0)  this.history.size();
+//     		if (numSamples>this.history.size()) numSamples=this.history.size();
+//    		int firstSample=this.history.size()-numSamples;
+    		
+     		if (numSamples<=0) numSamples=ZTT.length;
+     		if (numSamples>ZTT.length) numSamples=ZTT.length;
+    		int firstSample=ZTT.length-numSamples;
+    		int numGoodSamples=0;
+     		for (int nSample=0;nSample<numSamples;nSample++){
+     			if (ZTT[firstSample+nSample]!=null) numGoodSamples++;
+     		}
+     		double [][] data =new double [numGoodSamples][2]; // no weights
+     		int index=0;
+     		for (int nSample=0;nSample<numSamples;nSample++) if (ZTT[firstSample+nSample]!=null) {
+//				data[index][0]=this.history.get(firstSample+nSample).getTemperature();
+				data[index][0]=ZTT[firstSample+nSample][3];
+				data[index++][1]=ZTT[firstSample+nSample][0]; // Z
+     		}
+			PolynomialApproximation pa= new PolynomialApproximation(debugLevel);
+			double [] polyCoeff=pa.polynomialApproximation1d(data, 1); // just linear
+			return polyCoeff;
+     	}
+     	
+     	
 /**
  *  will return same coordinates if tolerances are met     	
  * @param useTheBest
@@ -5411,6 +5682,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     	// todo - add "probe around" - 6/3 points, +/- for each direction (fraction of sigma?)    	    	
 
     	public void list(
+    			boolean useLMA,
     			String path,
     			String lensSerial, // if null - do not add average
         		String comment,
@@ -5420,8 +5692,10 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			double weightRatioBlueToGreen,
     			double weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
     			double weightY){ // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-    		list (path,
-    				"",
+    		list (
+    				useLMA,
+    				path,
+    				"", // serial; number
     				lensSerial, // if null - do not add average
     				comment,
     				showIndividualComponents,
@@ -5436,9 +5710,99 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     				Double.NaN,
     				Double.NaN);
     	}
-     	
-     	
+ /*   	
+    	public void addCurrentHistory(
+    			FocusingField focusingField)
+    	{
+    		for (int i=0;i<this.history.size();i++){
+    			FocusingState focusingState=this.history.get(i);
+    			focusingField.addSample(
+    					focusingState.getTimestamp(),
+    					focusingState.getTemperature(),
+    					focusingState.motorsPos,
+    					focusingState.getSamples());
+    		}        	 
+
+    	}
+    	
+*/
+    	public void saveXML(
+    			String path,
+        		String serialNumber,
+    			String lensSerial, // if null - do not add average
+        		String comment,
+    			double pX0,
+    			double pY0,
+    			double [][][] sampleCoord){ // x,y,r
+    		String sep=" "; //",";
+    		ArrayList<String> nodeList=new ArrayList<String>(); 
+        	XMLConfiguration hConfig=new XMLConfiguration();
+        	hConfig.setRootElementName("focusingHistory");
+        	if (comment!=null)      hConfig.addProperty("comment",comment);
+        	if (serialNumber!=null) hConfig.addProperty("serialNumber",serialNumber);
+        	if (lensSerial!=null)   hConfig.addProperty("lensSerial",lensSerial);
+        	 hConfig.addProperty("lens_center_x",pX0);
+        	 hConfig.addProperty("lens_center_y",pY0);
+        	 if ((sampleCoord!=null) && (sampleCoord.length>0) && (sampleCoord[0] != null) && (sampleCoord[0].length>0)){
+        		 hConfig.addProperty("samples_x",sampleCoord[0].length);
+        		 hConfig.addProperty("samples_y",sampleCoord.length);
+        		 for (int i=0;i<sampleCoord.length;i++)
+        			 for (int j=0;j<sampleCoord[i].length;j++){
+//                		 double coord[] = {sampleCoord[i][j][0],sampleCoord[i][j][1]};
+                		 hConfig.addProperty("sample_"+i+"_"+j,sampleCoord[i][j][0]+sep+sampleCoord[i][j][1]);
+        			 }
+        	 }
+        	 hConfig.addProperty("measurements",this.history.size());
+        	 for (int i=0;i<this.history.size();i++){
+        		 FocusingState focusingState=this.history.get(i);
+        		 String prefix="measurement_"+i+".";
+        		 if (focusingState.getTimestamp()!=null)
+        			 hConfig.addProperty(prefix+"timestamp",focusingState.getTimestamp());
+        		 hConfig.addProperty(prefix+"temperature",focusingState.getTemperature());
+        		 hConfig.addProperty(prefix+"motors",focusingState.motorsPos[0]+sep+focusingState.motorsPos[1]+sep+focusingState.motorsPos[2]); // array of 3
+        		 double [][][][] samples=focusingState.getSamples();
+        		 nodeList.clear();
+        		 if ((samples!=null) && (samples.length>0) && (samples[0]!=null) && (samples[0].length>0)){
+        			 for (int ii=0;ii<samples.length;ii++) for (int jj=0;jj<samples[ii].length;jj++){
+        				 if ((samples[ii][jj]!=null) && (samples[ii][jj].length>0)) {
+        					 String sdata=ii+sep+jj;
+        					 for (int cc=0;cc<samples[ii][jj].length;cc++) {
+/*        						 
+        						 double rt=samples[ii][jj][cc][0]/Math.sqrt((1+samples[ii][jj][cc][1]*samples[ii][jj][cc][1])/2.0); // tangential;
+        						 double rs=rt*samples[ii][jj][cc][1]; // saggital
+        						 sdata += sep+rs+ // saggital
+        								  sep+rt; // tangential
+*/        						 
+        						 sdata += sep+samples[ii][jj][cc][0]+ // x2
+        								 sep+samples[ii][jj][cc][1]+  // y2
+        								 sep+samples[ii][jj][cc][2];  // xy
+//        						 double [] samples_st={
+//        								 samples[ii][jj][cc][0], // saggital
+//        								 samples[ii][jj][cc][0]/samples[ii][jj][cc][1] // tangential (was ratio)
+//        						 };
+        					 }
+							 nodeList.add(sdata);
+        				 }
+        			 }
+					 hConfig.addProperty(prefix+"sample",nodeList);
+        		 }        	 
+        	 }
+         	File file=new File (path);
+         	BufferedWriter writer;
+ 			try {
+ 				writer = new BufferedWriter(new FileWriter(file));
+ 	        	hConfig.save(writer);
+ 			} catch (IOException e) {
+ 				// TODO Auto-generated catch block
+ 				e.printStackTrace();
+ 			} catch (ConfigurationException e) {
+ 				// TODO Auto-generated catch block
+ 				e.printStackTrace();
+ 			}
+        	 
+    	}
      	public void list(
+        		boolean useLMA,
     			String path,
         		String serialNumber,
     			String lensSerial, // if null - do not add average
@@ -5479,14 +5843,18 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     		if (showIndividualSamples){
     			if (showIndividualComponents) { // additional 3 per-color rows
     				for (int i=0;i<sampleRows;i++) for (int j=0;j<sampleColumns;j++){
-    					header+="\tY"+i+"X"+j+"_R"+"\tY"+i+"X"+j+"_R/T";
+//    					header+="\tY"+i+"X"+j+"_R"+"\tY"+i+"X"+j+"_R/T";
+    					header+="\tY"+i+"X"+j+"_X2"+"\tY"+i+"X"+j+"_Y2"+"\tY"+i+"X"+j+"_XY";
     				}
 
     			} else {
     				for (int i=0;i<sampleRows;i++) for (int j=0;j<sampleColumns;j++){ // single row fro all colors
-    					header+="\tY"+i+"X"+j+"_Red_R"+"\tY"+i+"X"+j+"_Red_R/T"+
-    					"\tY"+i+"X"+j+"_Green_R"+"\tY"+i+"X"+j+"_Green_R/T"+
-    					"\tY"+i+"X"+j+"_Blue_R"+"\tY"+i+"X"+j+"_Blue_R/T";
+//    					header+="\tY"+i+"X"+j+"_Red_R"+"\tY"+i+"X"+j+"_Red_R/T"+
+//    					"\tY"+i+"X"+j+"_Green_R"+"\tY"+i+"X"+j+"_Green_R/T"+
+//    					"\tY"+i+"X"+j+"_Blue_R"+"\tY"+i+"X"+j+"_Blue_R/T";
+    					header+="\tY"+i+"X"+j+"_Red_X2"+"\tY"+i+"X"+j+"_Red_Y2"+"\tY"+i+"X"+j+"_Red_XY"+
+    					"\tY"+i+"X"+j+"_Green_X2"+"\tY"+i+"X"+j+"_Green_Y2"+"\tY"+i+"X"+j+"_Green_XY"+
+    					"\tY"+i+"X"+j+"_Blue_X2"+"\tY"+i+"X"+j+"_Blue_Y2"+"\tY"+i+"X"+j+"_Blue_XY";
     				}
     			}
     		}
@@ -5495,15 +5863,22 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     		if (showIndividualComponents) {
     			for (int i=0;i<this.history.size();i++){
     				FocusingState focusingState=this.history.get(i);
+    				double [] zTxTy=useLMA?focusingState.getzTxTy():null;
     				double [][] metrics=focusingState.getMetrics(weightRatioRedToGreen,weightRatioBlueToGreen);
     				double [][] resolution=focusingState.getSharpness(weightRatioRedToGreen,weightRatioBlueToGreen);
-    				double dist= getLensDistance(
+    				double dist= (zTxTy==null)?getLensDistance(
     						focusingState.getCenterResolutions(), // {R-sharpness,G-sharpness,B-sharpness}
     		    			true, //boolean absolute, // return absolutely calibrated data
     		    			weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
     		    			weightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-    		    			1); //int debugLevel
+    		    			1): //int debugLevel
+    		    				zTxTy[0];
     				double []   averageMetrics=metrics[3];
+    				if (zTxTy!=null){
+        				averageMetrics=metrics[3].clone(); // to modify w/o changing original
+    					averageMetrics[1]=zTxTy[1]; // tiltX
+    					averageMetrics[2]=zTxTy[2]; // tiltY
+    				}
     				double []   averageResolution=resolution[3];
     				sb.append((i+1)+"\t");
     				String timestamp=focusingState.getTimestamp();
@@ -5555,8 +5930,9 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
         						if ((samples[ii][jj]!=null) && (samples[ii][jj][c]!=null)) {
         							sb.append(  "\t"+IJ.d2s(samples[ii][jj][c][0],3));
         							sb.append(  "\t"+IJ.d2s(samples[ii][jj][c][1],3));
+        							sb.append(  "\t"+IJ.d2s(samples[ii][jj][c][2],3));
         						} else {
-        							sb.append(  "\t---\t---");
+        							sb.append(  "\t---\t---\t---");
         						}
         					}
         				}
@@ -5572,9 +5948,21 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			for (int i=0;i<this.history.size();i++){
 //    				int parIndex=0;
     				FocusingState focusingState=this.history.get(i);
+    				double [] zTxTy=useLMA?focusingState.getzTxTy():null;
     				double [][] metrics=focusingState.getMetrics(weightRatioRedToGreen,weightRatioBlueToGreen);
-    				double [][] resolution=focusingState.getSharpness(weightRatioRedToGreen,weightRatioBlueToGreen);
+    				double [][] resolution={{Double.NaN,Double.NaN},{Double.NaN,Double.NaN},{Double.NaN,Double.NaN},{Double.NaN,Double.NaN}};
+    				try {
+    					resolution=focusingState.getSharpness(weightRatioRedToGreen,weightRatioBlueToGreen);
+    				} catch (Exception e){
+    					System.out.println("Failed to get resolution for history("+i+")");
+    					continue; // skip the whole line
+    				}
     				double []   averageMetrics=metrics[3];
+    				if (zTxTy!=null){
+        				averageMetrics=metrics[3].clone(); // to modify w/o changing original
+    					averageMetrics[1]=zTxTy[1]; // tiltX
+    					averageMetrics[2]=zTxTy[2]; // tiltY
+    				}
     				double []   averageResolution=resolution[3];
     				if (!justSummary) sb.append((i+1)+"\t");
     				String timestamp=focusingState.getTimestamp();
@@ -5599,12 +5987,13 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
 					sums[4]+=focusingState.motorsPos[0];
 					sums[5]+=focusingState.motorsPos[1];
 					sums[6]+=focusingState.motorsPos[2];
-    				double dist= getLensDistance(
-    						focusingState.getCenterResolutions(), // {R-sharpness,G-sharpness,B-sharpness}
-    		    			true, //boolean absolute, // return absolutely calibrated data
-    		    			weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
-    		    			weightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-    		    			1); //int debugLevel
+					double dist= (zTxTy==null)?getLensDistance(
+							focusingState.getCenterResolutions(), // {R-sharpness,G-sharpness,B-sharpness}
+							true, //boolean absolute, // return absolutely calibrated data
+							weightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
+							weightY, // R-frac, Y-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
+							1): //int debugLevel
+								zTxTy[0];
     				if (Double.isNaN(dist)){
     					if (!justSummary) sb.append("\t---");
     				} else {
@@ -5635,8 +6024,9 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
         	    					if ((samples[ii][jj]!=null) && (samples[ii][jj][cc]!=null)) {
         	        					sb.append(  "\t"+IJ.d2s(samples[ii][jj][cc][0],3));
         	        					sb.append(  "\t"+IJ.d2s(samples[ii][jj][cc][1],3));
+        	        					sb.append(  "\t"+IJ.d2s(samples[ii][jj][cc][2],3));
         	    					} else {
-        	    						sb.append(  "\t---\t---");
+        	    						sb.append(  "\t---\t---\t---");
         	    					}
         	    				}
         	    			}
@@ -5964,7 +6354,7 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     				double weightBlue){
     			double [][] metrics=getMetrics(weightRed, weightGreen, weightBlue);
     			double [][]sharpness={
-    					{1.0/metrics[0][this.indexR50All],1.0/metrics[0][this.indexR50Center]},
+    					{1.0/metrics[0][this.indexR50All],1.0/metrics[0][this.indexR50Center]}, //java.lang.NullPointerException
     					{1.0/metrics[1][this.indexR50All],1.0/metrics[1][this.indexR50Center]},
     					{1.0/metrics[2][this.indexR50All],1.0/metrics[2][this.indexR50Center]},
     					{0.0,0.0}};
@@ -5976,11 +6366,15 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			return sharpness;
     		}
     		public double [] getCenterResolutions(){
+    			try {
     			double [] resolutions={
     					1.0/this.psfMetricses[this.indices[0]][this.indexR50Center],  // red, r50% center
     					1.0/this.psfMetricses[this.indices[1]][this.indexR50Center],  // green, r50% center
     					1.0/this.psfMetricses[this.indices[2]][this.indexR50Center]}; // blue, r50% center
     			return resolutions;
+    			} catch (Exception e){
+    				return null;
+    			}
     		}
     		
     		public double [][] getMetrics(
@@ -5991,7 +6385,19 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     					1.0,
     					weightRatioBlueToGreen);
     		}
+    		// alternative mode (from aberration model) ising metrics[6][]
+    		public double [] getzTxTy(){
+    			if (this.psfMetricses==null){
+    				return null;
+    			}
+    			if ((this.psfMetricses.length<7) || (this.psfMetricses[6]==null)) {
+    				System.out.println("BUG? psfMetrics does not have line 6 with lens berration model z, tx, ty");
+    				return null;
+    			}
+    			double [] zTxTy={this.psfMetricses[6][0],this.psfMetricses[6][1],this.psfMetricses[6][2]};
+    			return zTxTy;
 
+    		}
     		public double [][] getMetrics(
     				double weightRed,
     				double weightGreen,
@@ -6002,8 +6408,12 @@ if (debugLevel>=debugThreshold) System.out.println(i+" "+diff[0]+" "+diff[1]+" "
     			double w=0.0;
     			for (int i=0;i<weights.length;i++) w+=weights[i];
     			for (int i=0;i<weights.length;i++) weights[i]/=w;
-    			metrics[3]=new double[this.psfMetricses[this.indices[0]].length];
-    			for (int c=0;c<3;c++) metrics[c]= this.psfMetricses[this.indices[c]];
+    			try {
+    				metrics[3]=new double[this.psfMetricses[this.indices[0]].length];
+    				for (int c=0;c<3;c++) metrics[c]= this.psfMetricses[this.indices[c]];
+    			} catch (Exception e){
+    				return null;
+    			}
     			for (int i=0; i<metrics[3].length;i++) {
     				metrics[3][i]=0.0;
     				if (squared[i]){

@@ -34,26 +34,21 @@ import ij.text.TextWindow;
 
 import java.awt.*;
 import java.awt.event.*;
-
 import java.io.*; // FIle
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Properties;
 
-
 import javax.swing.*; // TODO: modify methods that depend on it, use class CalibrationFileManagement
+
 import java.util.*; 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
+
+//import FocusingField.FocusingFieldMeasurement;
+//import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
 
 public class Aberration_Calibration extends PlugInFrame implements ActionListener {
@@ -63,6 +58,7 @@ public class Aberration_Calibration extends PlugInFrame implements ActionListene
 	private Panel panelConf1,panelConf2,panelRun, panelDistortions, panelFitDistortions, panelProcessDistortions,panelAberrations ;
 	private Panel panelCorrectGrid;
 	private Panel panelFocusing,panelFocusing1;
+	private Panel panelCurvature;
 	private Panel panelGoniometer;
 	private Panel panelPixelMapping, panelStereo,panelStereo1;
 	
@@ -523,6 +519,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 	public float [][] SIM_ARRAY=null; // first index - 0 - main, 1 - shifted by 0.5 pixel diagonally (to extract checker greens)
 
 	public static CalibrationHardwareInterface.LaserPointers LASERS=new CalibrationHardwareInterface.LaserPointers(LASER_POINTERS);
+	public static CalibrationHardwareInterface.PowerControl POWER_CONTROL=new CalibrationHardwareInterface.PowerControl();
 	public static CalibrationHardwareInterface.CamerasInterface CAMERAS=new CalibrationHardwareInterface.CamerasInterface(26,LASERS);
 	public static CalibrationHardwareInterface.FocusingMotors MOTORS=new CalibrationHardwareInterface.FocusingMotors();
 	
@@ -530,7 +527,8 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 	
 	public static LensAdjustment.FocusMeasurementParameters FOCUS_MEASUREMENT_PARAMETERS= new LensAdjustment.FocusMeasurementParameters(MOTORS.curpos);
 	public static CalibrationHardwareInterface.GoniometerMotors GONIOMETER_MOTORS= new CalibrationHardwareInterface.GoniometerMotors();
-	
+	public static FocusingField FOCUSING_FIELD=null;
+//	public String FOCUSING_FIELD_HISTORY_PATH=null;
 	//GoniometerParameters
 	public static Goniometer.GoniometerParameters GONIOMETER_PARAMETERS= new Goniometer.GoniometerParameters(GONIOMETER_MOTORS);
 	
@@ -564,7 +562,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		addKeyListener(IJ.getInstance());
 //		setLayout(new GridLayout(ADVANCED_MODE?8:5, 1));
 //		setLayout(new GridLayout(ADVANCED_MODE?9:6, 1));
-		setLayout(new GridLayout(ADVANCED_MODE?19:19, 1));
+		setLayout(new GridLayout(ADVANCED_MODE?20:20, 1));
 		Color color_configure=     new Color(200, 200,160);
 		Color color_process=       new Color(180, 180, 240);
 		Color color_conf_process=  new Color(180, 240, 240);
@@ -582,6 +580,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		panelRun.setLayout(new GridLayout(1, 0, 5, 5));
 		addButton("Process Calibration Files",panelRun);
 		addButton("Save",panelRun);
+		addButton("Save Selected",panelRun);
 		addButton("Restore",panelRun,color_restore);
 		addButton("Restore no autoload",panelRun);
 		addButton("Restore SFE Latest",panelRun,color_restore);
@@ -767,22 +766,52 @@ if (MORE_BUTTONS) {
 		panelFocusing = new Panel();
 		panelFocusing.setLayout(new GridLayout(1, 0, 5, 5));
 		addButton("Configure Focusing",panelFocusing,color_configure);
-		addButton("Head Orientation",panelFocusing);
+		if (MORE_BUTTONS) {		
+			addButton("Head Orientation",panelFocusing);
+		}
 		addButton("Lens Center",panelFocusing,color_process);
-        addButton("Find Grid",panelFocusing,color_lenses);
+//		if (MORE_BUTTONS) {		
+			addButton("Find Grid",panelFocusing,color_process);
+//		}
         addButton("Select WOI",panelFocusing,color_lenses);
         addButton("Reset Histories",panelFocusing,color_lenses);
         addButton("Motors Home",panelFocusing,color_lenses);
 		addButton("Auto Pre-focus",panelFocusing,color_process);
 		addButton("Scan Calib",panelFocusing,color_process);
+		
 		addButton("Auto Focus/Tilt",panelFocusing,color_process);
 //		addButton("List Pre-focus",panelFocusing);
 		addButton("Focus Average",panelFocusing,color_report);
+		addButton("Power Control",panelFocusing,color_configure);
 		addButton("Temp. Scan",panelFocusing,color_process);
+		addButton("Replay Hist",panelFocusing,color_debug);
 		//
 		addButton("List History",panelFocusing,color_report);
 		addButton("Show PSF",panelFocusing,color_report);
 		add(panelFocusing);
+		
+// panelCurvature		
+		panelCurvature=new Panel();
+		panelCurvature.setLayout(new GridLayout(1, 0, 5, 5));
+		addButton("Scan Calib LMA", panelCurvature,color_process);
+		addButton("Save History",   panelCurvature,color_debug);
+		addButton("Restore History",panelCurvature,color_restore);
+		addButton("History RMS",    panelCurvature,color_report);
+		addButton("Modify LMA",     panelCurvature,color_configure);
+		addButton("Load strategies", panelCurvature,color_restore);
+		addButton("Organize strategies", panelCurvature,color_configure);
+		addButton("Save strategies", panelCurvature,color_bundle);
+		addButton("LMA History",    panelCurvature,color_process);
+		addButton("List curv pars", panelCurvature,color_debug);
+		addButton("List curv data", panelCurvature,color_debug);
+		addButton("List qualB",     panelCurvature,color_report);
+		addButton("List curv",      panelCurvature,color_report);
+		addButton("Show curv corr", panelCurvature,color_report);
+		addButton("Test measurement", panelCurvature,color_debug);
+		addButton("Optimize qualB", panelCurvature,color_debug);
+		addButton("Focus/Tilt LMA", panelCurvature,color_process);
+		add(panelCurvature);
+		
 	//panelGoniometer
 		
 		panelGoniometer = new Panel();
@@ -903,6 +932,16 @@ if (MORE_BUTTONS) {
 		}
 		
 	}
+	public void remoteNotifyComplete(){
+		String shellCommand="ssh andrey@192.168.0.137 paplay /usr/share/sounds/KDE-Im-Error-On-Connection.ogg";
+		try {
+//			Process p = Runtime.getRuntime().exec("shell command");
+			Runtime.getRuntime().exec(shellCommand);
+		} catch (IOException e) {
+			System.out.println("Failed shell command: \""+shellCommand+"\"");
+		}
+		
+	}
 	public static String stack2string(Exception e) {
 		try {
 			StringWriter sw = new StringWriter();
@@ -968,6 +1007,7 @@ if (MORE_BUTTONS) {
 		if (DEBUG_LEVEL>0) System.out.println("--- Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")");
 
 		if (label==null) return;
+		if (FOCUSING_FIELD!=null) FOCUSING_FIELD.setThreads(THREADS_MAX);
 /* ======================================================================== */
 		if       (label.equals("Configure Globals")) {
 			showConfigureGlobalsDialog();
@@ -1023,11 +1063,18 @@ if (MORE_BUTTONS) {
 	    	String fileName= selectKernelsDirectory(PROCESS_PARAMETERS.kernelsDirectory);
 	        if (fileName!=null) PROCESS_PARAMETERS.kernelsDirectory=fileName;
 			return;
-			/* ======================================================================== */
+/* ======================================================================== */
 		     
 	    } else if (label.equals("Save")) {
 	    	saveProperties(null,PROCESS_PARAMETERS.kernelsDirectory,PROCESS_PARAMETERS.useXML, PROPERTIES);
 	    	return;
+/* ======================================================================== */
+	    } else if (label.equals("Save Selected")) {
+	    	Properties selectedProperties=new Properties();
+	    	selectedProperties.setProperty("selected", "true");
+	    	saveProperties(null,PROCESS_PARAMETERS.kernelsDirectory, PROCESS_PARAMETERS.useXML, selectedProperties);
+	    	return;
+	    	
 /* ======================================================================== */
 	        
 	    } else if (label.equals("Restore") || label.equals("Restore no autoload")) {
@@ -1080,7 +1127,8 @@ if (MORE_BUTTONS) {
 							DEBUG_LEVEL);
 
 		    		
-		    	}	    		
+		    	}
+		    	restoreFocusingHistory(false);
 	    	}
 	    	return;
 		
@@ -2494,6 +2542,7 @@ if (MORE_BUTTONS) {
 			// reset histories
 			MOTORS.clearPreFocus();
 			MOTORS.clearHistory();
+			POWER_CONTROL.lightsOnWithDelay();
 			return;
 		}
 /* ======================================================================== */
@@ -2504,6 +2553,7 @@ if (MORE_BUTTONS) {
 			
 			CAMERAS.probeCameraState(); // testing detection
 			CAMERAS.setupCameraAcquisition();
+			POWER_CONTROL.lightsOnWithDelay();
 			return;
 		}
 /* ======================================================================== */
@@ -2511,8 +2561,8 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
 			CAMERAS.setNumberOfThreads(THREADS_MAX);
+			POWER_CONTROL.lightsOnWithDelay();
 			CAMERAS.test1(true);
-			
 			return;
 		}
 /* ======================================================================== */
@@ -2520,6 +2570,7 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			CAMERAS.debugLevel=DEBUG_LEVEL;
 			CAMERAS.setNumberOfThreads(THREADS_MAX);
+			POWER_CONTROL.lightsOnWithDelay();
 			CAMERAS.test1(false);
 			return;
 		}
@@ -2552,6 +2603,7 @@ if (MORE_BUTTONS) {
 			}
 			// acquire camera image here, no lasers.
 			FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
+			POWER_CONTROL.lightsOnWithDelay();
 			imp_sel= CAMERAS.acquireSingleImage (
 					false, //boolean useLasers,
 					UPDATE_STATUS);
@@ -2579,6 +2631,7 @@ if (MORE_BUTTONS) {
 			}
 			DISTORTION_PROCESS_CONFIGURATION.sourceDirectory=src_dir;
 			CAMERAS.setNumberOfThreads(THREADS_MAX);
+			POWER_CONTROL.lightsOnWithDelay();
 			long startTime=System.nanoTime();
 			CAMERAS.acquire(DISTORTION_PROCESS_CONFIGURATION.sourceDirectory,true, UPDATE_STATUS); // true - use lasers
 			System.out.println("\"Acquire\" command finished in ("+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+" sec");
@@ -2643,7 +2696,7 @@ if (MORE_BUTTONS) {
             	// /getPointersXY(ImagePlus imp, int numPointers){               if
             	// calculate distortion grid for it
 
-            	matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Filed calibration - different image. 
+            	matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Field calibration - different image. 
             	matchSimulatedPattern.invalidateFocusMask();
             	int numAbsolutePoints=matchSimulatedPattern.calculateDistortions(
             			DISTORTION, //
@@ -3373,6 +3426,7 @@ if (MORE_BUTTONS) {
 				}
 // acquire camera image here, no lasers.
 				FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
+				POWER_CONTROL.lightsOnWithDelay();
 				imp_sel= CAMERAS.acquireSingleImage (
 						false, //boolean useLasers,
 						UPDATE_STATUS);
@@ -3404,6 +3458,21 @@ if (MORE_BUTTONS) {
 				return;
 			}
 			double [][][][][] rFullResults=new double [1][][][][];
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 			double [][] metrics=measurePSFMetrics(
 					imp_sel,
 					LENS_DISTORTION_PARAMETERS,
@@ -3415,6 +3484,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					rFullResults,
 					THREADS_MAX,
 					UPDATE_STATUS,
@@ -3444,6 +3514,8 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("Error","Image with selection is required");
 				return;
 			}
+		Rectangle oldWOI=FOCUS_MEASUREMENT_PARAMETERS.margins;
+		System.out.println("Old WOI="+oldWOI);
 			FOCUS_MEASUREMENT_PARAMETERS.margins=imp_sel.getRoi().getBounds();
 			return;
 		}
@@ -3469,6 +3541,7 @@ if (MORE_BUTTONS) {
 //			long 	  startTime=System.nanoTime();
 			FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
 			CAMERAS.debugLevel=DEBUG_LEVEL;
+			POWER_CONTROL.lightsOnWithDelay();
 			imp_sel= CAMERAS.acquireSingleImage (
 					UV_LED_LASERS,
 					UPDATE_STATUS);
@@ -3523,6 +3596,7 @@ if (MORE_BUTTONS) {
 					return;
 				}
 			}
+			POWER_CONTROL.lightsOnWithDelay();
 			long 	  startTime=System.nanoTime();
 			FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
 			imp_sel= CAMERAS.acquireSingleImage (
@@ -3577,7 +3651,7 @@ if (MORE_BUTTONS) {
 			// reset matchSimulatedPattern, so it will start from scratch
 			matchSimulatedPattern= new MatchSimulatedPattern(DISTORTION.FFTSize); // new instance, all reset
 			// next 2 lines are not needed for the new instance, but can be used alternatively if keeipg it
-			   matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Filed calibration - different image. 
+			   matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Field calibration - different image. 
 			   matchSimulatedPattern.invalidateFocusMask();
 
 			
@@ -3695,9 +3769,16 @@ if (MORE_BUTTONS) {
 			   	FOCUS_MEASUREMENT_PARAMETERS.result_PY0=camPars.eyesisSubCameras[stationNumber][0].py0;
 			   	FOCUS_MEASUREMENT_PARAMETERS.result_PSI=-camPars.eyesisSubCameras[stationNumber][0].psi; // "-" to show the current rotation (error), not where to rotate to correct
 			   	FOCUS_MEASUREMENT_PARAMETERS.result_FocalLength=camPars.eyesisSubCameras[stationNumber][0].focalLength;
+			   	
+			   	
+			   	// Update calcualted LENS_DISTORTION_PARAMETERS - especially px0, py0 - they were used to generate samples (not anymore)
+			   	
+			   	LENS_DISTORTION_PARAMETERS.setIntrincicFromSubcamera(camPars.eyesisSubCameras[stationNumber][0]);
+			   	
 // Use rotation from head lasers
 			   	if (FOCUS_MEASUREMENT_PARAMETERS.useHeadLasers){
 			   		psi=-headPointersTilt; // "-" - correction, instead of the target tilt
+				   	FOCUS_MEASUREMENT_PARAMETERS.result_PSI=psi; // Was not here, using relative to the pattern (w/o head lasers)
 			   	}
 			   	
 			   	double diffY=12*Math.sin(Math.PI/180.0*psi);
@@ -3803,6 +3884,7 @@ if (MORE_BUTTONS) {
 					return;
 				}
 			}
+			POWER_CONTROL.lightsOnWithDelay();
 			if (matchSimulatedPattern==null) {
 				matchSimulatedPattern= new MatchSimulatedPattern(DISTORTION.FFTSize); // new instance, all reset
 			}
@@ -3811,6 +3893,10 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("LENS_DISTORTION_PARAMETERS is not set");
 				return;
 			}
+			// CLear histories anyway
+			MOTORS.clearPreFocus();
+			MOTORS.clearHistory();
+			
 			int mode=autoMove? (FOCUS_MEASUREMENT_PARAMETERS.confirmFirstAuto?2:3):1;
 // not to forget to reset history after forcusing lens by thread 			
 			if (autoMove) MOTORS.clearPreFocus();
@@ -3895,10 +3981,27 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Scan Calib")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			checkSerialAndRestore(); // returns true if did not change or was restored 
+			checkSerialAndRestore(); // returns true if did not change or was restored
+			if (FOCUS_MEASUREMENT_PARAMETERS.showScanningSetup("Setup scanning parameters")) return;
+			MOTORS.setHysteresis(FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis);
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 //			int historyFrom=MOTORS.historySize()-1; // before scanning
 			int historyFrom=MOTORS.historySize();  // first during scanning (not yet exist)
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 			double[] range= ScanFocus(
 					null, // center at current position
 					MOTORS,
@@ -3912,6 +4015,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					THREADS_MAX,
 					UPDATE_STATUS,
 					MASTER_DEBUG_LEVEL,
@@ -3977,6 +4081,7 @@ if (MORE_BUTTONS) {
 						COMPONENTS,
 						OTF_FILTER,
 						PSF_PARS,
+						sampleCoord,
 						THREADS_MAX,
 						UPDATE_STATUS,
 						MASTER_DEBUG_LEVEL,
@@ -3985,6 +4090,116 @@ if (MORE_BUTTONS) {
 			saveCurrentConfig();
 			return;
 		}
+/* ======================================================================== */
+		if       (label.equals("Scan Calib LMA")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			checkSerialAndRestore(); // returns true if did not change or was restored
+			if (!FOCUS_MEASUREMENT_PARAMETERS.showScanningSetup("Setup scanning parameters for LMA")) return;
+			MOTORS.setHysteresis(FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis);
+			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
+
+//			FOCUSING_FIELD=null;
+			 // Here re-generate measurement sample coordinates, in other places - try to use existent
+			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+			double [][][] 	sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+					pX0,
+					pY0);
+			double[] range= ScanFocusTilt(
+					null, // center at current position
+					MOTORS,
+					CAMERAS,
+					LENS_DISTORTION_PARAMETERS,
+					matchSimulatedPattern, // should not bee null
+					FOCUS_MEASUREMENT_PARAMETERS,
+					PATTERN_DETECT,
+					DISTORTION,
+					SIMUL,
+					COMPONENTS,
+					OTF_FILTER,
+					PSF_PARS,
+					sampleCoord,
+					THREADS_MAX,
+					UPDATE_STATUS,
+					MASTER_DEBUG_LEVEL,
+					DISTORTION.loop_debug_level);
+			if (range==null ){
+				String msg="Scanning failed";
+				System.out.println(msg);
+				IJ.showMessage(msg);
+				return;
+			}
+			// set file path
+			String path=null;
+			String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
+			File dFile=new File(dir);
+			if (!dFile.isDirectory() &&  !dFile.mkdirs()) {
+				String msg="Failed to create directory "+dir;
+				IJ.showMessage(msg);
+				throw new IllegalArgumentException (msg);
+			}
+
+			String lensPrefix="";
+			if (FOCUS_MEASUREMENT_PARAMETERS.includeLensSerial && (FOCUS_MEASUREMENT_PARAMETERS.lensSerial.length()>0)){
+				lensPrefix=String.format("LENS%S-S%02d-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial,FOCUS_MEASUREMENT_PARAMETERS.manufacturingState);
+			}
+			path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
+			FOCUSING_FIELD= new FocusingField(
+					EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+					EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+					0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
+					FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+					FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+					FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+					pX0,
+					pY0,
+					sampleCoord,
+					this.SYNC_COMMAND.stopRequested);
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false,null);
+			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES, true);
+			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
+			System.out.println("Saving measurement history to "+path);
+			FOCUSING_FIELD.saveXML(path);
+//			FOCUSING_FIELD_HISTORY_PATH=path;
+			FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile=path;
+			saveCurrentConfig();
+// for now just copying from "Restore History". TODO: Make both more automatic (move number of parameters outside?)			
+			if (!FOCUSING_FIELD.configureDataVector(
+					true, //boolean silent
+					"Configure curvature - TODO: fix many settings restored from properties", // String title,
+					true, //boolean forcenew
+					true) // boolean enableReset
+					) return;
+			System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
+			System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
+	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
+			double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+			System.out.println("rms="+rms+", rms_pure="+rms_pure+" - with old parameters may be well off.");
+			remoteNotifyComplete();
+			POWER_CONTROL.setPower("light","off");
+			if (FOCUS_MEASUREMENT_PARAMETERS.scanRunLMA){
+				FOCUSING_FIELD.setAdjustMode(false,null);
+				boolean OK=FOCUSING_FIELD.LevenbergMarquardt(
+						null, //int [] zTxTyAdjustMode, // z, tx, ty - 0 - fixed, 1 - common, 2 - individual
+						null, // measurements
+						false, // true, // open dialog
+	    				true,// boolean autoSel,
+						DEBUG_LEVEL); //boolean openDialog, int debugLevel){
+				if (OK)	saveCurrentConfig();
+//				remoteNotifyComplete();
+			}
+//			remoteNotifyComplete();
+			return;
+		}
+		
+		
+		
 /* ======================================================================== */
 		if       ((label.equals("Manual Focus/Tilt")) || (label.equals("Auto Focus/Tilt"))|| (label.equals("Fine Focus"))) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
@@ -4024,6 +4239,23 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("LENS_DISTORTION_PARAMETERS is not set");
 				return;
 			}
+
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
+			
 			int mode=autoMove? (FOCUS_MEASUREMENT_PARAMETERS.confirmFirstAuto?2:3):1;
 			if (fineFocus) mode=FOCUS_MEASUREMENT_PARAMETERS.confirmFirstAuto?4:5;
 			int [] newPos=null;
@@ -4044,6 +4276,7 @@ if (MORE_BUTTONS) {
 									COMPONENTS,
 									OTF_FILTER,
 									PSF_PARS,
+									sampleCoord,
 									THREADS_MAX,
 									UPDATE_STATUS,
 									MASTER_DEBUG_LEVEL,
@@ -4070,6 +4303,7 @@ if (MORE_BUTTONS) {
 									COMPONENTS,
 									OTF_FILTER,
 									PSF_PARS,
+									sampleCoord,
 									THREADS_MAX,
 									UPDATE_STATUS,
 									MASTER_DEBUG_LEVEL,
@@ -4108,6 +4342,7 @@ if (MORE_BUTTONS) {
 							COMPONENTS,
 							OTF_FILTER,
 							PSF_PARS,
+							sampleCoord,
 							THREADS_MAX,
 							UPDATE_STATUS,
 							MASTER_DEBUG_LEVEL,
@@ -4140,6 +4375,7 @@ if (MORE_BUTTONS) {
 							COMPONENTS,
 							OTF_FILTER,
 							PSF_PARS,
+							sampleCoord,
 							THREADS_MAX,
 							UPDATE_STATUS,
 							MASTER_DEBUG_LEVEL,
@@ -4170,6 +4406,7 @@ if (MORE_BUTTONS) {
 				String path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+"-focus.csv";
 				if (MASTER_DEBUG_LEVEL>0) System.out.println ("Saving focusing log data to "+path);
 				MOTORS.listHistory(
+						FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null),
 						path, // on screen, path - to csv
 						FOCUS_MEASUREMENT_PARAMETERS.lensSerial,
 						FOCUS_MEASUREMENT_PARAMETERS.comment,
@@ -4215,7 +4452,21 @@ if (MORE_BUTTONS) {
 					FOCUS_MEASUREMENT_PARAMETERS,
 	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
 	    			DEBUG_LEVEL);
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
 
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 			moveAndMaybeProbe(
 					false,
 					MOTORS.readElphel10364Motors().clone(), // null OK
@@ -4230,6 +4481,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					THREADS_MAX,
 					UPDATE_STATUS,
 					MASTER_DEBUG_LEVEL+1,
@@ -4240,6 +4492,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("List History")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.listHistory(
+					FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null),
 					null, // on screen, path - to csv
 					FOCUS_MEASUREMENT_PARAMETERS.lensSerial,
 					FOCUS_MEASUREMENT_PARAMETERS.comment,
@@ -4252,6 +4505,305 @@ if (MORE_BUTTONS) {
 					);
 			return;
 		}
+/* ======================================================================== */
+		if       (label.equals("Save History")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			double pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+			double pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+// temporary - for generating correction files			
+//			pX0=LENS_DISTORTION_PARAMETERS.px0; // pixel coordinate of the the optical center
+//	       	pY0=LENS_DISTORTION_PARAMETERS.py0; // pixel coordinate of the the optical center
+
+			double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates( //{x,y,r}
+					pX0,   // lens center on the sensor
+					pY0);
+			// set file path
+			String path=null;
+			String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
+			File dFile=new File(dir);
+			if (!dFile.isDirectory() &&  !dFile.mkdirs()) {
+				String msg="Failed to create directory "+dir;
+				IJ.showMessage(msg);
+				throw new IllegalArgumentException (msg);
+			}
+
+			String lensPrefix="";
+			if (FOCUS_MEASUREMENT_PARAMETERS.includeLensSerial && (FOCUS_MEASUREMENT_PARAMETERS.lensSerial.length()>0)){
+				lensPrefix=String.format("LENS%S-S%02d-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial,FOCUS_MEASUREMENT_PARAMETERS.manufacturingState);
+			}
+			path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
+			FOCUSING_FIELD= new FocusingField(
+					EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+					EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+					0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
+					FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+					FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+					FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+					pX0,
+					pY0,
+					sampleCoord,
+					this.SYNC_COMMAND.stopRequested);
+
+			System.out.println("Saving measurement history to "+path);
+			MOTORS.addCurrentHistoryToFocusingField(FOCUSING_FIELD);
+			FOCUSING_FIELD.saveXML(path);
+//			FOCUSING_FIELD_HISTORY_PATH=path;
+			FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile=path;
+
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Restore History")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			restoreFocusingHistory(true); //boolean interactive)
+/*			
+	change - blank file - no autoload		
+			FOCUSING_FIELD=new FocusingField(
+					false, // true, // boolean smart,       // do not open dialog if default matches 
+					FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile, // FOCUSING_FIELD_HISTORY_PATH, //"",//); //String defaultPath); //			AtomicInteger stopRequested
+					this.SYNC_COMMAND.stopRequested);
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false);
+			if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES,true); // keep distortions center from history
+			System.out.println("Loaded FocusingField");
+			if (!FOCUSING_FIELD.configureDataVector(
+					true, // boolean silent (maybe add option with false to change number of parameters?)
+					"Configure curvature - TODO: fix many settings restored from properties", // String title
+					true, // boolean forcenew,
+					true) // boolean enableReset
+					) return;
+			System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
+			System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
+	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
+			double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+			System.out.println("rms="+rms+", rms_pure="+rms_pure);
+*/			
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("History RMS")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+//			FOCUSING_FIELD.setAdjustMode(false);
+	    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
+			double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+			double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+			System.out.println("rms="+rms+", rms_pure="+rms_pure);
+			FOCUSING_FIELD.printSetRMS(focusing_fx);
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Modify LMA")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false,null);
+			if (!FOCUSING_FIELD.configureDataVector(
+					false, // boolean silent,
+					"Re-configure curvature parameters", // String title
+					false, // boolean forcenew
+					true)  // boolean enableReset
+					) return;
+			FOCUSING_FIELD.setDataVector(
+					true, // calibrate mode
+					FOCUSING_FIELD.createDataVector());
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Load strategies")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.fieldFitting.fieldStrategies.loadStrategies(null,PROCESS_PARAMETERS.kernelsDirectory);
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Save strategies")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.fieldFitting.fieldStrategies.saveStrategies(null,PROCESS_PARAMETERS.kernelsDirectory);
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Organize strategies")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			int resp=0;
+			while (resp==0){
+				resp=FOCUSING_FIELD.organizeStrategies("Organize LMA strategies");
+			}
+			return;
+		}
+///organizeStrategies(String title)		
+/* ======================================================================== */
+		if       (label.equals("LMA History")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.setAdjustMode(false,null);
+			boolean OK=FOCUSING_FIELD.LevenbergMarquardt(
+					null, // int [] zTxTyAdjustMode, // z, tx, ty - 0 - fixed, 1 - common, 2 - individual					
+					null, // measurements
+					true, // open dialog
+    				true,// boolean autoSel,
+					DEBUG_LEVEL); //boolean openDialog, int debugLevel){
+			if (OK)	saveCurrentConfig();
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("List curv pars")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.listParameters("Field curvature measurement parameters",null); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("List curv data")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.listData("Field curvature measurement data",null); // to screen
+			return;
+		}
+
+/* ======================================================================== */
+		if       (label.equals("List qualB")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.listScanQB(); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("List curv")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.listCombinedResults(); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Show curv corr")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.showCurvCorr(); // to screen
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Test measurement")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.testMeasurement();
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Optimize qualB")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			FOCUSING_FIELD.testQualB(true); //     public double[] testQualB(boolean interactive)
+			return;
+		}
+		
+				
+		
+/* ======================================================================== */
+		if       (label.equals("Focus/Tilt LMA")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+				if (!restoreFocusingHistory(false))	return; // try to restore from the saved history file
+
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
+				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
+					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
+					// reset histories
+					MOTORS.clearPreFocus();
+					MOTORS.clearHistory();
+				} else {
+					IJ.showMessage("Error","Camera is not configured\nProcess canceled");
+					return;
+				}
+			}
+			// Just for old focal distance calculation
+			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
+					FOCUS_MEASUREMENT_PARAMETERS,
+	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
+	    			DEBUG_LEVEL);
+			
+			while (adjustFocusTiltLMA());
+			return;
+		}
+//		
 /* ======================================================================== */
 		if       (label.equals("Show PSF")) {
 			
@@ -4329,6 +4881,21 @@ if (MORE_BUTTONS) {
 				if (MASTER_DEBUG_LEVEL>0) System.out.println("Measured hysteresis is "+measuredHysteresis+" steps, configured hysteresis is set to "+
 						FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis+" motor steps");
 			}
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
 
 			if (FOCUS_MEASUREMENT_PARAMETERS.lensDistanceMoveToGoal && (newPos!=null)){
 				moveAndMaybeProbe(
@@ -4345,6 +4912,7 @@ if (MORE_BUTTONS) {
 						COMPONENTS,
 						OTF_FILTER,
 						PSF_PARS,
+						sampleCoord,
 						THREADS_MAX,
 						UPDATE_STATUS,
 						MASTER_DEBUG_LEVEL,
@@ -4518,7 +5086,8 @@ if (MORE_BUTTONS) {
 					Matcher matcher=fileNameFormat.matcher(fileList[i].getName());
 					if (matcher.find()){
 						if ((matcher.group(1)!=null) && multiLensPerSFE) lens= Integer.parseInt(matcher.group(1));
-						if ((matcher.group(2)!=null) && stageResults && multiLensPerSFE) manState=Integer.parseInt(matcher.group(2));
+//						if ((matcher.group(2)!=null) && stageResults && multiLensPerSFE) manState=Integer.parseInt(matcher.group(2));
+						if ((matcher.group(2)!=null) && stageResults) manState=Integer.parseInt(matcher.group(2));
 					} else {
 						matcher=fileNameFormat0.matcher(fileList[i].getName());
 						if (matcher.find()){
@@ -4534,6 +5103,7 @@ if (MORE_BUTTONS) {
 						ts=Double.parseDouble(sts);
 					} else {
 						System.out.println("Failed to find timestamp in "+fileList[i].getName()+", lens="+lens+" manState="+manState);
+						continue;
 					}
 					if (DEBUG_LEVEL>1){
 						System.out.println (i+": "+fileList[i].getName()+ " lens="+lens+" manState="+manState+" timestamp="+ts);
@@ -4636,8 +5206,8 @@ if (MORE_BUTTONS) {
     					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_B50,3));
     					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_RC50,3));
     					//    	    	if (iState==0) { // to visually separate different lenses
-    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PX0-0.5*sensorDimensions[iSFE][0],3));
-    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PY0-0.5*sensorDimensions[iSFE][1],3));
+    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PX0-0.5*sensorDimensions[iSFE][0]-sfeParameters[iSFE][iLens][iState].centerDeltaX,3));
+    					sb.append("\t"+IJ.d2s(sfeParameters[iSFE][iLens][iState].result_PY0-0.5*sensorDimensions[iSFE][1]-sfeParameters[iSFE][iLens][iState].centerDeltaY,3));
     					//    	    	} else {
     					//    	    		sb.append("\t\t");
     					//    	    	}
@@ -4682,6 +5252,17 @@ if (MORE_BUTTONS) {
 					return;
 				}
 			}
+			double [][][] sampleCoord=null;
+			if (FOCUSING_FIELD!=null){
+				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				FOCUSING_FIELD.testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+			} else {
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
+						FOCUS_MEASUREMENT_PARAMETERS.result_PY0);
+			}
+			
 			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
 					FOCUS_MEASUREMENT_PARAMETERS,
 	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
@@ -4700,79 +5281,315 @@ if (MORE_BUTTONS) {
 					COMPONENTS,
 					OTF_FILTER,
 					PSF_PARS,
+					sampleCoord,
 					THREADS_MAX,
 					UPDATE_STATUS,
 					MASTER_DEBUG_LEVEL,
 					DISTORTION.loop_debug_level);
 			return;
-		}	
+		}
+/* ======================================================================== */
+		//"Power Control"
+		if       (label.equals("Power Control")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			POWER_CONTROL.setDebugLevel(DEBUG_LEVEL);
+			POWER_CONTROL.showDialog("Configure power control", true);
+			return;
+		}
+		//"Replay Hist"
+/* ======================================================================== */
+		FocusingField ffReplay=null; // will be passed to a next command
+		if       (label.equals("Replay Hist")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			if (FOCUSING_FIELD==null) {
+				String msg="FOCUSING_FIELD is null";
+				System.out.println("msg");
+				IJ.showMessage("Error",msg);
+				return;
+			}
+			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+			ffReplay=new FocusingField(
+					false, // true, // boolean smart,       // do not open dialog if default matches 
+					FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile, // FOCUSING_FIELD_HISTORY_PATH, //"",//); //String defaultPath); //			AtomicInteger stopRequested
+					this.SYNC_COMMAND.stopRequested);
+			String path=FOCUSING_FIELD.getHistoryPath();
+			if (path==null) return; // did not load
+			GenericDialog gd=new GenericDialog("Select Replay mode");
+			boolean modeTempScan=true;
+			gd.addCheckbox("Calculate Thermal parameters from the restored history (false - just average)", modeTempScan);
+			gd.showDialog();
+			if (gd.wasCanceled()) return;
+			modeTempScan=gd.getNextBoolean();
+			label=modeTempScan?"Temp. Scan":"Focus Average";
+			 FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics=true;
+			// And fall through to the next command
+		}
+		// "Restore History"
+
 /* ======================================================================== */
 		if       (label.equals("Temp. Scan") || label.equals("Focus Average")) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
 			boolean modeAverage=label.equals("Focus Average");
+			boolean noTiltScan=true;
+			boolean replayMode= ffReplay != null;
+	      	String [] zTxTyAdjustModeNames={"keep", "common","individual"};
+	    	String [] zTxTyNames={"z", "tx","ty"};
+//			boolean useLMA=true;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
 					FOCUS_MEASUREMENT_PARAMETERS,
 	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
 	    			DEBUG_LEVEL);
-			GenericDialog gd = new GenericDialog("Temperature Scan");
-			if (modeAverage) {
-				gd.addMessage("This program will repetitively measure focal distance for specified time and average (and record) results.");
+			GenericDialog gd = new GenericDialog(modeAverage?"Averaging measurements":"Temperature Scan");
+			//replayMode
+			double scanMinutes=modeAverage?2.0:30.0;
+			if (replayMode){
+
 			} else {
-				gd.addMessage("This program will repetitively measure focal distance and temperature, recording the results.");
-				gd.addMessage("Temperature has to be varied separately.");
-				gd.addMessage("Use \"List History\" to see the results.");
-				gd.addCheckbox("Turn lasers off to protect from overheating",true);
+				if (modeAverage) {
+					gd.addMessage("This program will repetitively measure focal distance for specified time and average (and record) results.");
+				} else {
+					gd.addMessage("This program will repetitively measure focal distance and temperature, recording the results.");
+					gd.addMessage("Temperature has to be varied separately.");
+					gd.addMessage("Use \"List History\" to see the results.");
+					gd.addCheckbox("Turn lasers off to protect from overheating",true);
+					if (!POWER_CONTROL.isPowerControlEnabled()){
+						gd.addMessage("Power control hardware is disabled, use \"Power Control\" command to enable it before proceeding");
+					}
+				}
+				gd.addCheckbox("Erase previous measurement history",modeAverage);
+//				gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
+				gd.addCheckbox     ("Use lens aberration model (if available) for focal distance and tilts", FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics);
+				//			gd.addCheckbox("Use LMA calculations for focus/tilt",useLMA);
+				if (modeAverage) {
+					gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
+				} else {
+					gd.addCheckbox    ("Enable power control for heater and fan", FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable);
+					gd.addNumericField("Maximal allowed temperature",             FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature,  3,5,"C");
+					gd.addNumericField("Heater ON time",                          FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes,  1,5,"min");
+					gd.addNumericField("Both heater and fan OFF time",            FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes,  1,5,"min");
+					gd.addNumericField("Fan ON time",                             FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes,  1,5,"min");
+		    		gd.addNumericField("Report focal length at this temperature", FOCUS_MEASUREMENT_PARAMETERS.reportTemperature, 1,5,"C");
+				}
 			}
-			gd.addCheckbox("Erase previous measurement history",modeAverage);
-			double scanMinutes=modeAverage?1.0:30.0;
-    		gd.addNumericField("Measure for ",   scanMinutes , 1,5," minutes");
-    		gd.showDialog();
-    		if (gd.wasCanceled()) return;
-    		if (!modeAverage && gd.getNextBoolean()){
-    			UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
-    			UV_LED_LASERS.lasersOff(FOCUS_MEASUREMENT_PARAMETERS);
-				if (MASTER_DEBUG_LEVEL>0) System.out.println ("Turned laser pointers off to protect from overheating");
-    		}
-			if (gd.getNextBoolean()) MOTORS.clearHistory();
-			scanMinutes=gd.getNextNumber();
+			gd.addCheckbox("Allow tilt scan when looking for the best fit",!noTiltScan);
+
+			if (FOCUSING_FIELD!=null) {
+				FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+				for (int n=0;n<FOCUSING_FIELD.zTxTyAdjustMode.length;n++){
+					gd.addChoice("Adjust "+zTxTyNames[n]+" mode",zTxTyAdjustModeNames,zTxTyAdjustModeNames[FOCUSING_FIELD.zTxTyAdjustMode[n]]);
+				}
+				gd.addChoice("Recalculate tilts during averaging",zTxTyAdjustModeNames,zTxTyAdjustModeNames[FOCUSING_FIELD.recalculateAverageTilts]);
+//	    		gd.addCheckbox    ("Store new calculated (during averaging) tilts", FOCUSING_FIELD.updateAverageTilts);
+				
+			}
+			gd.showDialog();
+			if (gd.wasCanceled()) return;
+			if (replayMode){
+			} else {
+				if (!modeAverage && gd.getNextBoolean()){ // was only asked in thermal scan mode
+					UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
+					UV_LED_LASERS.lasersOff(FOCUS_MEASUREMENT_PARAMETERS);
+					if (MASTER_DEBUG_LEVEL>0) System.out.println ("Turned laser pointers off to protect from overheating");
+				}
+				if (gd.getNextBoolean()) MOTORS.clearHistory();
+				//			noTiltScan=!gd.getNextBoolean();
+				FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics=gd.getNextBoolean();
+				// Only try to read history if useLMAMetrics is set
+				if (FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD==null)) {
+					if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
+					if (!restoreFocusingHistory(false))	{  // try to restore from the saved history file
+						System.out.println("Failed to restore history, disabling use of lens aberration model");					
+					}
+					FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+				}
+//				boolean useLMA=FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null);
+				if (modeAverage) {
+					scanMinutes=gd.getNextNumber();
+				} else {
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable=gd.getNextBoolean();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature=gd.getNextNumber();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes=gd.getNextNumber();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes=gd.getNextNumber();
+					FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes=gd.getNextNumber();
+		    		FOCUS_MEASUREMENT_PARAMETERS.reportTemperature=gd.getNextNumber();
+
+					scanMinutes=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes;
+				}
+			}
+			noTiltScan=!gd.getNextBoolean();
+
+			if (FOCUSING_FIELD!=null) {
+				for (int n=0;n<FOCUSING_FIELD.zTxTyAdjustMode.length;n++){
+					FOCUSING_FIELD.zTxTyAdjustMode[n]=gd.getNextChoiceIndex();
+				}
+				FOCUSING_FIELD.recalculateAverageTilts=gd.getNextChoiceIndex();
+				//	    		FOCUSING_FIELD.updateAverageTilts=gd.getNextBoolean();
+			}
+			boolean useLMA=FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null);
 			long startTime=System.nanoTime();
 			long endTime=startTime+(long) (6E10*scanMinutes);
 			if (MASTER_DEBUG_LEVEL>0) System.out.println(" startTime= "+startTime+", endTime="+endTime);
 			int runs=0;
-			while (System.nanoTime()<endTime){
+			double [][][] sampleCoord=null;
+			double pX0;
+			double pY0;
+			if (FOCUSING_FIELD!=null){
+				sampleCoord=FOCUSING_FIELD.getSampleCoord();
+				pX0=FOCUSING_FIELD.pX0_distortions;
+				pY0=FOCUSING_FIELD.pY0_distortions;
 
-
-				moveAndMaybeProbe(
-						true, // just move, not probe
-						null, // no move, just measure
-						MOTORS,
-						CAMERAS,
-						LENS_DISTORTION_PARAMETERS,
-						matchSimulatedPattern, // should not be null
-						FOCUS_MEASUREMENT_PARAMETERS,
-						PATTERN_DETECT,
-						DISTORTION,
-						SIMUL,
-						COMPONENTS,
-						OTF_FILTER,
-						PSF_PARS,
-						THREADS_MAX,
-						UPDATE_STATUS,
-						MASTER_DEBUG_LEVEL,
-						DISTORTION.loop_debug_level);
-				runs++;
-				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
-				if (secondsLeft<0) secondsLeft=0;
-				if (MASTER_DEBUG_LEVEL>0) System.out.println(" Measured "+runs+", "+secondsLeft+" seconds left");
-				if (this.SYNC_COMMAND.stopRequested.get()>0) {
-					System.out.println("User requested stop");
-					break;
+			} else {
+				pX0=FOCUS_MEASUREMENT_PARAMETERS.result_PX0;
+				pY0=FOCUS_MEASUREMENT_PARAMETERS.result_PY0;
+				sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+						pX0,
+						pY0);
+			}
+			if (useLMA){
+				FOCUSING_FIELD.testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+				if (MASTER_DEBUG_LEVEL>0) {
+					System.out.println("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+					System.out.println("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+					System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
 				}
+			}
+			if (!replayMode){
+				long stateEndTime=endTime;
+				String [] stateNames={"IDLE","HEATING","WAITING","COOLING","FINISHED"};
+				if (!modeAverage) {
+					POWER_CONTROL.setPower("fan","off");
+					POWER_CONTROL.setPower("heater","on");
+					stateEndTime=startTime+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes);
+				}
+				int scanState=(!modeAverage && FOCUS_MEASUREMENT_PARAMETERS.powerControlEnable)?1:-1;
+				if (scanState>=0){
+					endTime=startTime+(long) (6E10*(
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlHeaterOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes+
+							FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes));
+				}
+				while (System.nanoTime()<endTime){
+					moveAndMaybeProbe(
+							true, // just move, not probe
+							null, // no move, just measure
+							MOTORS,
+							CAMERAS,
+							LENS_DISTORTION_PARAMETERS,
+							matchSimulatedPattern, // should not be null
+							FOCUS_MEASUREMENT_PARAMETERS,
+							PATTERN_DETECT,
+							DISTORTION,
+							SIMUL,
+							COMPONENTS,
+							OTF_FILTER,
+							PSF_PARS,
+							sampleCoord,
+							THREADS_MAX,
+							UPDATE_STATUS,
+							MASTER_DEBUG_LEVEL,
+							DISTORTION.loop_debug_level);
+					runs++;
+					if (this.SYNC_COMMAND.stopRequested.get()>0) {
+						System.out.println("User requested stop");
+						break;
+					}
+					// Temperature within limits?
+					if (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature){
+						POWER_CONTROL.setPower("heater","off");
+					}
+					//				long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
+					long secondsLeft=(long) (0.000000001*(endTime-System.nanoTime()));
+					if (secondsLeft<0) secondsLeft=0;
+					long secondsLeftState=(long) (0.000000001*(stateEndTime-System.nanoTime()));
+					if (secondsLeftState<0) secondsLeftState=0;
 
+					boolean timerOver=(System.nanoTime()>=stateEndTime) || 
+							((scanState==1) && (FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature>=FOCUS_MEASUREMENT_PARAMETERS.powerControlMaximalTemperature));
+					if ((scanState>0) && timerOver) {
+						scanState++;
+						switch (scanState) {
+						case 2:
+							POWER_CONTROL.setPower("heater","off");
+							POWER_CONTROL.setPower("fan","off");
+							stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlNeitherOnMinutes);
+							break;
+						case 3:
+							POWER_CONTROL.setPower("heater","off");
+							POWER_CONTROL.setPower("fan","on");
+							stateEndTime=System.nanoTime()+(long) (6E10*FOCUS_MEASUREMENT_PARAMETERS.powerControlFanOnMinutes);
+							break;
+
+						}
+						// nothing specific is needed for case 4 - it will end anyway
+					}
+					if (MASTER_DEBUG_LEVEL>0) {
+						if (scanState>=0){
+							System.out.println(" Measured "+runs+", state="+stateNames[scanState]+",  t="+
+									FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ("+secondsLeft+")");
+						} else {
+							System.out.println(" Measured "+runs+",  t="+FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C, "+secondsLeftState+" seconds left ");
+						}
+					}
+					if (scanState>=(stateNames.length-1)) break; // last state is "Finished"
+				}
+				if (!modeAverage) {
+					if (DEBUG_LEVEL>0) System.out.println("Turning both heater and fan off");
+					POWER_CONTROL.setPower("fan","off");
+					POWER_CONTROL.setPower("heater","off");
+				}
 			}
 			
-			if (FOCUS_MEASUREMENT_PARAMETERS.saveResults) {
+			// LMA version
+			FocusingField ff= null;
+			double [] ZTM=null;
+			if (useLMA){
+//			boolean replayMode= ffReplay != null;
+				
+				if (replayMode) {
+					ff=ffReplay;
+					ff.setDebugLevel(DEBUG_LEVEL);
+					ff.setAdjustMode(false,null);
+					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+					runs=ff.measurements.size();
+				} else {
+					ff= new FocusingField(
+							EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+							EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+							0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
+							FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+							FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+							FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+							pX0,
+							pY0,
+							sampleCoord,
+							this.SYNC_COMMAND.stopRequested);
+
+					ff.setDebugLevel(DEBUG_LEVEL);
+					ff.setAdjustMode(false,null);
+					if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+					MOTORS.addCurrentHistoryToFocusingField(
+							ff,
+							(runs==0)?0:(MOTORS.historySize()-runs),
+									MOTORS.historySize()); // all newly acquired
+				}
+//	TODO: Remove after checking average - no, it is needed again as it calculates average through LMA simultaneously
+				
+				
+				if (modeAverage && (FOCUSING_FIELD!=null)){ // calculate/show average over the last run - only in "average" mode
+					ZTM= FOCUSING_FIELD.averageZTM( // finds zc, not z0
+							noTiltScan,
+							ff,  // no tilt scan - faster
+							FOCUSING_FIELD.recalculateAverageTilts); // boolean keepTilt){ // keep existent tilt
+					if (MASTER_DEBUG_LEVEL>0) {
+					}
+				}
+			}
+			
+			if (FOCUS_MEASUREMENT_PARAMETERS.saveResults && !replayMode) {
 				String dir=getResultsPath(FOCUS_MEASUREMENT_PARAMETERS);
 				File dFile=new File(dir);
 				if (!dFile.isDirectory() &&  !dFile.mkdirs()) {
@@ -4782,13 +5599,24 @@ if (MORE_BUTTONS) {
 				}
 				String lensPrefix="";
 				if (FOCUS_MEASUREMENT_PARAMETERS.includeLensSerial && (FOCUS_MEASUREMENT_PARAMETERS.lensSerial.length()>0)){
-//					lensPrefix=String.format("LENS%S-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial);
 					lensPrefix=String.format("LENS%S-S%02d-",FOCUS_MEASUREMENT_PARAMETERS.lensSerial,FOCUS_MEASUREMENT_PARAMETERS.manufacturingState);
 				}
 				String path=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+
 				(modeAverage?"-summary.csv":"-tempscan.csv");
 				if (MASTER_DEBUG_LEVEL>0) System.out.println ((modeAverage?"Saving averaged measurements to ":"Saving temperature measurement log data to ")+path);
+				int sensorWidth=2992,sensorHeight=1936;
+				if ((LENS_DISTORTIONS!=null) && (LENS_DISTORTIONS.fittingStrategy!=null) && (LENS_DISTORTIONS.fittingStrategy!=null)&&
+						(LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData!=null) &&
+						(LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters!=null)){
+					sensorWidth=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorWidth;
+					sensorHeight=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorHeight;
+				}
+				if (FOCUSING_FIELD!=null){
+					sensorWidth=FOCUSING_FIELD.sensorWidth;
+					sensorHeight=FOCUSING_FIELD.sensorHeight;
+				}
 				MOTORS.listHistory(
+						useLMA,
 						path, // on screen, path - to csv
 						FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
 						FOCUS_MEASUREMENT_PARAMETERS.lensSerial,
@@ -4800,44 +5628,168 @@ if (MORE_BUTTONS) {
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
 						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY,
 						label.equals("Focus Average"),
-						FOCUS_MEASUREMENT_PARAMETERS.result_PX0-LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorWidth/2,
-						FOCUS_MEASUREMENT_PARAMETERS.result_PY0-LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.sensorHeight/2,
+						FOCUS_MEASUREMENT_PARAMETERS.result_PX0-sensorWidth/2,
+						FOCUS_MEASUREMENT_PARAMETERS.result_PY0-sensorHeight/2,
 						FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,
 						FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT
 						);
-			}
-			if (!modeAverage) {
-				double [] lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
-						runs,             // number of last samples from history to use, 0 - use all
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
-				);
-				double [] allKT=MOTORS.focusingHistory.temperatureLinearApproximation(
-						0,             // number of last samples from history to use, 0 - use all
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
-						FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
-				);
-				FOCUS_MEASUREMENT_PARAMETERS.result_lastKT=lastKT[1];   // focal distance temperature coefficient (um/C), measured from last run 
-				FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20=lastKT[0]+20*lastKT[1]; // focal distance for 20C, measured from last run 
-				FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT=allKT[1];   // focal distance temperature coefficient (um/C), measured from all the measurement histgory 
-				FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20=allKT[0]+20*allKT[1]; // focal distance for 20C, measured from  all the measurement histgory
-				if (MASTER_DEBUG_LEVEL>0){
-					String msg=
-						"Focal distance temperature expansion is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,2)+
-						" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,2)+")"+
-						" microns per C, measured from this run (measured from all the history)\n"+
-						"Focal distance at 20C is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20,2)+
-						" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20,2)+")"+
-						" microns, measured from this run (measured from all the history)";
-					System.out.println(msg);
-					IJ.showMessage("Info",msg);
+				if (useLMA && (ff!=null)){
+					String focusingPath=dFile+Prefs.getFileSeparator()+lensPrefix+CAMERAS.getLastTimestampUnderscored()+".history-xml";
+					System.out.println("Saving measurement history to "+focusingPath); // Do not save history here
+					ff.saveXML(focusingPath);
 				}
+			}
+// Calculate and show average distances and tilts for measured history			
+			
+			if (!modeAverage) {
+				double [] lastKT;
+				double [] allKT;
+				if (!replayMode){
+					remoteNotifyComplete();
+					POWER_CONTROL.setPower("light","off");
+					lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+							useLMA,
+							runs,             // number of last samples from history to use, 0 - use all
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
+							);
+					allKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+							useLMA,
+							0,             // number of last samples from history to use, 0 - use all
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightK,
+							FOCUS_MEASUREMENT_PARAMETERS.lensDistanceWeightY
+							);
+					FOCUS_MEASUREMENT_PARAMETERS.result_lastKT=lastKT[1];   // focal distance temperature coefficient (um/C), measured from last run 
+					FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20=lastKT[0]+20*lastKT[1]; // focal distance for 20C, measured from last run 
+					FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT=allKT[1];   // focal distance temperature coefficient (um/C), measured from all the measurement histgory 
+					FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20=allKT[0]+20*allKT[1]; // focal distance for 20C, measured from  all the measurement histgory
+					if (MASTER_DEBUG_LEVEL>0){
+						String msg=
+								"Focal distance temperature expansion is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,3)+
+								" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,3)+")"+
+								" microns per C, measured from this run (measured from all the history)\n"+
+								"Focal distance at 20C is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20,2)+
+								" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20,2)+")"+
+								" microns, measured from this run (measured from all the history)\n"+
+								"Focal distance at "+FOCUS_MEASUREMENT_PARAMETERS.reportTemperature+ "C is "+
+								IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20+
+										(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,2)+
+								" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20+
+										(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,2)+")"+
+								" microns, measured from this run (measured from all the history)";
+						System.out.println(msg);
+						IJ.showMessage("Info",msg);
+					}
+				}
+// Now in LMA mode - recalculate and overwrite
+/* */				
+				if (useLMA){
+					if (replayMode) {
+						ff=ffReplay;
+						ff.setDebugLevel(DEBUG_LEVEL);
+						ff.setAdjustMode(false,null);
+						if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+						runs=ff.measurements.size();
+					} else {
+						ff= new FocusingField(
+								EYESIS_CAMERA_PARAMETERS.getSensorWidth(),
+								EYESIS_CAMERA_PARAMETERS.getSensorHeight(),
+								0.001*EYESIS_CAMERA_PARAMETERS.getPixelSize(0), //subCamera_0.pixelSize,
+								FOCUS_MEASUREMENT_PARAMETERS.serialNumber,
+								FOCUS_MEASUREMENT_PARAMETERS.lensSerial, // String lensSerial, // if null - do not add average
+								FOCUS_MEASUREMENT_PARAMETERS.comment, // String comment,
+								pX0,
+								pY0,
+								sampleCoord,
+								this.SYNC_COMMAND.stopRequested);
+
+						ff.setDebugLevel(DEBUG_LEVEL);
+						ff.setAdjustMode(false,null);
+						if (PROPERTIES!=null) ff.getProperties("FOCUSING_FIELD.", PROPERTIES,true);
+						MOTORS.addCurrentHistoryToFocusingField(ff); // all, not just newly acquired
+						if (MASTER_DEBUG_LEVEL>0){
+							System.out.println ("*** Calculating focal distance shift for each of "+MOTORS.historySize()+" recorded measurments ***");
+						}
+					}
+					// finds zc, not z0
+					double [][] allZTT=FOCUSING_FIELD.getAllZTT( // z, tx, ty, temperature - may contain null for bad measurements
+							noTiltScan,
+							ff,  // no tilt scan - faster
+							FOCUSING_FIELD.recalculateAverageTilts); // boolean keepTilt){ // keep existent tilt
+							
+					lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+							allZTT,
+							runs
+							);
+					allKT=MOTORS.focusingHistory.temperatureLinearApproximation(
+							allZTT,
+							0
+							);
+					FOCUS_MEASUREMENT_PARAMETERS.result_lastKT=lastKT[1];   // focal distance temperature coefficient (um/C), measured from last run 
+					FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20=lastKT[0]+20*lastKT[1]; // focal distance for 20C, measured from last run 
+					FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT=allKT[1];   // focal distance temperature coefficient (um/C), measured from all the measurement histgory 
+					FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20=allKT[0]+20*allKT[1]; // focal distance for 20C, measured from  all the measurement histgory
+				}
+/* */				
+			}
+			if (useLMA){
+				gd=new GenericDialog(modeAverage?"Averaging results":"Thermal scanning results");
+				String msg="";
+				if (modeAverage){
+					if (ZTM!=null) {
+						msg="Average (through LMA):\n"+
+								"Relative focal shift "+IJ.d2s(ZTM[0],3)+"um (absolute - "+IJ.d2s(ZTM[0]+FOCUSING_FIELD.qualBOptimizationResults[0],3)+"um)\n"+
+								"Relative horizontal tilt "+IJ.d2s(ZTM[1],3)+"um/mm (absolute - "+IJ.d2s(ZTM[1]+FOCUSING_FIELD.qualBOptimizationResults[1],3)+"um.mm)\n"+
+								"Relative vertical tilt "+IJ.d2s(ZTM[2],3)+"um/mm (absolute - "+IJ.d2s(ZTM[2]+FOCUSING_FIELD.qualBOptimizationResults[2],3)+"um.mm)\n";
+					} else {
+						msg="Failed to calulate average focus/tilt";
+					}
+				}else {
+					msg=
+							"Determined by LMA: Focal distance temperature expansion is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,3)+
+							" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,3)+")"+
+							" microns per C, measured from this run (measured from all the history)\n"+
+							"Focal distance at 20C is "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20,2)+
+							" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20,2)+")"+
+							" microns, measured from this run (measured from all the history)\n"+
+							"Focal distance at "+FOCUS_MEASUREMENT_PARAMETERS.reportTemperature+ "C is "+
+							IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_lastFD20+
+									(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_lastKT,2)+
+							" ("+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryFD20+
+									(FOCUS_MEASUREMENT_PARAMETERS.reportTemperature-20)*FOCUS_MEASUREMENT_PARAMETERS.result_allHistoryKT,2)+")"+
+							" microns, measured from this run (measured from all the history)";
+				}
+				System.out.println(msg);
+				gd.addMessage(msg);
+				double [][] zTxTyAbsRel=null;
+				if (FOCUSING_FIELD.recalculateAverageTilts==1){ // only if recalculated
+					zTxTyAbsRel=FOCUSING_FIELD.getZ0TxTyAbsRel(); // z - z0, not zc here !
+					double [][] zcZ0TxTy=FOCUSING_FIELD.getZcZ0TxTy(ff.measurements);
+					gd.addMessage("----------------------");
+					msg=    "Average relative z0 parameter: "+IJ.d2s(zTxTyAbsRel[1][0],3)+"um    (absolute: "+IJ.d2s(zTxTyAbsRel[0][0],3)+"um\n"+
+							"Average relative tx parameter: "+IJ.d2s(zTxTyAbsRel[1][1],3)+"um/mm (absolute: "+IJ.d2s(zTxTyAbsRel[0][1],3)+"um/mm\n"+
+							"Average relative ty parameter: "+IJ.d2s(zTxTyAbsRel[1][2],3)+"um/mm (absolute: "+IJ.d2s(zTxTyAbsRel[0][2],3)+"um/mm\n\n";
+					msg+=   "Average zc:     "+IJ.d2s(zcZ0TxTy[0][0],3)+"um\n"+
+							"Average Tilt x: "+IJ.d2s(zcZ0TxTy[0][1],3)+"um/mm\n"+
+							"Average Tilt y: "+IJ.d2s(zcZ0TxTy[0][2],3)+"um/mm\n";
+					System.out.println(msg);
+					gd.addMessage(msg);
+					gd.addCheckbox("Store calculated tilts, defaultValue",FOCUSING_FIELD.updateAverageTilts);
+				}
+				gd.showDialog();
+	    		if (!gd.wasCanceled()){
+					if (FOCUSING_FIELD.recalculateAverageTilts==1){ // only if recalculated
+			    		FOCUSING_FIELD.updateAverageTilts=gd.getNextBoolean();
+			    		if (FOCUSING_FIELD.updateAverageTilts){
+			    			FOCUSING_FIELD.avgTx=zTxTyAbsRel[0][1]; // average absolute tilt X (optionally used when finding Z of the glued SFE)
+			    			FOCUSING_FIELD.avgTy=zTxTyAbsRel[0][2]; // average absolute tilt Y (optionally used when finding Z of the glued SFE)
+			    		}
+					}
+	    		}
 			}
 			saveCurrentConfig();
 			return;
 		}	
-///	"No-move measure"	
-		
 /* ======================================================================== */
 		if       (label.equals("Configure Goniometer")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
@@ -4897,12 +5849,14 @@ if (MORE_BUTTONS) {
 					"Taget angular size vertical:   "+IJ.d2s(targetAngleVertical,1)+" degrees\n"
 			);
 			GONIOMETER.debugLevel=DEBUG_LEVEL;
+			POWER_CONTROL.lightsOnWithDelay();
 			boolean goniometerScanOK=GONIOMETER.scanAndAcquire(
 					targetAngleHorizontal,
 					targetAngleVertical,
 					this.SYNC_COMMAND.stopRequested,
 					UPDATE_STATUS);
 			System.out.println ("GONIOMETER.scanAndAcquireI() "+(goniometerScanOK?"finished OK":"failed"));
+			POWER_CONTROL.setPower("light","off");
 			return;
 		}		
 		
@@ -8010,7 +8964,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
 			
 			
-			GenericDialog gd=new GenericDialog("Pattern Flat Filed parameters");
+			GenericDialog gd=new GenericDialog("Pattern Flat Field parameters");
 			gd.addNumericField("Fitting series number (to select images), negative - use all enabled images", -1,0);
 			gd.addNumericField("Reference station number (unity target brightness)", 0,0);
 			gd.addNumericField("Shrink sensor mask",    100.0, 1,6,"sensor pix");
@@ -8399,8 +9353,287 @@ if (MORE_BUTTONS) {
 		return;
 	}
 	
-	
 /* ===== Other methods ==================================================== */
+	public boolean restoreFocusingHistory(boolean interactive){
+		if (!interactive && ((FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile==null) || (FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile.length()==0))){
+			System.out.println("*** No focusing history to load!");
+			return false;
+		}
+		FOCUSING_FIELD=new FocusingField(
+				!interactive, // false, // true, // boolean smart,       // do not open dialog if default matches 
+				FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile, // FOCUSING_FIELD_HISTORY_PATH, //"",//); //String defaultPath); //			AtomicInteger stopRequested
+				this.SYNC_COMMAND.stopRequested);
+		String path=FOCUSING_FIELD.getHistoryPath();
+		if (path==null) return false; // did not load
+		FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile=path;
+		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+		FOCUSING_FIELD.setThreads(THREADS_MAX);
+		FOCUSING_FIELD.setAdjustMode(false, null);
+		if (PROPERTIES!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", PROPERTIES,true); // keep distortions center from history
+		System.out.println("Loaded FocusingField from "+path);
+		if (!FOCUSING_FIELD.configureDataVector(
+				true, // boolean silent (maybe add option with false to change number of parameters?)
+				"Configure curvature - TODO: fix many settings restored from properties", // String title
+				true, // boolean forcenew,
+				true) // boolean enableReset
+				) return false;
+		System.out.println("TODO: fix many settings restored from properties, overwriting entered fields. Currently run \"Modify LMA\" to re-enter values");
+		System.out.println("TODO: Probably need to make a separate dialog that enters number of parameters.");
+    	double [] sv=          FOCUSING_FIELD.fieldFitting.createParameterVector(FOCUSING_FIELD.sagittalMaster);
+		FOCUSING_FIELD.setDataVector(
+				true, // calibrate mode
+				FOCUSING_FIELD.createDataVector());
+		double [] focusing_fx= FOCUSING_FIELD.createFXandJacobian(sv, false);
+		double rms=            FOCUSING_FIELD.calcErrorDiffY(focusing_fx, false);
+		double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
+		System.out.println("rms="+rms+", rms_pure="+rms_pure);
+		return true; // add OK/fail
+	}
+	
+	
+	public boolean adjustFocusTiltLMA(){
+		// just for reporting distance old way
+/*		
+		MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
+				FOCUS_MEASUREMENT_PARAMETERS,
+    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
+    			DEBUG_LEVEL);
+*/    	boolean showPSF=false;		
+		double [][][] sampleCoord=null;
+		if (FOCUSING_FIELD!=null){
+			sampleCoord=FOCUSING_FIELD.getSampleCoord();
+			FOCUSING_FIELD.testQualB(false); // optimize qualB, store results in this.qualBOptimizationResults
+			if (MASTER_DEBUG_LEVEL>0) {
+				System.out.println("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+				System.out.println("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+				System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
+			}
+		} else {
+			sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(
+					FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
+					FOCUS_MEASUREMENT_PARAMETERS.result_PY0);
+		}
+		// No-move measure, add to history
+	
+		moveAndMaybeProbe(
+				true, // just move, not probe
+				null, // no move, just measure
+				MOTORS,
+				CAMERAS,
+				LENS_DISTORTION_PARAMETERS,
+				matchSimulatedPattern, // should not bee null - is null after grid center!!!
+				FOCUS_MEASUREMENT_PARAMETERS,
+				PATTERN_DETECT,
+				DISTORTION,
+				SIMUL,
+				COMPONENTS,
+				OTF_FILTER,
+				PSF_PARS,
+				sampleCoord,
+				THREADS_MAX,
+				UPDATE_STATUS,
+				MASTER_DEBUG_LEVEL,
+				DISTORTION.loop_debug_level);
+		//get measurement
+		FocusingField.FocusingFieldMeasurement fFMeasurement=MOTORS.getThisFFMeasurement(FOCUSING_FIELD);	
+		// calculate z, tx, ty, m1,m2,m3
+		int [] adjustModeAllCommon={1,1,1};
+	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
+	    		adjustModeAllCommon, // FOCUSING_FIELD.zTxTyAdjustMode,
+	    		false,  // allow tilt scan
+	    		fFMeasurement,
+	    		false, // parallel move
+	    		true, // boolean noQualB,   // do not re-claculate testQualB 
+	    		false); // boolean noAdjust); // do not calculate correction
+		// show dialog: Apply, re-calculate, exit
+    	int [] currentMotors=fFMeasurement.motors;
+    	int [] newMotors=currentMotors.clone();
+    	double [] zTxTy={Double.NaN,Double.NaN,Double.NaN};
+    	if (zTxTyM1M2M3!=null){
+    		newMotors[0]=(int) Math.round(zTxTyM1M2M3[3]);
+    		newMotors[1]=(int) Math.round(zTxTyM1M2M3[4]);
+    		newMotors[2]=(int) Math.round(zTxTyM1M2M3[5]);
+    		zTxTy[0]=zTxTyM1M2M3[0];
+    		zTxTy[1]=zTxTyM1M2M3[1];
+    		zTxTy[2]=zTxTyM1M2M3[2];
+    	}
+//    	double [] targetTilts={0.0,0.0};
+    	double [] manualScrewsCW=null;
+    	if (zTxTyM1M2M3!=null){
+    		manualScrewsCW=FOCUSING_FIELD.fieldFitting.mechanicalFocusingModel.getManualScrews(
+    				zTxTy[0]-FOCUSING_FIELD.targetRelFocalShift, //double zErr, // positive - away from lens
+    				zTxTy[1]-FOCUSING_FIELD.targetRelTiltX, //targetTilts[0],                     // double tXErr,// positive - 1,2 away from lens, 3 - to the lens
+    				zTxTy[2]-FOCUSING_FIELD.targetRelTiltY); //targetTilts[1]);                    // double tYErr);
+    	}
+    	double scaleMovement=1.0; // calculate automatically - reduce when close
+    	boolean parallelMove=false;
+    	if (MASTER_DEBUG_LEVEL>0){
+    		System.out.println("----- Optimal (for qualB) focus/tilt -----");
+    		System.out.println("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+    		System.out.println("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+    		System.out.println("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
+
+    		System.out.println("----- Focus/tilt measurement results -----");
+    		System.out.println("Relative to optimal focal shift "+IJ.d2s(zTxTy[0],3)+" um ("+IJ.d2s(FOCUSING_FIELD.targetRelFocalShift,3)+"um)");
+    		System.out.println("Relative to optimal horizontal tilt "+IJ.d2s(zTxTy[1],3)+" um/mm ("+IJ.d2s(FOCUSING_FIELD.targetRelTiltX,3)+"um/mm)");
+    		System.out.println("Relative to optimal vertical tilt "+IJ.d2s(zTxTy[2],3)+" um/mm ("+IJ.d2s(FOCUSING_FIELD.targetRelTiltY,3)+"um/mm)");
+    		for (int i=0;i<newMotors.length;i++){
+        		System.out.println("Suggested for motor "+(i+1)+" "+newMotors[i]+" ("+currentMotors[i]+")");
+    		}
+    		if (manualScrewsCW!=null) for (int i=0;i<manualScrewsCW.length;i++){
+    			double deg=360*Math.abs(manualScrewsCW[i]);
+    			if (manualScrewsCW[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
+    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+    			else  System.out.println("Suggested rotation for screw # "+(i+1)+
+    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+    		}
+    		System.out.println("----- end of Focus/tilt measurement results -----");
+    		
+    		if (MASTER_DEBUG_LEVEL>0) System.out.println(FOCUSING_FIELD.showSamples());
+    	}
+    	GenericDialog gd = new GenericDialog("Adjusting focus/tilt");
+    	if (zTxTyM1M2M3==null){
+    		gd.addMessage("**** Failed to determine focus/tilt, probably too far out of focus. ****");
+    		gd.addMessage("**** You may cancel the command and try \"Auto pre-focus\" first. ****");
+    	}
+        gd.addNumericField("Target focus (relative to best composite)",FOCUSING_FIELD.targetRelFocalShift,2,5,"um ("+IJ.d2s(zTxTy[0],3)+")");
+        gd.addNumericField("Target horizontal tilt relative to optimal (normally 0)",FOCUSING_FIELD.targetRelTiltX,2,5,"um/mm ("+IJ.d2s(zTxTy[1],3)+")");
+        gd.addNumericField("Target vertical tilt  relative to optimal (normally 0)",FOCUSING_FIELD.targetRelTiltY,2,5,"um/mm ("+IJ.d2s(zTxTy[2],3)+")");
+
+        gd.addMessage("Optimal absolute Zc="+FOCUSING_FIELD.qualBOptimizationResults[0]);
+        gd.addMessage("Optimal Tx="+FOCUSING_FIELD.qualBOptimizationResults[1]);
+        gd.addMessage("Optimal Ty="+FOCUSING_FIELD.qualBOptimizationResults[2]);
+        
+        gd.addCheckbox("Optimize focal distance",(FOCUSING_FIELD.qualBOptimizeMode & 1) != 0);
+		gd.addCheckbox("Optimize tiltX",         (FOCUSING_FIELD.qualBOptimizeMode & 2) != 0);
+		gd.addCheckbox("Optimize tiltY",         (FOCUSING_FIELD.qualBOptimizeMode & 4) != 0);
+        
+        
+		gd.addNumericField("Motor 1",newMotors[0],0,5,"steps ("+currentMotors[0]+")");
+		gd.addNumericField("Motor 2",newMotors[1],0,5,"steps ("+currentMotors[1]+")");
+		gd.addNumericField("Motor 3",newMotors[2],0,5,"steps ("+currentMotors[2]+")");
+		gd.addMessage("Suggested rotation of the top screws, use if motor positions are out of limits - outside of +/-25,000");
+		if (manualScrewsCW!=null)  for (int i=0;i<manualScrewsCW.length;i++){
+			double deg=360*Math.abs(manualScrewsCW[i]);
+			if (manualScrewsCW[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+		}
+		gd.addNumericField("Scale movement",scaleMovement,3,5,"x");
+        gd.addCheckbox("Recalculate and apply parallel move only",parallelMove); // should be false after manual movement
+		
+        gd.addCheckbox("Filter samples/channels by Z",FOCUSING_FIELD.filterZ); // should be false after manual movement
+        gd.addCheckbox("Filter by value (leave lower than maximal fwhm used in focal scan mode)",FOCUSING_FIELD.filterByScanValue);
+        gd.addNumericField("Filter by value (remove samples above scaled best FWHM for channel/location)",FOCUSING_FIELD.filterByValueScale,2,5,"x");
+
+        gd.addNumericField("Z min",FOCUSING_FIELD.zMin,2,5,"um");
+        gd.addNumericField("Z max",FOCUSING_FIELD.zMax,2,5,"um");
+        gd.addNumericField("Z step",FOCUSING_FIELD.zStep,2,5,"um");
+
+        gd.addNumericField("Tilt min",FOCUSING_FIELD.tMin,2,5,"um/mm");
+        gd.addNumericField("Tilt max",FOCUSING_FIELD.tMax,2,5,"um/mm");
+        gd.addNumericField("Tilt step",FOCUSING_FIELD.tStep,2,5,"um/mm");
+        gd.addCheckbox("Show current PSF",showPSF);
+		
+		gd.addNumericField("Motor anti-hysteresis travel (last measured was "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.measuredHysteresis,0)+")", FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis, 0,7,"motors steps");
+		gd.addNumericField("Debug Level:",                                MASTER_DEBUG_LEVEL, 0);
+		gd.enableYesNoCancel("Apply movement","Re-measure"); // default OK (on enter) - "Apply"
+    	WindowTools.addScrollBars(gd);
+    	gd.showDialog();
+		if (gd.wasCanceled()) return false;
+		FOCUSING_FIELD.targetRelFocalShift=gd.getNextNumber();
+		FOCUSING_FIELD.targetRelTiltX=     gd.getNextNumber();
+		FOCUSING_FIELD.targetRelTiltY=     gd.getNextNumber();
+		
+		FOCUSING_FIELD.qualBOptimizeMode=0;
+		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?1:0;
+		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?2:0;
+		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?4:0;
+		
+		newMotors[0]=               (int)  gd.getNextNumber();
+		newMotors[1]=               (int)  gd.getNextNumber();
+		newMotors[2]=               (int)  gd.getNextNumber();
+		scaleMovement=                     gd.getNextNumber();
+		parallelMove=                      gd.getNextBoolean();
+        FOCUSING_FIELD.filterZ=            gd.getNextBoolean();
+        FOCUSING_FIELD.filterByScanValue=  gd.getNextBoolean();
+        FOCUSING_FIELD.filterByValueScale= gd.getNextNumber();
+
+        FOCUSING_FIELD.zMin=               gd.getNextNumber();
+        FOCUSING_FIELD.zMax=               gd.getNextNumber();
+        FOCUSING_FIELD.zStep=              gd.getNextNumber();
+
+        FOCUSING_FIELD.tMin=               gd.getNextNumber();
+        FOCUSING_FIELD.tMax=               gd.getNextNumber();
+        FOCUSING_FIELD.tStep=              gd.getNextNumber();
+        showPSF=                           gd.getNextBoolean();
+		FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis= (int) gd.getNextNumber();
+		MASTER_DEBUG_LEVEL=(         int)  gd.getNextNumber();
+		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+		if (showPSF){
+			if (PSF_KERNEL_MAP==null){
+				IJ.showMessage("Warning","PSF_KERNEL_MAP is null, nothing to show" );
+			} else {
+				double [][][][] psfRGB=new double [PSF_KERNEL_MAP.length][PSF_KERNEL_MAP[0].length][][];
+				int [] rgbChn={1,5,2};
+				String [] rgbNames={"Red","Green","Blue"};
+				for (int tileY=0;tileY< PSF_KERNEL_MAP.length;tileY++) for (int tileX=0;tileX< PSF_KERNEL_MAP[0].length;tileX++){
+					if (PSF_KERNEL_MAP[tileY][tileX]!=null){
+						psfRGB[tileY][tileX]=new double [3][];
+						for (int rgbi=0;rgbi<3;rgbi++) psfRGB[tileY][tileX][rgbi]=PSF_KERNEL_MAP[tileY][tileX][rgbChn[rgbi]];
+
+					} else psfRGB[tileY][tileX]=null;
+				}
+				ImageStack mergedStack=mergeKernelsToStack(psfRGB,rgbNames);
+				if (mergedStack==null) {
+					IJ.showMessage("Error","No PSF kernels to show");
+				} else {
+//				ImagePlus imp_psf=SDFA_INSTANCE.showImageStack(mergedStack, imp_sel.getTitle()+"-FOCUS-PSF");
+				SDFA_INSTANCE.showImageStack(mergedStack, imp_sel.getTitle()+"-FOCUS-PSF");
+				}
+			}
+		}
+		if (parallelMove){ // ignore/recalculate newMotors data 
+			int [] adjustZOnly={1,0,0};
+			zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
+					adjustZOnly, // adjustAll,
+					false,// disable tilt scan
+					fFMeasurement,
+					true, // recalculate with parallel move only
+					false, // boolean noQualB,   // do not re-claculate testQualB - OPTIMIZE to do once
+					false); // boolean noAdjust); // do not calculate correction
+		    		
+	    	newMotors=currentMotors.clone();
+	    	if (zTxTyM1M2M3!=null){
+	    		newMotors[0]=(int) Math.round(zTxTyM1M2M3[3]);
+	    		newMotors[1]=(int) Math.round(zTxTyM1M2M3[4]);
+	    		newMotors[2]=(int) Math.round(zTxTyM1M2M3[5]);
+	    	}			
+    		System.out.println("Parallel move position for motor 1 "+newMotors[0]+" ("+currentMotors[0]+")");
+    		System.out.println("Parallel move position for motor 2 "+newMotors[1]+" ("+currentMotors[1]+")");
+    		System.out.println("Parallel move position for motor 3 "+newMotors[2]+" ("+currentMotors[2]+")");
+		}
+		
+//	Scale motor movement	
+		newMotors[0]=currentMotors[0]+((int) Math.round((newMotors[0]-currentMotors[0])*scaleMovement));
+		newMotors[1]=currentMotors[1]+((int) Math.round((newMotors[1]-currentMotors[1])*scaleMovement));
+		newMotors[2]=currentMotors[2]+((int) Math.round((newMotors[2]-currentMotors[2])*scaleMovement));
+		
+		if (gd.wasOKed()){
+			// Move, no measure
+			MOTORS.moveElphel10364Motors(
+					true, //boolean wait,
+					newMotors,
+					0.0, //double sleep,
+					true, //boolean showStatus,
+					"",   //String message,
+					false); //!noHysteresis);			
+		}
+		return true;
+	}
+	
+	
+	
 	public boolean checkSerialAndRestore(){
 		// wait for camera
 		CAMERAS.debugLevel=DEBUG_LEVEL;
@@ -8482,6 +9715,7 @@ if (MORE_BUTTONS) {
 		} 
 		String configPath=fileList[index].getAbsolutePath();
     	loadProperties(configPath, null, true, PROPERTIES);
+    	restoreFocusingHistory(false);
     	return true;
 	}
 	
@@ -8694,6 +9928,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -8717,6 +9952,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -8754,6 +9990,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -8793,6 +10030,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -8836,6 +10074,7 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				threadsMax,
 				updateStatus,
 				debugLevel,
@@ -8936,6 +10175,7 @@ if (MORE_BUTTONS) {
 						colorComponents,
 						otfFilterParameters,
 						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
 						threadsMax,
 						updateStatus,
 						debugLevel,
@@ -8980,6 +10220,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9017,6 +10258,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9085,6 +10327,7 @@ if (MORE_BUTTONS) {
 						colorComponents,
 						otfFilterParameters,
 						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
 						threadsMax,
 						updateStatus,
 						debugLevel,
@@ -9139,6 +10382,7 @@ if (MORE_BUTTONS) {
 						colorComponents,
 						otfFilterParameters,
 						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
 						threadsMax,
 						updateStatus,
 						debugLevel,
@@ -9184,6 +10428,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9204,6 +10449,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9254,6 +10500,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9348,6 +10595,339 @@ if (MORE_BUTTONS) {
 	}
 	
 	// returns {Xmin-1,Xmax+1} - average motors
+
+	
+	public double[] ScanFocusTilt(
+			//			boolean scanHysteresis, // after scanning forward, go in reverse (different number of steps to measure hysteresis
+			int [] centerMotorPos, // null OK
+			CalibrationHardwareInterface.FocusingMotors focusingMotors,
+			CalibrationHardwareInterface.CamerasInterface camerasInterface,
+			Distortions.LensDistortionParameters lensDistortionParameters,
+			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
+			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
+			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
+			MatchSimulatedPattern.DistortionParameters distortionParameters,
+			SimulationPattern.SimulParameters  simulParameters,
+			EyesisAberrations.ColorComponents colorComponents,
+			EyesisAberrations.OTFFilterParameters otfFilterParameters,
+			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
+			int       threadsMax,
+			boolean   updateStatus,
+			int       debugLevel,
+			int       loopDebugLevel){
+		if (centerMotorPos==null) centerMotorPos=focusingMotors.readElphel10364Motors().clone();
+
+		boolean allOK=true;
+		boolean aborted=false;
+		long 	  startTime=System.nanoTime();
+		if (debugLevel>0) System.out.println("Starting scanning focus in the center, number of steps="+ focusMeasurementParameters.scanNumber+
+				", of them "+focusMeasurementParameters.scanNumberNegative+" in negative direction"+
+				", step size="+focusMeasurementParameters.scanStep);
+		int scanNegative=focusMeasurementParameters.scanNumberNegative;
+		int scanPositive=focusMeasurementParameters.scanNumber-focusMeasurementParameters.scanNumberNegative-1; // not including zero
+		int [] scanPos={
+				centerMotorPos[0]-scanNegative * focusMeasurementParameters.scanStep,
+				centerMotorPos[1]-scanNegative * focusMeasurementParameters.scanStep,
+				centerMotorPos[2]-scanNegative * focusMeasurementParameters.scanStep
+		};
+		double centerAverage=(centerMotorPos[0]+centerMotorPos[1]+centerMotorPos[2])/3.0;
+		double [] range={
+				Math.floor(centerAverage- scanNegative * focusMeasurementParameters.scanStep)-1.0,
+				Math.ceil(centerAverage+ scanPositive * focusMeasurementParameters.scanStep)+1.0
+		};
+		int [] scanPosLast=null;
+		for (int numStep=0;numStep<focusMeasurementParameters.scanNumber;numStep++){
+			if (debugLevel>0) System.out.println("Scanning focus in the center, step#"+(numStep+1)+" (of "+ focusMeasurementParameters.scanNumber+
+					") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+			allOK &=moveAndMaybeProbe(
+					true,
+					scanPos, // null OK
+					focusingMotors,
+					camerasInterface,
+					lensDistortionParameters,
+					matchSimulatedPattern, // should not bee null
+					focusMeasurementParameters,
+					patternDetectParameters,
+					distortionParameters,
+					simulParameters,
+					colorComponents,
+					otfFilterParameters,
+					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
+					threadsMax,
+					updateStatus,
+					debugLevel,
+					loopDebugLevel);
+			// do not advance position after last measurement
+			if (numStep<(focusMeasurementParameters.scanNumber-1)) for (int nm=0;nm<3;nm++) scanPos[nm]+=focusMeasurementParameters.scanStep;
+			scanPosLast=scanPos.clone();
+    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+    			aborted=true;
+    			allOK=false;
+    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+    			break;
+    		}
+			if (!allOK) break; // failed
+		}
+		if (allOK && focusMeasurementParameters.scanTiltEnable) {
+			if (focusMeasurementParameters.scanTiltStepsX >1 ) { // 0 or 1 STOPS - do not scan
+				double scanStepX=1.0*focusMeasurementParameters.scanTiltRangeX/(focusMeasurementParameters.scanTiltStepsX-1);
+				if (debugLevel>0) System.out.println("Starting scanning tilt in X direction, number of stops="+ focusMeasurementParameters.scanTiltStepsX+
+						", step size="+IJ.d2s(scanStepX,0));
+				for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsX;numStep++){
+					int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeX*
+							(1.0*numStep/(focusMeasurementParameters.scanTiltStepsX-1) -0.5));
+					scanPos[0]=centerMotorPos[0]-delta;
+					scanPos[1]=centerMotorPos[1]-delta;
+					scanPos[2]=centerMotorPos[2]+delta;
+					if (debugLevel>0) System.out.println("Scanning tilt in X direction, step#"+(numStep+1)+" (of "+
+					focusMeasurementParameters.scanTiltStepsX+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					allOK &=moveAndMaybeProbe(
+							true,
+							scanPos, // null OK
+							focusingMotors,
+							camerasInterface,
+							lensDistortionParameters,
+							matchSimulatedPattern, // should not bee null
+							focusMeasurementParameters,
+							patternDetectParameters,
+							distortionParameters,
+							simulParameters,
+							colorComponents,
+							otfFilterParameters,
+							psfParameters,
+							sampleCoord, // restored from history or null - will create old way
+							threadsMax,
+							updateStatus,
+							debugLevel,
+							loopDebugLevel);
+		    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+		    			aborted=true;
+		    			allOK=false;
+		    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+		    			break;
+		    		}
+					if (!allOK) break; // failed
+				}
+				if (focusMeasurementParameters.scanTiltReverse) {
+					if (debugLevel>0) System.out.println("Starting reverse scanning tilt in X direction, number of stops="+ focusMeasurementParameters.scanTiltStepsX+
+							", step size="+IJ.d2s(scanStepX,0));
+					for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsX;numStep++){
+						int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeX*
+								(1.0*numStep/(focusMeasurementParameters.scanTiltStepsX-1) -0.5));
+						scanPos[0]=centerMotorPos[0]+delta;
+						scanPos[1]=centerMotorPos[1]+delta;
+						scanPos[2]=centerMotorPos[2]-delta;
+						if (debugLevel>0) System.out.println("Reverse scanning tilt in X direction, step#"+(numStep+1)+" (of "+
+						focusMeasurementParameters.scanTiltStepsX+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+						allOK &=moveAndMaybeProbe(
+								true,
+								scanPos, // null OK
+								focusingMotors,
+								camerasInterface,
+								lensDistortionParameters,
+								matchSimulatedPattern, // should not bee null
+								focusMeasurementParameters,
+								patternDetectParameters,
+								distortionParameters,
+								simulParameters,
+								colorComponents,
+								otfFilterParameters,
+								psfParameters,
+								sampleCoord, // restored from history or null - will create old way
+								threadsMax,
+								updateStatus,
+								debugLevel,
+								loopDebugLevel);
+			    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+			    			aborted=true;
+			    			allOK=false;
+			    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+			    			break;
+			    		}
+						if (!allOK) break; // failed
+					}
+				}
+			}
+			if (allOK && (focusMeasurementParameters.scanTiltStepsY >1 )) { // 0 or 1 STOPS - do not scan
+				double scanStepY=1.0*focusMeasurementParameters.scanTiltRangeY/(focusMeasurementParameters.scanTiltStepsY-1);
+				if (debugLevel>0) System.out.println("Starting scanning tilt in Y direction, number of stops="+ focusMeasurementParameters.scanTiltStepsY+
+						", step size="+IJ.d2s(scanStepY,0));
+				for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsY;numStep++){
+					int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeY*
+							(1.0*numStep/(focusMeasurementParameters.scanTiltStepsY-1) -0.5));
+					scanPos[0]=centerMotorPos[0]+delta;
+					scanPos[1]=centerMotorPos[1]-delta;
+					scanPos[2]=centerMotorPos[2]+0;
+					if (debugLevel>0) System.out.println("Scanning tilt in Y direction, step#"+(numStep+1)+" (of "+
+					focusMeasurementParameters.scanTiltStepsY+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					allOK &=moveAndMaybeProbe(
+							true,
+							scanPos, // null OK
+							focusingMotors,
+							camerasInterface,
+							lensDistortionParameters,
+							matchSimulatedPattern, // should not bee null
+							focusMeasurementParameters,
+							patternDetectParameters,
+							distortionParameters,
+							simulParameters,
+							colorComponents,
+							otfFilterParameters,
+							psfParameters,
+							sampleCoord, // restored from history or null - will create old way
+							threadsMax,
+							updateStatus,
+							debugLevel,
+							loopDebugLevel);
+		    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+		    			aborted=true;
+		    			allOK=false;
+		    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+		    			break;
+		    		}
+					if (!allOK) break; // failed
+				}
+				if (focusMeasurementParameters.scanTiltReverse) {
+					if (debugLevel>0) System.out.println("Starting reverse scanning tilt in Y direction, number of stops="+ focusMeasurementParameters.scanTiltStepsY+
+							", step size="+IJ.d2s(scanStepY,0));
+					for (int numStep=0;numStep<focusMeasurementParameters.scanTiltStepsY;numStep++){
+						int delta=(int) Math.round(focusMeasurementParameters.scanTiltRangeY*
+								(1.0*numStep/(focusMeasurementParameters.scanTiltStepsY-1) -0.5));
+						scanPos[0]=centerMotorPos[0]-delta;
+						scanPos[1]=centerMotorPos[1]+delta;
+						scanPos[2]=centerMotorPos[2]+0;
+						if (debugLevel>0) System.out.println("Reverse scanning tilt in Y direction, step#"+(numStep+1)+" (of "+
+						focusMeasurementParameters.scanTiltStepsY+") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+						allOK &=moveAndMaybeProbe(
+								true,
+								scanPos, // null OK
+								focusingMotors,
+								camerasInterface,
+								lensDistortionParameters,
+								matchSimulatedPattern, // should not bee null
+								focusMeasurementParameters,
+								patternDetectParameters,
+								distortionParameters,
+								simulParameters,
+								colorComponents,
+								otfFilterParameters,
+								psfParameters,
+								sampleCoord, // restored from history or null - will create old way
+								threadsMax,
+								updateStatus,
+								debugLevel,
+								loopDebugLevel);
+			    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+			    			aborted=true;
+			    			allOK=false;
+			    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+			    			break;
+			    		}
+						if (!allOK) break; // failed
+					}
+				}
+			}
+		}
+
+		if (allOK && focusMeasurementParameters.scanHysteresis && (scanPosLast!=null)){
+			focusingMotors.moveElphel10364Motors( // return to last direct scan position
+					true, //boolean wait,
+					scanPosLast,
+					0.0, //double sleep,
+					true, //boolean showStatus,
+					"",   //String message,
+					false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
+
+			double hystStep=((double) focusMeasurementParameters.scanStep*(focusMeasurementParameters.scanNumber-1))/focusMeasurementParameters.scanHysteresisNumber; // errors will accumulate, but that's OK
+			for (int numStep=0;numStep<focusMeasurementParameters.scanHysteresisNumber;numStep++){
+				if (debugLevel>0) System.out.println("Scanning focus in reverse direction for hysteresis estimation, step#"+(numStep+1)+" (of "+ focusMeasurementParameters.scanHysteresisNumber+
+						") at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+				int [] revPosition=new int[scanPos.length];
+				for (int nm=0;nm<3;nm++) revPosition[nm]=scanPosLast[nm]-(int) Math.round(hystStep*(numStep+1));
+				allOK &=moveAndMaybeProbe(
+						true, // boolean noHysteresis,
+						true,
+						revPosition, // null OK
+						focusingMotors,
+						camerasInterface,
+						lensDistortionParameters,
+						matchSimulatedPattern, // should not bee null
+						focusMeasurementParameters,
+						patternDetectParameters,
+						distortionParameters,
+						simulParameters,
+						colorComponents,
+						otfFilterParameters,
+						psfParameters,
+						sampleCoord, // restored from history or null - will create old way
+						threadsMax,
+						updateStatus,
+						debugLevel,
+						loopDebugLevel);
+	    		if (this.SYNC_COMMAND.stopRequested.get()>0){
+	    			aborted=true;
+	    			allOK=false;
+	    			System.out.println("Stop requested, command aborted, returning motors to initial position");
+	    			break;
+	    		}
+				if (!allOK) break; // failed
+			}		
+		}
+		if (aborted) {
+			System.out.println("Returning motors to initial position due to command aborted at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+			focusingMotors.moveElphel10364Motors( // return to last direct scan position
+					true, //boolean wait,
+					centerMotorPos,
+					0.0, //double sleep,
+					true, //boolean showStatus,
+					"",   //String message,
+					false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
+			return null;
+		}
+		if (allOK) {
+			if (focusMeasurementParameters.scanMeasureLast) {
+			allOK &= moveAndMaybeProbe(
+					true,
+					centerMotorPos, // null OK
+					focusingMotors,
+					camerasInterface,
+					lensDistortionParameters,
+					matchSimulatedPattern, // should not bee null
+					focusMeasurementParameters,
+					patternDetectParameters,
+					distortionParameters,
+					simulParameters,
+					colorComponents,
+					otfFilterParameters,
+					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
+					threadsMax,
+					updateStatus,
+					debugLevel,
+					loopDebugLevel);
+			} else { // just move, no measuring
+				System.out.println("Returning motors to initial position at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+				focusingMotors.moveElphel10364Motors( // return to last direct scan position
+						true, //boolean wait,
+						centerMotorPos,
+						0.0, //double sleep,
+						true, //boolean showStatus,
+						"",   //String message,
+						false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
+			}
+		}
+
+		if (debugLevel>0) System.out.println("Scanning focus in the center, number of steps="+ focusMeasurementParameters.scanNumber+
+				", step size="+focusMeasurementParameters.scanStep+" finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+
+				", allOK="+allOK);
+		// focusMeasurementParameters.scanStep	
+		// focusMeasurementParameters.scanNumber
+		return allOK?range:null;
+	}	
+
+	
 	
 	public double[] ScanFocus(
 //			boolean scanHysteresis, // after scanning forward, go in reverse (different number of steps to measure hysteresis
@@ -9363,6 +10943,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9411,6 +10992,7 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				threadsMax,
 				updateStatus,
 				debugLevel,
@@ -9441,6 +11023,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel,
@@ -9462,6 +11045,7 @@ if (MORE_BUTTONS) {
 			colorComponents,
 			otfFilterParameters,
 			psfParameters,
+			sampleCoord, // restored from history or null - will create old way
 			threadsMax,
 			updateStatus,
 			debugLevel,
@@ -9489,6 +11073,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9508,6 +11093,7 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				threadsMax,
 				updateStatus,
 				debugLevel,
@@ -9528,6 +11114,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9612,6 +11199,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					rFullResults,
 					threadsMax,
 					updateStatus,
@@ -9692,6 +11280,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9722,6 +11311,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					1, //debugLevel,
@@ -9760,6 +11350,7 @@ if (MORE_BUTTONS) {
 					colorComponents,
 					otfFilterParameters,
 					psfParameters,
+					sampleCoord, // restored from history or null - will create old way
 					threadsMax,
 					updateStatus,
 					debugLevel, //debugLevel, // 1,
@@ -9783,6 +11374,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			int       threadsMax,
 			boolean   updateStatus,
 			int       debugLevel,
@@ -9799,8 +11391,9 @@ if (MORE_BUTTONS) {
 				0.0, //double sleep,
 				true, //boolean showStatus,
 				"",   //String message,
-				false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
+				!noHysteresis); //false); //focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
 		focusMeasurementParameters.sensorTemperature=camerasInterface.getSensorTemperature(0,focusMeasurementParameters.EEPROM_channel);
+		POWER_CONTROL.lightsOnWithDelay();
 		ImagePlus imp= camerasInterface.acquireSingleImage (
 				false, //boolean useLasers,
 				updateStatus);
@@ -9820,7 +11413,7 @@ if (MORE_BUTTONS) {
 			throw new IllegalArgumentException (msg);
 		}
 		matchSimulatedPattern.debugLevel=debugLevel;
-		if (debugLevel>2){
+		if (debugLevel>1){
 			System.out.println("Samples Map:\n"+
 					focusMeasurementParameters.showSamplesMap(
 							lensDistortionParameters.px0, // pixel coordinate of the the optical center
@@ -9839,20 +11432,53 @@ if (MORE_BUTTONS) {
 				colorComponents,
 				otfFilterParameters,
 				psfParameters,
+				sampleCoord, // restored from history or null - will create old way
 				rFullResults,
 				threadsMax,
 				updateStatus,
 				debugLevel,
 				loopDebugLevel);
 		//			System.out.println(">>"+focusingMotors.historySize()+": "+focusingMotors.curpos[0]+", "+focusingMotors.curpos[1]+", "+focusingMotors.curpos[2]);
+		int ca=6;
+		double [] zTxTy=null; // {Double.NaN,Double.NaN,Double.NaN};
+		double oldTx=Double.NaN,oldTy=Double.NaN,oldFarNear=Double.NaN;
+		if (metrics!=null ){
+			oldFarNear=metrics[ca][0];
+			oldTx= metrics[ca][1];
+			oldTy= metrics[ca][2];
+		}
+		if (FOCUS_MEASUREMENT_PARAMETERS.useLMAMetrics && (FOCUSING_FIELD!=null)){
+			FocusingField.FocusingFieldMeasurement fFMeasurement= FOCUSING_FIELD.getFocusingFieldMeasurement(
+					ts,   //focusingState.getTimestamp(),
+					focusMeasurementParameters.sensorTemperature,
+					focusingMotors.readElphel10364Motors(), //focusingHistory.getPosition(), //null?
+					rFullResults[0]); //focusingState.getSamples());
+			try{
+				zTxTy=FOCUSING_FIELD.adjustLMA(
+						FOCUSING_FIELD.zTxTyAdjustMode,
+						true, // false, // noTiltScan
+						fFMeasurement,
+						false, // parallel move
+						true, // boolean noQualB,   // do not re-claculate testQualB 
+						true); // boolean noAdjust); // do not calculate correction
+			} catch (Exception e){
+				System.out.println("FOCUSING_FIELD.adjustLMA() failed");
+			}
+			if (zTxTy!=null){
+				metrics[ca][0]=zTxTy[0]; // was far/near
+				metrics[ca][1]=zTxTy[1];
+				metrics[ca][2]=zTxTy[2];
+			}
+
+		}
 
 		focusingMotors.addToHistory(ts,focusMeasurementParameters.sensorTemperature,metrics,rFullResults[0]);
 //		System.out.println("focusMeasurementParameters.lensDistanceWeightK="+focusMeasurementParameters.lensDistanceWeightK);
 //		System.out.println("focusMeasurementParameters.lensDistanceWeightY="+focusMeasurementParameters.lensDistanceWeightY);
-		if (debugLevel>0){
+		if ((debugLevel>0) && (metrics!=null)){
 			// see if lens is calibrated
 			double [] resolutions={1.0/metrics[1][6],1.0/metrics[5][6],1.0/metrics[2][6]}; // R,G,B
-			double fDistance=focusingMotors.focusingHistory.getLensDistance(
+			double fDistanceOld=focusingMotors.focusingHistory.getLensDistance(
 					resolutions, // {R-sharpness,G-sharpness,B-sharpness}
 					true, // boolean absolute, // return absolutely calibrated data
 					focusMeasurementParameters.lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
@@ -9860,18 +11486,25 @@ if (MORE_BUTTONS) {
 					debugLevel
 			);
 
-			int ca=6;
+//			int ca=6;
+			String sZTxTy="";
+			if (zTxTy!=null){
+				sZTxTy="z="+IJ.d2s(zTxTy[0],3)+"um"+" tX="+IJ.d2s(zTxTy[1],3)+"um/mm"+" tY="+IJ.d2s(zTxTy[2],3)+"um/mm";
+			}
 			int [] actualPosition=focusingMotors.focusingHistory.getPosition();
 			System.out.println("##"+focusingMotors.historySize()+": "+actualPosition[0]+", "+actualPosition[1]+", "+actualPosition[2]+
-					": fDistance="+IJ.d2s(fDistance,3)+"um"+
-					"  Far/Near="+IJ.d2s(metrics[ca][0],3)+
-					"  Tilt X="+IJ.d2s(metrics[ca][1],3)+
-					"  Tilt Y="+IJ.d2s(metrics[ca][2],3)+
+					": "+
+					sZTxTy+
+					" fDistanceOld="+IJ.d2s(fDistanceOld,3)+"um"+
+					"  Far/Near="+IJ.d2s(oldFarNear,3)+
+					"  Tilt X="+IJ.d2s(oldTx,3)+
+					"  Tilt Y="+IJ.d2s(oldTy,3)+
 					"  R50% average="+IJ.d2s(metrics[ca][3],3)+" sensor pixels,"+
 					"  A50% average="+IJ.d2s(metrics[ca][4],3)+" sensor pixels,"+
 					"  B50% average="+IJ.d2s(metrics[ca][5],3)+" sensor pixels,"+
 					"  R50%Center="+IJ.d2s(metrics[ca][6],3)+" sensor pixels"+
 					" temp="+focusMeasurementParameters.sensorTemperature);
+			double fDistance=(zTxTy==null)?fDistanceOld:zTxTy[0];
 			if (debugLevel>1){
 				String [] compColors={"green","red","blue","green","green","green","AVERAGE"};
 				for (int c=0;c<metrics.length-1;c++) if (metrics[c]!=null){
@@ -9893,7 +11526,6 @@ if (MORE_BUTTONS) {
 			focusMeasurementParameters.result_B50=metrics[ca][5];   // last measured B50 (simailar, but R^4 are averaged)
 			focusMeasurementParameters.result_RC50=metrics[ca][6];  // last measured RC50(R50 calculated only for the 2 center samples)
 		}
-
 	}
 	
 	
@@ -9921,6 +11553,7 @@ if (MORE_BUTTONS) {
 				focusMeasurementParameters.compensateHysteresis); //boolean hysteresis)
 		}
 		focusMeasurementParameters.sensorTemperature=camerasInterface.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
+		POWER_CONTROL.lightsOnWithDelay();
 		ImagePlus imp= camerasInterface.acquireSingleImage (
 				false, //boolean useLasers,
 				updateStatus);
@@ -9975,6 +11608,7 @@ if (MORE_BUTTONS) {
 			EyesisAberrations.ColorComponents colorComponents,
 			EyesisAberrations.OTFFilterParameters otfFilterParameters,
 			EyesisAberrations.PSFParameters psfParameters,
+			double [][][] sampleCoord, // restored from history or null - will create old way
 			double [][][][][] returnFullResults, // null OK =- will return [0][i][j][0,1,2(r/g/b)][0,1]
 			int       threadsMax,
 			boolean   updateStatus,
@@ -10012,10 +11646,13 @@ if (MORE_BUTTONS) {
 				updateStatus,
 				loopDebugLevel); // debug level
 //		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-    	double [][][] sampleCoord=focusMeasurementParameters.sampleCoordinates(
-				lensDistortionParameters.px0, // pixel coordinate of the the optical center
-				lensDistortionParameters.py0); // pixel coordinate of the the optical center
-    	
+		if (sampleCoord==null){ // old way
+			System.out.println ("***** sampleCoord==null, genearting from lensDistortionParameters.p{x,y}0) *****");
+			sampleCoord=focusMeasurementParameters.sampleCoordinates(
+					lensDistortionParameters.px0, // pixel coordinate of the the optical center
+					lensDistortionParameters.py0); // pixel coordinate of the the optical center
+		}
+		if (debugLevel>0) System.out.println ("Top left sample coordinates: x="+IJ.d2s(sampleCoord[0][0][0],3)+", y="+IJ.d2s(sampleCoord[0][0][1],3));
 		double [][][] anglePerPixel=pixToAngles(
 				sampleCoord,
 				lensDistortionParameters.px0, // pixel coordinate of the the optical center
@@ -10061,6 +11698,9 @@ if (MORE_BUTTONS) {
 			}
 		}
 		boolean showPSF=debugLevel>1;
+		
+		if (metrics==null) return null;
+		
 		if (showPSF || (focusMeasurementParameters.saveResults)){
 			double [][][][] psfRGB=new double [psf_kernels.length][psf_kernels[0].length][][];
 			// reorder and assign names to kernel color channels
@@ -10100,11 +11740,14 @@ if (MORE_BUTTONS) {
 				for (int jj=0;jj<sampleCoord[0].length;jj++){
 					int index=ii*sampleCoord[0].length+jj;
 					imp_psf.setProperty("pX_"+index, ""+sampleCoord[ii][jj][0]);
-					imp_psf.setProperty("pX_"+index, ""+sampleCoord[ii][jj][0]);
+					imp_psf.setProperty("pY_"+index, ""+sampleCoord[ii][jj][1]);
 					if (fullResults[ii][jj]!=null){
 						for (int cc=0;cc<fullResults[ii][jj].length;cc++) if (fullResults[ii][jj][cc]!=null){
-							imp_psf.setProperty("R50_"+cc+"_"+index, ""+fullResults[ii][jj][cc][0]);
-							imp_psf.setProperty("RTratio_"+cc+"_"+index, ""+fullResults[ii][jj][cc][1]);
+//							imp_psf.setProperty("R50_"+cc+"_"+index, ""+fullResults[ii][jj][cc][0]);
+//							imp_psf.setProperty("RTratio_"+cc+"_"+index, ""+fullResults[ii][jj][cc][1]);
+							imp_psf.setProperty("R50_x2_"+cc+"_"+index, ""+fullResults[ii][jj][cc][0]);
+							imp_psf.setProperty("R50_y2_"+cc+"_"+index, ""+fullResults[ii][jj][cc][1]);
+							imp_psf.setProperty("R50_xy_"+cc+"_"+index, ""+fullResults[ii][jj][cc][2]);
 						}
 					}
 				}
@@ -10190,12 +11833,18 @@ if (MORE_BUTTONS) {
 						fullResults[i][j]=new double [numColors][];
 						for (int cc=0;cc<numColors;cc++) fullResults[i][j][cc]=null;
 					}
-					if (fullResults!=null) fullResults[i][j][color]=new double[2];
+//					if (fullResults!=null) fullResults[i][j][color]=new double[2];
 					double x=(sampleCoord[i][j][0]-x0);
 					double y=(sampleCoord[i][j][1]-y0);
 					double r=Math.sqrt(x*x+y*y);			
 					double ca=(sampleCoord[i][j][0]-x0)/r;
 					double sa=(sampleCoord[i][j][1]-y0)/r;
+//					System.out.println("extractPSFMetrics.. color="+color+" i="+i+" j="+j+" cos="+ca+" sin="+sa+
+//							" psf_cutoffEnergy="+focusMeasurementParameters.psf_cutoffEnergy+
+//							" psf_cutoffLevel="+focusMeasurementParameters.psf_cutoffLevel+
+//							" psf_minArea="+focusMeasurementParameters.psf_minArea+
+//							" psf_blurSigma="+focusMeasurementParameters.psf_blurSigma);
+/*					
 					double [] tanRad=		   matchSimulatedPattern.tangetRadialSizes(
 							   ca, // cosine of the center to sample vector
 							   sa, // sine of the center to sample vector
@@ -10211,11 +11860,30 @@ if (MORE_BUTTONS) {
 						tanRad=new double[2];
 						tanRad[0]=Double.NaN;
 						tanRad[1]=Double.NaN;
+					} else {
+					
+// debug calculations
+						double [] x2y2xy= matchSimulatedPattern.x2y2xySizes(
+									psf[i][j][color],     // PSF function, square array, nominally positive
+									focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
+									focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
+									focusMeasurementParameters.psf_minArea,      // minimal selected area in pixels
+									focusMeasurementParameters.psf_blurSigma,    // optionally blur the selection
+									0.1, //maskCutOff,
+									debugLevel-2, // debug level
+									i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+						double [] tanRad1={
+								Math.sqrt(sa*sa*x2y2xy[0]+ca*ca*x2y2xy[1]-2*ca*sa*x2y2xy[2]), 
+								Math.sqrt(ca*ca*x2y2xy[0]+sa*sa*x2y2xy[1]+2*ca*sa*x2y2xy[2])};
+						
+						System.out.println("i="+i+" j="+j+" tanRad[0]="+tanRad[0]+ "("+tanRad1[0]+")"+
+						" tanRad[1]="+tanRad[1]+ "("+tanRad1[1]+") ### "+x2y2xy[0]+", "+x2y2xy[1]+", "+x2y2xy[2]);
+						
 					}
-					tanRad[0]/=(focusMeasurementParameters.subdiv/2); // to sesnor pixels
-					tanRad[1]/=(focusMeasurementParameters.subdiv/2);
-
-					double [][]quadCoeff=matchSimulatedPattern.approximatePSFQuadratic(
+*/
+					double [] x2y2xy=null;
+					try{
+					x2y2xy= matchSimulatedPattern.x2y2xySizes(
 							psf[i][j][color],     // PSF function, square array, nominally positive
 							focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
 							focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
@@ -10224,6 +11892,37 @@ if (MORE_BUTTONS) {
 							0.1, //maskCutOff,
 							debugLevel-2, // debug level
 							i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+					} catch (Exception e){
+						System.out.println("Failed to get PSF size for i="+i+", j="+j);
+					}
+					if (x2y2xy==null){
+						x2y2xy=new double[3];
+						for (int ii=0;ii<3;ii++) x2y2xy[ii]=Double.NaN;
+					} else {
+						for (int ii=0;ii<x2y2xy.length;ii++) x2y2xy[ii]/=focusMeasurementParameters.subdiv*focusMeasurementParameters.subdiv/4;
+					}
+/*					
+					double [] tanRad={
+							Math.sqrt(sa*sa*x2y2xy[0]+ca*ca*x2y2xy[1]-2*ca*sa*x2y2xy[2]), 
+							Math.sqrt(ca*ca*x2y2xy[0]+sa*sa*x2y2xy[1]+2*ca*sa*x2y2xy[2])};
+*/
+					// tanRad[0]/=(focusMeasurementParameters.subdiv/2); // to sesnor pixels
+					// tanRad[1]/=(focusMeasurementParameters.subdiv/2);
+					double [][]quadCoeff=null;
+					try {
+						quadCoeff=matchSimulatedPattern.approximatePSFQuadratic(
+								psf[i][j][color],     // PSF function, square array, nominally positive
+								focusMeasurementParameters.psf_cutoffEnergy,     // fraction of energy in the pixels to be used
+								focusMeasurementParameters.psf_cutoffLevel,      // minimal level as a fraction of maximal
+								focusMeasurementParameters.psf_minArea,      // minimal selected area in pixels
+								focusMeasurementParameters.psf_blurSigma,    // optionally blur the selection
+								0.1, //maskCutOff,
+								debugLevel-2, // debug level
+								i+":"+j+"["+color+"]"); //	   String        title) {    // prefix used for debug images
+					} catch (Exception e) {
+						System.out.println("Failed to get approximatePSFQuadratic(...) for i="+i+", j="+j);
+						continue;
+					}
 /*
  *  f(x,y)=A*x^2+B*y^2+C*x*y+D*x+E*y+F
  *  
@@ -10320,13 +12019,10 @@ Reff=sqrt(1/sqrt(Ar*Br-(Cr/2)^2))
 						SFcenter+=R50; // only center samples
 					}
 					if (fullResults!=null){
-//						fullResults[i][j][color][0]=R50/(focusMeasurementParameters.subdiv/2); // pixels
-//						fullResults[i][j][color][1]=BA; // radial-to-tangential ratio - was fullResults[i][j][color][0] ???
 						
-						fullResults[i][j][color][0]=Math.sqrt((tanRad[0]*tanRad[0]+tanRad[1]*tanRad[1])/2); // sensor pixels
-						fullResults[i][j][color][1]=tanRad[1]/tanRad[0]; // radial-to-tangential ratio
-						
-						
+//						fullResults[i][j][color][0]=Math.sqrt((tanRad[0]*tanRad[0]+tanRad[1]*tanRad[1])/2); // sensor pixels
+//						fullResults[i][j][color][1]=tanRad[1]/tanRad[0]; // radial-to-tangential ratio
+						fullResults[i][j][color]=x2y2xy.clone();
 						
 					}
 
@@ -10335,7 +12031,8 @@ Reff=sqrt(1/sqrt(Ar*Br-(Cr/2)^2))
 						for (int k=0;k<quadCoeff[0].length;k++) debugStr+=" "+quadCoeff[0][k];
 						if (debugLevel>3)System.out.println(debugStr);
 						System.out.println(i+":"+j+"["+color+"] x="+IJ.d2s(x,1)+" y="+IJ.d2s(y,1)+" xc="+IJ.d2s(xc,2)+" yc="+IJ.d2s(yc,2)+
-								" tan="+IJ.d2s(tanRad[0],3)+" rad="+IJ.d2s(tanRad[1],3)+
+//								" tan="+IJ.d2s(tanRad[0],3)+" rad="+IJ.d2s(tanRad[1],3)+
+								"x2="+IJ.d2s(x2y2xy[0],3)+"y2="+IJ.d2s(x2y2xy[1],3)+"xy="+IJ.d2s(x2y2xy[2],3)+
 								" Ar="+IJ.d2s(Ar,3)+" Br="+IJ.d2s(Br,3)+" Cr="+IJ.d2s(Cr,3)+ " **** Br/Ar="+IJ.d2s(Br/Ar,3)+" R50="+IJ.d2s(R50,3)+" subpixels" +" A50="+IJ.d2s(Math.sqrt(A50),2)+" subpixels" +" B50=" + IJ.d2s(Math.sqrt(B50),3)+" subpixels");
 					}
 				}
@@ -11739,7 +13436,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
     }
 // images cap[ture in portrait mode, opened in landscape mode (rotated CCW90 from original)
 // returns valid images for sub-bands: top, middle and bottom:   mask bits 1- top (left) valid, 2 - middle valid, 4 - bottom (right) vlaid     
-    private int calcValidFlatFiledMask(FlatFieldParameters flatFieldParameters, int [] ranges, ImagePlus imp){
+    private int calcValidFlatFieldMask(FlatFieldParameters flatFieldParameters, int [] ranges, ImagePlus imp){
     	int mask=0, maskO=0, maskU=0;
     	int [] mranges=ranges.clone();
     	mranges[0]=flatFieldParameters.margins[0];
@@ -11864,7 +13561,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
           		ip=imp_single.getChannelProcessor();
 // currently all images in all channels should be the same width          		
         	    if (weightMasks[0]==null)initFlatFieldArrays (imp_single.getWidth(), weightMasks, ranges, weights);
-        	    int diagMask= calcValidFlatFiledMask(flatFieldParameters, ranges,  imp_single);
+        	    int diagMask= calcValidFlatFieldMask(flatFieldParameters, ranges,  imp_single);
         	    int validBandsMask = diagMask & 7;
         	    String imageExpStatus="";
         	    for (int n=0;n<3;n++) {
@@ -12237,6 +13934,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
      } else path+=patterns[0];
      if (path==null) return;
      setAllProperties(properties);
+     
      OutputStream os;
 	try {
 		os = new FileOutputStream(path);
@@ -12277,6 +13975,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 			String directory,
 			boolean useXML,
 			Properties properties){
+		setAllProperties(properties); // NEW. Setting properties from current parameters so missing (in the file) parameters will not cause an error
    	    String [] XMLPatterns= {".conf-xml",".xml"};
 	    String [] confPatterns={".conf"};
 	    String [] patterns=useXML?XMLPatterns:confPatterns;
@@ -12328,41 +14027,165 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	}
 /* ======================================================================== */
     public void setAllProperties(Properties properties){
-       	properties.setProperty("MASTER_DEBUG_LEVEL", MASTER_DEBUG_LEVEL+"");
-    	properties.setProperty("SHOW_AS_STACKS",     SHOW_AS_STACKS+"");//  Show debug images as stacks (false - individual)
-    	properties.setProperty("FFT_SIZE",           FFT_SIZE+"");
-    	properties.setProperty("MAP_FFT_SIZE",       MAP_FFT_SIZE+"");// used to find where grid covers the image
-    	properties.setProperty("GAUSS_WIDTH",        GAUSS_WIDTH+""); // 0.4 (0 - use Hamming window)
-    	properties.setProperty("FFT_OVERLAP",        FFT_OVERLAP+""); // createPSFMap()
-    	properties.setProperty("PSF_SUBPIXEL",       PSF_SUBPIXEL+""); // sub-pixel decimation
-    	properties.setProperty("PSF_SAVE_FILE",      PSF_SAVE_FILE+"");// save PSF array to a multi-slice TIFF file
-    	properties.setProperty("THREADS_MAX",        THREADS_MAX+"");  // 100, testing multi-threading, limit maximal number of threads
-    	properties.setProperty("UPDATE_STATUS",      UPDATE_STATUS+""); // update ImageJ status info
+    	boolean select= (properties.getProperty("selected")!=null);
+    	boolean select_MASTER_DEBUG_LEVEL=!select;
+    	boolean select_SHOW_AS_STACKS=!select;
+    	boolean select_FFT_SIZE=!select;
+    	boolean select_MAP_FFT_SIZE=!select;
+    	boolean select_GAUSS_WIDTH=!select;
+    	boolean select_FFT_OVERLAP=!select;
+    	boolean select_PSF_SUBPIXEL=!select;
+    	boolean select_PSF_SAVE_FILE=!select;
+    	boolean select_THREADS_MAX=!select;
+    	boolean select_UPDATE_STATUS=!select;
+    	boolean select_SIMUL=!select;
+    	boolean select_INTERPOLATE=!select;
+    	boolean select_INVERSE=!select;
+    	boolean select_PSF_PARS=!select;
+    	boolean select_OTF_FILTER=!select;
+    	boolean select_PATTERN_DETECT=!select;
+    	boolean select_COMPONENTS=!select;
+    	boolean select_SHOW_RESULTS=!select;
+    	boolean select_MULTIFILE_PSF=!select;
+    	boolean select_PROCESS_PARAMETERS=!select;
+    	boolean select_DISTORTION=!select;
+    	boolean select_LASER_POINTERS=!select;
+    	boolean select_FLATFIELD_PARAMETERS=!select;
+    	boolean select_PATTERN_PARAMETERS=!select;
+    	boolean select_LENS_DISTORTION_PARAMETERS=!select;
+    	boolean select_EYESIS_CAMERA_PARAMETERS=!select;
+    	boolean select_LASERS=!select;
+    	boolean select_CAMERAS=!select;
+    	boolean select_DISTORTION_PROCESS_CONFIGURATION=!select;
+    	boolean select_REFINE_PARAMETERS=!select;
+    	boolean select_FOCUS_MEASUREMENT_PARAMETERS=!select;
+    	boolean select_MOTORS_focusingHistory=!select;
+    	boolean select_GONIOMETER_PARAMETERS=!select;
+    	boolean select_ABERRATIONS_PARAMETERS=!select;
+    	boolean select_FOCUSING_FIELD=!select;
+    	boolean select_POWER_CONTROL=!select;
+    	if (select) {
+    		GenericDialog gd = new GenericDialog("Select parameters to save");
+    		gd.addMessage("===== Individual parameters ======");
+        	gd.addCheckbox("MASTER_DEBUG_LEVEL", select_MASTER_DEBUG_LEVEL);
+        	gd.addCheckbox("SHOW_AS_STACKS", select_SHOW_AS_STACKS);
+        	gd.addCheckbox("FFT_SIZE",select_FFT_SIZE);
+        	gd.addCheckbox("MAP_FFT_SIZE",select_MAP_FFT_SIZE);
+        	gd.addCheckbox("GAUSS_WIDTH",select_GAUSS_WIDTH);
+        	gd.addCheckbox("FFT_OVERLAP",select_FFT_OVERLAP);
+        	gd.addCheckbox("PSF_SUBPIXEL",select_PSF_SUBPIXEL);
+        	gd.addCheckbox("PSF_SAVE_FILE",select_PSF_SAVE_FILE);
+        	gd.addCheckbox("THREADS_MAX",select_THREADS_MAX);
+        	gd.addCheckbox("UPDATE_STATUS",select_UPDATE_STATUS);
+    		gd.addMessage("===== Parameter classes ======");
+        	gd.addCheckbox("SIMUL",select_SIMUL);
+        	gd.addCheckbox("INTERPOLATE",select_INTERPOLATE);
+        	gd.addCheckbox("INVERSE",select_INVERSE);
+        	gd.addCheckbox("PSF_PARS",select_PSF_PARS);
+        	gd.addCheckbox("OTF_FILTER",select_OTF_FILTER);
+        	gd.addCheckbox("PATTERN_DETECT",select_PATTERN_DETECT);
+        	gd.addCheckbox("COMPONENTS",select_COMPONENTS);
+        	gd.addCheckbox("SHOW_RESULTS",select_SHOW_RESULTS);
+        	gd.addCheckbox("MULTIFILE_PSF",select_MULTIFILE_PSF);
+        	gd.addCheckbox("PROCESS_PARAMETERS",select_PROCESS_PARAMETERS);
+        	gd.addCheckbox("DISTORTION",select_DISTORTION);
+        	gd.addCheckbox("LASER_POINTERS",select_LASER_POINTERS);
+        	gd.addCheckbox("FLATFIELD_PARAMETERS",select_FLATFIELD_PARAMETERS);
+        	gd.addCheckbox("PATTERN_PARAMETERS",select_PATTERN_PARAMETERS);
+        	gd.addCheckbox("LENS_DISTORTION_PARAMETERS",select_LENS_DISTORTION_PARAMETERS);
+        	gd.addCheckbox("EYESIS_CAMERA_PARAMETERS",select_EYESIS_CAMERA_PARAMETERS);
+        	gd.addCheckbox("LASERS",select_LASERS);
+        	gd.addCheckbox("CAMERAS",select_CAMERAS);
+        	gd.addCheckbox("DISTORTION_PROCESS_CONFIGURATION",select_DISTORTION_PROCESS_CONFIGURATION);
+        	gd.addCheckbox("REFINE_PARAMETERS",select_REFINE_PARAMETERS);
+        	gd.addCheckbox("FOCUS_MEASUREMENT_PARAMETERS",select_FOCUS_MEASUREMENT_PARAMETERS);
+        	gd.addCheckbox("MOTORS_focusingHistory",select_MOTORS_focusingHistory);
+        	gd.addCheckbox("GONIOMETER_PARAMETERS",select_GONIOMETER_PARAMETERS);
+        	gd.addCheckbox("ABERRATIONS_PARAMETERS",select_ABERRATIONS_PARAMETERS);
+        	gd.addCheckbox("FOCUSING_FIELD",select_FOCUSING_FIELD);
+        	gd.addCheckbox("POWER_CONTROL",select_POWER_CONTROL);
+        	
+            WindowTools.addScrollBars(gd);
+            gd.showDialog();
+            if (gd.wasCanceled()) return;
+        	select_MASTER_DEBUG_LEVEL=gd.getNextBoolean();
+        	select_SHOW_AS_STACKS=gd.getNextBoolean();
+        	select_FFT_SIZE=gd.getNextBoolean();
+        	select_MAP_FFT_SIZE=gd.getNextBoolean();
+        	select_GAUSS_WIDTH=gd.getNextBoolean();
+        	select_FFT_OVERLAP=gd.getNextBoolean();
+        	select_PSF_SUBPIXEL=gd.getNextBoolean();
+        	select_PSF_SAVE_FILE=gd.getNextBoolean();
+        	select_THREADS_MAX=gd.getNextBoolean();
+        	select_UPDATE_STATUS=gd.getNextBoolean();
 
-        SIMUL.setProperties(             "SIMUL.", properties);
-        INTERPOLATE.setProperties(       "INTERPOLATE.", properties);
-        INVERSE.setProperties(           "INVERSE.", properties);
-        PSF_PARS.setProperties(          "PSF_PARS.", properties);
-        OTF_FILTER.setProperties(        "OTF_FILTER.", properties);
-        PATTERN_DETECT.setProperties(    "PATTERN_DETECT.", properties);
-        COMPONENTS.setProperties(        "COMPONENTS.", properties);
-        SHOW_RESULTS.setProperties(      "SHOW_RESULTS.", properties);
-        MULTIFILE_PSF.setProperties(     "MULTIFILE_PSF.", properties);
-        PROCESS_PARAMETERS.setProperties("PROCESS_PARAMETERS.", properties);
-        DISTORTION.setProperties(        "DISTORTION.", properties);
-        LASER_POINTERS.setProperties("LASER.", properties);
-        FLATFIELD_PARAMETERS.setProperties("FLATFIELD_PARAMETERS.", properties);
-        PATTERN_PARAMETERS.setProperties  ("PATTERN_PARAMETERS.", properties);
-        LENS_DISTORTION_PARAMETERS.setProperties("LENS_DISTORTION_PARAMETERS.", properties);
-        EYESIS_CAMERA_PARAMETERS.setProperties("EYESIS_CAMERA_PARAMETERS.", properties);
-        LASERS.setProperties("LASERS.", properties);
-        CAMERAS.setProperties("CAMERAS.", properties);
-        DISTORTION_PROCESS_CONFIGURATION.setProperties("DISTORTION_PROCESS_CONFIGURATION.", properties);
-        REFINE_PARAMETERS.setProperties("REFINE_PARAMETERS.", properties);
-        FOCUS_MEASUREMENT_PARAMETERS.setProperties("FOCUS_MEASUREMENT_PARAMETERS.", properties);
-        MOTORS.focusingHistory.setProperties("FOCUSING_HISTORY.", properties);
-        GONIOMETER_PARAMETERS.setProperties("GONIOMETER_PARAMETERS.", properties);
-        ABERRATIONS_PARAMETERS.setProperties("ABERRATIONS_PARAMETERS.", properties);
+        	select_SIMUL=gd.getNextBoolean();
+        	select_INTERPOLATE=gd.getNextBoolean();
+        	select_INVERSE=gd.getNextBoolean();
+        	select_PSF_PARS=gd.getNextBoolean();
+        	select_OTF_FILTER=gd.getNextBoolean();
+        	select_PATTERN_DETECT=gd.getNextBoolean();
+        	select_COMPONENTS=gd.getNextBoolean();
+        	select_SHOW_RESULTS=gd.getNextBoolean();
+        	select_MULTIFILE_PSF=gd.getNextBoolean();
+        	select_PROCESS_PARAMETERS=gd.getNextBoolean();
+        	select_DISTORTION=gd.getNextBoolean();
+        	select_LASER_POINTERS=gd.getNextBoolean();
+        	select_FLATFIELD_PARAMETERS=gd.getNextBoolean();
+        	select_PATTERN_PARAMETERS=gd.getNextBoolean();
+        	select_LENS_DISTORTION_PARAMETERS=gd.getNextBoolean();
+        	select_EYESIS_CAMERA_PARAMETERS=gd.getNextBoolean();
+        	select_LASERS=gd.getNextBoolean();
+        	select_CAMERAS=gd.getNextBoolean();
+        	select_DISTORTION_PROCESS_CONFIGURATION=gd.getNextBoolean();
+        	select_REFINE_PARAMETERS=gd.getNextBoolean();
+        	select_FOCUS_MEASUREMENT_PARAMETERS=gd.getNextBoolean();
+        	select_MOTORS_focusingHistory=gd.getNextBoolean();
+        	select_GONIOMETER_PARAMETERS=gd.getNextBoolean();
+        	select_ABERRATIONS_PARAMETERS=gd.getNextBoolean();
+        	select_FOCUSING_FIELD=gd.getNextBoolean();
+        	select_POWER_CONTROL=gd.getNextBoolean();
+    	}
+    	
+       	if (select_MASTER_DEBUG_LEVEL) properties.setProperty("MASTER_DEBUG_LEVEL", MASTER_DEBUG_LEVEL+"");
+       	if (select_SHOW_AS_STACKS) properties.setProperty("SHOW_AS_STACKS",     SHOW_AS_STACKS+"");//  Show debug images as stacks (false - individual)
+       	if (select_FFT_SIZE) properties.setProperty("FFT_SIZE",           FFT_SIZE+"");
+       	if (select_MAP_FFT_SIZE) properties.setProperty("MAP_FFT_SIZE",       MAP_FFT_SIZE+"");// used to find where grid covers the image
+       	if (select_GAUSS_WIDTH) properties.setProperty("GAUSS_WIDTH",        GAUSS_WIDTH+""); // 0.4 (0 - use Hamming window)
+       	if (select_FFT_OVERLAP) properties.setProperty("FFT_OVERLAP",        FFT_OVERLAP+""); // createPSFMap()
+       	if (select_PSF_SUBPIXEL) properties.setProperty("PSF_SUBPIXEL",       PSF_SUBPIXEL+""); // sub-pixel decimation
+       	if (select_PSF_SAVE_FILE) properties.setProperty("PSF_SAVE_FILE",      PSF_SAVE_FILE+"");// save PSF array to a multi-slice TIFF file
+       	if (select_THREADS_MAX) properties.setProperty("THREADS_MAX",        THREADS_MAX+"");  // 100, testing multi-threading, limit maximal number of threads
+       	if (select_UPDATE_STATUS) properties.setProperty("UPDATE_STATUS",      UPDATE_STATUS+""); // update ImageJ status info
+
+       	if (select_SIMUL) SIMUL.setProperties(             "SIMUL.", properties);
+        if (select_INTERPOLATE) INTERPOLATE.setProperties(       "INTERPOLATE.", properties);
+        if (select_INVERSE) INVERSE.setProperties(           "INVERSE.", properties);
+        if (select_PSF_PARS) PSF_PARS.setProperties(          "PSF_PARS.", properties);
+        if (select_OTF_FILTER) OTF_FILTER.setProperties(        "OTF_FILTER.", properties);
+        if (select_PATTERN_DETECT) PATTERN_DETECT.setProperties(    "PATTERN_DETECT.", properties);
+        if (select_COMPONENTS) COMPONENTS.setProperties(        "COMPONENTS.", properties);
+        if (select_SHOW_RESULTS) SHOW_RESULTS.setProperties(      "SHOW_RESULTS.", properties);
+        if (select_MULTIFILE_PSF) MULTIFILE_PSF.setProperties(     "MULTIFILE_PSF.", properties);
+        if (select_PROCESS_PARAMETERS) PROCESS_PARAMETERS.setProperties("PROCESS_PARAMETERS.", properties);
+        if (select_DISTORTION) DISTORTION.setProperties(        "DISTORTION.", properties);
+        if (select_LASER_POINTERS) LASER_POINTERS.setProperties("LASER.", properties);
+        if (select_FLATFIELD_PARAMETERS) FLATFIELD_PARAMETERS.setProperties("FLATFIELD_PARAMETERS.", properties);
+        if (select_PATTERN_PARAMETERS) PATTERN_PARAMETERS.setProperties  ("PATTERN_PARAMETERS.", properties);
+        if (select_LENS_DISTORTION_PARAMETERS) LENS_DISTORTION_PARAMETERS.setProperties("LENS_DISTORTION_PARAMETERS.", properties);
+        if (select_EYESIS_CAMERA_PARAMETERS) EYESIS_CAMERA_PARAMETERS.setProperties("EYESIS_CAMERA_PARAMETERS.", properties);
+        if (select_LASERS) LASERS.setProperties("LASERS.", properties);
+        if (select_CAMERAS) CAMERAS.setProperties("CAMERAS.", properties);
+        if (select_DISTORTION_PROCESS_CONFIGURATION) DISTORTION_PROCESS_CONFIGURATION.setProperties("DISTORTION_PROCESS_CONFIGURATION.", properties);
+        if (select_REFINE_PARAMETERS) REFINE_PARAMETERS.setProperties("REFINE_PARAMETERS.", properties);
+        if (select_FOCUS_MEASUREMENT_PARAMETERS) FOCUS_MEASUREMENT_PARAMETERS.setProperties("FOCUS_MEASUREMENT_PARAMETERS.", properties);
+        if (select_MOTORS_focusingHistory) MOTORS.focusingHistory.setProperties("FOCUSING_HISTORY.", properties);
+        if (select_GONIOMETER_PARAMETERS) GONIOMETER_PARAMETERS.setProperties("GONIOMETER_PARAMETERS.", properties);
+        if (select_ABERRATIONS_PARAMETERS) ABERRATIONS_PARAMETERS.setProperties("ABERRATIONS_PARAMETERS.", properties);
+        if ((select_FOCUSING_FIELD) && (FOCUSING_FIELD!=null)) FOCUSING_FIELD.setProperties("FOCUSING_FIELD.", properties);
+        if (select_POWER_CONTROL) POWER_CONTROL.setProperties("POWER_CONTROL.", properties);
+        
+    	if (select) properties.remove("selected");
     }
 /* ======================================================================== */
     public void getAllProperties(Properties properties){
@@ -12401,9 +14224,9 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
        MOTORS.focusingHistory.getProperties("FOCUSING_HISTORY.", properties);
        GONIOMETER_PARAMETERS.getProperties("GONIOMETER_PARAMETERS.", properties);
        ABERRATIONS_PARAMETERS.getProperties("ABERRATIONS_PARAMETERS.", properties);
+       if (FOCUSING_FIELD!=null) FOCUSING_FIELD.getProperties("FOCUSING_FIELD.", properties,false); // false -> overwrite distortions center
+       POWER_CONTROL.getProperties("POWER_CONTROL.", properties);
     }
-	
-	
 	
 	  private String selectSourceDirectory(String defaultPath) {
 		  return CalibrationFileManagement.selectDirectory(false, // save  
@@ -14860,7 +16683,9 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 				wVectors[1][0]=2.0*distortedPattern[1][0]/subpixel;
 				wVectors[1][1]=2.0*distortedPattern[1][1]/subpixel;
 			} else { // approximate pattern grid and simulate it
-				double[][] distPatPars= matchSimulatedPattern.findPatternFromGrid(
+				double[][] distPatPars=null;
+				try {
+				distPatPars= matchSimulatedPattern.findPatternFromGrid(
 						x0, // top-left pixel of the square WOI
 						y0,
 						size, // size of square (pixels)
@@ -14868,6 +16693,14 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 						false,  // use linear approximation (instead of quadratic)
 						1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
 						1.0E-20);  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
+				} catch (Exception e){
+					System.out.println("Failed findPatternFromGrid("+x0+","+y0+",...)");
+				}
+				if (distPatPars==null) return null;
+				if ((distPatPars[0].length<6) || (distPatPars[1].length<6)){
+					System.out.println("Failure: findPatternFromGrid("+x0+","+y0+",...) returned only linear coefficients");
+					return null;
+				}
 				int [] iUV={(int) Math.floor(distPatPars[0][2]),(int) Math.floor(distPatPars[1][2])};
 				boolean negative=((iUV[0]^iUV[1])&1)!=0;
 				double [] simCorr={

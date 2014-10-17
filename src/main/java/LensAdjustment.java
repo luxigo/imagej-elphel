@@ -194,6 +194,8 @@ public class LensAdjustment {
     public static class FocusMeasurementParameters {
     	public String gridGeometryFile="";
     	public String initialCalibrationFile="";
+    	public String focusingHistoryFile="";
+    	public boolean useLMAMetrics=true; // measure/report focal distance and tilts using lens model/LMA (when available)
     	public String strategyFile="";
     	public String resultsSuperDirectory=""; // directory with subdirectories named as serial numbers to stro results
     	public int EEPROM_channel=1; // EEPROM channel to read serial number from
@@ -224,13 +226,14 @@ public class LensAdjustment {
     	public int lensSerialLength=4;
     	public String lensSerial=""; // Lens serial number
     	public boolean  askLensSerial=true; // Ask lens serial on camera power cycle
+    	public double reportTemperature=50;      // temperature to report focal length  
 
     	public boolean includeLensSerial=true; // add lens serial to config filename
     	public double centerDeltaX=0.0; // required X-difference between lens center and sensor center 
     	public double centerDeltaY=0.0; // required Y-difference between lens center and sensor center
     	// with the seam in the middle - make even # of samples horizontally
     	public Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
-    	public int [] numSamples={4,3};       // number of samples in x and y directions
+    	public int [] numSamples={8,5};       // number of samples in x and y directions
     	public int    sampleSize=256;// 512;       // size of square (2^n), in sensor pixels (twice FFT size)
     	public int    numInCenter=(numSamples[0]-2)*(numSamples[1]-2);// 2 - number of "center" samples
     	public boolean centerSamples=true; // Select samples in the WOI symmetrical around the lens center
@@ -297,11 +300,21 @@ public class LensAdjustment {
         public double motorsPreSigma=3584.0; // when fitting parabola for focusing sharpness in the center, far measurements decay with this sigma
         public double maxLinearStep= 3584.0; // If there are insufficient measurements to fit parabola - make this step
         
-        public int scanStep=200;             // motor step (all 3 motors) in scan focus mode (signed value)
+        public int scanStep=320; // 200;             // motor step (all 3 motors) in scan focus mode (signed value)
         public int scanNumber=50;            // number of scanStep steps to run
-        public int scanNumberNegative=15;    // number of scanStep steps negative from the start 
-        public boolean scanHysteresis=true;  // scan both ways
+        public int scanNumberNegative=20; // 15;    // number of scanStep steps negative from the start 
+        public boolean scanHysteresis=false; // true;  // scan both ways
         public int scanHysteresisNumber=5;   // number of test points for the Hysteresis measurement
+        
+        public boolean scanTiltEnable=false; //true;  // enable scanning tilt
+        public boolean scanTiltReverse=false;  // enable scanning tilt in both directions
+        public boolean scanMeasureLast=false;  // Calculate PSF after last move (to original position)
+        public boolean scanRunLMA=true;  // Calculate PSF after last move (to original position)
+        public int scanTiltRangeX=14336;    // 4 periods
+        public int scanTiltRangeY=14336;    // 4 periods
+        public int scanTiltStepsX=24;
+        public int scanTiltStepsY=24;
+        
         
         public int motorHysteresis=300;
         public double measuredHysteresis=0; // actually measured (will be saved/restored)
@@ -317,6 +330,12 @@ public class LensAdjustment {
         public boolean lensDistanceInteractive=true; // Open dialog when calibrating focal distance
         public boolean lensDistanceShowResults=true; // show results window from foca
         public boolean lensDistanceMoveToGoal=true;  // Move to targetMicrons
+        
+        public boolean powerControlEnable=true;
+        public double powerControlMaximalTemperature=60.0;
+        public double powerControlHeaterOnMinutes=10.0;
+        public double powerControlNeitherOnMinutes=5.0;
+        public double powerControlFanOnMinutes=15.0;
         
         public String uvLasersIP="192.168.0.236"; // IP address of the camera with UV LEDs and aiming lasers are connected
         public int    uvLasersBus=0;              // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
@@ -405,7 +424,7 @@ public class LensAdjustment {
 	    	this.result_tiltY=Double.NaN; // last measured tilt Y
 	    	this.result_R50=Double.NaN;   // last measured R50 (average PSF 50% level radius, pixels - somewhat larged than actual because of measurement settings)
 	    	this.result_A50=Double.NaN;   // last measured A50 (simailar, but R^2 are averaged) 
-	    	this.result_B50=Double.NaN;   // last measured B50 (simailar, but R^4 are averaged)
+	    	this.result_B50=Double.NaN;   // last measured B50 (similar, but R^4 are averaged)
 	    	this.result_RC50=Double.NaN;  // last measured RC50(R50 calculated only for the 2 center samples)
 	    	this.result_PX0=Double.NaN; // lens center shift, X
 	    	this.result_PY0=Double.NaN; // lens center shift, Y
@@ -418,6 +437,8 @@ public class LensAdjustment {
     	    	String initialCalibrationFile,
     	    	String strategyFile,
     	    	String resultsSuperDirectory, // directory with subdirectories named as serial numbers to stro results
+    	    	String focusingHistoryFile,
+    	    	boolean useLMAMetrics, // measure/report focal distance and tilts using lens model/LMA (when available)
     	    	int EEPROM_channel, // EEPROM channel to read serial number from
     	    	boolean saveResults, // save focusing results
     	    	boolean showResults, // show focusing (includingh intermediate) results
@@ -509,6 +530,17 @@ public class LensAdjustment {
                 int scanNumberNegative,    // of them negative
                 boolean scanHysteresis,  // scan both ways
                 int scanHysteresisNumber,   // number of test points for the Hysteresis measurement
+                
+                boolean scanTiltEnable, //=true;  // enable scanning tilt
+                boolean scanTiltReverse,
+                boolean scanMeasureLast,
+                boolean scanRunLMA,
+                int scanTiltRangeX, //=14336;    // 4 periods
+                int scanTiltRangeY, //=14336;    // 4 periods
+                int scanTiltStepsX, //=24;
+                int scanTiltStepsY, //=24;
+
+                
                 int motorHysteresis,
                 double measuredHysteresis, // actually measured (will be saved/restored)
                 double motorCalm, // wait (seconds) after motors reached final position (for the first time) before acquiring image   
@@ -521,6 +553,11 @@ public class LensAdjustment {
                 boolean lensDistanceInteractive, // Open dialog when calibrating focal distance
                 boolean lensDistanceShowResults, // show results window from foca
                 boolean lensDistanceMoveToGoal,  // Move to targetMicrons
+                boolean powerControlEnable,
+                double powerControlMaximalTemperature,
+                double powerControlHeaterOnMinutes,
+                double powerControlNeitherOnMinutes,
+                double powerControlFanOnMinutes,
                 String uvLasersIP, // IP address of the camera with UV LEDs and aiming lasers are connected
                 int    uvLasersBus,             // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
                 double [] uvLasersCurrents, // default LED on currents (mA)
@@ -547,12 +584,15 @@ public class LensAdjustment {
                 int    numIterations, // maximal number of iterations
 				boolean cameraIsConfigured,
 				int [] motorPos,
-	        	double [] ampsSeconds // cumulative Amps*seconds (read only, but will be saved/restored)
+	        	double [] ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
+	        	double reportTemperature      // temperature to report focal length  
     			){
     		this.gridGeometryFile=gridGeometryFile;
     		this.initialCalibrationFile=initialCalibrationFile;
     		this.strategyFile=strategyFile;
     		this.resultsSuperDirectory=resultsSuperDirectory; // directory with subdirectories named as serial numbers to stro results
+    		this.focusingHistoryFile=focusingHistoryFile;
+    		this.useLMAMetrics=useLMAMetrics; // measure/report focal distance and tilts using lens model/LMA (when available)
     		this.EEPROM_channel=EEPROM_channel; // EEPROM channel to read serial number from
     		this.saveResults=saveResults; // save focusing results
     		this.showResults=showResults; // show focusing (includingh intermediate) results
@@ -643,6 +683,16 @@ public class LensAdjustment {
             this.scanNumberNegative=scanNumberNegative;    // of them negative
 			this.scanHysteresis=scanHysteresis;       // scan both ways
 			this.scanHysteresisNumber=scanHysteresisNumber; // number of test points for the Hysteresis measurement
+			
+			this.scanTiltEnable=scanTiltEnable; //=true;  // enable scanning tilt
+			this.scanTiltReverse=scanTiltReverse;
+			this.scanMeasureLast=scanMeasureLast;
+			this.scanRunLMA=scanRunLMA;
+			this.scanTiltRangeX=scanTiltRangeX; //, //=14336;    // 4 periods
+			this.scanTiltRangeY=scanTiltRangeY; //, //=14336;    // 4 periods
+			this.scanTiltStepsX=scanTiltStepsX; //=24;
+			this.scanTiltStepsY=scanTiltStepsY; //=24;
+			
 			this.motorHysteresis=motorHysteresis;
 			this.measuredHysteresis=measuredHysteresis; // actually measured (will be saved/restored)
 			this.motorCalm=motorCalm; // wait (seconds) after motors reached final position (for the first time) before acquiring image   
@@ -655,6 +705,11 @@ public class LensAdjustment {
 			this.lensDistanceInteractive=lensDistanceInteractive; // Open dialog when calibrating focal distance
 			this.lensDistanceShowResults=lensDistanceShowResults; // show results window from foca
 			this.lensDistanceMoveToGoal=lensDistanceMoveToGoal;  // Move to targetMicrons
+			this.powerControlEnable=powerControlEnable;
+			this.powerControlMaximalTemperature=powerControlMaximalTemperature;
+			this.powerControlHeaterOnMinutes=powerControlHeaterOnMinutes;
+			this.powerControlNeitherOnMinutes=powerControlNeitherOnMinutes;
+			this.powerControlFanOnMinutes=powerControlFanOnMinutes;
             this.uvLasersIP=new String(uvLasersIP); // IP address of the camera with UV LEDs and aiming lasers are connected
             this.uvLasersBus=uvLasersBus; // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
             this.uvLasersCurrents=uvLasersCurrents.clone(); // default LED on currents (mA)
@@ -681,7 +736,7 @@ public class LensAdjustment {
             this.cameraIsConfigured=cameraIsConfigured;
             this.motorPos=motorPos;
         	this.ampsSeconds=ampsSeconds; // cumulative Amps*seconds (read only, but will be saved/restored)
-
+        	this.reportTemperature=reportTemperature;
 			
     	}
     	public FocusMeasurementParameters clone(){
@@ -690,6 +745,8 @@ public class LensAdjustment {
     	    		this.initialCalibrationFile,
     	    		this.strategyFile,
     	    		this.resultsSuperDirectory, // directory with subdirectories named as serial numbers to stro results
+    	    		this.focusingHistoryFile,
+    	    		this.useLMAMetrics, // measure/report focal distance and tilts using lens model/LMA (when available)
     	    		this.EEPROM_channel,// EEPROM channel to read serial number from
     	    		this.saveResults, // save focusing results
     	    		this.showResults, // show focusing (includingh intermediate) results
@@ -779,7 +836,17 @@ public class LensAdjustment {
     	            this.scanNumberNegative,    // of them negative
     				this.scanHysteresis,         // scan both ways
     				this.scanHysteresisNumber,   // number of test points for the Hysteresis measurement
+    				
+    				this.scanTiltEnable,  // enable scanning tilt
+    				this.scanTiltReverse,
+    				this.scanMeasureLast,
+    				this.scanRunLMA,
+    	    		this.scanTiltRangeX,    // 4 periods
+    	    		this.scanTiltRangeY,    // 4 periods
+    	    		this.scanTiltStepsX,
+    	    		this.scanTiltStepsY,
     				this.motorHysteresis,
+    				
     				this.measuredHysteresis,     // actually measured (will be saved/restored)
     				this.motorCalm,              // wait (seconds) after motors reached final position (for the first time) before acquiring image   
     				this.linearReductionRatio,   // sensor travel to motors travel (all 3 together), By design it is 4/38~=0.105
@@ -791,6 +858,11 @@ public class LensAdjustment {
     				this.lensDistanceInteractive, // Open dialog when calibrating focal distance
     				this.lensDistanceShowResults, // show results window from foca
     				this.lensDistanceMoveToGoal,  // Move to targetMicrons
+    				this.powerControlEnable,
+    				this.powerControlMaximalTemperature,
+    				this.powerControlHeaterOnMinutes,
+    				this.powerControlNeitherOnMinutes,
+    				this.powerControlFanOnMinutes,
                     this.uvLasersIP,              // IP address of the camera with UV LEDs and aiming lasers are connected
                     this.uvLasersBus,             // 0 if 103641 board is connected to the sensor port (through 10-359), 1 - to 10369
                     this.uvLasersCurrents,        // default LED on currents (mA)
@@ -817,7 +889,8 @@ public class LensAdjustment {
     				this.numIterations,
     				this.cameraIsConfigured,
     				this.motorPos,
-    	        	this.ampsSeconds // cumulative Amps*seconds (read only, but will be saved/restored)
+    	        	this.ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
+    	        	this.reportTemperature
         			);
     	}
 		public void setProperties(String prefix,Properties properties){
@@ -825,6 +898,8 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"initialCalibrationFile",this.initialCalibrationFile+"");
 			properties.setProperty(prefix+"strategyFile",this.strategyFile+"");
 			properties.setProperty(prefix+"resultsSuperDirectory",this.resultsSuperDirectory+"");
+			properties.setProperty(prefix+"focusingHistoryFile",this.focusingHistoryFile+"");
+			properties.setProperty(prefix+"useLMAMetrics",this.useLMAMetrics+"");
 			properties.setProperty(prefix+"serialNumber",this.serialNumber+"");
 			if (!Double.isNaN(this.sensorTemperature))properties.setProperty(prefix+"sensorTemperature",this.sensorTemperature+"");
 			if (!Double.isNaN(this.result_lastKT))properties.setProperty(prefix+"result_lastKT",this.result_lastKT+"");
@@ -919,15 +994,19 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"scanStep",this.scanStep+"");
 			properties.setProperty(prefix+"scanNumber",this.scanNumber+"");
 			properties.setProperty(prefix+"scanNumberNegative",this.scanNumberNegative+"");
-
 			properties.setProperty(prefix+"scanHysteresis",this.scanHysteresis+"");
 			properties.setProperty(prefix+"scanHysteresisNumber",this.scanHysteresisNumber+"");
-			
+			properties.setProperty(prefix+"scanTiltEnable",this.scanTiltEnable+"");  // enable scanning tilt
+			properties.setProperty(prefix+"scanTiltReverse",this.scanTiltReverse+"");
+			properties.setProperty(prefix+"scanMeasureLast",this.scanMeasureLast+"");
+			properties.setProperty(prefix+"scanRunLMA",this.scanRunLMA+"");
+			properties.setProperty(prefix+"scanTiltRangeX",this.scanTiltRangeX+"");    // 4 periods
+			properties.setProperty(prefix+"scanTiltRangeY",this.scanTiltRangeY+"");    // 4 periods
+			properties.setProperty(prefix+"scanTiltStepsX",this.scanTiltStepsX+"");
+			properties.setProperty(prefix+"scanTiltStepsY",this.scanTiltStepsY+"");
 			properties.setProperty(prefix+"motorHysteresis",this.motorHysteresis+"");
 			properties.setProperty(prefix+"measuredHysteresis",this.measuredHysteresis+"");
-
 			properties.setProperty(prefix+"motorCalm",this.motorCalm+"");
-			
 			properties.setProperty(prefix+"linearReductionRatio",this.linearReductionRatio+"");
 			properties.setProperty(prefix+"motorDebug",this.motorDebug+"");
 			properties.setProperty(prefix+"lensDistanceNumPoints",this.lensDistanceNumPoints+"");
@@ -937,7 +1016,13 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"lensDistanceInteractive",this.lensDistanceInteractive+"");
 			properties.setProperty(prefix+"lensDistanceShowResults",this.lensDistanceShowResults+"");
 			properties.setProperty(prefix+"lensDistanceMoveToGoal",this.lensDistanceMoveToGoal+"");
-
+			
+			properties.setProperty(prefix+"powerControlEnable",this.powerControlEnable+"");
+			properties.setProperty(prefix+"powerControlMaximalTemperature",this.powerControlMaximalTemperature+"");
+			properties.setProperty(prefix+"powerControlHeaterOnMinutes",this.powerControlHeaterOnMinutes+"");
+			properties.setProperty(prefix+"powerControlNeitherOnMinutes",this.powerControlNeitherOnMinutes+"");
+			properties.setProperty(prefix+"powerControlFanOnMinutes",this.powerControlFanOnMinutes+"");
+			
 			properties.setProperty(prefix+"uvLasersIP",this.uvLasersIP);
 			properties.setProperty(prefix+"uvLasersBus",this.uvLasersBus+"");
 			properties.setProperty(prefix+"uvLasersCurrents_0",this.uvLasersCurrents[0]+"");
@@ -967,6 +1052,7 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"numIterations",this.numIterations+"");
 			for (int i=0;i<this.ampsSeconds.length;i++) 
 				properties.setProperty(prefix+"ampsSeconds_"+i,this.ampsSeconds[i]+"");
+			properties.setProperty(prefix+"reportTemperature",this.reportTemperature+"");
 		}    	
 		public void getProperties(String prefix,Properties properties){
 			if (properties.getProperty(prefix+"gridGeometryFile")!=null)
@@ -977,6 +1063,12 @@ public class LensAdjustment {
 				this.strategyFile=properties.getProperty(prefix+"strategyFile");
 			if (properties.getProperty(prefix+"resultsSuperDirectory")!=null)
 				this.resultsSuperDirectory=properties.getProperty(prefix+"resultsSuperDirectory");
+			if (properties.getProperty(prefix+"focusingHistoryFile")!=null)
+				this.focusingHistoryFile=properties.getProperty(prefix+"focusingHistoryFile");
+
+			if (properties.getProperty(prefix+"useLMAMetrics")!=null)
+				this.useLMAMetrics=Boolean.parseBoolean(properties.getProperty(prefix+"useLMAMetrics"));
+			
 			if (properties.getProperty(prefix+"serialNumber")!=null)
 				this.serialNumber=properties.getProperty(prefix+"serialNumber");
 			//	this.serialNumber is only written, but never read from the configuration file (only from devivce)
@@ -1168,6 +1260,28 @@ public class LensAdjustment {
 				this.scanHysteresis=Boolean.parseBoolean(properties.getProperty(prefix+"scanHysteresis"));
 			if (properties.getProperty(prefix+"scanHysteresisNumber")!=null)
 				this.scanHysteresisNumber=Integer.parseInt(properties.getProperty(prefix+"scanHysteresisNumber"));
+
+			if (properties.getProperty(prefix+"scanTiltEnable")!=null)
+				this.scanTiltEnable=Boolean.parseBoolean(properties.getProperty(prefix+"scanTiltEnable"));
+			if (properties.getProperty(prefix+"scanTiltReverse")!=null)
+				this.scanTiltReverse=Boolean.parseBoolean(properties.getProperty(prefix+"scanTiltReverse"));
+			
+			
+			if (properties.getProperty(prefix+"scanMeasureLast")!=null)
+				this.scanMeasureLast=Boolean.parseBoolean(properties.getProperty(prefix+"scanMeasureLast"));
+
+			if (properties.getProperty(prefix+"scanRunLMA")!=null)
+				this.scanRunLMA=Boolean.parseBoolean(properties.getProperty(prefix+"scanRunLMA"));
+			
+			if (properties.getProperty(prefix+"scanTiltRangeX")!=null)
+				this.scanTiltRangeX=Integer.parseInt(properties.getProperty(prefix+"scanTiltRangeX"));
+			if (properties.getProperty(prefix+"scanTiltRangeY")!=null)
+				this.scanTiltRangeY=Integer.parseInt(properties.getProperty(prefix+"scanTiltRangeY"));
+			if (properties.getProperty(prefix+"scanTiltStepsX")!=null)
+				this.scanTiltStepsX=Integer.parseInt(properties.getProperty(prefix+"scanTiltStepsX"));
+			if (properties.getProperty(prefix+"scanTiltStepsY")!=null)
+				this.scanTiltStepsY=Integer.parseInt(properties.getProperty(prefix+"scanTiltStepsY"));
+			
 			if (properties.getProperty(prefix+"motorHysteresis")!=null)
 				this.motorHysteresis=Integer.parseInt(properties.getProperty(prefix+"motorHysteresis"));
 			if (properties.getProperty(prefix+"measuredHysteresis")!=null)
@@ -1192,6 +1306,18 @@ public class LensAdjustment {
 				this.lensDistanceShowResults=Boolean.parseBoolean(properties.getProperty(prefix+"lensDistanceShowResults"));
 			if (properties.getProperty(prefix+"lensDistanceMoveToGoal")!=null)
 				this.lensDistanceMoveToGoal=Boolean.parseBoolean(properties.getProperty(prefix+"lensDistanceMoveToGoal"));
+
+			
+			if (properties.getProperty(prefix+"powerControlEnable")!=null)
+				this.powerControlEnable=Boolean.parseBoolean(properties.getProperty(prefix+"powerControlEnable"));
+			if (properties.getProperty(prefix+"powerControlMaximalTemperature")!=null)
+				this.powerControlMaximalTemperature=Double.parseDouble(properties.getProperty(prefix+"powerControlMaximalTemperature"));
+			if (properties.getProperty(prefix+"powerControlHeaterOnMinutes")!=null)
+				this.powerControlHeaterOnMinutes=Double.parseDouble(properties.getProperty(prefix+"powerControlHeaterOnMinutes"));
+			if (properties.getProperty(prefix+"powerControlNeitherOnMinutes")!=null)
+				this.powerControlNeitherOnMinutes=Double.parseDouble(properties.getProperty(prefix+"powerControlNeitherOnMinutes"));
+			if (properties.getProperty(prefix+"powerControlFanOnMinutes")!=null)
+				this.powerControlFanOnMinutes=Double.parseDouble(properties.getProperty(prefix+"powerControlFanOnMinutes"));
 			
 			if (properties.getProperty(prefix+"uvLasersIP")!=null)
 				this.uvLasersIP=properties.getProperty(prefix+"uvLasersIP");
@@ -1246,9 +1372,10 @@ public class LensAdjustment {
 				this.thresholdFinish=Double.parseDouble(properties.getProperty(prefix+"thresholdFinish"));
 			if (properties.getProperty(prefix+"numIterations")!=null)
 				this.numIterations=Integer.parseInt(properties.getProperty(prefix+"numIterations"));
-			
 			for (int i=0;i<this.ampsSeconds.length;i++) if (properties.getProperty(prefix+"ampsSeconds_"+i)!=null)
 				this.ampsSeconds[i]=Double.parseDouble(properties.getProperty(prefix+"ampsSeconds_"+i));
+			if (properties.getProperty(prefix+"reportTemperature")!=null)
+				this.reportTemperature=Double.parseDouble(properties.getProperty(prefix+"reportTemperature"));
 		}
 		public boolean getLensSerial(){
 			while (true) { // loop until OK-ed
@@ -1266,6 +1393,8 @@ public class LensAdjustment {
 				gd.addNumericField("Optional manufacturing state modifier (0.."+maxMod+")",      manufacturingIndexMod[1], 0,1,"");
 
 				gd.addCheckbox     ("Ask lens serial number on each camera power cycle",this.askLensSerial);
+				gd.addNumericField("Required X-shift between the lens axis and the sensor center",      this.centerDeltaX, 0,4,"pix (180 for tilted)");
+				gd.addNumericField("Required Y-shift between the lens axis and the sensor center",      this.centerDeltaY, 0,4,"pix");
 				gd.showDialog();
 				if (gd.wasCanceled()) return false;
 				this.comment=                    gd.getNextString();
@@ -1276,6 +1405,8 @@ public class LensAdjustment {
 				int manIndex=                    gd.getNextChoiceIndex();
 				int manMod=                (int) gd.getNextNumber();
 				this.askLensSerial=              gd.getNextBoolean();
+	    		this.centerDeltaX=               gd.getNextNumber(); 
+		    	this.centerDeltaY=               gd.getNextNumber();
 				if (manMod<0)           manMod=0;
 				else if (manMod>maxMod) manMod=maxMod;
 				if (manIndex<manufacturingIndexMod[0]){
@@ -1294,6 +1425,54 @@ public class LensAdjustment {
 				}
 			}
 		}
+// subset of showDialog() - only set parameters realated to scanning		
+	   	public boolean showScanningSetup(String title) {
+    		GenericDialog gd = new GenericDialog(title);
+    		gd.addNumericField("Motor single movement (all 3 motors) in scan focus mode (signed value)",         this.scanStep, 0,7,"motors steps");
+    		gd.addNumericField("Number of scan steps during (center) focus scanning",                            this.scanNumber,        0);
+    		gd.addNumericField("... of them - in the negative direction (closer lens to sensor)",                this.scanNumberNegative,        0);
+
+    		gd.addCheckbox    ("Scan focus in 2 directions, after the calibration estimate hysteresis (play)",   this.scanHysteresis);
+    		gd.addNumericField("Number of scan steps during hysteresis (play) measurement",                      this.scanHysteresisNumber, 0);
+
+    		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
+    		gd.addCheckbox    ("Scan for tilt measurement in both directions",                                   this.scanTiltReverse);
+    		gd.addCheckbox    ("Calculate PSF after returning to the initial position",                          this.scanMeasureLast);
+    		gd.addCheckbox    ("Calculate model parameters after scanning",                                      this.scanRunLMA);
+    		
+    		
+    		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
+    		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
+    		gd.addNumericField("Number of stops measurements when tilting in X-deirection",                      this.scanTiltStepsX, 0);
+    		gd.addNumericField("Number of stops measurements when tilting in Y-deirection",                      this.scanTiltStepsY, 0);
+    		gd.addMessage("");
+    		gd.addNumericField("Motor anti-hysteresis travel (last measured was "+IJ.d2s(this.measuredHysteresis,0)+")", this.motorHysteresis, 0,7,"motors steps");
+
+
+    		WindowTools.addScrollBars(gd);
+    		gd.showDialog();
+    		if (gd.wasCanceled()) return false;
+
+			this.scanStep=             (int) gd.getNextNumber();
+			this.scanNumber=           (int) gd.getNextNumber();
+            this.scanNumberNegative=   (int) gd.getNextNumber();
+			this.scanHysteresis=             gd.getNextBoolean();
+			this.scanHysteresisNumber= (int) gd.getNextNumber();
+
+    		this.scanTiltEnable=             gd.getNextBoolean();
+    		this.scanTiltReverse=            gd.getNextBoolean();
+            this.scanMeasureLast=            gd.getNextBoolean();
+            this.scanRunLMA=                 gd.getNextBoolean();
+    		
+    		this.scanTiltRangeX=       (int) gd.getNextNumber();
+    		this.scanTiltRangeY=       (int) gd.getNextNumber();
+    		this.scanTiltStepsX=       (int) gd.getNextNumber();
+    		this.scanTiltStepsY=       (int) gd.getNextNumber();
+    		this.motorHysteresis=      (int) gd.getNextNumber();
+    		return true;  
+    	}
+
+		
     	public boolean showDialog(String title) { 
     		GenericDialog gd = new GenericDialog(title);
     		//	    		this.serialNumber, // camera serial number string
@@ -1312,12 +1491,14 @@ public class LensAdjustment {
     		
     		gd.addCheckbox     ("Ask lens serial number on each camera power cycle",this.askLensSerial);
     		gd.addCheckbox     ("Add lens serial number to filenames",this.includeLensSerial);
-			gd.addNumericField("Required X-shift between the lens axis and the sensor center",      this.centerDeltaX, 0,4,"pix");
+			gd.addNumericField("Required X-shift between the lens axis and the sensor center",      this.centerDeltaX, 0,4,"pix (180 for tilted)");
 			gd.addNumericField("Required Y-shift between the lens axis and the sensor center",      this.centerDeltaY, 0,4,"pix");
     		gd.addStringField  ("Grid geometry file",                                 this.gridGeometryFile,40);
 			gd.addStringField  ("Initial camera intrinsic/extrinsic parametres file", this.initialCalibrationFile,40);
 			gd.addStringField  ("Levenberg-Marquardt algorithm strategy file",        this.strategyFile,40);
 			gd.addStringField  ("Focusing results superdirectory (individual will be named by serial numbers)", this.resultsSuperDirectory,40);
+			gd.addStringField  ("Measurement history (acquired during \"Scan Calib LMA\") file", this.focusingHistoryFile,80);
+			gd.addCheckbox     ("Use lens aberration model (if available) for focal distance and tilts", this.useLMAMetrics);
 			gd.addNumericField("EEPROM channel to read sensor serial number from",    this.EEPROM_channel, 0,4,"");
 			gd.addCheckbox    ("Save SFE focusing results (including intermediate) ", this.saveResults);
 			gd.addCheckbox    ("Show SFE focusing results (including intermediate) ", this.showResults);
@@ -1391,12 +1572,18 @@ public class LensAdjustment {
     		gd.addCheckbox    ("Show results window from focal distance calibration",                            this.lensDistanceShowResults);
     		gd.addCheckbox    ("Move motors together to the requested microns from the \"best focus\"",          this.lensDistanceMoveToGoal);
     		
+    		gd.addCheckbox    ("Enable power control for heater and fan",                                        this.powerControlEnable);
+    		gd.addNumericField("Maximal allowed temperature",                                                    this.powerControlMaximalTemperature,  3,5,"C");
+    		gd.addNumericField("Heater ON time",                                                                 this.powerControlHeaterOnMinutes,  1,5,"min");
+    		gd.addNumericField("Both heater and fan OFF time",                                                   this.powerControlNeitherOnMinutes,  1,5,"min");
+    		gd.addNumericField("Fan ON time",                                                                    this.powerControlFanOnMinutes,  1,5,"min");
+    		
 			gd.addStringField  ("IP address of the camera with 103641 board (UV LEDs and lasers) are attached",  this.uvLasersIP,40);
     		gd.addNumericField("I2C bus where LED/laser board is attached (0 - through 10359, 1 - through 10369)",this.uvLasersBus,        0);
-    		gd.addNumericField("UV LED1 \"on\" current (left/near  when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
-    		gd.addNumericField("UV LED2 \"on\" current (right/near when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
-    		gd.addNumericField("UV LED3 \"on\" current (right/far  when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
-    		gd.addNumericField("UV LED4 \"on\" current (left/far   when looking from the target)",                   this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED1 \"on\" current (left/near  when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED2 \"on\" current (right/near when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED3 \"on\" current (right/far  when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
+    		gd.addNumericField("UV LED4 \"on\" current (left/far   when looking from the target)",               this.uvLasersCurrents[0],  3,5,"mA");
 			
     		gd.addMessage("");
     		gd.addNumericField("Minimal correction movement to initiate final series of corrections - focus/tilt mode",            this.minCorr,        1,5,"motors steps");
@@ -1414,6 +1601,17 @@ public class LensAdjustment {
    		
     		gd.addCheckbox    ("Scan focus in 2 directions, after the calibration estimate hysteresis (play)",   this.scanHysteresis);
     		gd.addNumericField("Number of scan steps during hysteresis (play) measurement",                      this.scanHysteresisNumber, 0);
+
+    		gd.addCheckbox    ("Scan for tilt measurement (approximately preserving center)",                    this.scanTiltEnable);
+    		gd.addCheckbox    ("Scan for tilt measurement in both directions",                                   this.scanTiltReverse);
+    		gd.addCheckbox    ("Calculate PSF after returning to the initial position",                          this.scanMeasureLast);
+    		
+    		
+    		gd.addNumericField("Full range of scanning motors tilting in X-direction",                           this.scanTiltRangeX, 0,7,"motors steps");
+    		gd.addNumericField("Full range of scanning motors tilting in Y-direction",                           this.scanTiltRangeY, 0,7,"motors steps");
+    		gd.addNumericField("Number of stops measurements when tilting in X-deirection",                      this.scanTiltStepsX, 0);
+    		gd.addNumericField("Number of stops measurements when tilting in Y-deirection",                      this.scanTiltStepsY, 0);
+    		
     		gd.addMessage     ("The following parameters overwrite some defined for aberration measurements in other dialogs");
     		gd.addNumericField("Smallest fraction to subdivide pixels at simulation", this.smallestSubPix, 3,5,"sensor pix");
     		gd.addNumericField("Maximal difference of the pattern value in the corners that triggers subdivision", this.bitmapNonuniforityThreshold, 3);
@@ -1435,13 +1633,23 @@ public class LensAdjustment {
 			gd.addNumericField("Expand during extrapolation (relative to the average grid period)", this.flatFieldExpand, 3);
 			gd.addNumericField("Threshold RMS to exit LMA",                this.thresholdFinish, 7,9,"pix");
 			gd.addNumericField("Maximal number of LMA iterations per series",this.numIterations, 0);
+    		gd.addMessage("-----");
+    		gd.addNumericField("Report focal length at this temperature", this.reportTemperature, 1,5,"C");
 			
     		if (!Double.isNaN(this.sensorTemperature)) gd.addMessage("Last measured sensor temperature is "+this.sensorTemperature+" C");
 
     		if (!Double.isNaN(this.result_lastKT)) gd.addMessage("Temperature focal distance coefficient measured in last run is "+this.result_lastKT+"microns/C");
     		if (!Double.isNaN(this.result_lastFD20)) gd.addMessage("Focal distance @20C measured at last run is "+this.result_lastFD20+" microns");
+    		if (!Double.isNaN(this.result_lastKT) && !Double.isNaN(this.result_lastFD20)){
+    			gd.addMessage("Focal distance @"+this.reportTemperature+"C measured at last run is "+
+    					(this.result_lastFD20+(this.reportTemperature-20.0)*this.result_lastKT)+" microns");	
+    		}
     		if (!Double.isNaN(this.result_allHistoryKT)) gd.addMessage("Temperature focal distance coefficient calculated from all measurements is "+this.result_allHistoryKT+" microns");
     		if (!Double.isNaN(this.result_allHistoryFD20)) gd.addMessage("Focal distance @20C calculated from all measurements is "+this.result_allHistoryFD20+" microns");
+    		if (!Double.isNaN(this.result_allHistoryKT) && !Double.isNaN(this.result_allHistoryFD20)){
+    			gd.addMessage("Focal distance @"+this.reportTemperature+"C calculated from all measurements is "+
+    					(this.result_allHistoryFD20+(this.reportTemperature-20.0)*this.result_allHistoryKT)+" microns");	
+    		}
     		if (!Double.isNaN(this.result_fDistance)) gd.addMessage("Focal distance is "+this.result_fDistance+" microns");
     		if (!Double.isNaN(this.result_tiltX)) gd.addMessage("Horizontal angular/tangential asymmetry "+this.result_tiltX);
     		if (!Double.isNaN(this.result_tiltY)) gd.addMessage("Vertical angular/tangential asymmetry "+this.result_tiltY);
@@ -1457,6 +1665,7 @@ public class LensAdjustment {
     		if (!Double.isNaN(this.result_FocalLength)) gd.addMessage("Lens focal length "+this.result_FocalLength+" mm");
 			gd.addMessage("Cumulative currents that ran through UV LEDs:");
 			for (int i=0;i<this.ampsSeconds.length;i++) gd.addMessage("UV LED "+(i+1)+":"+IJ.d2s(this.ampsSeconds[i],3)+" coulombs  (amp-seconds)");
+			
     		WindowTools.addScrollBars(gd);
     		gd.showDialog();
     		if (gd.wasCanceled()) return false;
@@ -1482,6 +1691,9 @@ public class LensAdjustment {
 			this.initialCalibrationFile=     gd.getNextString();
 			this.strategyFile=               gd.getNextString();
     		this.resultsSuperDirectory=      gd.getNextString();
+    		this.focusingHistoryFile=        gd.getNextString();
+			this.useLMAMetrics =             gd.getNextBoolean();
+
     		this.EEPROM_channel=       (int) gd.getNextNumber();
 			this.saveResults=                gd.getNextBoolean();
 			this.showResults=                gd.getNextBoolean();
@@ -1549,6 +1761,12 @@ public class LensAdjustment {
 			this.lensDistanceInteractive=    gd.getNextBoolean();
 			this.lensDistanceShowResults=    gd.getNextBoolean();
 			this.lensDistanceMoveToGoal=     gd.getNextBoolean();
+
+			this.powerControlEnable=            gd.getNextBoolean();
+			this.powerControlMaximalTemperature=gd.getNextNumber();
+			this.powerControlHeaterOnMinutes=   gd.getNextNumber();
+			this.powerControlNeitherOnMinutes=  gd.getNextNumber();
+			this.powerControlFanOnMinutes=      gd.getNextNumber();
 			
 			this.uvLasersIP=                 gd.getNextString();
 			this.uvLasersBus=          (int) gd.getNextNumber();
@@ -1571,6 +1789,16 @@ public class LensAdjustment {
             this.scanNumberNegative=   (int) gd.getNextNumber();
 			this.scanHysteresis=             gd.getNextBoolean();
 			this.scanHysteresisNumber= (int) gd.getNextNumber();
+			
+    		this.scanTiltEnable=             gd.getNextBoolean();
+    		this.scanTiltReverse=            gd.getNextBoolean();
+    		this.scanMeasureLast=            gd.getNextBoolean();
+    		this.scanTiltRangeX=       (int) gd.getNextNumber();
+    		this.scanTiltRangeY=       (int) gd.getNextNumber();
+    		this.scanTiltStepsX=       (int) gd.getNextNumber();
+    		this.scanTiltStepsY=       (int) gd.getNextNumber();
+			
+			
     		this.smallestSubPix=             gd.getNextNumber();
     		this.bitmapNonuniforityThreshold=gd.getNextNumber();
     		this.subdiv=               (int) gd.getNextNumber();
@@ -1591,6 +1819,7 @@ public class LensAdjustment {
 			this.flatFieldExpand=            gd.getNextNumber();
 			this.thresholdFinish=            gd.getNextNumber();
 			this.numIterations=        (int) gd.getNextNumber();
+    		this.reportTemperature=          gd.getNextNumber();
     		return true;
     	}
 /* ======================================================================== */
