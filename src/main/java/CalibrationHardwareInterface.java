@@ -1802,7 +1802,7 @@ public class CalibrationHardwareInterface {
 	
 	public static class PowerControl{
 		public boolean [] states={false,false,false,false,false};
-		public int [] lightsChannels={2,3,4}; // which lights to control on on/off
+		public int [] lightsChannels={/*2,*/3,4}; // which lights to control on on/off
 		public String [] groups={"heater","fan","light","light1","light2"};
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
@@ -1870,6 +1870,7 @@ public class CalibrationHardwareInterface {
     		}
     		return true;
     	}
+    	
     	public boolean showDialog(String title, boolean control) {
     		GenericDialog gd = new GenericDialog(title);
     		boolean heaterOn=false, fanOn=false, lightOn=false, light1On=false, light2On=false;
@@ -1898,11 +1899,11 @@ public class CalibrationHardwareInterface {
     	    	light2On=gd.getNextBoolean();
     	    	lightOn=gd.getNextBoolean();
     	    	if (!gd.wasOKed()) {
-    	    		 setPower("heater",heaterOn?"on":"off");
-    	    		 setPower("fan",fanOn?"on":"off");
-    	    		 setPower("light",lightOn?"on":"off");
-    	    		 setPower("light1",light1On?"on":"off");
-    	    		 setPower("light2",light2On?"on":"off");
+    	    		 setPower("heater",heaterOn?"on":"off"); setPower("heater","state");
+    	    		 setPower("fan",fanOn?"on":"off");       setPower("fan","state");
+    	    		 setPower("light1",light1On?"on":"off"); setPower("light1","state");
+    	    		 setPower("light2",light2On?"on":"off"); setPower("light2","state");
+//    	    		 setPower("light",lightOn?"on":"off");   setPower("light","state");
     	    	}
     	    }
             return true;
