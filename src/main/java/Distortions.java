@@ -12127,8 +12127,9 @@ Which parameters affect which matrices
 //    		getCostsProperties(prefix,properties);
     	}
     	void  updateNumstations (int newNumStations){
-    		System.out.println("updateNumstations("+newNumStations+"), was "+this.numStations);
+//    		System.out.println("updateNumstations("+newNumStations+"), was "+this.numStations);
     		if (newNumStations==this.numStations) return;
+    		System.out.println("updateNumstations("+newNumStations+"), was "+this.numStations);
     		EyesisCameraParameters newData=this.clone();
     		copyData(
     				newNumStations,

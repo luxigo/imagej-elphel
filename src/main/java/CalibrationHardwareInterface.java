@@ -1801,8 +1801,9 @@ public class CalibrationHardwareInterface {
 	}
 	
 	public static class PowerControl{
-		public boolean [] states={false,false,false};
-		public String [] groups={"heater","fan","light"};
+		public boolean [] states={false,false,false,false,false};
+		public int [] lightsChannels={2,3,4}; // which lights to control on on/off
+		public String [] groups={"heater","fan","light","light1","light2"};
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
     	private double lightsDelay=5.0;
@@ -1871,7 +1872,7 @@ public class CalibrationHardwareInterface {
     	}
     	public boolean showDialog(String title, boolean control) {
     		GenericDialog gd = new GenericDialog(title);
-    		boolean heaterOn=false, fanOn=false, lightOn=false;
+    		boolean heaterOn=false, fanOn=false, lightOn=false, light1On=false, light2On=false;
 			gd.addCheckbox("Enable power control (heater, fan, lights) ", this.powerConrtolEnabled);
     		gd.addStringField("IP address of the power control",this.powerIP,15);
 			gd.addNumericField("Delay after lights on", this.lightsDelay,  1,4,"sec");
@@ -1879,6 +1880,8 @@ public class CalibrationHardwareInterface {
     		if (control){
     			gd.addCheckbox("Heater On", heaterOn);
     			gd.addCheckbox("Fan On", fanOn);
+    			gd.addCheckbox("Lights Top On", light1On);
+    			gd.addCheckbox("Lights Bottom On", light2On);
     			gd.addCheckbox("Lights On", lightOn);
     		}
     	    WindowTools.addScrollBars(gd);
@@ -1891,19 +1894,26 @@ public class CalibrationHardwareInterface {
     	    if (control){
     	    	heaterOn=gd.getNextBoolean();
     	    	fanOn=gd.getNextBoolean();
+    	    	light1On=gd.getNextBoolean();
+    	    	light2On=gd.getNextBoolean();
     	    	lightOn=gd.getNextBoolean();
     	    	if (!gd.wasOKed()) {
     	    		 setPower("heater",heaterOn?"on":"off");
     	    		 setPower("fan",fanOn?"on":"off");
     	    		 setPower("light",lightOn?"on":"off");
+    	    		 setPower("light1",light1On?"on":"off");
+    	    		 setPower("light2",light2On?"on":"off");
     	    	}
     	    }
             return true;
     	}
     	public void lightsOnWithDelay(){
-    		if (this.states[2] || !this.powerConrtolEnabled) return; // already on
-			setPower("light","on");
-			System.out.print("Sleeping "+this.lightsDelay+" seconds to let lights stibilize on...");
+    		// turn on only new
+    		boolean allOn=true;
+    		for (int chn:this.lightsChannels) allOn&=this.states[chn];
+    		if (allOn  || !this.powerConrtolEnabled) return; // already on
+    		for (int chn:this.lightsChannels) if (!this.states[chn]) setPower(this.groups[chn],"on");
+			System.out.print("Sleeping "+this.lightsDelay+" seconds to let lights stabilize on...");
     		try {
 				TimeUnit.MILLISECONDS.sleep((long) (1000*this.lightsDelay));
 			} catch (InterruptedException e) {
@@ -1912,6 +1922,11 @@ public class CalibrationHardwareInterface {
 			}
 			System.out.println(" Done");
 
+    	}
+    	
+    	public void lightsOff(){
+    		if (!this.powerConrtolEnabled) return; // already on
+    		for (int chn:this.lightsChannels) if (this.states[chn]) setPower(this.groups[chn],"off");
     	}
     	
     	public boolean isPowerControlEnabled(){

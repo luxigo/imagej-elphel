@@ -4182,7 +4182,7 @@ if (MORE_BUTTONS) {
 			double rms_pure=       FOCUSING_FIELD.calcErrorDiffY(focusing_fx, true);
 			System.out.println("rms="+rms+", rms_pure="+rms_pure+" - with old parameters may be well off.");
 			remoteNotifyComplete();
-			POWER_CONTROL.setPower("light","off");
+			POWER_CONTROL.lightsOff();
 			if (FOCUS_MEASUREMENT_PARAMETERS.scanRunLMA){
 				FOCUSING_FIELD.setAdjustMode(false,null);
 				boolean OK=FOCUSING_FIELD.LevenbergMarquardt(
@@ -5646,7 +5646,7 @@ if (MORE_BUTTONS) {
 				double [] allKT;
 				if (!replayMode){
 					remoteNotifyComplete();
-					POWER_CONTROL.setPower("light","off");
+					POWER_CONTROL.lightsOff();
 					lastKT=MOTORS.focusingHistory.temperatureLinearApproximation(
 							useLMA,
 							runs,             // number of last samples from history to use, 0 - use all
@@ -5856,7 +5856,7 @@ if (MORE_BUTTONS) {
 					this.SYNC_COMMAND.stopRequested,
 					UPDATE_STATUS);
 			System.out.println ("GONIOMETER.scanAndAcquireI() "+(goniometerScanOK?"finished OK":"failed"));
-			POWER_CONTROL.setPower("light","off");
+			POWER_CONTROL.lightsOff();
 			return;
 		}		
 		
