@@ -1802,7 +1802,9 @@ public class CalibrationHardwareInterface {
 	
 	public static class PowerControl{
 		public boolean [] states={false,false,false,false,false};
-		public int [] lightsChannels={/*2,*/3,4}; // which lights to control on on/off
+		public boolean [] useControl={true,true,false,true,true};
+//		public int [] lightsChannels={2,3,4}; // which lights to control on on/off
+		public int [] lightsChannels={3,4}; // which lights to control on on/off
 		public String [] groups={"heater","fan","light","light1","light2"};
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
@@ -1879,11 +1881,11 @@ public class CalibrationHardwareInterface {
 			gd.addNumericField("Delay after lights on", this.lightsDelay,  1,4,"sec");
   		    		
     		if (control){
-    			gd.addCheckbox("Heater On", heaterOn);
-    			gd.addCheckbox("Fan On", fanOn);
-    			gd.addCheckbox("Lights Top On", light1On);
-    			gd.addCheckbox("Lights Bottom On", light2On);
-    			gd.addCheckbox("Lights On", lightOn);
+    			if(useControl[0]) gd.addCheckbox("Heater On", heaterOn);
+    			if(useControl[1]) gd.addCheckbox("Fan On", fanOn);
+    			if(useControl[2]) gd.addCheckbox("Lights On", lightOn);
+    			if(useControl[3]) gd.addCheckbox("Lights Top On", light1On);
+    			if(useControl[4]) gd.addCheckbox("Lights Bottom On", light2On);
     		}
     	    WindowTools.addScrollBars(gd);
 			if (control) gd.enableYesNoCancel("OK", "Control Power");
@@ -1893,17 +1895,17 @@ public class CalibrationHardwareInterface {
     	    this.powerIP=gd.getNextString();
 			this.lightsDelay=gd.getNextNumber();
     	    if (control){
-    	    	heaterOn=gd.getNextBoolean();
-    	    	fanOn=gd.getNextBoolean();
-    	    	light1On=gd.getNextBoolean();
-    	    	light2On=gd.getNextBoolean();
-    	    	lightOn=gd.getNextBoolean();
+    	    	if(useControl[0]) heaterOn=gd.getNextBoolean();
+    	    	if(useControl[1]) fanOn=gd.getNextBoolean();
+    	    	if(useControl[2]) lightOn=gd.getNextBoolean();
+    	    	if(useControl[3]) light1On=gd.getNextBoolean();
+    	    	if(useControl[4]) light2On=gd.getNextBoolean();
     	    	if (!gd.wasOKed()) {
-    	    		 setPower("heater",heaterOn?"on":"off"); setPower("heater","state");
-    	    		 setPower("fan",fanOn?"on":"off");       setPower("fan","state");
-    	    		 setPower("light1",light1On?"on":"off"); setPower("light1","state");
-    	    		 setPower("light2",light2On?"on":"off"); setPower("light2","state");
-//    	    		 setPower("light",lightOn?"on":"off");   setPower("light","state");
+    	    		if(useControl[0])setPower("heater",heaterOn?"on":"off"); // setPower("heater","state");
+    	    		if(useControl[1])setPower("fan",fanOn?"on":"off");       // setPower("fan","state");
+    	    		if(useControl[2])setPower("light",lightOn?"on":"off");   // setPower("light","state");
+    	    		if(useControl[3])setPower("light1",light1On?"on":"off"); // setPower("light1","state");
+    	    		if(useControl[4])setPower("light2",light2On?"on":"off"); //  setPower("light2","state");
     	    	}
     	    }
             return true;
