@@ -40,6 +40,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -53,6 +54,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
@@ -1809,7 +1817,7 @@ public class CalibrationHardwareInterface {
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
     	private double lightsDelay=5.0;
-    	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s";
+    	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s&timestamp=%d";
     	private final String rootElement="Document";
     	public boolean powerConrtolEnabled=false;
     	public void setProperties(String prefix,Properties properties){
@@ -1832,41 +1840,76 @@ public class CalibrationHardwareInterface {
     			System.out.println("=== Power control is disabled ===");
     			return false;
     		}
-			System.out.println("=== Power control: "+group+":"+state+" ===");
-    			String url=String.format(urlFormat,this.powerIP,state,group);    	
-    			if (this.debugLevel>2) System.out.println("setPower: "+url); 
-    			Document dom=null;
-    			try {
-    				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    				DocumentBuilder db = dbf.newDocumentBuilder();
-    				dom = db.parse(url);
-    				if (!dom.getDocumentElement().getNodeName().equals(rootElement)) {
-    					System.out.println("Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\"");
-    					IJ.showMessage("Error","Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\""); 
-    					return false;
-    				}
-//    				boolean responceError= (dom.getDocumentElement().getElementsByTagName("error").getLength()!=0);
-//    				if (responceError) {
-//    					System.out.println("ERROR: register write ("+url+") FAILED" );
-//    					IJ.showMessage("Error","register write ("+url+") FAILED"); 
-//    					return false;  
-//    				}
-    			} catch(MalformedURLException e){
-    				System.out.println("Please check the URL:" + e.toString() );
-    				return false;
-    			} catch(IOException  e1){
-    				IJ.showStatus("");
-    				String error = e1.getMessage();
-    				if (error==null || error.equals(""))  error = ""+e1;
-    				IJ.showMessage("setPower ERROR", ""+error);
-    				return false;
-    			}catch(ParserConfigurationException pce) {
-    				pce.printStackTrace();
-    				return false;
-    			}catch(SAXException se) {
-    				se.printStackTrace(); 
+    		long thisTime=System.nanoTime();
+    		if (debugLevel>0) System.out.println("=== Power control: "+group+":"+state+" ===");
+    		String url=String.format(urlFormat,this.powerIP,state,group,thisTime);    	
+    		if (this.debugLevel>1) System.out.println("setPower: "+url); 
+    		Document dom=null;
+    		try {
+    			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+    			DocumentBuilder db = dbf.newDocumentBuilder();
+    			dom = db.parse(url);
+    			if (!dom.getDocumentElement().getNodeName().equals(rootElement)) {
+    				System.out.println("Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\"");
+    				IJ.showMessage("Error","Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\""); 
     				return false;
     			}
+    			//    				boolean responceError= (dom.getDocumentElement().getElementsByTagName("error").getLength()!=0);
+    			//    				if (responceError) {
+    			//    					System.out.println("ERROR: register write ("+url+") FAILED" );
+    			//    					IJ.showMessage("Error","register write ("+url+") FAILED"); 
+    			//    					return false;  
+    			//    				}
+//				System.out.println(dom);
+//				System.out.println(dom.getDocumentElement().toString());
+//				System.out.println(dom.getDocumentElement().getNodeName());
+//				System.out.println(dom.getDocumentElement().getElementsByTagName("message"));
+//				System.out.println(dom.getDocumentElement().getElementsByTagName("state"));
+				if (dom.getDocumentElement().getElementsByTagName("state").getLength()>0){
+					if (debugLevel>0) System.out.println("state="+((Node) (((Node) dom.getDocumentElement().getElementsByTagName("state").item(0)).getChildNodes().item(0))).getNodeValue());
+				} else {
+					System.out.println("*** Empty Document from Insteon");
+					return false;
+				}
+    		} catch(MalformedURLException e){
+    			System.out.println("Please check the URL:" + e.toString() );
+    			return false;
+    		} catch(IOException  e1){
+    			IJ.showStatus("");
+    			String error = e1.getMessage();
+    			if (error==null || error.equals(""))  error = ""+e1;
+    			IJ.showMessage("setPower ERROR", ""+error);
+    			return false;
+    		}catch(ParserConfigurationException pce) {
+    			pce.printStackTrace();
+    			return false;
+    		}catch(SAXException se) {
+    			se.printStackTrace(); 
+    			return false;
+    		}
+    		if (debugLevel>1) {
+    			// debugging
+    			TransformerFactory tf = TransformerFactory.newInstance();
+    			Transformer transformer=null;
+    			try {
+    				transformer = tf.newTransformer();
+    			} catch (TransformerConfigurationException e) {
+    				// TODO Auto-generated catch block
+    				e.printStackTrace();
+    			}
+    			transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+    			StringWriter writer = new StringWriter();
+    			try {
+    				transformer.transform(new DOMSource(dom), new StreamResult(writer));
+    			} catch (TransformerException e) {
+    				// TODO Auto-generated catch block
+    				e.printStackTrace();
+    			}
+    			String output = writer.getBuffer().toString().replaceAll("\n|\r", "");
+    			System.out.println(output);
+    		}
+    		
+    		if (this.debugLevel>1) System.out.println("=== Power control: OK ===");
     		for (int i=0;i<this.groups.length;i++) if (this.groups[i].equals(group)){
     			this.states[i]=state.equals("on");
     		}
