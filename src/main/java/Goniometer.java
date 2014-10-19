@@ -251,43 +251,45 @@ horizontal axis:
 		}
 		startAxial=startStep-this.lastScanStep;
 		this.lastScanStep=startStep-1;
-		
+		 Runtime runtime = Runtime.getRuntime();
 		for (int nTilt=startTilt;nTilt<numTiltSteps;nTilt++){
 			double tilt=tilts[nTilt];
 			tilt=0.1*Math.round(10*tilt); // is that needed?
 			int tiltMotorPosition= (int) Math.round(tilt*this.goniometerParameters.goniometerMotors.stepsPerDegreeTilt);
-			
+
 			status=IJ.d2s(1E-9*(System.nanoTime()-startTime),3)+": Tilt run "+(nTilt+1)+" (of "+numTiltSteps+"), tilt angle "+
-			IJ.d2s(tilt,2)+" degrees, motor steps: "+tiltMotorPosition;
+					IJ.d2s(tilt,2)+" degrees, motor steps: "+tiltMotorPosition;
 			if (this.debugLevel>0) System.out.println(status);
 			if (updateStatus) IJ.showStatus(status);
 			this.goniometerParameters.motorsSimultaneous=false; // not yet implemented
-//			if (!this.goniometerParameters.motorsSimultaneous){
-				OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
-				if (!OK) {
-					String msg="Could not set motor "+(tiltMotor+1)+" to move to "+tiltMotorPosition+" - may be out of limit";
-					System.out.println("Error: "+msg);
-					IJ.showMessage("Error",msg);
-					return false;
-				}
-				OK=this.goniometerParameters.goniometerMotors.waitMotor(tiltMotor);
-				if (!OK) {
-					String msg="Motor "+(tiltMotor+1)+" failed to reach "+tiltMotorPosition+".";
-					System.out.println("Error: "+msg);
-					IJ.showMessage("Error",msg);
-					return false;
-				}
-//			}
+			//			if (!this.goniometerParameters.motorsSimultaneous){
+			OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
+			if (!OK) {
+				String msg="Could not set motor "+(tiltMotor+1)+" to move to "+tiltMotorPosition+" - may be out of limit";
+				System.out.println("Error: "+msg);
+				IJ.showMessage("Error",msg);
+				return false;
+			}
+			OK=this.goniometerParameters.goniometerMotors.waitMotor(tiltMotor);
+			if (!OK) {
+				String msg="Motor "+(tiltMotor+1)+" failed to reach "+tiltMotorPosition+".";
+				System.out.println("Error: "+msg);
+				IJ.showMessage("Error",msg);
+				return false;
+			}
+			//			}
 			for (int nAxial=((nTilt==startTilt)?startAxial:0);nAxial<rots[nTilt].length;nAxial++){
 				double axial=rots[nTilt][nAxial];
 				axial=0.1*Math.round(10*axial);
 				int axialMotorPosition= (int) Math.round(axial*this.goniometerParameters.goniometerMotors.stepsPerDegreeAxial);
 				status=(this.lastScanStep+1)+"( last="+(numStops-1)+") "+IJ.d2s(1E-9*(System.nanoTime()-startTime),3)+" sec.  tilt:"+(nTilt+1)+"/"+numTiltSteps+" , "+
-				IJ.d2s(tilt,2)+" deg., axial:"+
-				(nAxial+1)+"/"+rots[nTilt].length+" , "+IJ.d2s(axial,2)+" deg.";
-				if (this.debugLevel>0) System.out.println(status+", axial motor steps: "+axialMotorPosition);
+						IJ.d2s(tilt,2)+" deg., axial:"+
+						(nAxial+1)+"/"+rots[nTilt].length+" , "+IJ.d2s(axial,2)+" deg.";
+				runtime.gc();
+				String memoryStatus="Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")";
+				if (this.debugLevel>0) System.out.println(status+", axial motor steps: "+axialMotorPosition+" "+memoryStatus);
 				if (updateStatus) IJ.showStatus(status);
-				
+
 				OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(axialMotor, axialMotorPosition);
 				if (!OK) {
 					String msg="Could not set motor "+(axialMotor+1)+" to move to "+axialMotorPosition+" - may be out of limit";
@@ -302,8 +304,8 @@ horizontal axis:
 					IJ.showMessage("Error",msg);
 					return false;
 				}
-// update motor positions in the image properties, acquire and save images.
-// TODO: Make acquisition/decoding/laser identification multi-threaded				
+				// update motor positions in the image properties, acquire and save images.
+				// TODO: Make acquisition/decoding/laser identification multi-threaded				
 				this.cameras.setMotorsPosition(this.goniometerParameters.goniometerMotors.getTargetPositions()); // Used target, not current to prevent minor variations
 				this.cameras.reportTiming=debugTiming;
 
@@ -327,12 +329,12 @@ horizontal axis:
 								0, //tiltMotorPosition,
 								0, //axialMotorPosition,
 								updateStatus);
-						 return false;
+						return false;
 					}
 				}
 
 			}
-			
+
 		}
 		OK=motorsMove(
 				tiltMotor,
@@ -343,7 +345,7 @@ horizontal axis:
 		if (this.debugLevel>0) System.out.println("Scan finished in "+IJ.d2s(1E-9*(System.nanoTime()-startTime),3)+" seconds.");
 
 		return OK;
-		
+
 	}
 	public boolean motorsMove(
 			int tiltMotor,
