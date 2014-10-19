@@ -10721,11 +10721,12 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    					diffOnOff[numPointer][i]=d/(whichOn[numPointer].length-1);
 	    				}
 	    			}
-	    		} else 	if (this.algorithmNumber==4){
+	    		} else 	if (this.algorithmNumber==4){ // sometimes long - 11.391 sec, other - 0.558 s
 	    			double avOn,avOff;
 	    			noise=new double [whichOn.length][];
 		    		if (debugLevel>debugTiming) printTiming("alg_"+this.algorithmNumber+"-start-"+title);
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++){
+			    		if (debugLevel>debugTiming) printTiming("numPointer-"+numPointer+"-"+title);
 	    				noise[numPointer]=new double[len];
 	    				for (int i=0;i<len;i++){
 	    					double d=0.0;
@@ -10794,6 +10795,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    					}
 	    				}
 	    			}
+		    		if (debugLevel>debugTiming) printTiming("grown_by_"+this.overexposedRadius+"-"+title);
 					int debugNumBorder=0;
 					for (int iy=0;iy<halfHeight;iy++) for (int ix=0;ix<halfWidth;ix++){
 						if ((iy<discardBorder) || (ix<discardBorder) || (ix>=(halfWidth-discardBorder)) || (iy>=(halfHeight-discardBorder))){
@@ -10805,7 +10807,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 					for (int i=0;i<len;i++){
 						if (overexposed[i]) debugNumOver++;
 					}
-					if (debugLevel>2) System.out.println("Number of overexposed/border pixels="+debugNumOver+" border pixels="+debugNumBorder+" for "+title);
+					if (debugLevel>debugTiming) printTiming("Number of overexposed/border pixels="+debugNumOver+" border pixels="+debugNumBorder+" for "+title);
 
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++) {
     					for (int i=0;i<len;i++) if (overexposed[i]) diffOnOff[numPointer][i]=0.0; // too close to overexposed in no-lasers image
@@ -10963,8 +10965,8 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    					firstMaxIndex[numPointer]=i;
 	    				}
 						if (debugLevel>0) { // rare events, output details to verify program
-							System.out.println ("Found replacement pointer for #"+numPointer+" ("+firstMax[numPointer]+"), x="
-									+(2*(firstMaxIndex[numPointer]%halfWidth))+" y="+(2*(firstMaxIndex[numPointer]/halfWidth)));
+							System.out.println ("Found replacement pointer for #"+numPointer+" ("+firstMax[numPointer]+"), x??="
+									+(2*(firstMaxIndex[numPointer]%halfWidth))+" y??="+(2*(firstMaxIndex[numPointer]/halfWidth)));
 							System.out.println (numberOfMax[numPointer]+ " pointer candidate"+((numberOfMax[numPointer]>1)?"s":"")+" remain"+((numberOfMax[numPointer]>1)?"s":"")+".");
 						}
 	    			}
