@@ -10478,7 +10478,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    		int bayerG2=3;
 	    		int bayerR=1;
 	    		double avrgGreenB=0.0;
-	    		double avrgGreenP=0.0;
+//	    		double avrgGreenP=0.0;
 	    		int len=backgroundBayer[bayerG1].length;
 	    		int halfWidth=width/2;
 	    		int halfHeight=len/halfWidth;
@@ -10491,10 +10491,10 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    			if (modBackground) backgroundBayer[bayerG1][i]=0.5*(backgroundBayer[bayerG1][i]+backgroundBayer[bayerG2][i]);
 	    			avrgGreenB+=backgroundBayer[bayerG1][i];
 	    			pointedBayer[bayerG1][i]=0.5*(pointedBayer[bayerG1][i]+pointedBayer[bayerG2][i]);
-	    			avrgGreenP+=pointedBayer[bayerG1][i];
+//	    			avrgGreenP+=pointedBayer[bayerG1][i];
 	    		}
 	    		avrgGreenB/=len;
-	    		avrgGreenP/=len;
+//	    		avrgGreenP/=len;
 	    		for (int i=0; i<len;i++){
 	    			if (modBackground) {
 	    				backgroundBayer[bayerR][i]/=(backgroundBayer[bayerG1][i]*(1.0-this.greenFloor)+avrgGreenB*this.greenFloor);
@@ -10655,10 +10655,10 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    			}
 	    		} else if (this.algorithmNumber==1){
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++) {
-	    				int numSamples=0;
+//	    				int numSamples=0;
 	    				int numPositiveSamples=0;
 	    				for (int nImg=startIndex;nImg<whichOn[numPointer].length; nImg++){
-	    					numSamples++;
+//	    					numSamples++;
 	    					if (whichOn[numPointer][nImg]) numPositiveSamples++;
 	    				}
 	    				for (int i=0;i<len;i++) {
@@ -10674,10 +10674,10 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    		} else 	if (this.algorithmNumber==2){
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++) {
 	    				int numSamples=0;
-	    				int numPositiveSamples=0;
+//	    				int numPositiveSamples=0;
 	    				for (int nImg=startIndex;nImg<whichOn[numPointer].length; nImg++){
 	    					numSamples++;
-	    					if (whichOn[numPointer][nImg]) numPositiveSamples++;
+//	    					if (whichOn[numPointer][nImg]) numPositiveSamples++;
 	    				}
 	    				double pwr=1.0/numSamples;
 	    				for (int i=0;i<len;i++) {
@@ -10726,21 +10726,22 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    			noise=new double [whichOn.length][];
 		    		if (debugLevel>debugTiming) printTiming("alg_"+this.algorithmNumber+"-start-"+title);
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++){
-			    		if (debugLevel>debugTiming) printTiming("numPointer-"+numPointer+"-"+title);
+			    		if (debugLevel>debugTiming) printTiming("numPointer-"+numPointer+"-"+whichOn[numPointer].length+"-"+len+"-"+title);
 	    				noise[numPointer]=new double[len];
 	    				for (int i=0;i<len;i++){
-	    					double d=0.0;
+//	    					double d=0.0;
 	    					avOn= 0.0;
 	    					avOff=0.0;
 	    					for (int nImg=1;nImg<whichOn[numPointer].length; nImg++){
 	    						if (whichOn[numPointer][nImg]) {
-	    							d+=reds[nImg][i];
+//	    							d+=reds[nImg][i];
 	    							avOn+=reds[nImg][i];
 	    						} else {
-	    							d-=reds[nImg][i];
+//	    							d-=reds[nImg][i];
 	    							avOff+=reds[nImg][i];
 	    						}
 	    					}
+	    					double d=avOn-avOff;
 	    					diffOnOff[numPointer][i]=d/(whichOn[numPointer].length-1);
 	    					avOn/=((whichOn[numPointer].length-1)/2);
 	    					avOff/=((whichOn[numPointer].length-1)/2);
