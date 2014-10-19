@@ -10724,6 +10724,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    		} else 	if (this.algorithmNumber==4){
 	    			double avOn,avOff;
 	    			noise=new double [whichOn.length][];
+		    		if (debugLevel>debugTiming) printTiming("alg_"+this.algorithmNumber+"-start-"+title);
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++){
 	    				noise[numPointer]=new double[len];
 	    				for (int i=0;i<len;i++){
@@ -10756,6 +10757,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    		// mask out too dim/too bright - TODO: still need to grow overexposed mask
 	    		/* Mask out pixels closer than overexposedRadius from overesposed areas*/
 	    		//overexposedRadius
+	    		if (debugLevel>debugTiming) printTiming("alg_"+this.algorithmNumber+"-done-"+title);
 	    		if (!headLaserMode) {
     				int discardBorder=5;
 	    			if (this.overexposedRadius>0){
@@ -10803,7 +10805,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 					for (int i=0;i<len;i++){
 						if (overexposed[i]) debugNumOver++;
 					}
-					System.out.println("Number of overexposed/border pixels="+debugNumOver+" border pixels="+debugNumBorder);
+					if (debugLevel>2) System.out.println("Number of overexposed/border pixels="+debugNumOver+" border pixels="+debugNumBorder+" for "+title);
 
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++) {
     					for (int i=0;i<len;i++) if (overexposed[i]) diffOnOff[numPointer][i]=0.0; // too close to overexposed in no-lasers image
