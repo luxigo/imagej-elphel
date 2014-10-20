@@ -473,9 +473,11 @@ horizontal axis:
 			int axialMotor,
 			int tiltMotorPosition,
 			int axialMotorPosition,
-    		AtomicInteger stopRequested, // or null
+			AtomicInteger stopRequested, // or null
 			boolean updateStatus){
-		String status="Moving axial motor to "+axialMotorPosition+"...";
+		String status;
+		if (!this.goniometerParameters.goniometerMotors.checkGotTarget()[axialMotor]) {
+			status="Moving axial motor to "+axialMotorPosition+"...";
 			if (updateStatus) IJ.showStatus(status);
 			boolean OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(axialMotor, axialMotorPosition);
 			if (!OK) {
@@ -491,7 +493,11 @@ horizontal axis:
 				IJ.showMessage("Error",msg);
 				return false;
 			}
-			OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
+		}
+		if (!this.goniometerParameters.goniometerMotors.checkGotTarget()[tiltMotor]) {
+			status="Moving tilt motor to "+tiltMotorPosition+"...";
+			if (updateStatus) IJ.showStatus(status);
+			boolean OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
 			if (!OK) {
 				String msg="Could not set motor "+(tiltMotor+1)+" to move to "+tiltMotorPosition+" - may be out of limit";
 				System.out.println("Error: "+msg);
@@ -505,7 +511,8 @@ horizontal axis:
 				IJ.showMessage("Error",msg);
 				return false;
 			}
-			return true;
+		}
+		return true;
 	}
 
 	
