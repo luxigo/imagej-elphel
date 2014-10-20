@@ -2602,7 +2602,10 @@ public class CalibrationHardwareInterface {
         	this.targetPosition[motorNumber]=position;
         	this.nanoReferenceTime=System.nanoTime();
         	this.referencePosition=this.curpos.clone();
-        	commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m"+(motorNumber+1)+"="+this.targetPosition[motorNumber]+"&enable");
+//        	commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m"+(motorNumber+1)+"="+this.targetPosition[motorNumber]+"&enable");
+        	// set, wait, enable (to avoid continuing "old" movement that was aborted by disable
+        	commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m"+(motorNumber+1)+"="+this.targetPosition[motorNumber]+"sleep=1");
+        	enableMotors(true); 
 			nanoETA=System.nanoTime()+((long)(1E9*(Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber])*(this.coefficientETA/this.stepsPerSecond))));
 			return true;
         }
