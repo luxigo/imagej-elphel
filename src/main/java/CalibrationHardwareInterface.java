@@ -2639,8 +2639,14 @@ public class CalibrationHardwareInterface {
     			enableMotors(true); // just in case?
         		updateMotorsPosition(1); // wait one second before testing to decrease re-test frequency
         		if (updateStatus) {
-        			IJ.showStatus("Goniometer: tilt="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
-        		", axial="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")");
+        			double axialAngle=curpos[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltAngle=curpos[tiltMotor]/this.stepsPerDegreeTilt;
+        			double axialTargetAngle=targetPosition[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltTargetAngle=targetPosition[tiltMotor]/this.stepsPerDegreeTilt;
+        			IJ.showStatus("Goniometer: tilt="+IJ.d2s(tiltAngle,1)+"\u00b0 ("+IJ.d2s(tiltTargetAngle,1)+"\u00b0) "+
+        					", axial="+IJ.d2s(axialAngle,1)+"\u00b0 ("+IJ.d2s(axialTargetAngle,1)+"\u00b0) "+
+        					" Tilt steps="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
+        					", axial steps="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")");
         		}
         		int positionError= Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber]);
         		if (positionError<this.motorTolerance){
@@ -2655,8 +2661,14 @@ public class CalibrationHardwareInterface {
 					if (this.debugLevel>0) System.out.println("User interrupt");
 					stopRequested.set(0);
 					updateMotorsPosition(1);
-        			String msg="Goniometer: tilt="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
-        	        		", axial="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")\n"+
+        			double axialAngle=curpos[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltAngle=curpos[tiltMotor]/this.stepsPerDegreeTilt;
+        			double axialTargetAngle=targetPosition[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltTargetAngle=targetPosition[tiltMotor]/this.stepsPerDegreeTilt;
+        			String msg="Goniometer: tilt="+IJ.d2s(tiltAngle,1)+"\u00b0 ("+IJ.d2s(tiltTargetAngle,1)+"\u00b0) "+
+        					", axial="+IJ.d2s(axialAngle,1)+"\u00b0 ("+IJ.d2s(axialTargetAngle,1)+"\u00b0) "+
+        					" Tilt steps="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
+        					", axial steps="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")\n"+
         					"OK to continue, Cancel to abort movement";
         			if (!IJ.showMessageWithCancel("Goniometer interrupted", msg)) {
         				return false;
