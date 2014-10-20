@@ -817,6 +817,7 @@ if (MORE_BUTTONS) {
 		panelGoniometer = new Panel();
 		panelGoniometer.setLayout(new GridLayout(1, 0, 5, 5));
 		addButton("Configure Goniometer",panelGoniometer,color_configure); 
+		addButton("Goniometer Move",panelGoniometer,color_debug);
 		addButton("Goniometer Scan",panelGoniometer,color_conf_process);
 		addButton("Filter Grids",panelGoniometer,color_bundle);
 		addButton("Update Image Set",panelGoniometer);
@@ -5803,6 +5804,37 @@ if (MORE_BUTTONS) {
 				if (CAMERAS.showDialog("Configure cameras interface", 1, true)) FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 			}
 */			
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Goniometer Move")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			
+			CAMERAS.setNumberOfThreads(THREADS_MAX);
+			CAMERAS.debugLevel=DEBUG_LEVEL;
+
+			if (GONIOMETER==null) {
+				GONIOMETER= new Goniometer(
+						CAMERAS, // CalibrationHardwareInterface.CamerasInterface cameras,
+						DISTORTION, //MatchSimulatedPattern.DistortionParameters distortion,
+						PATTERN_DETECT, //MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
+						EYESIS_CAMERA_PARAMETERS, //Distortions.EyesisCameraParameters eyesisCameraParameters,
+						LASER_POINTERS, // MatchSimulatedPattern.LaserPointer laserPointers
+						SIMUL,                       //SimulationPattern.SimulParameters  simulParametersDefault,
+						GONIOMETER_PARAMETERS, //LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
+						DISTORTION_PROCESS_CONFIGURATION
+				);
+				if (DEBUG_LEVEL>1){
+					System.out.println("Initiaslizing Goniometer class");
+				}
+			} else if (DEBUG_LEVEL>1){
+				System.out.println("GONIOMETER was initialized");
+			}
+
+			while (GONIOMETER.manualMove(
+					this.SYNC_COMMAND.stopRequested,
+					UPDATE_STATUS));
+
 			return;
 		}
 /* ======================================================================== */

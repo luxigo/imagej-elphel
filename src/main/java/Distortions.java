@@ -3851,9 +3851,9 @@ List calibration
 		for (int i=0;i<imageSets.length;i++) availableSets[i]= !allNaNInSet[i]; //!Double.isNaN(rmsPerSet[i]);
 		if (removeEmptySets  && (numNaN>0)){ //(this.debugLevel>0)
 			if (this.debugLevel>0) System.out.println("removeOutLayerSets(): Number of empty (rms=NaN) sets="+numNaN+":");
-			int n=0;
+//			int n=0;
 			for (int setNum=0;setNum<imageSets.length;setNum++) if (!availableSets[setNum]){
-				n++;
+//				n++;
 				if (this.debugLevel>0) System.out.println("Set "+setNum);
 	    		for (int imgInSet=0;imgInSet<imageSets[setNum].length;imgInSet++){
 					int numImg=imageSets[setNum][imgInSet];

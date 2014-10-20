@@ -2532,7 +2532,44 @@ public class CalibrationHardwareInterface {
         private long nanoReferenceTime; // last time the position was checked
         private int []referencePosition=null;
         private double motorsStuckTestTime=5.0; // seconds
+        private boolean motorsInitialized=false;
+        public int tiltMotor=2;  // 0-1-2
+        public int axialMotor=1; // 0-1-2
+        
 
+        /**
+         * Tries to initialize motors if needed. Assumes that non-initialized motors were not tried to be moved 
+         * @param force unconditionally try to initialize
+         * @return
+         */
+        public boolean tryInit(
+        		boolean force,
+        		boolean updateStatus){
+        	int delta=4;
+        	if (!force) {
+        		if (motorsInitialized) return true;
+        		updateMotorsPosition();
+        		if ((Math.abs(curpos[tiltMotor])>2) || (Math.abs(curpos[axialMotor])>2)){
+        			motorsInitialized=true;
+        			return true;
+        		}
+        		System.out.println("Trying to move axial motor to see if it is initialized ...");
+        		motorsInitialized=true; // to avoid loop
+        		int newpos=curpos[axialMotor]+delta;
+        		if (moveMotorSetETA(axialMotor, newpos)) {
+            		if (waitMotor(axialMotor, null, true, updateStatus)) {// no interaction
+            			moveMotorSetETA(axialMotor, newpos-delta); // restore original
+                		if (waitMotor(axialMotor, null, true, updateStatus)) {// no interaction
+                			return true; // should be always true here 
+                		}
+            		}
+        		}
+        		motorsInitialized=false;
+        	}
+        	initMotors();
+        	motorsInitialized=true;
+        	return true;
+        }
 // TODO: Enable simultaneous motors        
         
         public boolean moveMotorSetETA(int motorNumber, int position){
@@ -2550,6 +2587,17 @@ public class CalibrationHardwareInterface {
         		return false;
         		
         	}
+        	if (!motorsInitialized) { // may be called from tryInit(), but with motorsInitialized set to true;
+        		if (!tryInit(false, true)){ // do not force, update status
+            		String msg="Motors failed to initialize";
+                    		System.out.println("Error: "+msg);
+                    		IJ.showMessage("Error",msg);
+                    		//throw new RuntimeException(msg);
+                    		return false;
+        		}
+        	}
+        	// TODO: check init is needed
+        	
         	updateMotorsPosition();
         	this.targetPosition[motorNumber]=position;
         	this.nanoReferenceTime=System.nanoTime();
@@ -2559,7 +2607,12 @@ public class CalibrationHardwareInterface {
 			return true;
         }
 
-        public boolean waitMotor(int motorNumber){
+        public boolean waitMotor(
+        		int motorNumber,
+        		AtomicInteger stopRequested, // or null
+        		boolean quiet,
+        		boolean updateStatus
+        		){
         	if ((motorNumber<0) ||(motorNumber>=this.motorsRange.length) || (this.motorsRange[motorNumber]==null)){
         		String msg="Motor "+motorNumber+" is undefined";
         		IJ.showMessage("Error",msg);
@@ -2567,7 +2620,11 @@ public class CalibrationHardwareInterface {
         	}
         	while (true) {
     			enableMotors(true); // just in case?
-        		updateMotorsPosition(1); // wait one second before testing to decrease re-test frequency 
+        		updateMotorsPosition(1); // wait one second before testing to decrease re-test frequency
+        		if (updateStatus) {
+        			IJ.showStatus("Goniometer: tilt="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
+        		", axial="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")");
+        		}
         		int positionError= Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber]);
         		if (positionError<this.motorTolerance){
         			updateMotorsPosition(1); // re-test
@@ -2576,13 +2633,29 @@ public class CalibrationHardwareInterface {
         			return true;
         		}
         		long nanoNow=System.nanoTime();
+        		if ((stopRequested!=null) && (stopRequested.get()>1)){
+        			enableMotors(false);
+					if (this.debugLevel>0) System.out.println("User interrupt");
+					stopRequested.set(0);
+					updateMotorsPosition(1);
+        			String msg="Goniometer: tilt="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
+        	        		", axial="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")\n"+
+        					"OK to continue, Cancel to abort movement";
+        			if (!IJ.showMessageWithCancel("Goniometer interrupted", msg)) {
+        				return false;
+        			}
+        			enableMotors(true);
+        			this.nanoETA += System.nanoTime()-nanoNow;
+        		}
         		if (nanoNow>this.nanoETA) {
         			enableMotors(false);
+        			if (quiet) return false;
         			String msg="Motor "+motorNumber+" failed to reach destination "+this.targetPosition[motorNumber]+
         			", current position is "+this.curpos[motorNumber]+
         			"\nYou may try to manually fix the problem before hitting OK";
         			System.out.println ("Error:"+msg);
         			IJ.showMessage("Error",msg);
+//        			if (IJ.showMessageWithCancel("Goniometer did not move", msg+"\n OK will try to initialize ");
 // Give chance to manually fix the problem        			
         			updateMotorsPosition();
         			positionError= Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber]);
@@ -2596,6 +2669,7 @@ public class CalibrationHardwareInterface {
         		if ((nanoNow-this.nanoReferenceTime)> ((long) (this.motorsStuckTestTime*1E9))){
         			if(Math.abs(this.referencePosition[motorNumber]-this.curpos[motorNumber]) < motorStuckTolerance){
             			enableMotors(false);
+            			if (quiet) return false;
             			String msg="Motor "+motorNumber+" is stuck at "+this.curpos[motorNumber]+". "+
             			this.motorsStuckTestTime+" seconds ago it was at "+this.referencePosition[motorNumber]+
             			", target position is "+this.targetPosition[motorNumber]+
@@ -2619,12 +2693,22 @@ public class CalibrationHardwareInterface {
         }
 
 // first check tolerance, then - if motor is stuck        
-        
+        public int [] getCurrentPositions(){
+        	updateMotorsPosition();
+        	return this.curpos;
+        }
+
         public int [] getTargetPositions(){
         	return this.targetPosition;
         }
         public int[] enableMotors(boolean enable)  {
         	return commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?"+(enable?"enable":"disable"));
+        }
+        public int[] initMotors()  {
+        	return commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?init");
+        }
+        public int[] setHome()  {
+        	return commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m1=0&m2=0&m3=0&reset");
         }
         
         public int[] updateMotorsPosition()  {
