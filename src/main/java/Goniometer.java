@@ -136,12 +136,15 @@ horizontal axis:
 		gd.addNumericField("Goniometer tilt angle",    currentTilt, 1,5,"\u00b0 (positive - look up)");
 		gd.addNumericField("Goniometer axial angle",    currentAxial, 1,5,"\u00b0 (positive - CCW)");
 		gd.addCheckbox("Initialize goniometer motor driver",needsInit);
+		gd.addNumericField("Debug level",    debugLevel, 0,1,"");
 		gd.showDialog();
 		if (gd.wasCanceled()) return false;
 		String selectedAction=gd.getNextRadioButton();
 		currentTilt=  gd.getNextNumber();
 		currentAxial= gd.getNextNumber();
 		needsInit=    gd.getNextBoolean();
+		debugLevel=(int)gd.getNextNumber();
+		this.goniometerParameters.goniometerMotors.debugLevel=this.debugLevel; // +1;
 		if (needsInit){
 			if (!this.goniometerParameters.goniometerMotors.tryInit(true,updateStatus)){
 				String msg="Failed to initialize goniometer motor driver";
