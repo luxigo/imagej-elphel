@@ -2609,7 +2609,7 @@ public class CalibrationHardwareInterface {
 			nanoETA=System.nanoTime()+((long)(1E9*(Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber])*(this.coefficientETA/this.stepsPerSecond))));
 			return true;
         }
-        
+/*        
         public boolean [] checkGotTarget(){
     		updateMotorsPosition(0); // no wait here
     		boolean [] result=new boolean [this.curpos.length];
@@ -2617,6 +2617,11 @@ public class CalibrationHardwareInterface {
     			result[motorNumber]=Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber])<this.motorTolerance;
     		}
     		return result;
+        }
+*/
+        public boolean checkGotTarget(int motorNumber, int position){
+    		updateMotorsPosition(0); // no wait here
+    		return Math.abs(position-this.curpos[motorNumber])<this.motorTolerance;
         }
 
         public boolean waitMotor(

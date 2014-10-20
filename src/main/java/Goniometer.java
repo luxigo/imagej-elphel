@@ -476,7 +476,7 @@ horizontal axis:
 			AtomicInteger stopRequested, // or null
 			boolean updateStatus){
 		String status;
-		if (!this.goniometerParameters.goniometerMotors.checkGotTarget()[axialMotor]) {
+		if (!this.goniometerParameters.goniometerMotors.checkGotTarget(axialMotor,axialMotorPosition)) {
 			status="Moving axial motor to "+axialMotorPosition+"...";
 			if (updateStatus) IJ.showStatus(status);
 			boolean OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(axialMotor, axialMotorPosition);
@@ -494,7 +494,7 @@ horizontal axis:
 				return false;
 			}
 		}
-		if (!this.goniometerParameters.goniometerMotors.checkGotTarget()[tiltMotor]) {
+		if (!this.goniometerParameters.goniometerMotors.checkGotTarget(tiltMotor,tiltMotorPosition))) {
 			status="Moving tilt motor to "+tiltMotorPosition+"...";
 			if (updateStatus) IJ.showStatus(status);
 			boolean OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
