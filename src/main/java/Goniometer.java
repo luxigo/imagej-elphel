@@ -105,8 +105,8 @@ horizontal axis:
 	private final String [] options={
 			"Move to specified position",
 			"Move home",
-			"Tilt to target 85 degrees",
-			"Tilt from target 85 degrees",
+			"Tilt up (from target) 85 degrees",
+			"Tilt down (to target) 85 degrees",
 			"Rotate to clockwise 200 degrees",
 			"Rotate to counter-clockwise 200 degrees",
 			"set current position as new home"};
@@ -133,8 +133,8 @@ horizontal axis:
 		GenericDialog gd = new GenericDialog("User interrupt");
 
 		gd.addRadioButtonGroup("Select action", options, 7, 1, options[0]);
-		gd.addNumericField("Goniometer tilt angle",    currentTilt, 1,5,"degrees");
-		gd.addNumericField("Goniometer axial angle",    currentAxial, 1,5,"degrees");
+		gd.addNumericField("Goniometer tilt angle",    currentTilt, 1,5,"\u00b0 (positive - look up)");
+		gd.addNumericField("Goniometer axial angle",    currentAxial, 1,5,"\u00b0 (positive - CCW)");
 		gd.addCheckbox("Initialize goniometer motor driver",needsInit);
 		gd.showDialog();
 		if (gd.wasCanceled()) return false;
@@ -183,11 +183,11 @@ horizontal axis:
 			act=MOT_ACT.MOVE_SPEC;
 			break;
 		case RCW200:
-			targetAxial=200.0;
+			targetAxial=-200.0;
 			act=MOT_ACT.MOVE_SPEC;
 			break;
 		case RCCW200:
-			targetAxial=-200.0;
+			targetAxial=200.0;
 			act=MOT_ACT.MOVE_SPEC;
 			break;
 		default:
@@ -208,7 +208,8 @@ horizontal axis:
 				axialMotorPosition,
 				stopRequested,
 				updateStatus);
-		return OK;
+		if (!OK) System.out.println("motorsMove()->false");
+		return true; // OK; // So will re-open dialog even after abort
 	}
 	public boolean scanAndAcquire(
 			double targetAngleHorizontal,
