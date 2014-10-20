@@ -494,7 +494,7 @@ horizontal axis:
 				return false;
 			}
 		}
-		if (!this.goniometerParameters.goniometerMotors.checkGotTarget(tiltMotor,tiltMotorPosition))) {
+		if (!this.goniometerParameters.goniometerMotors.checkGotTarget(tiltMotor,tiltMotorPosition)) {
 			status="Moving tilt motor to "+tiltMotorPosition+"...";
 			if (updateStatus) IJ.showStatus(status);
 			boolean OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
