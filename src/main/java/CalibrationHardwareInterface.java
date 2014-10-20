@@ -2545,7 +2545,7 @@ public class CalibrationHardwareInterface {
         public boolean tryInit(
         		boolean force,
         		boolean updateStatus){
-        	int delta=4;
+        	int delta=2*this.motorTolerance;
         	if (!force) {
         		if (motorsInitialized) return true;
         		updateMotorsPosition();
