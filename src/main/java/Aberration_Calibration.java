@@ -6747,6 +6747,8 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		if       (label.equals("Load Equirectangular Maps")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			// Reset existent pixel mapping (i.e. to reduce number of input files)
+			PIXEL_MAPPING=null;
 			if (PIXEL_MAPPING==null){
 				if (DEBUG_LEVEL>1) System.out.println("Creating new PixelMapping from equirectangular maps");
 				PIXEL_MAPPING=new PixelMapping((String)null,DEBUG_LEVEL); // ask for and load sensor calibration files

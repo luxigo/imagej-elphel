@@ -2636,7 +2636,7 @@ public class CalibrationHardwareInterface {
         		throw new RuntimeException(msg);
         	}
         	while (true) {
-    			enableMotors(true); // just in case?
+//    			enableMotors(true); // just in case? - not here, test first
         		updateMotorsPosition(1); // wait one second before testing to decrease re-test frequency
         		if (updateStatus) {
         			double axialAngle=curpos[axialMotor]/this.stepsPerDegreeAxial;
@@ -2655,6 +2655,7 @@ public class CalibrationHardwareInterface {
         			enableMotors(false);
         			return true;
         		}
+    			enableMotors(true); // does not need to be enabled before
         		long nanoNow=System.nanoTime();
         		if ((stopRequested!=null) && (stopRequested.get()>1)){
         			enableMotors(false);
