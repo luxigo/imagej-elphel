@@ -4324,10 +4324,12 @@ List calibration
     	return totalBadNodes;
     }
 	public boolean showImageReprojectionErrorsDialog( int debugLevel){
+		boolean eachImageInSet=false;
 	    GenericDialog gd = new GenericDialog("Show Reprojection errors for image/image set/image selection");
 		gd.addNumericField("Series number for image selection (-1 - all enabled images)", -1, 0);
 		gd.addNumericField("Single image number to show (<0 - do not select)", -1,0);
 		gd.addNumericField("Image set number to show (<0 - do not select)", -1,0);
+		gd.addCheckbox("Open each image in the set",     eachImageInSet);
 		gd.addCheckbox("Ask for weight function filter",     this.askFilter);
 //		gd.addNumericField("Weight function filter (-1 - use default for all )",-1,0);
 	    gd.showDialog();
@@ -4335,6 +4337,7 @@ List calibration
 	    this.seriesNumber=        (int) gd.getNextNumber();
 	    int singleImageNumber=    (int) gd.getNextNumber();
 	    int imageSetNumber=       (int) gd.getNextNumber();
+	    eachImageInSet=                 gd.getNextBoolean();
 	    this.askFilter=                 gd.getNextBoolean();
 //	    int weightFunctionFilter= (int) gd.getNextNumber();
 		int filter=this.filterForAll;
@@ -4354,6 +4357,16 @@ List calibration
 	    		if (this.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].imageSet[nChn]!=null) {
 	    			imageNumbers[numInSet++]=this.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].imageSet[nChn].imgNumber;
 	    		}
+	    	}
+	    	if (eachImageInSet){
+	    		for (int nChn=0;nChn<imageNumbers.length;nChn++){
+	    			int [] imageNumber={imageNumbers[nChn]};
+	    			showImageReprojectionErrors(
+	    		    		imageNumber, // if null - use all images in a series
+	    		    		filter, //weightFunctionFilter,
+	    		    		debugLevel);
+	    		}
+	    		// Do not exit, continue and show combine reprojection errors for all set
 	    	}
 	    }
 	    showImageReprojectionErrors(
