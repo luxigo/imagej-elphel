@@ -975,7 +975,7 @@ public class MatchSimulatedPattern {
 				title, // title base for optional plots names
 				this.debugLevel);
 	}
-	public  double correlationContrast ( double [] pixels,       // square pixel array
+	public  double correlationContrastOld ( double [] pixels,       // square pixel array
 			double [][] wVectors,   // wave vectors (same units as the pixels array)
 			double ringWidth,       // ring (around r=0.5 dist to opposite corr) width
 			double x0,              // center coordinates
@@ -1060,6 +1060,70 @@ public class MatchSimulatedPattern {
 		}
 		return contrast;
 	}
+
+	public  double correlationContrast ( double [] pixels,       // square pixel array
+			double [][] wVectors,   // wave vectors (same units as the pixels array)
+			double ringWidth,       // ring (around r=0.5 dist to opposite corr) width
+			double x0,              // center coordinates
+			double y0,
+			String title, // title base for optional plots names
+			int debugLevel){
+		double sigma=0.1;
+		double sigma32=9*sigma*sigma;
+		double k=-0.5/(sigma*sigma);
+		double [][] sampleCentersXY={{0.0,0.0},{0.0,0.5},{0.5,0.0},{0.0,-0.5},{-0.5,0.0}};
+		int [] sampleTypes = {0,1,1,1,1}; 
+		int size=(int) Math.sqrt(pixels.length);
+		double [] xy= new double [2];
+		double [] uv; 
+		double r2;
+		int i,j;
+/* opposite sign correlation points in uv are at uv=(0,-0.5),(0,0.5), (-0.5,0) and (0.5,0), with radius of (1/2)
+    selecting center circle and a ring from 0.25 to 0.75 of the distance to opposite sign correlations */
+		double [] dbgMask= new double[size*size];
+		for (int n=0;n<dbgMask.length;n++) dbgMask[n]=0.0;
+		double [] s={0.0,0.0};
+		double [] w={0.0,0.0};
+		for (i=0;i<size;i++) {
+			xy[1]=i-size/2-y0;
+			for (j=0;j<size;j++) {
+				xy[0]=j-size/2-x0;
+				uv=matrix2x2_mul(wVectors,xy);
+				for (int np=0;np<sampleCentersXY.length;np++){
+					double dx=uv[0]-sampleCentersXY[np][0];
+					double dy=uv[1]-sampleCentersXY[np][1];
+					r2=dx*dx+dy*dy;
+					if (r2<sigma32){
+						double m=Math.exp(k*r2);
+						dbgMask[i*size+j]+=m;
+						w[sampleTypes[np]]+=m;
+						s[sampleTypes[np]]+=m*pixels[i*size+j];
+					}
+				}
+			}
+		}
+		if ((w[0]==0.0) || (w[1]==0.0)) {
+			if (debugLevel>1) System.out.println("Not enough data for correlation contrast: center - w[0]="+w[0]+" opposite - w[1]="+w[1]);
+			return -1.0;
+		}
+		
+		double contrast=Math.sqrt((s[0]/w[0])/(s[1]/w[1]));
+		if (debugLevel>2) {
+			System.out.println("Correlation contrast is "+contrast);
+			double [][] dbgPixels={pixels,dbgMask};
+			String [] titles={"all","mask"};
+			(new showDoubleFloatArrays()).showArrays(
+					dbgPixels,
+					size,
+					size,
+					true,
+					title+"_CORR_MASK",
+					titles);
+		}
+		return contrast;
+	}
+	
+	
 /* ======================================================================== */
 	public  double[] correlateWithModel (double [] imagePixels,  // measured pixel array
 			double [] modelPixels,  // simulated (model) pixel array)
@@ -7174,11 +7238,17 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 		     double [] thisWindow=window;
 		     double uv_threshold=distortionParameters.minUVSpan*0.25*Math.sqrt(2.0); 
 
-		     if ((min_span<uv_threshold) && (window2!=null)) { // trying to increase only twice
+		     if (
+		    		 (min_span<uv_threshold) &&
+		    		 (window2!=null) &&
+		    		 (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) { // trying to increase only twice
 		    	 thisCorrelationSize*=2;
 		    	 min_span*=2;
 		    	 thisWindow=window2;
-		    	 if ((min_span<uv_threshold) && (window4!=null)) {
+		    	 if (
+		    			 (min_span<uv_threshold) &&
+		    			 (window4!=null) &&
+		    			 (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) {
 		    		 thisCorrelationSize*=2;
 			    	 min_span*=2;
 			    	 thisWindow=window4;
@@ -7427,6 +7497,23 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			     double [] thisWindow=window;
 			     double uv_threshold=distortionParameters.minUVSpan*0.25*Math.sqrt(2.0); 
 
+			     if (
+			    		 (min_span<uv_threshold) &&
+			    		 (window2!=null) &&
+			    		 (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) { // trying to increase only twice
+			    	 thisCorrelationSize*=2;
+			    	 min_span*=2;
+			    	 thisWindow=window2;
+			    	 if (
+			    			 (min_span<uv_threshold) &&
+			    			 (window4!=null) &&
+			    			 (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) {
+			    		 thisCorrelationSize*=2;
+				    	 min_span*=2;
+				    	 thisWindow=window4;
+			    	 }
+			     }
+/*			     
 			     if ((min_span<uv_threshold) && (window2!=null)) { // trying to increase only twice
 			    	 thisCorrelationSize*=2;
 			    	 min_span*=2;
@@ -7437,6 +7524,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 				    	 thisWindow=window4;
 			    	 }
 			     }
+*/
 			     setCorrelationSizesUsed(thisCorrelationSize);
 			     if ((debug_level>0)&&(thisCorrelationSize>distortionParameters.correlationSize)) System.out.println("**** u/v span too small, increasing FFT size to "+thisCorrelationSize);
 				   	Rectangle centerCross=correlationSelection(
@@ -7499,6 +7587,10 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			    			 thisCorrelationSize,    // number of Bayer cells in width of the square selection (half number of pixels)
 			    			 0,
 			    			 0);
+			    	 if (sim_pix==null){
+			    		 System.out.println("***** BUG: extractSimulPatterns() FAILED *****");
+			    		 return null;
+			    	 }
 
 			    	 simGreensCentered= normalizeAndWindow (sim_pix[4], thisWindow);
 
@@ -8966,6 +9058,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	
 	public static class DistortionParameters {
 		public int   correlationSize;
+		public int   maximalCorrelationSize;
 		public double correlationGaussWidth; // 0 - no window, <0 - use Hamming
 		public boolean absoluteCorrelationGaussWidth=false; // do not scale correlationGaussWidth when the FFT size is increased  
 		public int zeros; // leave this number of zeros on the margins of the window (toatal from both sides). If correlationGaussWidth>0 will 
@@ -9027,6 +9120,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
         
 		public DistortionParameters(
 				int correlationSize,
+				int maximalCorrelationSize,
 				double correlationGaussWidth,
 				boolean absoluteCorrelationGaussWidth,
 				int zeros,  
@@ -9082,6 +9176,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 				){
 
 			this.correlationSize = correlationSize;
+			this.maximalCorrelationSize=maximalCorrelationSize;
 			this.correlationGaussWidth = correlationGaussWidth;
 			this.absoluteCorrelationGaussWidth=absoluteCorrelationGaussWidth;
 			this.zeros=zeros;
@@ -9139,6 +9234,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		public DistortionParameters clone() {
 			return new DistortionParameters(
 			this.correlationSize,
+			this.maximalCorrelationSize,
 			this.correlationGaussWidth,
 			this.absoluteCorrelationGaussWidth,
 			this.zeros,
@@ -9196,6 +9292,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 
 		public void setProperties(String prefix,Properties properties){
 			properties.setProperty(prefix+"correlationSize",this.correlationSize+"");
+			properties.setProperty(prefix+"maximalCorrelationSize",this.maximalCorrelationSize+"");
 			properties.setProperty(prefix+"correlationGaussWidth",this.correlationGaussWidth+"");
 			properties.setProperty(prefix+"absoluteCorrelationGaussWidth",this.absoluteCorrelationGaussWidth+"");
 			properties.setProperty(prefix+"zeros",this.zeros+"");
@@ -9254,6 +9351,8 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		public void getProperties(String prefix,Properties properties){
 			if (properties.getProperty(prefix+"correlationSize")!=null)
 			    this.correlationSize=Integer.parseInt(properties.getProperty(prefix+"correlationSize"));
+			if (properties.getProperty(prefix+"maximalCorrelationSize")!=null)
+			    this.maximalCorrelationSize=Integer.parseInt(properties.getProperty(prefix+"maximalCorrelationSize"));
 			if (properties.getProperty(prefix+"correlationGaussWidth")!=null)
 			    this.correlationGaussWidth=Double.parseDouble(properties.getProperty(prefix+"correlationGaussWidth"));
 			if (properties.getProperty(prefix+"FFTSize")!=null)

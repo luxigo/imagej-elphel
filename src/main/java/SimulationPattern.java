@@ -877,7 +877,13 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 					s=0.0;
 					for (py=iy0+sampLow;py<iy0+sampHigh;py++) for (px=ix0+sampLow;px<ix0+sampHigh;px++) {
 ///						s+=this.barray[py][px];
-						s+=this.barray[py*fullSize+px];
+						try {
+							s+=this.barray[py*fullSize+px];
+						} catch (Exception e){
+							System.out.println("Bug in extractSimulPatterns(): px="+px+" py="+py+" fullSize="+fullSize+" size="+size+" x0="+x0+" y0="+y0);
+							e.printStackTrace();
+							return null;
+						}
 					}
 					simul_pixels[n][iy*size+ix]= (s-sampleAverage)/sampleAverage;
 				}

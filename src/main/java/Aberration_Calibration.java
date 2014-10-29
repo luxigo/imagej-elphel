@@ -302,6 +302,7 @@ public class Aberration_Calibration extends PlugInFrame implements ActionListene
 
 public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSimulatedPattern.DistortionParameters(
 		  64, //32, // use 64 for less artifacts, // correlationSize
+		  64, // Maximal correlation size 
 		  0.75,// reduce to 0.5 when correlationSize==64 // correlationGaussWidth
 		  false, // boolean absoluteCorrelationGaussWidth=false; // do not scale correlationGaussWidth when the FFT size is increased  
 		  0, //zeros - // leave this number of zeros on the margins of the window (toatal from both sides). If correlationGaussWidth>0 will 
@@ -19190,6 +19191,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			gd.addNumericField("FFTSize (Initial pattern detection only):",        distortionParameters.FFTSize, 0); // 128
 			gd.addNumericField("FFT Gaussian width (relative):",                   distortionParameters.fftGaussWidth, 3);
 			gd.addNumericField("Correlation size:",                                distortionParameters.correlationSize, 0); // 64
+			gd.addNumericField("Maximal correlation size:",                        distortionParameters.maximalCorrelationSize, 0); // 64
+			
 			gd.addNumericField("Correlation Gauss width (relative):",              distortionParameters.correlationGaussWidth, 3);
 			gd.addCheckbox("Keep Gaussian width absolute when increasing FFT size",distortionParameters.absoluteCorrelationGaussWidth);
 //			/phaseCorrelationFraction
@@ -19268,6 +19271,8 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			distortionParameters.fftGaussWidth=           gd.getNextNumber();
 			distortionParameters.correlationSize=1;
 			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.correlationSize <<=1; /* make it to be power of 2 */
+			distortionParameters.maximalCorrelationSize=1;
+			for (i=(int) gd.getNextNumber(); i >1; i>>=1) distortionParameters.maximalCorrelationSize <<=1; /* make it to be power of 2 */
 			distortionParameters.correlationGaussWidth=   gd.getNextNumber();
 			distortionParameters.absoluteCorrelationGaussWidth=gd.getNextBoolean();
 			distortionParameters.zeros=             (int) gd.getNextNumber();
