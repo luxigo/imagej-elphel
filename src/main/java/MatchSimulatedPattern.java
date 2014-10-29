@@ -965,7 +965,23 @@ public class MatchSimulatedPattern {
 			double ringWidth,       // ring (around r=0.5 dist to opposite corr) width
 			double x0,              // center coordinates
 			double y0,
-			String title) { // title base for optional plots names
+			String title){
+		return correlationContrast (
+				pixels,       // square pixel array
+				wVectors,   // wave vectors (same units as the pixels array)
+				ringWidth,       // ring (around r=0.5 dist to opposite corr) width
+				x0,              // center coordinates
+				y0,
+				title, // title base for optional plots names
+				this.debugLevel);
+	}
+	public  double correlationContrast ( double [] pixels,       // square pixel array
+			double [][] wVectors,   // wave vectors (same units as the pixels array)
+			double ringWidth,       // ring (around r=0.5 dist to opposite corr) width
+			double x0,              // center coordinates
+			double y0,
+			String title, // title base for optional plots names
+			int debugLevel){
 		int size=(int) Math.sqrt(pixels.length);
 		double [] xy= new double [2];
 		double [] uv; 
@@ -977,7 +993,7 @@ public class MatchSimulatedPattern {
 		double r2WingsOuter= 0.0625*(1.0+ringWidth)*(1.0+ringWidth);
 		double r2WingsInner= 0.0625*(1.0-ringWidth)*(1.0-ringWidth);
 		double r2Center=0.0625*(ringWidth)*(ringWidth);
-		if (this.debugLevel>2) System.out.println("rWingsOuter="+Math.sqrt(r2WingsOuter)+" rWingsInner="+Math.sqrt(r2WingsInner)+" rCenter="+Math.sqrt(r2Center));
+		if (debugLevel>2) System.out.println("rWingsOuter="+Math.sqrt(r2WingsOuter)+" rWingsInner="+Math.sqrt(r2WingsInner)+" rCenter="+Math.sqrt(r2Center));
 
 		double valCenter=0.0;
 		double valWings=0.0;
@@ -1002,14 +1018,16 @@ public class MatchSimulatedPattern {
 			}
 		}
 		if ((numWings==0.0) || (numCenter==0.0)) {
-			if (this.debugLevel>1) System.out.println("Not enough data for correlation contrast: numCenter="+numCenter+" numWings="+numWings+
+			if (debugLevel>1) System.out.println("Not enough data for correlation contrast: numCenter="+numCenter+" numWings="+numWings+
 					" valCenter="+IJ.d2s(valCenter,2)+" valWings="+IJ.d2s(valWings,2));
 			return -1.0;
 		}
 		double contrast=Math.sqrt((valCenter/numCenter)/(valWings/numWings));
-		if (this.debugLevel>2) {
+		if (debugLevel>2) {
 			System.out.println("Correlation contrast is "+contrast);
-			float [] floatPixels=new float[size*size];
+			double [] maskedPixels=new double[size*size];
+			double [] u_value=new double[size*size];
+			double [] v_value=new double[size*size];
 			int index;
 			for (i=0;i<size;i++) {
 				xy[1]=i-size/2-y0;
@@ -1018,22 +1036,27 @@ public class MatchSimulatedPattern {
 					uv=matrix2x2_mul(wVectors,xy);
 					r2=uv[0]*uv[0]+uv[1]*uv[1];
 					index=i*size+j;
+					u_value[index]=uv[0];
+					v_value[index]=uv[1];
 					/*          r=Math.sqrt(r2);
           r-=Math.floor(r);
           floatPixels[index]=(float) r;*/
-
 					if (((r2<=r2WingsOuter) && (r2>r2WingsInner)) || (r2<=r2Center)){
-						floatPixels[index]=(float) pixels[index];
+						maskedPixels[index]= pixels[index];
 					} else {
-						floatPixels[index]=0.0F;
+						maskedPixels[index]=0.0;
 					}
 				}
 			}
-			ImageProcessor ip = new FloatProcessor(size,size);
-			ip.setPixels(floatPixels);
-			ip.resetMinAndMax();
-			ImagePlus imp= new ImagePlus(title+"_CORR_MASK", ip);
-			imp.show();
+			double [][] dbgPixels={pixels,maskedPixels,u_value,v_value};
+			String [] titles={"all","masked","u","v"};
+			(new showDoubleFloatArrays()).showArrays(
+					dbgPixels,
+					size,
+					size,
+					true,
+					title+"_CORR_MASK",
+					titles);
 		}
 		return contrast;
 	}
@@ -2977,6 +3000,7 @@ public class MatchSimulatedPattern {
 						   point[0]=(selection.x+nh*selection.width/(1<<tryHor)) & ~1;
 						   point[1]=(selection.y+nv*selection.height/(1<<tryVert)) & ~1;
 						   if (debugLevel>2) System.out.println("trying xc="+point[0]+", yc="+point[1]+"(nv="+nv+", nh="+nh+")");
+//						   System.out.println("### trying xc="+point[0]+", yc="+point[1]+"(nv="+nv+", nh="+nh+")");
 						   if ((debugLevel>2) && (startScanIndex==3)) debugLevel=3; // show debug images for the first point only
 						   node=tryPattern (
 								   point, // xy to try
@@ -7332,7 +7356,15 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 					double [][] locsNeib, // locations and weights of neighbors to average
 					int debug_level
 					){
-			   
+			   double dbg_x=1005.0;
+			   double dbg_y=1284.0;
+			   double dbg_tolerance=5.0;
+			   boolean dbgThis=(Math.abs(beforeXY[0]-dbg_x)<dbg_tolerance) && (Math.abs(beforeXY[1]-dbg_y)<dbg_tolerance);
+			   if (dbgThis) {
+				   System.out.println("correctedPatternCrossLocationAverage4(), beforeXY[0]="+beforeXY[0]+", beforeXY[1]="+beforeXY[1]);
+				   debug_level+=3;
+			   }
+//	System.out.println("correctedPatternCrossLocationAverage4(): beforeXY[0]="+beforeXY[0]+". beforeXY[1]="+beforeXY[1]);		   
 	// Just for testing
 			   beforeXY[0]+=distortionParameters.correlationDx;  // offset, X (in pixels)
 			   beforeXY[1]+=distortionParameters.correlationDy; // offset y (in pixels)
@@ -7551,7 +7583,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 						 //TODO: verify that displacement is correct here (sign, direction)						
 						 centerXY[0],    //  x0,              // center coordinates
 						 centerXY[1],    //y0,
-				 "test-contrast");   // title base for optional plots names
+						 "test-contrast",   // title base for optional plots names
+						 debug_level);
 
 				 result[2]=contrast;
 
@@ -8029,7 +8062,7 @@ d()/dy=C*x+2*B*y+E=0
 	   	   			for (i=1;i<size1/4;i++) hammingMod[size1-i]=preHammingMod[i];
 	   	   			for (i=size1/4;i<=(size1-size1/4);i++) hammingMod[i]=1.0;
 	   	   			
-	   	   		    if (showDebug) System.out.println("scale="+scale+ "borderAverage="+borderAverage);
+	   	   		    if (showDebug) System.out.println("scale="+scale+ " borderAverage="+borderAverage);
 	   	   			for (i=0;i<size1;i++) for (j=0;j<size1;j++) {
 	   	   				corr1[(i*size+j)*decimateFFT] = scale*(corr[index+i*size+j]-borderAverage)*hammingMod[i]*hammingMod[j]+borderAverage;
 	   	   			}
@@ -8042,20 +8075,31 @@ d()/dy=C*x+2*B*y+E=0
 	    	    	for (i=size1/2+1;i<size -(size1/2);i++) for (j=0;j<size;j++) corr1[i*size+j]=0.0;
 	    	    	for (i=size -(size1/2); i<size;i++) for (j=size1/2+1;j<size -(size1/2);j++) corr1[i*size+j]=0.0;
 	    	    	// apply window for now - just
-	    	    	double [] hamming=fht_instance.getHamming1d(size1);
+/*	    	    	
+	    	    	if (showDebug) {
+	    	    		System.out.println("Getting hamming1d ("+size1+")");
+	    	    	}
+*/	    	    	
+	    	    	double [] hamming=fht_instance.getHamming1d(size1).clone();
+/*	    	    	
+	    	    	if (showDebug) {
+	    	    		for (i=0;i<hamming.length;i++) System.out.println("hamming["+i+"]="+hamming[i]); 
+	    	    	}
+	   	   			if (showDebug) SDFA_INSTANCE.showArrays(corr1.clone(), "NO_ALIAS");
 	   	   			// Combine with low-pass Gaussian (if it is >0)
 	   	   			if (lowpass>0){
 	   	   				double [] gaussian1d=fht_instance.getGaussian1d(lowpass,size1); // no need to divide by /decimateFFT as we use size1, not size
 	   	   				for (i=0;i<hammingMod.length;i++) hamming[i]*=gaussian1d[i];
-//		    	    	if (showDebug) {
-//		    	    		System.out.println("lowpass="+lowpass);
-//		    	    		for (i=0;i<gaussian1d.length;i++) System.out.println("gaussian1d["+i+"]="+gaussian1d[i]); 
-//		    	    	}
+		    	    	if (showDebug) {
+		    	    		System.out.println("lowpass="+lowpass);
+		    	    		for (i=0;i<gaussian1d.length;i++) System.out.println("gaussian1d["+i+"]="+gaussian1d[i]); 
+		    	    	}
 	   	   			}
 
-//	    	    	if (showDebug) {
-//	    	    		for (i=0;i<hamming.length;i++) System.out.println("hamming["+i+"]="+hamming[i]); 
-//	    	    	}
+	    	    	if (showDebug) {
+	    	    		for (i=0;i<hamming.length;i++) System.out.println("hamming["+i+"]="+hamming[i]); 
+	    	    	}
+*/	    	    	
 	    	    	int halfSize1=size1/2, shiftZero=size-halfSize1;
 	    	    	for (i=0;i<=size1;i++) for (j=0;j<=size1;j++){
 	    	    		int im=i%size1,jm=j%size1;
