@@ -3321,6 +3321,10 @@ public class MatchSimulatedPattern {
 							   iUVRef[1]=iUVdir[1]+directionsUV[iUVdir[2]][1];
 
 							   double [][] refCell=PATTERN_GRID[iUVRef[1]][iUVRef[0]]; // should never be null as it is an old one
+							   if (refCell==null){
+								   System.out.println("refCell==null");
+								   continue;
+							   }
 							   //found reference cell, calculate x/y, make sure it is inside the selection w/o borders
 							   double [][] wv=new double [2][];
 							   wv[0]=refCell[1];
