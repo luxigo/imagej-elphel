@@ -180,7 +180,10 @@ public class Aberration_Calibration extends PlugInFrame implements ActionListene
 			0.4, // corrRingWidth - ring (around r=0.5 dist to opposite corr) width , center circle r=0.5*PATTERN_DETECT.corrRingWidth
 			5.0, // minCorrContrast -  discrimination threshold between good and bad pattern correlation
 			0.0, // minGridPeriod
-			0.0  // maxGridPeriod
+			0.0,  // maxGridPeriod
+			0.0, // debugX+"");
+		    0.0, //	debugY+"");
+			-1.0 // this.debugRadius+"");
 	);
 	
 	
@@ -313,9 +316,14 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		  1.5, // 2.5, //6.0, // 2.0, // 0.0, // correlationHighPassSigma, - pixels in frequency domain
 		  0.6, //2.0, //0.5, //0.0, //  correlationLowPassSigma, - fraction of the frequency range
 		  0.4,  // correlationRingWidth- ring (around r=0.5 dist to opposite corr) width , center circle r=0.5*PATTERN_DETECT.corrRingWidth
-		  3.0, //  correlationMaxOffset,     // maximal distance between predicted and actual pattern node
-		  2.0, // increase back to .5? was needed with fisheye. 5.0, //	double correlationMinContrast,   // minimal contrast for the pattern to pass
-		  2.5, // correlationMinInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+		  8.0, // 3.0, //  correlationMaxOffset,     // maximal distance between predicted and actual pattern node
+		  1.0, // 2.0, // increase back to .5? was needed with fisheye. 5.0, //	double correlationMinContrast,   // minimal contrast for the pattern to pass
+		  1.5, // 2.5, // correlationMinInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+		  
+		  0.8, //	scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+		  0.1, // contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+		  0.5, //contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
+		  
 		  150,  // minimalPatternCluster minimal pattern cluster size (0 - disable retries)
 		  2.0, // scaleMinimalInitialContrast increase/decrease minimal contrast if initial cluster is >0 but less than minimalPatternCluster
 		  0.5, //  when searching for grid, step this amount of the FFTSize
@@ -16162,7 +16170,9 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 					WVgreens=matrix2x2_mul(patternMap[nTileY][nTileX],invConvMatrix);
 					contrast= matchSimulatedPattern.correlationContrast (model_corr,    // square pixel array
 							WVgreens,    // wave vectors (same units as the pixels array)
-							patternDetectParameters.corrRingWidth,   // ring (around r=0.5 dist to opposite corr) width
+//							patternDetectParameters.corrRingWidth,   // ring (around r=0.5 dist to opposite corr) width
+							0.1, // contrastSelectSigma
+							0.5, // contrastAverageSigma
 							0.0,    //  x0,              // center coordinates
 							0.0,    //y0,
 							title);   // title base for optional plots names
@@ -18951,10 +18961,10 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		gd.addNumericField("Minimal pattern correlation contrast" ,                       patternDetectParameters.minCorrContrast, 3);   //5.0; // Discrimination threshold between good and bad pattern correleation
 		gd.addNumericField("Minimal pattern grid period (<=0.0 - do not check)" ,         patternDetectParameters.minGridPeriod, 2,5,"pix");
 		gd.addNumericField("Maximal pattern grid period (<=0.0 - do not check)" ,         patternDetectParameters.maxGridPeriod, 2,5,"pix");
-		
-		
-		//			0.0, // minGridPeriod
-//		0.0  // maxGridPeriod
+		gd.addMessage("----- debug -----");
+		gd.addNumericField("Debug grid near pixel X" ,                                    patternDetectParameters.debugX, 1,6,"pix");
+		gd.addNumericField("Debug grid near pixel X" ,                                    patternDetectParameters.debugY, 1,6,"pix");
+		gd.addNumericField("Debug grid nodes at this distance of (x,Y) - <0 - no debug",  patternDetectParameters.debugRadius, 1,5,"pix");
 
 		gd.showDialog();
 		if (gd.wasCanceled()) return false;
@@ -18971,6 +18981,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		patternDetectParameters.minCorrContrast=          gd.getNextNumber();
 		patternDetectParameters.minGridPeriod=            gd.getNextNumber();
 		patternDetectParameters.maxGridPeriod=            gd.getNextNumber();
+		patternDetectParameters.debugX=                   gd.getNextNumber();
+		patternDetectParameters.debugY=                   gd.getNextNumber();
+		patternDetectParameters.debugRadius=              gd.getNextNumber();
 		return true;
 	}
 	public boolean showPatternMinMaxPeriodDialog(MatchSimulatedPattern.PatternDetectParameters patternDetectParameters) {
@@ -19208,6 +19221,10 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			gd.addNumericField("Detection ring width (fraction):",      distortionParameters.correlationRingWidth, 3);
 			gd.addNumericField("Correlation minimal contrast:",         distortionParameters.correlationMinContrast, 3);
 			gd.addNumericField("Correlation minimal contrast for initial search:", distortionParameters.correlationMinInitialContrast, 3);
+			
+			gd.addNumericField("Decrease contrast of cells that are too close to the border to be processed in rifinement pass", distortionParameters.scaleFirstPassContrast, 3);
+			gd.addNumericField("Gaussian sigma to select correlation centers (fraction of UV period), 0.1", distortionParameters.contrastSelectSigma, 3);
+			gd.addNumericField("Gaussian sigma to average correlation variations (as contrast reference), 0.5", distortionParameters.contrastAverageSigma, 3);
 
 			gd.addNumericField("Minimal initial pattern cluster size (0 - disable retries)", distortionParameters.minimalPatternCluster, 0);
 			gd.addNumericField("Scale minimal contrast if the initial cluster is nonzero but smaller", distortionParameters.scaleMinimalInitialContrast, 3);
@@ -19283,6 +19300,10 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			distortionParameters.correlationRingWidth=    gd.getNextNumber();
 			distortionParameters.correlationMinContrast=  gd.getNextNumber();
 			distortionParameters.correlationMinInitialContrast=  gd.getNextNumber();
+			
+			distortionParameters.scaleFirstPassContrast=  gd.getNextNumber();
+			distortionParameters.contrastSelectSigma=  gd.getNextNumber();
+			distortionParameters.contrastAverageSigma=  gd.getNextNumber();
 			
 			distortionParameters.minimalPatternCluster=(int) gd.getNextNumber();
 			distortionParameters.scaleMinimalInitialContrast=gd.getNextNumber();
