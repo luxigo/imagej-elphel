@@ -19227,15 +19227,15 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			gd.addNumericField("Correlation minimal contrast (normalized)",         distortionParameters.correlationMinContrast, 3);
 			gd.addNumericField("Correlation minimal contrast for initial search (normalized)", distortionParameters.correlationMinInitialContrast, 3);
 
-			gd.addNumericField("Correlation minimal contrast (absolute)",         distortionParameters.correlationMinContrast, 3);
-			gd.addNumericField("Correlation minimal contrast for initial search (absolute)", distortionParameters.correlationMinInitialContrast, 3);
+			gd.addNumericField("Correlation minimal contrast (absolute)",         distortionParameters.correlationMinAbsoluteContrast, 3);
+			gd.addNumericField("Correlation minimal contrast for initial search (absolute)", distortionParameters.correlationMinAbsoluteInitialContrast, 3);
 			
 			gd.addNumericField("Decrease contrast of cells that are too close to the border to be processed in rifinement pass", distortionParameters.scaleFirstPassContrast, 3);
 			gd.addNumericField("Gaussian sigma to select correlation centers (fraction of UV period), 0.1", distortionParameters.contrastSelectSigma, 3);
 			gd.addNumericField("Gaussian sigma to average correlation variations (as contrast reference), 0.5", distortionParameters.contrastAverageSigma, 3);
 
-			gd.addNumericField("Minimal initial pattern cluster size (0 - disable retries)", distortionParameters.correlationMinAbsoluteContrast, 0);
-			gd.addNumericField("Scale minimal contrast if the initial cluster is nonzero but smaller", distortionParameters.correlationMinAbsoluteInitialContrast, 3);
+			gd.addNumericField("Minimal initial pattern cluster size (0 - disable retries)", distortionParameters.minimalPatternCluster, 0);
+			gd.addNumericField("Scale minimal contrast if the initial cluster is nonzero but smaller", distortionParameters.scaleMinimalInitialContrast, 3);
 			gd.addNumericField("Overlap of FFT areas when searching for pattern", distortionParameters.searchOverlap, 3);
 			
 			gd.addNumericField("Pattern subdivision:",                  distortionParameters.patternSubdiv, 0);
