@@ -5984,9 +5984,15 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("LENS_DISTORTION.fittingStrategy is not set");
 				return;
 			}
+			boolean [] selectedChannels=null;
+			if (ABERRATIONS_PARAMETERS!=null){
+				selectedChannels=ABERRATIONS_PARAMETERS.getChannelSelection(LENS_DISTORTIONS);
+				
+			}
 			LENS_DISTORTIONS.removeOutLayers(
 					-1, //int series, (<0 - ask)
-					-1  //int numOutLayers  (<0 - ask)
+					-1,  //int numOutLayers  (<0 - ask)
+					selectedChannels
 					);
 			return;
 		}

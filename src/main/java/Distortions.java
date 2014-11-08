@@ -3676,36 +3676,56 @@ List calibration
     	return true;
     }
     
-    public boolean removeOutLayers(int series, int numOutLayers){
+    public boolean removeOutLayers(
+    		int series,
+    		int numOutLayers,
+    		boolean [] selectedChannels){
     	int numSeries=fittingStrategy.getNumSeries();
     	boolean removeEmpty=false;
     	boolean recalculate=false;
+    	boolean applyChannelFilter=false;
 		int filter=filterForAll;
     	if ((series<0) || (numOutLayers<0)) {
     		GenericDialog gd = new GenericDialog("Select series to process");
     		gd.addNumericField("Iteration number to start (0.."+(numSeries-1)+")", this.seriesNumber, 0);
+    		if (selectedChannels != null) {
+    			String s="";
+    			for (boolean b:selectedChannels)s+=b?"+":"-";
+    			gd.addCheckbox("Filter by channel selection ("+s+")", applyChannelFilter);
+    		}
     		gd.addCheckbox("Recalculate parameters vector from selected strategy",recalculate);
     		gd.addNumericField("Number of outlayers to show", 10, 0);
     		gd.addCheckbox("Remove empty (rms==NaN) images", removeEmpty);
     		gd.addCheckbox("Ask filter (current filter="+filter+")",    this.askFilter);
     		gd.showDialog();
     		if (gd.wasCanceled()) return false;
-    		this.seriesNumber=          (int) gd.getNextNumber();
-    		recalculate=                      gd.getNextBoolean();
-    		numOutLayers=               (int) gd.getNextNumber();
-    		removeEmpty=                      gd.getNextBoolean();
-    		this.askFilter=                   gd.getNextBoolean();
+    		this.seriesNumber=                           (int) gd.getNextNumber();
+    		if (selectedChannels != null) applyChannelFilter=  gd.getNextBoolean();
+    		recalculate=                                       gd.getNextBoolean();
+    		numOutLayers=                                (int) gd.getNextNumber();
+    		removeEmpty=                                       gd.getNextBoolean();
+    		this.askFilter=                                    gd.getNextBoolean();
     		if (this.askFilter) filter=  selectFilter(filter);
     		filter=0;
     	} else {
     		this.seriesNumber=series;
     	}
+    	if (!applyChannelFilter) selectedChannels=null;
 //	    initFittingSeries(!recalculate,this.filterForAll,this.seriesNumber); // will set this.currentVector
 	    initFittingSeries(!recalculate,this.filterForAll,this.seriesNumber); // will set this.currentVector
 		this.currentfX=calculateFxAndJacobian(this.currentVector, false); // is it always true here (this.jacobian==null)
 		double [] errors=calcErrors(calcYminusFx(this.currentfX)); // seem to have errors? - now may return NaN!
 		double    rms=   calcError (calcYminusFx(this.currentfX));
 		boolean [] selectedImages=fittingStrategy.selectedImages();
+		if (selectedChannels!=null){
+			selectedImages=selectedImages.clone(); // disconnect from original for modification
+			for (int i=0;i<selectedImages.length;i++) if (selectedImages[i]){
+				int chn=this.fittingStrategy.distortionCalibrationData.gIP[i].channel;
+				if ((chn<0) || (chn>=selectedChannels.length) || !selectedChannels[chn]){
+					selectedImages[i]=false;
+				}
+			}			
+		}
 		int numSelectedNotNaNImages=0;
 		int numNaN=0;
 		for (int i=0;i<selectedImages.length;i++) if (selectedImages[i]) {
