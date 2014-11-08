@@ -1089,12 +1089,22 @@ public class EyesisAberrations {
     	boolean [] selectedChannels=this.aberrationParameters.getChannelSelection(distortions);
     	int numSelected=0;
     	int numDeselected=0;
+    	if (debugLevel>1){
+    		for (int i=0;i<selectedChannels.length;i++){
+    			System.out.println("Channel "+i+" is "+(selectedChannels[i]?"Enabled":"Disabled"));
+    		}
+    	}
     	for (int imgNum=0;imgNum<selectedImages.length;imgNum++) if (selectedImages[imgNum]) {
     		int numChannel=distortionCalibrationData.gIP[imgNum].channel;
+        	if (debugLevel>1){
+        		System.out.println("Image "+imgNum+" channel "+numChannel+" is "+(selectedChannels[numChannel]?"ENABLED":"DISABLED"));
+        	}    		
     		if (!selectedChannels[numChannel]){
     			selectedImages[imgNum]=false;
     			numDeselected++;
     		}	else numSelected++;
+    	} else if (debugLevel>1){
+    		System.out.println("Skipping disabled image "+imgNum);
     	}
     	if (debugLevel>0)System.out.println("Enabled "+numSelected+" source files ("+numDeselected+") were removed by channel selection");
 
