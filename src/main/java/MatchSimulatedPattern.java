@@ -3249,7 +3249,7 @@ public class MatchSimulatedPattern {
 			   } else { // new multithreaded mode
 				   int startScanIndex=3;
 				   for (;(startScanIndex<numTries) && triedIndices[startScanIndex];startScanIndex++); // skip already tried indices
-				   if (debugLevel>1) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
+				   if (global_debug_level>0) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
 				   
 				   if (startScanIndex<numTries) {
 					   nodeQueue =  findPatternCandidates(
@@ -3278,17 +3278,21 @@ public class MatchSimulatedPattern {
 							   this.debugLevel
 					   );
 					   if (nodeQueue.isEmpty()) { // nodes==null){ 
-						   if (debugLevel>1) System.out.println("All start points tried");
+//						   if (debugLevel>1) System.out.println("All start points tried");
+						   if (global_debug_level>0) System.out.println("All start points tried");
 						   triedIndices[numTries]=true; // all tried
 					   } else {
 //						   if (debugLevel>1) System.out.println("Found "+nodes.length+" candidates");
-						   if (debugLevel>1) System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
+//						   if (debugLevel>1) System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
+						   if (global_debug_level>0) System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
 					   }
 				   } else {
-					   if (debugLevel>1) System.out.println("All start points tried before - should not get here");
+					   System.out.println("All start points tried before - should not get here");
 					   triedIndices[numTries]=true; // all tried
 				   }
 			   }
+//				   if (global_debug_level>0) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
+			   
 //			   if (startScanIndex[0]>=numTries) startScanIndex[0]=-1; // all indices used
 //			   if ((nodes==null) || (nodes[0]==null) || (nodes[0][0]==null)) {
 			   if ((nodeQueue.isEmpty()) || (nodeQueue.peek().getNode()[0]==null)) {
@@ -3470,8 +3474,9 @@ public class MatchSimulatedPattern {
 									   continue;
 								   } else if ((refCell[0]!=null) && (refCell[0].length>3)){
 									   System.out.println("**** refCell was deleted **** u="+iUVRef[0]+" v="+iUVRef[1]+
-											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length+
-											   " ncell="+ncell+" waveFrontList.size()="+waveFrontList.size());
+											   " current="+iUVdir[0]+"/"+iUVdir[1]+
+											   " ncell="+ncell+" waveFrontList.size()="+waveFrontList.size()+
+											   " ref_x="+IJ.d2s(refCell[0][0],3)+" ref_y="+IJ.d2s(refCell[0][1],3));
 								   }
 								   //found reference cell, calculate x/y, make sure it is inside the selection w/o borders
 								   double [][] wv=new double [2][];
