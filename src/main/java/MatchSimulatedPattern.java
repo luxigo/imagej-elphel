@@ -3296,8 +3296,8 @@ public class MatchSimulatedPattern {
 				   this.PATTERN_GRID=null;   
 				   return 0;
 			   }
-			   if (debugLevel>1) {
-				   System.out.println("*** distortions: got "+nodeQueue.size()+" candidates");
+			   if (global_debug_level>0) {
+				   System.out.println("distortions(): found "+nodeQueue.size()+" grid candidates");
 //				   System.out.println("*** distortions: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
 			   }
 
@@ -3470,7 +3470,8 @@ public class MatchSimulatedPattern {
 									   continue;
 								   } else if ((refCell[0]!=null) && (refCell[0].length>3)){
 									   System.out.println("**** refCell was deleted **** u="+iUVRef[0]+" v="+iUVRef[1]+
-											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length);
+											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length+
+											   " ncell="+ncell+" waveFrontList.size()="+waveFrontList.size());
 								   }
 								   //found reference cell, calculate x/y, make sure it is inside the selection w/o borders
 								   double [][] wv=new double [2][];
@@ -3695,7 +3696,7 @@ public class MatchSimulatedPattern {
 				   // end of layer - it is a hack below, marking initial wave to recalculate it from neighbors	
 				   if (initialWave!=null){ // just after the first layer (usually one cell) - delete it and add next time - otherwise first one needs large correction
 					   if (global_debug_level>0)
-						   System.out.println("Removing "+initialWave.size()+" initial wave cells");
+						   System.out.println("Removing "+initialWave.size()+" initial wave cells, waveFrontList.size()="+waveFrontList.size());
 					   while (initialWave.size()>0){
 						   uvdir= getWaveList (initialWave,0);
 //						   clearPatternGridCell(PATTERN_GRID, uvdir);
