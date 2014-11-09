@@ -1303,7 +1303,11 @@ public class EyesisAberrations {
         		}
         	}
         	if (iRetry==MaxRetries) {
-				System.out.println("File "+files[imgNum][1]+ " has problems - finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)); 
+				System.out.println("File "+files[imgNum][1]+ " has problems - finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+	    		if 	(stopRequested.get()>0) {				
+					if (debugLevel>0) System.out.println("User requested stop");
+					break;
+	    		}
         		continue;
         	}
         	

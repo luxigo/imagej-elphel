@@ -3469,7 +3469,8 @@ public class MatchSimulatedPattern {
 											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length);
 									   continue;
 								   } else if ((refCell[0]!=null) && (refCell[0].length>3)){
-									   System.out.println("**** refCell was deleted ****");
+									   System.out.println("**** refCell was deleted **** u="+iUVRef[0]+" v="+iUVRef[1]+
+											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length);
 								   }
 								   //found reference cell, calculate x/y, make sure it is inside the selection w/o borders
 								   double [][] wv=new double [2][];
@@ -5767,8 +5768,8 @@ public class MatchSimulatedPattern {
 			   // restore initial distortionParameters.correlationMinInitialContrast
 			   distortionParameters.correlationMinInitialContrast=savedCorrelationMinInitialContrast;
 			   if (!foundGoodCluster){
-				   System.out.println("calculateDistortions(): Pattern too small");
-				   if (global_debug_level>2) IJ.showMessage("Error","Pattern too small");
+				   System.out.println("calculateDistortions(): Pattern too small, initial cluster had "+patternCells+" cells");
+				   if (global_debug_level>2) IJ.showMessage("Error","Pattern too small: "+patternCells);
 				   return distortionParameters.errPatternNotFound;
 			   }
 			   if (!patternOK()) {
