@@ -3282,7 +3282,7 @@ public class MatchSimulatedPattern {
 						   triedIndices[numTries]=true; // all tried
 					   } else {
 //						   if (debugLevel>1) System.out.println("Found "+nodes.length+" candidates");
-						   if (debugLevel>1) System.out.println("Found "+nodeQueue.size()+" candidates");
+						   if (debugLevel>1) System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
 					   }
 				   } else {
 					   if (debugLevel>1) System.out.println("All start points tried before - should not get here");
@@ -3330,15 +3330,23 @@ public class MatchSimulatedPattern {
 			   nodeQueue.add(new GridNode(node)); // will not be used, any element
 		   }
 		   int numDefinedCells=0;
-		   for (GridNode gn:nodeQueue){
+		   int debug_left=nodeQueue.size();
+		   for (GridNode gn:nodeQueue){ // trying candidates as grid seeds - until found or nothing left
+			   if (global_debug_level>1) {
+				   System.out.println("distortions: nodeQueue has "+(debug_left--)+" candidates left (including this one)");
+			   }
+			   
 			   if (!updating){
 				   double [][] node=gn.getNode();
 				   double [] centerXY=node[0];
+				   if (global_debug_level>1) {
+					   System.out.println("distortions: node X/Y are "+centerXY[0]+"/"+centerXY[1]);
+				   }
 				   //				   if (debugLevel>1) {
 				   if (global_debug_level>1) {
 					   System.out.println("*** distortions: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
 					   System.out.println("*** distortions: setting debugX="+IJ.d2s(centerXY[0],3)+" debugY="+ 	IJ.d2s(centerXY[1],3));
-					   patternDetectParameters.debugX=centerXY[0]; //
+					   patternDetectParameters.debugX=centerXY[0]; // Change debug coordinates to the initial node
 					   patternDetectParameters.debugY=centerXY[1]; //patternDetectParameters.debugRadius);
 				   }
 				   debugLevel=debug_level;
@@ -3352,7 +3360,9 @@ public class MatchSimulatedPattern {
 						   node[2]);
 				   waveFrontList.clear();
 				   putInWaveList(waveFrontList, centerUV, 0);
-				   
+				   if (global_debug_level>1) {
+					   System.out.println("putInWaveList(waveFrontList, {"+centerUV[0]+","+centerUV[1]+"}, 0);");
+				   }
 				   
 			   }
 
@@ -3382,6 +3392,7 @@ public class MatchSimulatedPattern {
 
 			   final AtomicInteger debugCellSet= new AtomicInteger(0); // cells added at cleanup stage
 			   // special case (most common, actually) when initial wave has 1  node. Remove it after processing
+			   //first cell(s) will need large correction and so may fail during "refine", so trying to recalculate it right after the first layer)
 			   ArrayList<Integer> initialWave=new ArrayList<Integer>();
 			   for (Integer I:waveFrontList) initialWave.add(I); 
 			   while (waveFrontList.size()>0) {
@@ -3430,7 +3441,8 @@ public class MatchSimulatedPattern {
 				   if (waveFrontList.size()==0) break; // not really needed?
 				   layer++;
 				   if (updateStatus) IJ.showStatus("Correlating patterns, layer "+layer+(cleanup.get()?"(cleanup)":"")+", length "+waveFrontList.size());
-				   if (debugLevel>1) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
+//				   if (debugLevel>1) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
+				   if (global_debug_level>1) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
 				   // starting layer
 				   cellNum.set(0);
 				   for (int ithread = 0; ithread < threads.length; ithread++) {
@@ -3453,7 +3465,8 @@ public class MatchSimulatedPattern {
 
 								   double [][] refCell=PATTERN_GRID[iUVRef[1]][iUVRef[0]]; // should never be null as it is an old one
 								   if (refCell==null){ 
-									   System.out.println("**** refCell==null - what does it mean?**** u="+iUVRef[0]+" v="+iUVRef[1]);
+									   System.out.println("**** refCell==null - what does it mean?**** u="+iUVRef[0]+" v="+iUVRef[1]+
+											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length);
 									   continue;
 								   } else if ((refCell[0]!=null) && (refCell[0].length>3)){
 									   System.out.println("**** refCell was deleted ****");
@@ -3678,7 +3691,7 @@ public class MatchSimulatedPattern {
 					   }
 					   if (global_debug_level>1) System.out.println("***** Starting cleanup, wave length="+waveFrontList.size());
 				   }
-				   // end of layer	
+				   // end of layer - it is a hack below, marking initial wave to recalculate it from neighbors	
 				   if (initialWave!=null){ // just after the first layer (usually one cell) - delete it and add next time - otherwise first one needs large correction
 					   if (global_debug_level>0)
 						   System.out.println("Removing "+initialWave.size()+" initial wave cells");
@@ -5415,6 +5428,7 @@ public class MatchSimulatedPattern {
 				   int [] uv){
 			   grid[uv[1]][uv[0]]=null;
 		   }
+
 		   private void markDeletedPatternGridCell(
 				   double [][][][] grid,
 				   int [] uv){
@@ -5426,8 +5440,10 @@ public class MatchSimulatedPattern {
 					   else
 						   newXYC[i]=Double.NaN;
 				   }
+				   grid[uv[1]][uv[0]][0]=newXYC;
 			   }
-			   grid[uv[1]][uv[0]]=null;
+//			   grid[uv[1]][uv[0]]=null;
+
 		   }
 		   private boolean isCellNew( //modified, for invalid uv will return "not new"
 				   double [][][][] grid,
@@ -5565,7 +5581,7 @@ public class MatchSimulatedPattern {
 		   public int gridUVHeight(){return ((this.PATTERN_GRID==null) || (this.PATTERN_GRID.length==0l) ||(this.PATTERN_GRID[0]==null))?0:this.PATTERN_GRID.length;}		   
 /* ======================================================================== */
 		   /**
-		    * returns number of laser pointers matched
+		    * returns number of laser pointers matched (or negative error)
 		    * if (this.flatFieldForGrid!=null) it should already be applied !!
 		    */
 		   public int calculateDistortions(

@@ -1066,7 +1066,7 @@ public class EyesisAberrations {
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
 			SimulationPattern.SimulParameters  simulParameters,
 			ColorComponents colorComponents,
-			boolean resetBadKernels, // ignore and reset noUsefulKernels mark for seleccted channel
+			boolean resetBadKernels, // ignore and reset noUsefulKernels mark for selected channel
 			int threadsMax,
 			boolean updateStatus,
 			int loopDebugLevel, // debug level used inside loops
@@ -1094,14 +1094,14 @@ public class EyesisAberrations {
     	boolean [] selectedChannels=this.aberrationParameters.getChannelSelection(distortions);
     	int numSelected=0;
     	int numDeselected=0;
-    	if (debugLevel>1){
+    	if (debugLevel>2){
     		for (int i=0;i<selectedChannels.length;i++){
     			System.out.println("Channel "+i+" is "+(selectedChannels[i]?"Enabled":"Disabled"));
     		}
     	}
     	for (int imgNum=0;imgNum<selectedImages.length;imgNum++) if (selectedImages[imgNum]) {
     		int numChannel=distortionCalibrationData.gIP[imgNum].channel;
-        	if (debugLevel>1){
+        	if (debugLevel>2){
         		System.out.println("Image "+imgNum+" channel "+numChannel+" is "+(selectedChannels[numChannel]?"ENABLED":"DISABLED"));
         	}    		
     		if (!selectedChannels[numChannel]){
@@ -1111,7 +1111,7 @@ public class EyesisAberrations {
     			distortions.fittingStrategy.setNoUsefulPSFKernels(imgNum,false); // reset noUsefulKernels mark (if it was not set - OK)
     			numSelected++;
     		}
-    	} else if (debugLevel>1){
+    	} else if (debugLevel>2){
     		System.out.println("Skipping disabled image "+imgNum);
     	}
     	if (debugLevel>0)System.out.println("Enabled "+numSelected+" source files ("+numDeselected+") were removed by channel selection");
@@ -1237,9 +1237,9 @@ public class EyesisAberrations {
 
         	int MaxRetries=4;
         	int iRetry=0;
-        	for (iRetry=0;iRetry<MaxRetries;iRetry++){
+        	for (iRetry=0;iRetry<MaxRetries;iRetry++){ // is this retry needed?
         		try {
-        			matchSimulatedPattern.calculateDistortions(
+        			int rslt=matchSimulatedPattern.calculateDistortions(
         					distortionParameters, //
         					patternDetectParameters,
         					simulParameters,
@@ -1255,7 +1255,10 @@ public class EyesisAberrations {
         					debugLevel,
         					loopDebugLevel, // debug level
         					aberrationParameters.noMessageBoxes);
-        			
+        			if (rslt<0){
+            			if (debugLevel>0) System.out.println("calculateDistortions failed, returned error code "+rslt+" riRetry="+iRetry+" (of "+MaxRetries+")");
+            			continue;
+        			}
         			correlationSizesUsed=matchSimulatedPattern.getCorrelationSizesUsed();
         			simArray=	(new SimulationPattern(simulParameters)).simulateGridAll (
         					imp.getWidth(),
@@ -1299,7 +1302,10 @@ public class EyesisAberrations {
         			continue;
         		}
         	}
-        	if (iRetry==MaxRetries) continue;
+        	if (iRetry==MaxRetries) {
+				System.out.println("File "+files[imgNum][1]+ " has problems - finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)); 
+        		continue;
+        	}
         	
 			
 			ImageStack stack=mergeKernelsToStack(this.pdfKernelMap);
