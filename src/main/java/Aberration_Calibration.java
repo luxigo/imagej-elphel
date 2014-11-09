@@ -9196,6 +9196,23 @@ if (MORE_BUTTONS) {
 	    		return;
 			}
 			
+			boolean [] selectedChannels=null;
+			if (ABERRATIONS_PARAMETERS!=null){
+				selectedChannels=ABERRATIONS_PARAMETERS.getChannelSelection(LENS_DISTORTIONS);
+			}
+			String s="";
+    		if (selectedChannels != null) {
+    			for (boolean b:selectedChannels)s+=b?"+":"-";
+    		}
+    		boolean resetBadKernels=false;
+	    	GenericDialog gd = new GenericDialog("Partial kernel calculation");
+    		gd.addMessage("Selected channels: "+s+" (you may change selection with \"Select Channels\" command)");
+    		gd.addCheckbox("Re-process images marked with \"no useful kernels\" during previouis processing",resetBadKernels);
+        	gd.showDialog();
+    		if (gd.wasCanceled()) return;
+    		resetBadKernels=gd.getNextBoolean();
+
+			
 			
 			EYESIS_ABERRATIONS.createPartialKernels(
 					this.SYNC_COMMAND.stopRequested,
@@ -9213,6 +9230,7 @@ if (MORE_BUTTONS) {
 					PATTERN_DETECT, // MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
 					SIMUL, //SimulationPattern.SimulParameters  simulParameters,
 					COMPONENTS, //boolean equalizeGreens,
+					resetBadKernels,
 					THREADS_MAX, // int threadsMax,
 					UPDATE_STATUS,
 					DISTORTION.loop_debug_level, // int loopDebugLevel, // debug level used inside loops

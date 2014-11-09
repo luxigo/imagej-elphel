@@ -1066,6 +1066,7 @@ public class EyesisAberrations {
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
 			SimulationPattern.SimulParameters  simulParameters,
 			ColorComponents colorComponents,
+			boolean resetBadKernels, // ignore and reset noUsefulKernels mark for seleccted channel
 			int threadsMax,
 			boolean updateStatus,
 			int loopDebugLevel, // debug level used inside loops
@@ -1085,7 +1086,11 @@ public class EyesisAberrations {
 		}
 		long startTime=System.nanoTime(); // restart timer after possible interactive dialogs
 //		long tmpTime;
-    	boolean [] selectedImages=distortions.fittingStrategy.selectedImagesNoBadKernels(this.aberrationParameters.allImages?-1:this.aberrationParameters.seriesNumber); // negative series number OK - will select all enabled
+		//resetBadKernels
+		int serNumber=this.aberrationParameters.allImages?-1:this.aberrationParameters.seriesNumber;
+    	boolean [] selectedImages=resetBadKernels?
+    			distortions.fittingStrategy.selectedImages(serNumber):
+    			distortions.fittingStrategy.selectedImagesNoBadKernels(serNumber); // negative series number OK - will select all enabled
     	boolean [] selectedChannels=this.aberrationParameters.getChannelSelection(distortions);
     	int numSelected=0;
     	int numDeselected=0;
@@ -1102,7 +1107,10 @@ public class EyesisAberrations {
     		if (!selectedChannels[numChannel]){
     			selectedImages[imgNum]=false;
     			numDeselected++;
-    		}	else numSelected++;
+    		}else{
+    			distortions.fittingStrategy.setNoUsefulPSFKernels(imgNum,false); // reset noUsefulKernels mark (if it was not set - OK)
+    			numSelected++;
+    		}
     	} else if (debugLevel>1){
     		System.out.println("Skipping disabled image "+imgNum);
     	}
