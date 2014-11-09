@@ -3706,7 +3706,7 @@ public class MatchSimulatedPattern {
 				   }
 				   // end of layer - it is a hack below, marking initial wave to recalculate it from neighbors	
 				   if (initialWave!=null){ // just after the first layer (usually one cell) - delete it and add next time - otherwise first one needs large correction
-					   if (global_debug_level>0) {
+					   if (global_debug_level>1) {
 						   System.out.println("Removing "+initialWave.size()+" initial wave cells, waveFrontList.size()="+waveFrontList.size());
 						   for (int listIndex=0;listIndex<waveFrontList.size();listIndex++) {
 							   int [] dbg_uvdir= getWaveList (waveFrontList,listIndex);
