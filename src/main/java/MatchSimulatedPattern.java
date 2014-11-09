@@ -3392,7 +3392,7 @@ public class MatchSimulatedPattern {
 
 			   int umax,vmax,vmin,umin;
 			   final AtomicInteger addedCells = new AtomicInteger(0); // cells added at cleanup stage
-			   final AtomicBoolean cleanup=new AtomicBoolean(false); // after the wave dies, it will be restored for all cells with defined neigbors to try again. maybe - try w/o therads?
+			   final AtomicBoolean cleanup=new AtomicBoolean(false); // after the wave dies, it will be restored for all cells with defined neigbors to try again. maybe - try w/o threads?
 
 			   final AtomicInteger debugCellSet= new AtomicInteger(0); // cells added at cleanup stage
 			   // special case (most common, actually) when initial wave has 1  node. Remove it after processing
@@ -3473,10 +3473,12 @@ public class MatchSimulatedPattern {
 											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length);
 									   continue;
 								   } else if ((refCell[0]!=null) && (refCell[0].length>3)){
+									   double dbg_contrast=(refCell[0].length>2)?refCell[0][2]:Double.NaN;
 									   System.out.println("**** refCell was deleted **** u="+iUVRef[0]+" v="+iUVRef[1]+
 											   " current="+iUVdir[0]+"/"+iUVdir[1]+
 											   " ncell="+ncell+" waveFrontList.size()="+waveFrontList.size()+
-											   " ref_x="+IJ.d2s(refCell[0][0],3)+" ref_y="+IJ.d2s(refCell[0][1],3));
+											   " ref_x="+IJ.d2s(refCell[0][0],3)+" ref_y="+IJ.d2s(refCell[0][1],3)+
+											   " contrast="+IJ.d2s(dbg_contrast,3));
 								   }
 								   //found reference cell, calculate x/y, make sure it is inside the selection w/o borders
 								   double [][] wv=new double [2][];
@@ -3668,14 +3670,14 @@ public class MatchSimulatedPattern {
 						   }
 
 					   }
-				   } else if (!cleanup.get() || (addedCells.get()>0)) { // create list of the defined cells on the border
+				   } else if (!cleanup.get() || (addedCells.get()>0)) { // create list of the defined cells on the border (if wave died)
 					   cleanup.set(true);
 					  // debug
 					   if ((global_debug_level>0) && (initialWave!=null)) {
-						   System.out.println("clenaup during first layer");
-						   if (!cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup on first layer");
+						   System.out.println("clenaup during first layer"); // problems heer?
+						   System.out.println("Added "+addedCells.get()+" during border cleanup on first layer");
 					   }
-					   if ((debugLevel>1) && !cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup");
+					   if ((debugLevel>1) && !cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup"); // can not get here
 					   addedCells.set(0);
 					   umax=0;
 					   vmax=0;
@@ -3694,12 +3696,11 @@ public class MatchSimulatedPattern {
 						   for (dir=0;dir<directionsUV.length;dir++) {
 							   iUV[0]=uvNew[0]+directionsUV[dir][0];
 							   iUV[1]=uvNew[1]+directionsUV[dir][1];
-							   if (!isCellDefined(PATTERN_GRID,iUV)){
+							   if (!isCellDefined(PATTERN_GRID,iUV) && !isCellDeleted(PATTERN_GRID,iUV)){
 								   putInWaveList (waveFrontList, uvNew, dir); // direction does not matter here
 								   break;
 							   }
 						   }
-
 					   }
 					   if (global_debug_level>1) System.out.println("***** Starting cleanup, wave length="+waveFrontList.size()); //????
 				   }
@@ -5463,6 +5464,13 @@ public class MatchSimulatedPattern {
 //			   grid[uv[1]][uv[0]]=null;
 
 		   }
+		   
+		   private boolean isCellDeleted(
+	    		   double [][][][] grid,
+	    		   int [] uv){
+	    	   return ((uv[1]>=0) && (uv[0]>=0) && (uv[1]<grid.length) && (uv[0]<grid[uv[1]].length) &&
+	    			   (grid[uv[1]][uv[0]]!=null) && (grid[uv[1]][uv[0]][0]!=null) && (grid[uv[1]][uv[0]][0].length>3));    	   
+	       }
 		   private boolean isCellNew( //modified, for invalid uv will return "not new"
 				   double [][][][] grid,
 				   int [] uv){
