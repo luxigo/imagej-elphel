@@ -3670,6 +3670,11 @@ public class MatchSimulatedPattern {
 					   }
 				   } else if (!cleanup.get() || (addedCells.get()>0)) { // create list of the defined cells on the border
 					   cleanup.set(true);
+					  // debug
+					   if ((global_debug_level>0) && (initialWave!=null)) {
+						   System.out.println("clenaup during first layer");
+						   if (!cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup on first layer");
+					   }
 					   if ((debugLevel>1) && !cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup");
 					   addedCells.set(0);
 					   umax=0;
@@ -3696,12 +3701,18 @@ public class MatchSimulatedPattern {
 						   }
 
 					   }
-					   if (global_debug_level>1) System.out.println("***** Starting cleanup, wave length="+waveFrontList.size());
+					   if (global_debug_level>1) System.out.println("***** Starting cleanup, wave length="+waveFrontList.size()); //????
 				   }
 				   // end of layer - it is a hack below, marking initial wave to recalculate it from neighbors	
 				   if (initialWave!=null){ // just after the first layer (usually one cell) - delete it and add next time - otherwise first one needs large correction
-					   if (global_debug_level>0)
+					   if (global_debug_level>0) {
 						   System.out.println("Removing "+initialWave.size()+" initial wave cells, waveFrontList.size()="+waveFrontList.size());
+						   for (int listIndex=0;listIndex<waveFrontList.size();listIndex++) {
+							   int [] dbg_uvdir= getWaveList (waveFrontList,listIndex);
+							   System.out.println("waveFrontList["+listIndex+"]: "+dbg_uvdir[0]+"/"+dbg_uvdir[1]+" dir="+dbg_uvdir[2]);
+						   }
+					   }
+					   
 					   while (initialWave.size()>0){
 						   uvdir= getWaveList (initialWave,0);
 //						   clearPatternGridCell(PATTERN_GRID, uvdir);
@@ -5629,7 +5640,7 @@ public class MatchSimulatedPattern {
 			   int patternCells=0;
 			   // save initial distortionParameters.correlationMinInitialContrast
 			   double savedCorrelationMinInitialContrast=distortionParameters.correlationMinInitialContrast;
-			   int reTries=6; // 10; // bail out after these attempts
+			   int reTries= 10; // bail out after these attempts
 //			   int [] startScanIndex={0}; // scan for pattern will update this index to continue next time (<0 - nothing left)
 			   boolean foundGoodCluster=false;
 			   
@@ -5646,7 +5657,8 @@ public class MatchSimulatedPattern {
 			   int numTries=1<<(tryHor+tryVert);
 			   boolean [] triedIndices=new boolean[numTries+1]; // last set - all used
 			   for (int i=0;i<triedIndices.length;i++) triedIndices[i]=(i<3); // mark first 3 as if they are already used
-			   boolean fromVeryBeginning=true;
+			   // =========  Removing adjustment of contrast ==============
+//			   boolean fromVeryBeginning=true;
 
 			   
 			   
@@ -5666,15 +5678,18 @@ public class MatchSimulatedPattern {
 						   updateStatus,
 						   debug_level,
 						   global_debug_level); // debug level
-				   if (global_debug_level>1) System.out.println("Pattern correlation done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+				   if (global_debug_level>0) System.out.println("Pattern correlation done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+
+						   " found "+patternCells+" cells, reTries left: "+reTries);
 				   if (patternCells>0) {
 					   foundGoodCluster=true;
 					   break; // new distortions() code - returns non-zero only if passed other tests
 				   }
-				   if (fromVeryBeginning){ 
-					  if (global_debug_level>1) System.out.println("--- Nothing found at all ---");
-					  break; // or maybe - still try to adjust threshold?
-				   }
+				   
+				   // =========  Removing adjustment of contrast ==============
+//				   if (fromVeryBeginning){ 
+//					  if (global_debug_level>0) System.out.println("--- Nothing found at all --- at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+//					  break; // or maybe - still try to adjust threshold?
+//				   }
 /*
 				   double averageGridPeriod=Double.NaN;
 				   if (this.PATTERN_GRID!=null) averageGridPeriod=averageGridPeriod(this.PATTERN_GRID);
@@ -5759,6 +5774,10 @@ public class MatchSimulatedPattern {
 								   "), continuing scanning from index "+startScanIndex);
 					   }
 				   } else {
+					  if (global_debug_level>0) System.out.println("--- Tried all - nothing found --- at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					  break;
+					   // =========  Removing adjustment of contrast ==============
+/*					   
 					   //							   startScanIndex[0]=0;
 					   System.out.println("Last pattern cluster was too small, adjusting the minimal contrast from "+
 							   IJ.d2s(distortionParameters.correlationMinInitialContrast,3)+
@@ -5766,6 +5785,7 @@ public class MatchSimulatedPattern {
 					   distortionParameters.correlationMinInitialContrast*=distortionParameters.scaleMinimalInitialContrast;
 					   for (int i=0;i<triedIndices.length;i++) triedIndices[i]=(i<3); // mark first 3 as if they are already used
 					   fromVeryBeginning=true;
+*/					   
 				   }
 			   }
 			   
