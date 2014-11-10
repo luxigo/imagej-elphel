@@ -3279,12 +3279,19 @@ public class MatchSimulatedPattern {
 					   );
 					   if (nodeQueue.isEmpty()) { // nodes==null){ 
 //						   if (debugLevel>1) System.out.println("All start points tried");
-						   if (global_debug_level>0) System.out.println("All start points tried");
+						   if (global_debug_level>0) {
+							   System.out.println("All start points tried");
+							   int numLeft=0;
+							   for (boolean b:triedIndices) if (!b) numLeft++;
+							   System.out.println("startScanIndex="+startScanIndex+" numTries="+numTries+" numLeft="+numLeft);
+						   }
 						   triedIndices[numTries]=true; // all tried
 					   } else {
 //						   if (debugLevel>1) System.out.println("Found "+nodes.length+" candidates");
 //						   if (debugLevel>1) System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
-						   if (global_debug_level>0) System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
+						   if (global_debug_level>0){
+							   System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
+						   }
 					   }
 				   } else {
 					   System.out.println("All start points tried before - should not get here");

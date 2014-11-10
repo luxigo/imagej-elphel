@@ -1256,7 +1256,7 @@ public class EyesisAberrations {
         					loopDebugLevel, // debug level
         					aberrationParameters.noMessageBoxes);
         			if (rslt<0){
-            			if (debugLevel>0) System.out.println("calculateDistortions failed, returned error code "+rslt+" riRetry="+iRetry+" (of "+MaxRetries+")");
+            			if (debugLevel>0) System.out.println("calculateDistortions failed, returned error code "+rslt+" iRetry="+iRetry+" (of "+MaxRetries+")");
             			continue;
         			}
         			correlationSizesUsed=matchSimulatedPattern.getCorrelationSizesUsed();
