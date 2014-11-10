@@ -3677,13 +3677,17 @@ public class MatchSimulatedPattern {
 						   }
 
 					   }
+				   } else if (initialWave!=null){
+					   if ((global_debug_level>0) && (initialWave!=null)) {
+						   System.out.println("No sense to initiate clenaup during first layer"); // problems heer?
+					   }
 				   } else if (!cleanup.get() || (addedCells.get()>0)) { // create list of the defined cells on the border (if wave died)
 					   cleanup.set(true);
 					  // debug
-					   if ((global_debug_level>0) && (initialWave!=null)) {
-						   System.out.println("clenaup during first layer"); // problems heer?
-						   System.out.println("Added "+addedCells.get()+" during border cleanup on first layer");
-					   }
+//					   if ((global_debug_level>0) && (initialWave!=null)) {
+//						   System.out.println("clenaup during first layer"); // problems heer?
+//						   System.out.println("Added "+addedCells.get()+" during border cleanup on first layer");
+//					   }
 					   if ((debugLevel>1) && !cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup"); // can not get here
 					   addedCells.set(0);
 					   umax=0;
