@@ -3249,7 +3249,7 @@ public class MatchSimulatedPattern {
 			   } else { // new multithreaded mode
 				   int startScanIndex=3;
 				   for (;(startScanIndex<numTries) && triedIndices[startScanIndex];startScanIndex++); // skip already tried indices
-				   if (global_debug_level>0) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
+				   if ((global_debug_level>0) && (startScanIndex>3)) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
 				   
 				   if (startScanIndex<numTries) {
 					   nodeQueue =  findPatternCandidates(
@@ -3300,7 +3300,7 @@ public class MatchSimulatedPattern {
 				   this.PATTERN_GRID=null;   
 				   return 0;
 			   }
-			   if (global_debug_level>0) {
+			   if (global_debug_level>1) {
 				   System.out.println("distortions(): found "+nodeQueue.size()+" grid candidates");
 //				   System.out.println("*** distortions: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
 			   }
@@ -3717,7 +3717,7 @@ public class MatchSimulatedPattern {
 					   while (initialWave.size()>0){
 						   uvdir= getWaveList (initialWave,0);
 //						   clearPatternGridCell(PATTERN_GRID, uvdir);
-						   if (global_debug_level>0)
+						   if (global_debug_level>1)
 							   System.out.println("Removing x="+uvdir[0]+" y="+uvdir[1]+" dir="+uvdir[2]);
 						   markDeletedPatternGridCell(PATTERN_GRID, uvdir);
 						   initialWave.remove(0);
