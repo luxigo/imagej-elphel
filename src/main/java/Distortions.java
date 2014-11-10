@@ -20272,6 +20272,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     	public boolean removeOutOfGridPointers=true;
     	public boolean showGridImages=false;
     	public boolean saveGridImages=true;
+    	public boolean overwriteResultFiles=false;
     	public int     debugLevel=1;
 
     	public String selectSourceDirectory(boolean smart, String defaultPath, boolean newAllowed) {
@@ -20308,6 +20309,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     		properties.setProperty(prefix+"removeOutOfGridPointers",this.removeOutOfGridPointers+"");
     		properties.setProperty(prefix+"showGridImages",         this.showGridImages+"");
     		properties.setProperty(prefix+"saveGridImages",         this.saveGridImages+"");
+    		properties.setProperty(prefix+"overwriteResultFiles",   this.overwriteResultFiles+"");
     		properties.setProperty(prefix+"debugLevel",             this.debugLevel+"");
     	}
        	public void getProperties(String prefix,Properties properties){
@@ -20331,6 +20333,8 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     			this.showGridImages=Boolean.parseBoolean(properties.getProperty(prefix+"showGridImages"));
     		if (properties.getProperty(prefix+"saveGridImages")!=null)
     			this.saveGridImages=Boolean.parseBoolean(properties.getProperty(prefix+"saveGridImages"));
+    		if (properties.getProperty(prefix+"overwriteResultFiles")!=null)
+    			this.overwriteResultFiles=Boolean.parseBoolean(properties.getProperty(prefix+"overwriteResultFiles"));
     		if (properties.getProperty(prefix+"debugLevel")!=null)
     			this.debugLevel=Integer.parseInt(properties.getProperty(prefix+"debugLevel"));
        	}
@@ -20346,6 +20350,10 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     		gd.addCheckbox   ("Remove detected laser pointers if they are outside of the grid", this.removeOutOfGridPointers);
     		gd.addCheckbox   ("Show grid files as images",            this.showGridImages);
     		gd.addCheckbox   ("Save grid files",                      this.saveGridImages);
+    		gd.addCheckbox   ("Overwrite existing result files",      this.overwriteResultFiles);
+    		
+    		
+    		
     		gd.addNumericField("Debug level",                         this.debugLevel,0);
     	    WindowTools.addScrollBars(gd);
     	    gd.showDialog();
@@ -20360,6 +20368,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     	    this.removeOutOfGridPointers=gd.getNextBoolean();
     	    this.showGridImages=         gd.getNextBoolean();
     	    this.saveGridImages=         gd.getNextBoolean();
+    	    this.overwriteResultFiles=   gd.getNextBoolean();
     	    this.debugLevel=       (int) gd.getNextNumber();
     	    System.out.println("1.newSourceDirectory = "+newSourceDirectory);
     	    System.out.println("1.newGridDirectory = "+  newGridDirectory);

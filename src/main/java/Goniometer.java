@@ -848,7 +848,7 @@ horizontal axis:
 				// TODO - here - multiple images possible, not just one!
 				// First - create sparse, then remove nulls
 
-				imp_calibrated[numSensor] = this.matchSimulatedPatterns[numSensor].getCalibratedPatternAsImage(images[numSensor],numAbsolutePoints);
+				imp_calibrated[numSensor] = this.matchSimulatedPatterns[numSensor].getCalibratedPatternAsImage(images[numSensor],"grid-",numAbsolutePoints);
 				if (this.goniometerParameters.showAcquiredImages)
 					imp_calibrated[numSensor].show(); // DISTORTION_PROCESS_CONFIGURATION.showGridImages
 			} // for (int numSensor=0;numSensor<images.length;numSensor++) if

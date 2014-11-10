@@ -2027,7 +2027,7 @@ if (MORE_BUTTONS) {
 					COMPONENTS.equalizeGreens,
 					imp_sel, //distortions, // image to process
 					THREADS_MAX);				
-			ImagePlus imp_calibrated0=matchSimulatedPattern.getCalibratedPatternAsImage(imp_sel,numAbsolutePoints);
+			ImagePlus imp_calibrated0=matchSimulatedPattern.getCalibratedPatternAsImage(imp_sel,"grid-",numAbsolutePoints);
 			imp_calibrated0.show();
 			//			}
 			//			} else {
@@ -2683,18 +2683,37 @@ if (MORE_BUTTONS) {
 		    }
 			long 	  startTime=System.nanoTime();
 		    boolean noMessageBoxes=true;
+		    String prefix="grid-";
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			DISTORTION_PROCESS_CONFIGURATION.debugLevel=MASTER_DEBUG_LEVEL;
             if (matchSimulatedPattern==null) matchSimulatedPattern= new MatchSimulatedPattern(DISTORTION.FFTSize);
             matchSimulatedPattern.debugLevel=MASTER_DEBUG_LEVEL;
             String [] sourceFilesList=DISTORTION_PROCESS_CONFIGURATION.selectSourceFiles(); // select files - with/without dialog
             boolean saveGrids=DISTORTION_PROCESS_CONFIGURATION.saveGridImages;
+            boolean overwriteGrids=DISTORTION_PROCESS_CONFIGURATION.overwriteResultFiles;
             if (sourceFilesList==null) return;
             showPatternMinMaxPeriodDialog(PATTERN_DETECT);
             for (int numFile=0;numFile<sourceFilesList.length;numFile++){
     			long 	  startFileTime=System.nanoTime();
             	if (DEBUG_LEVEL>0){
             		System.out.println(IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+"s: Processing file # "+(numFile+1)+ " (of "+ sourceFilesList.length+"): "+sourceFilesList[numFile]);
+            	}
+            	if (saveGrids && !overwriteGrids){ // check if result already exists
+            		int i = sourceFilesList[numFile].lastIndexOf('/');
+            		if (i>0){
+            			String path=prefix+sourceFilesList[numFile].substring(i+1);
+            			String srcDir=DISTORTION_PROCESS_CONFIGURATION.selectGridFileDirectory(true,DISTORTION_PROCESS_CONFIGURATION.gridDirectory,true);
+            			if (srcDir==null){
+            				saveGrids=false; // do not ask about the next ones too
+            			} else {
+            				path=DISTORTION_PROCESS_CONFIGURATION.gridDirectory+Prefs.getFileSeparator()+path;
+        	    			File rsltFile=new File(path);	
+            				if ((new File(path)).exists()){
+                				if (DEBUG_LEVEL>0) System.out.println("-->>> Skipping existing "+path+" (as requested in \"Configure Process Distortions\")");
+                				continue;
+            				}
+            			}
+            		}
             	}
             	imp_sel=new ImagePlus(sourceFilesList[numFile]); // read source file
             	JP4_INSTANCE.decodeProperiesFromInfo(imp_sel);
@@ -2743,7 +2762,7 @@ if (MORE_BUTTONS) {
         					COMPONENTS.equalizeGreens,
         					imp_sel, // image to process
         					THREADS_MAX);				
-            		ImagePlus imp_calibrated=matchSimulatedPattern.getCalibratedPatternAsImage(imp_sel,numAbsolutePoints);
+            		ImagePlus imp_calibrated=matchSimulatedPattern.getCalibratedPatternAsImage(imp_sel,prefix, numAbsolutePoints);
             		if (DISTORTION_PROCESS_CONFIGURATION.showGridImages) imp_calibrated.show();
             		if (saveGrids){
             			FileSaver fs=new FileSaver(imp_calibrated);
@@ -3695,7 +3714,7 @@ if (MORE_BUTTONS) {
 				return;
 			}
 			if (DEBUG_LEVEL>0) System.out.println("Matched "+numAbsolutePoints+" laser pointers, grid generated at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
-			ImagePlus [] imp_calibrated={matchSimulatedPattern.getCalibratedPatternAsImage(imp_sel,numAbsolutePoints)};
+			ImagePlus [] imp_calibrated={matchSimulatedPattern.getCalibratedPatternAsImage(imp_sel,"grid-",numAbsolutePoints)};
 			if (FOCUS_MEASUREMENT_PARAMETERS.showAcquiredImages) imp_calibrated[0].show(); // DISTORTION_PROCESS_CONFIGURATION.showGridImages
 			if (findCenter){
 				// Read required calibration files

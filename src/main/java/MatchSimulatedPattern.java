@@ -7168,8 +7168,11 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   ImagePlus imp = new ImagePlus(title, stack);
         	   return imp;
            }
-           public ImagePlus getCalibratedPatternAsImage(ImagePlus imp_src, int numUsedPointers){
-        	   ImagePlus imp_result=getCalibratedPatternAsImage("grid-"+imp_src.getTitle(), numUsedPointers);
+           public ImagePlus getCalibratedPatternAsImage(
+        		   ImagePlus imp_src,
+        		   String prefix, int numUsedPointers){
+//        	   ImagePlus imp_result=getCalibratedPatternAsImage("grid-"+imp_src.getTitle(), numUsedPointers);
+        	   ImagePlus imp_result=getCalibratedPatternAsImage(prefix+imp_src.getTitle(), numUsedPointers);
 // copy all the properties to the new image
     		JP46_Reader_camera jp4_instance= new JP46_Reader_camera(false);
     		jp4_instance.copyProperties (imp_src,imp_result);
