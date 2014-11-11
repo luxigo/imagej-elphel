@@ -1094,6 +1094,7 @@ if (MORE_BUTTONS) {
 	    	boolean noAuto=label.equals("Restore no autoload");
 	    	ABERRATIONS_PARAMETERS.autoRestore=false;
 	    	loadProperties(null,PROCESS_PARAMETERS.kernelsDirectory,PROCESS_PARAMETERS.useXML, PROPERTIES);
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 	    	if (ABERRATIONS_PARAMETERS.autoRestore && !noAuto){
 	    		if (DEBUG_LEVEL>0)System.out.println("Auto-loading configuration files");
 	    		if (LENS_DISTORTIONS==null) {
@@ -1141,6 +1142,27 @@ if (MORE_BUTTONS) {
 
 		    		
 		    	}
+				if (LENS_DISTORTIONS.fittingStrategy != null) { // trying to fix restore
+	    			if (DEBUG_LEVEL>0) System.out.println("LENS_DISTORTIONS.fittingStrategy != null -> Extra after loading");
+	    			int minGridsNoPointer=1000;
+	        		int [] numImages=DISTORTION_CALIBRATION_DATA.filterImages(
+	        				false, // resetHinted,
+	        				2, // minPointers,
+	        				0.4, // minGridPeriod,
+	        				true, // disableNoVignetting,
+	        				minGridsNoPointer); //minGridsNoPointer);
+	        		System.out.println("Number of enabled grid images: "+numImages[0]+
+	        				", of them new: "+numImages[1]+
+	        				", disabled without vignetting info: "+numImages[2]+
+	        				", disabled having less than "+minGridsNoPointer+" nodes and no matched pointers: "+numImages[3]);
+	    			
+		    		if (DISTORTION_CALIBRATION_DATA.gIS==null) {
+		    			int numImageSets=DISTORTION_CALIBRATION_DATA.buildImageSets(false); // from scratch
+		    			if (DEBUG_LEVEL>0) System.out.println("Image set was empty, built a new one with "+numImageSets+" image sets (\"panoramas\"): ");
+		    			DISTORTION_CALIBRATION_DATA.updateSetOrientation(null); // restore orientation from (enabled) image files
+		    			if (DEBUG_LEVEL>0) System.out.println("Setting sets orientation from per-grid image data");
+		    		}
+				}
 		    	restoreFocusingHistory(false);
 	    	}
 	    	return;

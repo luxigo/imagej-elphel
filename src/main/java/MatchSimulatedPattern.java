@@ -7013,15 +7013,25 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         		   grid[v-minV][u-minU]=xy;
         	   }
         	   int numNewDefined=0;
+//        	   System.out.println("this.PATTERN_GRID.length="+this.PATTERN_GRID.length+"this.PATTERN_GRID[0.length="+this.PATTERN_GRID[0].length);
+//        	   System.out.println("this.targetUV.length="+this.targetUV.length+"this.targetUV[0.length="+this.targetUV[0].length);
         	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++) {
         		   double [][] cell=this.PATTERN_GRID[v][u];
         		   if ((cell !=null) && (cell.length>0) &&(cell[0] !=null) && (cell[0].length>1)){
-        			   cell[0][0]=grid[this.targetUV[v][u][1]+minV][this.targetUV[v][u][0]+minU][0];
-        			   cell[0][1]=grid[this.targetUV[v][u][1]+minV][this.targetUV[v][u][0]+minU][1];
-        			   if (Double.isNaN(cell[0][0]) || Double.isNaN(cell[0][1])){
-        				   this.PATTERN_GRID[v][u]=null; // make it undefined
+//                	   System.out.print("v="+v+" u="+u);
+        			   int tu=this.targetUV[v][u][0]-minU;
+        			   int tv=this.targetUV[v][u][1]-minV;
+//                	   System.out.println("  tv="+tv+" tu="+tu);
+        			   if ((tu>=0) && (tv>=0) && (tv<grid.length) && (tu<grid[tv].length) && (grid[tv][tu]!=null)) {
+        				   cell[0][0]=grid[tv][tu][0]; // -81 -.-1
+        				   cell[0][1]=grid[tv][tu][1];
+        				   if (Double.isNaN(cell[0][0]) || Double.isNaN(cell[0][1])){
+        					   this.PATTERN_GRID[v][u]=null; // make it undefined
+        				   } else {
+        					   numNewDefined++;
+        				   }
         			   } else {
-        				   numNewDefined++;
+        				   this.PATTERN_GRID[v][u]=null; // make it undefined
         			   }
         		   }
         	   }
@@ -7294,7 +7304,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   }
 // Now remove pointers that are not on white cells        	   
         	   
-        	   if (laserPointer.whiteOnly){
+        	   if ((laserPointer!=null) && laserPointer.whiteOnly){
         		   int numBad=0;
         		   for (int i=0;i<uv.length;i++) if (uv[i]!=null) {
         			   // Verify that laser spots are on the white cells (sum of uv is even)
@@ -7364,7 +7374,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         		   for (int i=0;i<uv.length;i++) if (uv[i]!=null) for (int j=i+1;j<uv.length;j++) if (uv[j]!=null) {
         			   pairMatch=false;
         			   allMatch=false;
-        			   diffUVTable[0]=(int) Math.round(laserPointer.laserUVMap[j][0]-laserPointer.laserUVMap[i][0]);
+        			   diffUVTable[0]=(int) Math.round(laserPointer.laserUVMap[j][0]-laserPointer.laserUVMap[i][0]); // should not get here if uv is {}
         			   diffUVTable[1]=(int) Math.round(laserPointer.laserUVMap[j][1]-laserPointer.laserUVMap[i][1]);
         			   diffUVMeas[0]= (int) Math.round(uv[j][0]-uv[i][0]);
         			   diffUVMeas[1]= (int) Math.round(uv[j][1]-uv[i][1]);
@@ -7450,7 +7460,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         		   }
         	   }
 //TODO: here at least some rotations match all points. If there ere more than two - try to use closest to the default/previous
-        	   int rotation=flipsToRot(laserPointer.swapUV,laserPointer.flipU,laserPointer.flipV);
+        	   int rotation=(laserPointer!=null)?(flipsToRot(laserPointer.swapUV,laserPointer.flipU,laserPointer.flipV)):0;
         	   if (!possibleRotations[rotation]) { // current rotation value defined by laserPointer.{swapUV,flipU,flipV} does not match
         		   // find a new one (first - without mirroring)
         		   for (int i=0; i<8;i++) if (possibleRotations[(((rotation ^ i) & 4)) | ((rotation+i) & 3)]) {
@@ -7466,12 +7476,14 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
             	   }
         	   }
 // now rotation is the correct one, update laserPointer.{swapUV,flipU,flipV};
-        	   laserPointer.swapUV=rotToFlips(rotation)[0];
-        	   laserPointer.flipU =rotToFlips(rotation)[1];
-        	   laserPointer.flipV =rotToFlips(rotation)[2];
+        	   if (laserPointer!=null){
+        		   laserPointer.swapUV=rotToFlips(rotation)[0];
+        		   laserPointer.flipU =rotToFlips(rotation)[1];
+        		   laserPointer.flipV =rotToFlips(rotation)[2];
+        	   }
 //calculate shift
         	   int [] uvShift=dfltShifts[rotation].clone(); //{0,0};
-        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) {
+        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) { // laserPointer -> uv=={}
         		   uvShift[0]=(int) Math.round(uv[i][0]-
         				   (rotations[rotation][0][0]*laserPointer.laserUVMap[i][0]+
         				    rotations[rotation][0][1]*laserPointer.laserUVMap[i][1]));
@@ -7480,6 +7492,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         				    rotations[rotation][1][1]*laserPointer.laserUVMap[i][1]));
         		   break;
         	   }
+        	   
 // Hinted shift will only be used if no laser pointers are available, otherwise - only verify/warn
         	   if (hintTranslateUV!=null) {
 //        		   if ((uv.length==0) || (numPointesLeft==0)){
@@ -7549,7 +7562,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   int numBad=0;
         	   double [] distUV=new double[2];
         	   double dist;
-        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) {
+        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) { //laserPointer == null > uv={}
         		// Verify that laser spots are inside specified distance from the cell centers        	   
         		   distUV[0]=reReMap[0][0]*uv[i][0]+reReMap[0][1]*uv[i][1]+reReMap[0][2]-laserPointer.laserUVMap[i][0];
         		   distUV[1]=reReMap[1][0]*uv[i][0]+reReMap[1][1]*uv[i][1]+reReMap[1][2]-laserPointer.laserUVMap[i][1];

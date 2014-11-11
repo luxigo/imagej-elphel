@@ -3073,12 +3073,16 @@ For each point in the image
 				(this.fittingStrategy.distortionCalibrationData.gIS[imageSet]!=null)){
 			this.fittingStrategy.distortionCalibrationData.gIS[imageSet].updateParameterVectorFromSet(parVector);
 		}
-		int goniometerHorizontalIndex=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getGoniometerHorizontalIndex();
-		int goniometerAxialIndex=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getGoniometerAxialIndex();
+		if (!Double.isNaN(goniometerHorizontal)) {
+			int goniometerHorizontalIndex=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getGoniometerHorizontalIndex();
+			parVector[goniometerHorizontalIndex]=goniometerHorizontal;
+		}
+		if (!Double.isNaN(goniometerAxial)) {
+			int goniometerAxialIndex=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getGoniometerAxialIndex();
+			parVector[goniometerAxialIndex]=     goniometerAxial;
+		}
 		int sensorWidth=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getSensorWidth(subCamera);
 		int sensorHeight=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getSensorHeight(subCamera);
-		parVector[goniometerHorizontalIndex]=goniometerHorizontal;
-		parVector[goniometerAxialIndex]=     goniometerAxial;
 		System.out.println("estimateGridOnSensor(): subCamera="+subCamera+", goniometerHorizontal="+goniometerHorizontal+", goniometerAxial="+goniometerAxial);
 		calcInterParamers(
 				this.lensDistortionParameters, // 22-long parameter vector for the image

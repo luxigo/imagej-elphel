@@ -1116,7 +1116,7 @@ public class EyesisAberrations {
     	} else if (debugLevel>2){
     		System.out.println("Skipping disabled image "+imgNum);
     	}
-    	if (debugLevel>0)System.out.println("Enabled "+numSelected+" source files ("+numDeselected+") were removed by channel selection");
+    	if (debugLevel>0)System.out.println("Enabled "+numSelected+" source files ("+numDeselected+") were removed by channel selection. partialToReprojected="+partialToReprojected);
 
     	String [] sourcePaths=new String [selectedImages.length];
     	// Set/verify source paths
@@ -1254,7 +1254,7 @@ public class EyesisAberrations {
         						Double.NaN, // goniometerAxial, - not used
         						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].getSetNumber(), //imageSet,
         						true); //filterBorder)
-        				hintTolerance=5.0; // TODO:set from configurable parameter
+        				hintTolerance=5.0; // TO DO:set from configurable parameter
         			}
         			
         			int rslt=matchSimulatedPattern.calculateDistortions(
@@ -2095,14 +2095,17 @@ public class EyesisAberrations {
 			PSFParameters psfParameters,
 			boolean [] correlationSizesUsed
 	){
-		int numDifferentFFT=0;
-		for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
-			numDifferentFFT++;
-		}
-		int [] corrSizes=new int [numDifferentFFT];
-		int index=0;
-		for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
-			corrSizes[index++]=1<<i;
+		int [] corrSizes={};
+		if (correlationSizesUsed!=null) {
+			int numDifferentFFT=0;
+			for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
+				numDifferentFFT++;
+			}
+			corrSizes=new int [numDifferentFFT];
+			int index=0;
+			for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
+				corrSizes[index++]=1<<i;
+			}
 		}
 		ImagePlus impPsf = new ImagePlus(path, stack);
 
