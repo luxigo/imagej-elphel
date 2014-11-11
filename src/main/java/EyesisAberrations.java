@@ -1073,6 +1073,8 @@ public class EyesisAberrations {
 			int debugLevel
 			){
     	Distortions.DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
+    	boolean partialToReprojected=this.aberrationParameters.partialToReprojected;
+    	// this.distortions is set to top level LENS_DISTORTIONS
 		if (distortions==null){
     		String msg="Distortions instance does not exist, exiting";
     		IJ.showMessage("Error",msg);
@@ -1212,7 +1214,7 @@ public class EyesisAberrations {
     	}
     	// reorder in the ascending channel number order
     	String [][] files=new String [numFiles][2]; // 0 - source, 1 - result
-    	int [] fileIndices =new int [numFiles]; // needed to mark bad kernels
+    	int [] fileIndices =new int [numFiles]; // needed to mark bad kernels (and also to reference grid parameters to replace extracted)
     	int numListedFiles=0;
     	int numChannel=0;
     	while (numListedFiles<numFiles) {
@@ -1239,6 +1241,22 @@ public class EyesisAberrations {
         	int iRetry=0;
         	for (iRetry=0;iRetry<MaxRetries;iRetry++){ // is this retry needed?
         		try {
+        			
+        			double [][][] projectedGrid=null;
+        			double hintTolerance=0.0; 
+        			if (partialToReprojected){ // replace px, py with projected values form the grid
+        				// this.distortions is set to the global LENS_DISTORTIONS
+        				int numGridImage=fileIndices[imgNum];
+        				projectedGrid=distortions.estimateGridOnSensor( // return grid array [v][u][0- x,  1 - y, 2 - u, 3 - v] 
+        						distortions.fittingStrategy.distortionCalibrationData.getImageStation(numGridImage), // station number,
+        						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel, // subCamera,
+        						Double.NaN, // goniometerHorizontal, - not used
+        						Double.NaN, // goniometerAxial, - not used
+        						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].getSetNumber(), //imageSet,
+        						true); //filterBorder)
+        				hintTolerance=5.0; // TODO:set from configurable parameter
+        			}
+        			
         			int rslt=matchSimulatedPattern.calculateDistortions(
         					distortionParameters, //
         					patternDetectParameters,
@@ -1247,9 +1265,8 @@ public class EyesisAberrations {
         					imp,
         					null, // LaserPointer laserPointer, // LaserPointer object or null
         					true, // don't care -removeOutOfGridPointers
-        					null, //   double [][][] hintGrid, // predicted grid array (or null)
-        					0,    //   double  hintGridTolerance, // allowed mismatch (fraction of period) or 0 - orientation only
-
+        					projectedGrid, // null, //   double [][][] hintGrid, // predicted grid array (or null)
+        					hintTolerance, // 0,    //   double  hintGridTolerance, // allowed mismatch (fraction of period) or 0 - orientation only
         					threadsMax,
         					updateStatus,
         					debugLevel,
@@ -1258,6 +1275,11 @@ public class EyesisAberrations {
         			if (rslt<0){
             			if (debugLevel>0) System.out.println("calculateDistortions failed, returned error code "+rslt+" iRetry="+iRetry+" (of "+MaxRetries+")");
             			continue;
+        			}
+        			// now replace extracted grid X,Y with projected:
+        			if (projectedGrid!=null){
+        				int numReplaced= matchSimulatedPattern.replaceGridXYWithProjected(projectedGrid);
+            			if (debugLevel>0) System.out.println("Replaced extracted XY with projected ones for "+numReplaced+" nodes");
         			}
         			correlationSizesUsed=matchSimulatedPattern.getCorrelationSizesUsed();
         			simArray=	(new SimulationPattern(simulParameters)).simulateGridAll (
@@ -4428,6 +4450,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		public boolean autoReCalibrateIgnoreLaser=false; // "Ignore laser pointers on recalibrate"
     	public boolean noMessageBoxes=true;
     	public boolean overwriteResultFiles=false;
+    	public boolean partialToReprojected=true; // Use reprojected grid for partial kernel calculation (false - use extracted)
     	public int     seriesNumber=0;
     	public boolean allImages;
     	public String sourcePrefix="";
@@ -4460,6 +4483,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			properties.setProperty(prefix+"autoReCalibrateIgnoreLaser",this.autoReCalibrateIgnoreLaser+"");
 			properties.setProperty(prefix+"noMessageBoxes",this.noMessageBoxes+"");
 			properties.setProperty(prefix+"overwriteResultFiles",this.overwriteResultFiles+"");
+			properties.setProperty(prefix+"partialToReprojected",this.partialToReprojected+"");
+			
 			properties.setProperty(prefix+"seriesNumber",this.seriesNumber+"");
 			properties.setProperty(prefix+"allImages",this.allImages+"");
 
@@ -4498,6 +4523,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (properties.getProperty(prefix+"autoReCalibrateIgnoreLaser")!=null) this.autoReCalibrateIgnoreLaser=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrateIgnoreLaser"));
 			if (properties.getProperty(prefix+"noMessageBoxes")!=null)             this.noMessageBoxes=Boolean.parseBoolean(properties.getProperty(prefix+"noMessageBoxes"));
 			if (properties.getProperty(prefix+"overwriteResultFiles")!=null)       this.overwriteResultFiles=Boolean.parseBoolean(properties.getProperty(prefix+"overwriteResultFiles"));
+			if (properties.getProperty(prefix+"partialToReprojected")!=null)       this.partialToReprojected=Boolean.parseBoolean(properties.getProperty(prefix+"partialToReprojected"));
 			if (properties.getProperty(prefix+"seriesNumber")!=null)               this.seriesNumber=Integer.parseInt(properties.getProperty(prefix+"seriesNumber"));
 			if (properties.getProperty(prefix+"allImages")!=null)                  this.allImages=Boolean.parseBoolean(properties.getProperty(prefix+"allImages"));
 			if (properties.getProperty(prefix+"sourcePrefix")!=null)	      this.sourcePrefix=properties.getProperty(prefix+"sourcePrefix");
@@ -4629,6 +4655,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		gd.addCheckbox("Select aberrations kernels directory", false);
     		gd.addCheckbox("Supress non-essential message boxes", this.noMessageBoxes);
     		gd.addCheckbox("Overwrite result files if they exist", this.overwriteResultFiles);
+    		gd.addCheckbox("Use reprojected grids for partial kernel calculation (false - extracted grids)", this.partialToReprojected);
     		gd.addNumericField("Fitting series number to use for image selection", this.seriesNumber,0);
     		gd.addCheckbox("Process all enabled image files (false - use selected fitting series)", this.allImages);
     		gd.addMessage("===== Autoload options (when restoring configuration) =====");
@@ -4673,6 +4700,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		if (gd.getNextBoolean()) selectAberrationsKernelDirectory(false, this.aberrationsKernelDirectory, false);
     		this.noMessageBoxes=        gd.getNextBoolean();
     		this.overwriteResultFiles=  gd.getNextBoolean();
+    		this.partialToReprojected=  gd.getNextBoolean();
     		this.seriesNumber=    (int) gd.getNextNumber();
     		this.allImages=             gd.getNextBoolean();
     		this.autoRestore=           gd.getNextBoolean();

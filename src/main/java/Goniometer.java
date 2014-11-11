@@ -598,7 +598,8 @@ horizontal axis:
 				subCam,
 				goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 				goniometerTiltAxial[1],  // Axial,goniometerAxial
-				-1 // use camera parameters, not imageSet
+				-1, // use camera parameters, not imageSet
+				true // filter border
 				);
 		if (hintGrid==null){
 			String msg= "Target is not visible";

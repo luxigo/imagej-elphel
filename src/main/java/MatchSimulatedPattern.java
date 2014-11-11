@@ -6983,6 +6983,51 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   
            }
            
+           public int replaceGridXYWithProjected(double [][][] projectedGrid){
+        	   int minU=0,minV=0,maxU=0,maxV=0;
+        	   boolean notYetSet=true;
+        	   for (double [][]row:projectedGrid) for (double [] cell:row) if (cell!=null){
+        		   int u = (int) cell[2];
+        		   int v = (int) cell[3];
+        		   if (notYetSet){
+        			   minU=u;
+        			   maxU=u;
+        			   minV=v;
+        			   maxV=v;
+        			   notYetSet=false;
+        		   } else {
+        			   if (minU>u) minU=u;
+        			   if (maxU<u) maxU=u;
+        			   if (minV>v) minV=v;
+        			   if (maxV<v) maxV=v;
+        		   }
+        	   }
+        	   double [][][] grid=new double [maxV-minV+1][maxU-minU+1][];
+//        	   for (double [][]row:grid) for (double [] cell:row) cell=null; // See if this works with "enhanced for loop"
+        	   for (double [][]row:grid) for (int u=0;u<row.length;u++) row[u]=null; // See if this works with "enhanced for loop"
+        	   
+        	   for (double [][] row:projectedGrid) for (double [] cell:row) if (cell!=null){
+        		   int u = (int) cell[2];
+        		   int v = (int) cell[3];
+        		   double [] xy={cell[0],cell[1]};
+        		   grid[v-minV][u-minU]=xy;
+        	   }
+        	   int numNewDefined=0;
+        	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++) {
+        		   double [][] cell=this.PATTERN_GRID[v][u];
+        		   if ((cell !=null) && (cell.length>0) &&(cell[0] !=null) && (cell[0].length>1)){
+        			   cell[0][0]=grid[this.targetUV[v][u][1]+minV][this.targetUV[v][u][0]+minU][0];
+        			   cell[0][1]=grid[this.targetUV[v][u][1]+minV][this.targetUV[v][u][0]+minU][1];
+        			   if (Double.isNaN(cell[0][0]) || Double.isNaN(cell[0][1])){
+        				   this.PATTERN_GRID[v][u]=null; // make it undefined
+        			   } else {
+        				   numNewDefined++;
+        			   }
+        		   }
+        	   }
+        	   return numNewDefined;
+           }
+           
            /* Get calibrated pattern as a 8-slice image (can be saved as TIFF)
             * first   slice - pixel X or -1 for undefined
             * second  slice - pixel Y or -1 for undefined

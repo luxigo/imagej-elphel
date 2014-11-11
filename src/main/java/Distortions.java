@@ -2486,7 +2486,8 @@ For each point in the image
 				subCam,
 				goniometerTilt, // Tilt, goniometerHorizontal
 				goniometerAxial,  // Axial,goniometerAxial
-				-1 // use camera parameters, not imageSet
+				-1, // use camera parameters, not imageSet
+				true // filter border
 		);
 		if (hintGrid==null){
 			String msg="Grid is not visible for subcamera="+subCam+",  tilt="+goniometerTilt+", axial="+goniometerAxial;
@@ -2664,7 +2665,8 @@ For each point in the image
 							dcd.gIP[numGridImage].channel,
 							goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 							goniometerTiltAxial[1],  // Axial,goniometerAxial
-							setNumber // -1 or specific image set
+							setNumber, // -1 or specific image set
+							true // filter border
 					);
 					if (global_debug_level>0){
 						System.out.println("\n**** applyHintedGrids(): processing grid image # "+numGridImage+", path="+dcd.gIP[numGridImage].path);
@@ -2859,7 +2861,6 @@ For each point in the image
 			pixels[4][index]=1000.0;
 		}
 		(new showDoubleFloatArrays()).showArrays(pixels, width, height,  true, "grid-"+numGridImage, titles);
-
 	}
 	public void showGridAndHint(){
 		GenericDialog gd=new GenericDialog("Show selected grid and/or hint grid");
@@ -2903,8 +2904,9 @@ For each point in the image
 				fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel,
 				goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 				goniometerTiltAxial[1],  // Axial,goniometerAxial
-				useSetData?fittingStrategy.distortionCalibrationData.gIP[numGridImage].setNumber:-1
-		);
+				(useSetData?fittingStrategy.distortionCalibrationData.gIP[numGridImage].setNumber:-1),
+				true // filter border
+				);
 		showHintGrid(hintGrid,"hint-"+numGridImage);
 
 	}
@@ -3061,7 +3063,8 @@ For each point in the image
 			int subCamera,
 			double goniometerHorizontal, // Tilt 
 			double goniometerAxial,     // Axial
-			int  imageSet){
+			int  imageSet,
+			boolean filterBorder){
 		int debugThreshold=2;
 		// Get parameter vector (22) for the selected sensor, current Eyesisparameters and specified orientation angles 		
 		double [] parVector=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getParametersVector(stationNumber,subCamera);
@@ -3139,21 +3142,22 @@ For each point in the image
 				}
 			}
 		}
-		// now filter border nodes
-		boolean [] mask= new boolean [patternGeometry.length*patternGeometry[0].length];
-		int index=0;
-		for (int v=0;v<result.length;v++) for (int u=0;u<result[v].length;u++){
-			mask [index++]=(result[v][u]!=null) &&
-			               ((v==0) || (result[v-1][u]!=null)) &&
-			               ((v==(result.length-1)) || (result[v+1][u]!=null)) &&
-			               ((u==0) || (result[v][u-1]!=null))&&
-			               ((u==(result[v].length-1)) || (result[v][u+1]!=null));
+		if (filterBorder){
+			// now filter border nodes
+			boolean [] mask= new boolean [patternGeometry.length*patternGeometry[0].length];
+			int index=0;
+			for (int v=0;v<result.length;v++) for (int u=0;u<result[v].length;u++){
+				mask [index++]=(result[v][u]!=null) &&
+						((v==0) || (result[v-1][u]!=null)) &&
+						((v==(result.length-1)) || (result[v+1][u]!=null)) &&
+						((u==0) || (result[v][u-1]!=null))&&
+						((u==(result[v].length-1)) || (result[v][u+1]!=null));
+			}
+			index=0;
+			for (int v=0;v<result.length;v++) for (int u=0;u<result[v].length;u++){
+				if (!mask[index++]) result[v][u]=null;
+			}
 		}
-		index=0;
-		for (int v=0;v<result.length;v++) for (int u=0;u<result[v].length;u++){
-			if (!mask[index++]) result[v][u]=null;
-		}
-		
 		if (this.debugLevel>debugThreshold){
 			for (int v=0;v<result.length;v++) for (int u=0;u<result[v].length;u++){
 				int uv=u+v*result[v].length;
