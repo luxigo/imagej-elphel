@@ -1142,12 +1142,12 @@ if (MORE_BUTTONS) {
 
 		    		
 		    	}
-				if (LENS_DISTORTIONS.fittingStrategy != null) { // trying to fix restore
+				if ((LENS_DISTORTIONS.fittingStrategy != null) && ABERRATIONS_PARAMETERS.autoFilter) { // trying to fix restore
 	    			if (DEBUG_LEVEL>0) System.out.println("LENS_DISTORTIONS.fittingStrategy != null -> Extra after loading");
 	    			int minGridsNoPointer=1000;
 	        		int [] numImages=DISTORTION_CALIBRATION_DATA.filterImages(
 	        				false, // resetHinted,
-	        				2, // minPointers,
+	        				0, // 2, // minPointers,
 	        				0.4, // minGridPeriod,
 	        				true, // disableNoVignetting,
 	        				minGridsNoPointer); //minGridsNoPointer);

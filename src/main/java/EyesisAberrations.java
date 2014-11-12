@@ -1074,6 +1074,7 @@ public class EyesisAberrations {
 			){
     	Distortions.DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
     	boolean partialToReprojected=this.aberrationParameters.partialToReprojected;
+    	boolean applySensorCorrection=this.aberrationParameters.partialCorrectSensor;
     	// this.distortions is set to top level LENS_DISTORTIONS
 		if (distortions==null){
     		String msg="Distortions instance does not exist, exiting";
@@ -1254,7 +1255,16 @@ public class EyesisAberrations {
         						Double.NaN, // goniometerAxial, - not used
         						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].getSetNumber(), //imageSet,
         						true); //filterBorder)
-        				hintTolerance=5.0; // TO DO:set from configurable parameter
+        				hintTolerance=5.0; // TODO:set from configurable parameter
+        				if (applySensorCorrection){
+        					boolean applied=distortions.correctGridOnSensor(
+        							projectedGrid,
+        							distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel);
+                			if (debugLevel>0) {
+                				if (applied) System.out.println("Applied sensor correction to the projected grid");
+                				else System.out.println("No sesnor correction available to apply to the projected grid");
+                			}
+        				}
         			}
         			
         			int rslt=matchSimulatedPattern.calculateDistortions(
@@ -1276,7 +1286,7 @@ public class EyesisAberrations {
             			if (debugLevel>0) System.out.println("calculateDistortions failed, returned error code "+rslt+" iRetry="+iRetry+" (of "+MaxRetries+")");
             			continue;
         			}
-        			// now replace extracted grid X,Y with projected:
+        			// now replace extracted grid X,Y with projected (need to add sensor correction)
         			if (projectedGrid!=null){
         				int numReplaced= matchSimulatedPattern.replaceGridXYWithProjected(projectedGrid);
             			if (debugLevel>0) System.out.println("Replaced extracted XY with projected ones for "+numReplaced+" nodes");
@@ -4451,9 +4461,11 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     	public boolean autoRestoreSensorOverwriteOrientation=true; // overwrite camera parameters from sensor calibration files
 		public boolean autoReCalibrate=true; // Re-calibrate grids on autoload
 		public boolean autoReCalibrateIgnoreLaser=false; // "Ignore laser pointers on recalibrate"
+    	public boolean autoFilter=true;
     	public boolean noMessageBoxes=true;
     	public boolean overwriteResultFiles=false;
     	public boolean partialToReprojected=true; // Use reprojected grid for partial kernel calculation (false - use extracted)
+    	public boolean partialCorrectSensor=true; // Apply sensor correction to the projected grid
     	public int     seriesNumber=0;
     	public boolean allImages;
     	public String sourcePrefix="";
@@ -4484,9 +4496,12 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			properties.setProperty(prefix+"autoRestoreSensorOverwriteOrientation",this.autoRestoreSensorOverwriteOrientation+"");
 			properties.setProperty(prefix+"autoReCalibrate",this.autoReCalibrate+"");
 			properties.setProperty(prefix+"autoReCalibrateIgnoreLaser",this.autoReCalibrateIgnoreLaser+"");
+			properties.setProperty(prefix+"autoFilter",this.autoFilter+"");
 			properties.setProperty(prefix+"noMessageBoxes",this.noMessageBoxes+"");
 			properties.setProperty(prefix+"overwriteResultFiles",this.overwriteResultFiles+"");
 			properties.setProperty(prefix+"partialToReprojected",this.partialToReprojected+"");
+			properties.setProperty(prefix+"partialCorrectSensor",this.partialCorrectSensor+"");
+			
 			
 			properties.setProperty(prefix+"seriesNumber",this.seriesNumber+"");
 			properties.setProperty(prefix+"allImages",this.allImages+"");
@@ -4524,9 +4539,15 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				this.autoRestoreSensorOverwriteOrientation=Boolean.parseBoolean(properties.getProperty(prefix+"autoRestoreSensorOverwriteOrientation"));
 			if (properties.getProperty(prefix+"autoReCalibrate")!=null)            this.autoReCalibrate=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrate"));
 			if (properties.getProperty(prefix+"autoReCalibrateIgnoreLaser")!=null) this.autoReCalibrateIgnoreLaser=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrateIgnoreLaser"));
+			if (properties.getProperty(prefix+"autoFilter")!=null)                 this.autoFilter=Boolean.parseBoolean(properties.getProperty(prefix+"autoFilter"));
+			
+			
 			if (properties.getProperty(prefix+"noMessageBoxes")!=null)             this.noMessageBoxes=Boolean.parseBoolean(properties.getProperty(prefix+"noMessageBoxes"));
 			if (properties.getProperty(prefix+"overwriteResultFiles")!=null)       this.overwriteResultFiles=Boolean.parseBoolean(properties.getProperty(prefix+"overwriteResultFiles"));
 			if (properties.getProperty(prefix+"partialToReprojected")!=null)       this.partialToReprojected=Boolean.parseBoolean(properties.getProperty(prefix+"partialToReprojected"));
+			if (properties.getProperty(prefix+"partialCorrectSensor")!=null)       this.partialCorrectSensor=Boolean.parseBoolean(properties.getProperty(prefix+"partialCorrectSensor"));
+			
+			
 			if (properties.getProperty(prefix+"seriesNumber")!=null)               this.seriesNumber=Integer.parseInt(properties.getProperty(prefix+"seriesNumber"));
 			if (properties.getProperty(prefix+"allImages")!=null)                  this.allImages=Boolean.parseBoolean(properties.getProperty(prefix+"allImages"));
 			if (properties.getProperty(prefix+"sourcePrefix")!=null)	      this.sourcePrefix=properties.getProperty(prefix+"sourcePrefix");
@@ -4659,6 +4680,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		gd.addCheckbox("Supress non-essential message boxes", this.noMessageBoxes);
     		gd.addCheckbox("Overwrite result files if they exist", this.overwriteResultFiles);
     		gd.addCheckbox("Use reprojected grids for partial kernel calculation (false - extracted grids)", this.partialToReprojected);
+    		gd.addCheckbox("Apply sensor correction during for partial kernel calculation", this.partialCorrectSensor);
+    		    		
     		gd.addNumericField("Fitting series number to use for image selection", this.seriesNumber,0);
     		gd.addCheckbox("Process all enabled image files (false - use selected fitting series)", this.allImages);
     		gd.addMessage("===== Autoload options (when restoring configuration) =====");
@@ -4666,6 +4689,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		gd.addCheckbox("Overwrite SFE parameters from the sensor calibration files (at auto-load)", this.autoRestoreSensorOverwriteOrientation);
     		gd.addCheckbox("Re-calibrate grids on autoload", this.autoReCalibrate);
     		gd.addCheckbox("Ignore laser pointers on recalibrate", this.autoReCalibrateIgnoreLaser);
+    		gd.addCheckbox("Filter grids after restore", this.autoFilter);
    		
     		gd.addMessage("Calibration: "+(((this.calibrationPath==null) || (this.calibrationPath.length()==0))?"not configured ":(this.calibrationPath+" "))+
     				((currentConfigs[0]!=null)?("(current: "+currentConfigs[0]+")"):("") ));
@@ -4704,12 +4728,14 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		this.noMessageBoxes=        gd.getNextBoolean();
     		this.overwriteResultFiles=  gd.getNextBoolean();
     		this.partialToReprojected=  gd.getNextBoolean();
+    		this.partialCorrectSensor=  gd.getNextBoolean();
     		this.seriesNumber=    (int) gd.getNextNumber();
     		this.allImages=             gd.getNextBoolean();
     		this.autoRestore=           gd.getNextBoolean();
     		this.autoRestoreSensorOverwriteOrientation= gd.getNextBoolean();
     		this.autoReCalibrate=           gd.getNextBoolean();
     		this.autoReCalibrateIgnoreLaser=gd.getNextBoolean();
+    		this.autoFilter=            gd.getNextBoolean();
 
     		if (gd.getNextBoolean()) {
     			if (currentConfigs[0]!=null) this.calibrationPath=currentConfigs[0];
