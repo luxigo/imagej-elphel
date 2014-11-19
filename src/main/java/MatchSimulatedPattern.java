@@ -3249,7 +3249,7 @@ public class MatchSimulatedPattern {
 			   } else { // new multithreaded mode
 				   int startScanIndex=3;
 				   for (;(startScanIndex<numTries) && triedIndices[startScanIndex];startScanIndex++); // skip already tried indices
-				   if ((global_debug_level>0) && (startScanIndex>3)) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
+				   if ((global_debug_level>0) && (startScanIndex>3)) System.out.println("distortions(): startScanIndex="+startScanIndex+" > 3 ####");				   
 				   
 				   if (startScanIndex<numTries) {
 					   nodeQueue =  findPatternCandidates(
@@ -4022,7 +4022,7 @@ public class MatchSimulatedPattern {
 			   final boolean updateStatus,
 			   final int debugLevel
 			   ){
-		   if (debugLevel>0)  {
+		   if ((debugLevel>0) && ((debugLevel>1) || (startScanIndex>3))) {
 			   int debugNumLeft=0;
 			   for (boolean b:triedIndices) if (!b) debugNumLeft++;
 			   System.out.println("findPatternCandidates(), startScanIndex= "+startScanIndex+",triedIndices.length="+triedIndices.length+" debugNumLeft="+debugNumLeft);
