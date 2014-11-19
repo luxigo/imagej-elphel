@@ -8050,7 +8050,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 
 					 result[2]=contrast;
 
-					 if ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast)) {
+					 if (Double.isNaN(contrasts[0]) || ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast))) {
 						 if (debug_level>1) System.out.println("Center contrast too low - "+contrasts[0]+"<"+distortionParameters.correlationMinContrast);
 						 if (debug_level>1) System.out.println("Center contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
 								 " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
@@ -8063,7 +8063,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 					 }
 
 
-					 if ((distortionParameters.correlationMinAbsoluteContrast>0) && (contrasts[1]<distortionParameters.correlationMinAbsoluteContrast)) {
+					 if (Double.isNaN(contrasts[1]) || ((distortionParameters.correlationMinAbsoluteContrast>0) && (contrasts[1]<distortionParameters.correlationMinAbsoluteContrast))) {
 						 if (debug_level>1) System.out.println("Absolute contrast too low - "+contrasts[1]+"<"+distortionParameters.correlationMinAbsoluteContrast);
 						 if (debug_level>1) System.out.println("Absolute contrast "+IJ.d2s(contrasts[1],3)+" ("+distortionParameters.correlationMinAbsoluteContrast+")"+
 								 " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
@@ -8399,7 +8399,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 					   "test-contrast");   // title base for optional plots names
 			   contrast=contrasts[0];
 			   result[2]=contrast;
-			   if ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast)) {
+			   if (Double.isNaN(contrasts[0]) || ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast))) {
 				   if (debug_level>1) System.out.println("Contrast too low - "+contrasts[0]+"<"+distortionParameters.correlationMinContrast);
 				   if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
 						   " is TOO LOW ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
@@ -8412,7 +8412,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			   }
 
 
-			   if ((distortionParameters.correlationMinAbsoluteContrast>0) && (contrasts[1]<distortionParameters.correlationMinAbsoluteContrast)) {
+			   if (Double.isNaN(contrasts[1]) || ((distortionParameters.correlationMinAbsoluteContrast>0) && (contrasts[1]<distortionParameters.correlationMinAbsoluteContrast))) {
 				   if (debug_level>1) System.out.println("Absolute contrast too low - "+contrasts[1]+"<"+distortionParameters.correlationMinAbsoluteContrast);
 				   if (debug_level>1) System.out.println("Absolute contrast "+IJ.d2s(contrasts[1],3)+" ("+distortionParameters.correlationMinAbsoluteContrast+")"+
 						   " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
