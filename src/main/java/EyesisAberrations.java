@@ -1446,7 +1446,7 @@ public class EyesisAberrations {
 			int                    globalDebugLevel
 	){	
 		double [][][][] psfKernelMap; // will be lost - do we need it outside
-		double [][][][][] kernelsElllipsePars = new double[filenames.length][][][][];
+		double [][][][][] kernelsElllipsePars = new double[filenames.length][][][][]; //x0,y0,a,b,c,area
 		if (thisDebugLevel>0){
 			System.out.println("combinePSFKernels(): filenames.length="+filenames.length);
 		}
@@ -1503,15 +1503,15 @@ public class EyesisAberrations {
 				//   			  System.out.println("nChn="+nChn+" nFile="+nFile+" tileY="+tileY+" tileX="+tileX);
 				if (kernelsElllipsePars[nFile][tileY][tileX][chn]!=null) {
 					channels[chn]=true;
-					c[0][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][0];
-					c[1][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][1];
-					c[2][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][2];
-					c[3][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][3];
-					c[4][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][4];
+					c[0][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][0]; // x0
+					c[1][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][1]; // y0
+					c[2][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][2]; // a
+					c[3][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][3]; // b
+					c[4][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][4]; // c
 					a=1/Math.sqrt(kernelsElllipsePars[nFile][tileY][tileX][chn][2]*kernelsElllipsePars[nFile][tileY][tileX][chn][3]-
 							kernelsElllipsePars[nFile][tileY][tileX][chn][4]*kernelsElllipsePars[nFile][tileY][tileX][chn][4]/4);
 					c[5][chn][nFile+1][tileY*kWidth+tileX]= Math.sqrt(a); // radius
-					c[6][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][5];
+					c[6][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][5]; // area
 
 				} else {
 					c[0][chn][nFile+1][tileY*kWidth+tileX]=Double.NaN;
@@ -2057,7 +2057,8 @@ public class EyesisAberrations {
 					"",
 					debugLevel);
 					//				  ellipseCoeffs[tileY][tileX][chn]=findEllipseOnPSF(kernel,  selection,   "");
-					ec=findEllipseOnPSF(kernel,  selection,   "", debugLevel);
+					ec=findEllipseOnPSF(kernel,  selection,   "", debugLevel); // x0,y0,a,b,c (r2= a* x^2*+b*y^2+c*x*y)
+
 					l=ec.length;
 					ellipseCoeffs[tileY][tileX][chn]=new double[l+1];
 					for (i=0;i<ec.length;i++) ellipseCoeffs[tileY][tileX][chn][i]=ec[i];
@@ -2776,6 +2777,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					globalDebugLevel,
 					title+"-"+i);
 		}
+		int debugThreshold=1;
 		if (debugThis) SDFA_INSTANCE.showArrays(inverted, fft_size*subpixel, fft_size*subpixel, title+"_Combined-PSF");
 /* correct composite greens */
 /* Here we divide wave vectors by subpixel as the pixels are already added */
@@ -2811,7 +2813,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		//int [][]  clusterMask;
 /* Start with referenceComp */
 		i= referenceComp;
-		if (globalDebugLevel>2) {
+		if (globalDebugLevel>debugThreshold) {
 			System.out.println(x0+":"+y0+"1-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
 			System.out.println("Before: color Component "+i+" PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts[i][0],3)+
 					" PSF_shifts["+i+"][1]="+IJ.d2s(PSF_shifts[i][1],3));
@@ -2819,7 +2821,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 
 
 		kernels[i]=combinePSF (inverted[i], // Square array of pixels with multiple repeated PSF (alternating sign)
-				true, // master, force ignoreChromatic
+				!psfParameters.absoluteCenter, //true, // master, force ignoreChromatic
 				PSF_shifts[i],  // centerXY[] - will be modified inside combinePSF() if PSF_PARS.ignoreChromatic is true
 				PSF_centroids[i], // will return array of XY coordinates of the result centroid
 				(i==4)?wVectors4:wVectors, // two wave vectors, lengths in cycles/pixel (pixels match pixel array)
@@ -2829,13 +2831,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 						(globalDebugLevel>4),
 						globalDebugLevel
 						);
-		if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
-		if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
+		if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
+		if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
 
-		if (!psfParameters.ignoreChromatic) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
+		if (!psfParameters.ignoreChromatic && !psfParameters.absoluteCenter) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
 			for (j=0;j<input_bayer.length;j++) if ((colorComponents.colorsToCorrect[j]) && (j!=referenceComp)) {
 				PSF_shifts[j]=shiftSensorToBayer (shiftBayerToSensor(PSF_shifts[referenceComp],referenceComp,subpixel),j,subpixel);
-				if (globalDebugLevel>2)       System.out.println(x0+":"+y0+"After-2 (recalc): color Component "+j+" PSF_shifts["+j+"][0]="+IJ.d2s(PSF_shifts[j][0],3)+" PSF_shifts["+j+"][1]="+IJ.d2s(PSF_shifts[j][1],3));
+				if (globalDebugLevel>debugThreshold)       System.out.println(x0+":"+y0+"After-2 (recalc): color Component "+j+" PSF_shifts["+j+"][0]="+IJ.d2s(PSF_shifts[j][0],3)+" PSF_shifts["+j+"][1]="+IJ.d2s(PSF_shifts[j][1],3));
 			}
 		}
 
@@ -2846,7 +2848,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		lateralChromaticAbs[i]=Math.sqrt(lateralChromatic[i][0]*lateralChromatic[i][0]+lateralChromatic[i][1]*lateralChromatic[i][1]);
 /* Now process all the other components */
 		for (i=0; i<input_bayer.length;i++) if ((i!=referenceComp) && (colorComponents.colorsToCorrect[i])) {
-			if (globalDebugLevel>2) {
+			if (globalDebugLevel>debugThreshold) {
 				System.out.println(x0+":"+y0+"2-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
 
 				System.out.println(x0+":"+y0+"Before: color Component "+i+" PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts[i][0],3)+
@@ -2862,8 +2864,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 							title+"_"+i,    // reduce the PSF cell size to this part of the area connecting first negative clones
 							(globalDebugLevel>4),
 							globalDebugLevel);
-			if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
-			if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
+			if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
+			if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
 			lateralChromatic[i]=shiftBayerToSensor ( PSF_shifts[i][0]+PSF_centroids[i][0],
 					PSF_shifts[i][1]+PSF_centroids[i][1],
 					i,
@@ -2873,9 +2875,10 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		}
 		if (globalDebugLevel>1) { //1
 			for (i=0;i<PSF_shifts.length;i++) if (colorComponents.colorsToCorrect[i]){
-				if (globalDebugLevel>2) { //2
+				if (globalDebugLevel>debugThreshold) { //2
 					System.out.println(x0+":"+y0+" Color Component "+i+" subpixel="+subpixel+
 							" psfParameters.ignoreChromatic="+psfParameters.ignoreChromatic+
+							" psfParameters.absoluteCenter="+psfParameters.absoluteCenter+
 							" psfParameters.symm180="+psfParameters.symm180);
 					System.out.println(x0+":"+y0+                     " PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts[i][0],3)+
 							" PSF_shifts["+i+"][1]="+IJ.d2s(PSF_shifts[i][1],3)+
@@ -3339,7 +3342,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					debugLevel);
 			//                   true);
 			
-			if (!master && !psfParameters.ignoreChromatic && psfParameters.centerPSF && (centerXY!=null)){
+			if (!master && !psfParameters.ignoreChromatic && !psfParameters.absoluteCenter && psfParameters.centerPSF && (centerXY!=null)){
 //				System.out.println("1:pixelsPSF.length="+pixelsPSF.length+" outSize+"+outSize);
 
 				// TODO: Shift +/- 0.5 Pix here {centerXY[0]-Math.round(centerXY[0]),centerXY[1]-Math.round(centerXY[1])}	
@@ -3397,7 +3400,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (debugLevel>2) System.out.println("Centroid after first binPSF: x="+IJ.d2s(centroidXY[0],3)+" y="+IJ.d2s(centroidXY[1],3)+" center was at x="+IJ.d2s(centerXY[0],3)+" y="+IJ.d2s(centerXY[1],3));
 
 	/* Re-bin results with the new center if ignoreChromatic is true, update centerXY[](shift of the result PSF array) and centroidXY[] (center of the optionally shifted PDF array) */
-			if (master || psfParameters.ignoreChromatic) {
+			if (!psfParameters.absoluteCenter && (master || psfParameters.ignoreChromatic)) {
 				if (centerXY!=null) {
 					centerXY[0]+=centroidXY[0];
 					centerXY[1]+=centroidXY[1];
@@ -4908,6 +4911,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		public boolean useWindow;
 		public boolean symm180;
 		public boolean ignoreChromatic;
+		public boolean absoluteCenter;
 		public double smoothSeparate;
 		public double topCenter;
 		public double sigmaToRadius;
@@ -4927,6 +4931,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				boolean useWindow,
 				boolean symm180,
 				boolean ignoreChromatic,
+				boolean absoluteCenter,
 				double smoothSeparate,
 				double topCenter,
 				double sigmaToRadius,
@@ -4946,6 +4951,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			this.useWindow = useWindow;
 			this.symm180 = symm180;
 			this.ignoreChromatic = ignoreChromatic;
+			this.absoluteCenter=absoluteCenter;
 			this.smoothSeparate = smoothSeparate;
 			this.topCenter = topCenter;
 			this.sigmaToRadius = sigmaToRadius;
@@ -4968,6 +4974,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
         			this.useWindow,
         			this.symm180,
         			this.ignoreChromatic,
+        			this.absoluteCenter,
         			this.smoothSeparate,
         			this.topCenter,
         			this.sigmaToRadius,
@@ -4988,6 +4995,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
         	properties.setProperty(prefix+"useWindow",this.useWindow+"");
         	properties.setProperty(prefix+"symm180",this.symm180+"");
         	properties.setProperty(prefix+"ignoreChromatic",this.ignoreChromatic+"");
+        	properties.setProperty(prefix+"absoluteCenter",this.absoluteCenter+"");
         	properties.setProperty(prefix+"smoothSeparate",this.smoothSeparate+"");
         	properties.setProperty(prefix+"topCenter",this.topCenter+"");
         	properties.setProperty(prefix+"sigmaToRadius",this.sigmaToRadius+"");
@@ -5007,6 +5015,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
         	properties.setProperty(prefix+"useWindow",this.useWindow+"");
         	properties.setProperty(prefix+"symm180",this.symm180+"");
         	properties.setProperty(prefix+"ignoreChromatic",this.ignoreChromatic+"");
+        	properties.setProperty(prefix+"absoluteCenter",this.absoluteCenter+"");
         	properties.setProperty(prefix+"smoothSeparate",this.smoothSeparate+"");
         	properties.setProperty(prefix+"topCenter",this.topCenter+"");
         	properties.setProperty(prefix+"sigmaToRadius",this.sigmaToRadius+"");
@@ -5027,6 +5036,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (properties.getProperty(prefix+"useWindow")!=null)         this.useWindow=Boolean.parseBoolean(properties.getProperty(prefix+"useWindow"));
 			if (properties.getProperty(prefix+"symm180")!=null)           this.symm180=Boolean.parseBoolean(properties.getProperty(prefix+"symm180"));
 			if (properties.getProperty(prefix+"ignoreChromatic")!=null)   this.ignoreChromatic=Boolean.parseBoolean(properties.getProperty(prefix+"ignoreChromatic"));
+			if (properties.getProperty(prefix+"absoluteCenter")!=null)   this.absoluteCenter=Boolean.parseBoolean(properties.getProperty(prefix+"absoluteCenter"));
 			if (properties.getProperty(prefix+"smoothSeparate")!=null)    this.smoothSeparate=Double.parseDouble(properties.getProperty(prefix+"smoothSeparate"));
 			if (properties.getProperty(prefix+"topCenter")!=null)         this.topCenter=Double.parseDouble(properties.getProperty(prefix+"topCenter"));
 			if (properties.getProperty(prefix+"sigmaToRadius")!=null)     this.sigmaToRadius=Double.parseDouble(properties.getProperty(prefix+"sigmaToRadius"));

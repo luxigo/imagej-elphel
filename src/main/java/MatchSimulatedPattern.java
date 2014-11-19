@@ -3350,8 +3350,10 @@ public class MatchSimulatedPattern {
 			   if (!updating){
 				   double [][] node=gn.getNode();
 				   double [] centerXY=node[0];
-				   if (global_debug_level>1) {
-					   System.out.println("distortions: node X/Y are "+centerXY[0]+"/"+centerXY[1]);
+				   if (global_debug_level>0) {
+//					   System.out.println("distortions: node X/Y are "+centerXY[0]+"/"+centerXY[1]);
+					   System.out.println("distortions: nodeQueue has "+(debug_left--)+" candidates left (including this one) :node X/Y are "+centerXY[0]+"/"+centerXY[1]);
+					   
 				   }
 				   //				   if (debugLevel>1) {
 				   if (global_debug_level>1) {
@@ -3374,7 +3376,6 @@ public class MatchSimulatedPattern {
 				   if (global_debug_level>1) {
 					   System.out.println("putInWaveList(waveFrontList, {"+centerUV[0]+","+centerUV[1]+"}, 0);");
 				   }
-				   
 			   }
 
 			   // Each layer processing may be multi-threaded, they join before going to the next layer
@@ -3453,7 +3454,7 @@ public class MatchSimulatedPattern {
 				   layer++;
 				   if (updateStatus) IJ.showStatus("Correlating patterns, layer "+layer+(cleanup.get()?"(cleanup)":"")+", length "+waveFrontList.size());
 //				   if (debugLevel>1) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
-				   if (global_debug_level>1) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
+				   if (global_debug_level>2) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
 				   // starting layer
 				   cellNum.set(0);
 				   for (int ithread = 0; ithread < threads.length; ithread++) {
@@ -4077,11 +4078,10 @@ public class MatchSimulatedPattern {
 							   );
 							   if ((node!=null) && (node[0]!=null)) {
 								   nodeQueue.add(new GridNode(node));
-								   if (debugLevel>1)  System.out.println("probing "+n);
+								   if (debugLevel>1)  System.out.println("adding candidate "+n+" x0="+point[0]+" y0="+point[1]+" -> "+ node[0][0]+"/"+node[0][1]);
 							   }
 						   }
 						   triedIndices[n]=true; // regardless - good or bad
-						   
 					   }
 				   }
 			   };

@@ -3060,8 +3060,9 @@ For each point in the image
 					cell[0], //double px,
 					cell[1]); //double py)
 			cell[0]+=corrXYARGB[0]; // measured-> corrected : subtract, projected->simulated:add;
-			cell[1]+=corrXYARGB[1];
+			cell[1]+=corrXYARGB[1]+0.0; // Debugging by adding +1.0!!
 		}
+//		System.out.println("================== Added +0.0 to pixel y for debugging purposes! =====================");
 		return true;
 	}
 	

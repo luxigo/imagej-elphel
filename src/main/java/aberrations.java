@@ -141,6 +141,8 @@ Panel panel1,panel2;
  public static double  OTF_deconvInvert =  0.007; // 0.015; // 0.01; // when FFT component is less than this fraction of the maximal value, replace 1/z with Z
 /* TODO: check why combined greens result in center at x=-0.532/2 , y= -.0272/2 */
  public static boolean PSF_ignoreChromatic= false; // ignore lateral chromatic aberration (center OTF to 0,0)
+ 
+ 
  public static boolean OTF_fold =          false; // fold high frequency to lower when downsampling pixels (before inverse FFT)
 
  public static double  PSF_cutoff_energy=0.9;  // Limit result kernel to proportional of the PSF, calculate initial cluster shape by this cutoff energy

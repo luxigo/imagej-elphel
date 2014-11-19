@@ -143,6 +143,7 @@ public class Aberration_Calibration extends PlugInFrame implements ActionListene
 			true,  // useWindow   - multiply separated OTF instance by window function (Hamming or Gaussian)
 			false, // symm180     - force PSF center-symmetrical (around centroid that is defined by lateral chromatic aberration
 			false, // ignoreChromatic - ignore lateral chromatic aberration (center PSF to 0,0)
+			true,  // absoluteCenter - do not remove green correlation shift (forces ignoreChromatic=false)
 			0.2,   // smoothSeparate  - low pass filter width when separating individual PSF instances
 			0.75,  // topCenter - consider only points above this fraction of the peak to find the centroid
 			0.0,   // sigmaToRadius - variable-sigma blurring to reduce high frequencies more for the pixels farther from the PSF center
@@ -16998,7 +16999,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 
 
 		kernels[i]=combinePSF (inverted[i], // Square array of pixels with multiple repeated PSF (alternating sign)
-				true, // master, force ignoreChromatic
+				!psfParameters.absoluteCenter, //true, // master, force ignoreChromatic
 				PSF_shifts[i],  // centerXY[] - will be modified inside combinePSF() if PSF_PARS.ignoreChromatic is true
 				PSF_centroids[i], // will return array of XY coordinates of the result centroid
 				(i==4)?wVectors4:wVectors, // two wave vectors, lengths in cycles/pixel (pixels match pixel array)
@@ -17009,7 +17010,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		if (DEBUG_LEVEL>2)     System.out.println("After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
 		if (DEBUG_LEVEL>2)     System.out.println("After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
 
-		if (!psfParameters.ignoreChromatic) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
+		if (!psfParameters.ignoreChromatic && !psfParameters.absoluteCenter) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
 			for (j=0;j<input_bayer.length;j++) if ((colorComponents.colorsToCorrect[j]) && (j!=referenceComp)) {
 				PSF_shifts[j]=shiftSensorToBayer (shiftBayerToSensor(PSF_shifts[referenceComp],referenceComp,subpixel),j,subpixel);
 				if (DEBUG_LEVEL>2)       System.out.println("After-2 (recalc): color Component "+j+" PSF_shifts["+j+"][0]="+IJ.d2s(PSF_shifts[j][0],3)+" PSF_shifts["+j+"][1]="+IJ.d2s(PSF_shifts[j][1],3));
@@ -17052,6 +17053,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 				if (DEBUG_LEVEL>2) { //2
 					System.out.println("Color Component "+i+" subpixel="+subpixel+
 							" psfParameters.ignoreChromatic="+psfParameters.ignoreChromatic+
+							" psfParameters.absoluteCenter="+psfParameters.absoluteCenter+
 							" psfParameters.symm180="+psfParameters.symm180);
 					System.out.println(                     " PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts[i][0],3)+
 							" PSF_shifts["+i+"][1]="+IJ.d2s(PSF_shifts[i][1],3)+
@@ -17458,7 +17460,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 				debug);
 		//                   true);
 		
-		if (!master && !psfParameters.ignoreChromatic && psfParameters.centerPSF && (centerXY!=null)){
+		if (!master && !psfParameters.ignoreChromatic && !psfParameters.absoluteCenter && psfParameters.centerPSF && (centerXY!=null)){
 //			System.out.println("1:pixelsPSF.length="+pixelsPSF.length+" outSize+"+outSize);
 
 			// TODO: Shift +/- 0.5 Pix here {centerXY[0]-Math.round(centerXY[0]),centerXY[1]-Math.round(centerXY[1])}	
@@ -17515,7 +17517,7 @@ if (DEBUG_LEVEL>2)DEBUG_LEVEL=0; //*********************************************
 		if (DEBUG_LEVEL>2) System.out.println("Centroid after first binPSF: x="+IJ.d2s(centroidXY[0],3)+" y="+IJ.d2s(centroidXY[1],3)+" center was at x="+IJ.d2s(centerXY[0],3)+" y="+IJ.d2s(centerXY[1],3));
 
 /* Re-bin results with the new center if ignoreChromatic is true, update centerXY[](shift of the result PSF array) and centroidXY[] (center of the optionally shifted PDF array) */
-		if (master || psfParameters.ignoreChromatic) {
+		if (!psfParameters.absoluteCenter && (master || psfParameters.ignoreChromatic)) {
 			if (centerXY!=null) {
 				centerXY[0]+=centroidXY[0];
 				centerXY[1]+=centroidXY[1];
@@ -18936,6 +18938,9 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		gd.addCheckbox    ("Multiply PSF cell by Hamming window",                                psfParameters.useWindow); //  true;
 		gd.addCheckbox    ("Force PSF center- symmetrical (around centroid)",                    psfParameters.symm180); //  true; // make OTF center-symmetrical (around centroid that is defined by lateral chromatic aberration)
 		gd.addCheckbox     ("Ignore lateral chromatic aberrations, center PSF",                  psfParameters.ignoreChromatic); // true; // ignore lateral chromatic aberration (center OTF to 0,0)
+		gd.addCheckbox     ("Use absolute PSF center (no adjustment to green center)",           psfParameters.absoluteCenter); 
+		
+		
 		gd.addNumericField("PSF separation: low-pass filter width (to PSF half-period) ",        psfParameters.smoothSeparate,  3); // 0.125 low pass filter width (relative to PSF pitch) when separation individual PSF
 		gd.addNumericField("PSF separation: threshold to find the PSF maximum",                  psfParameters.topCenter,  3); // 0.75 consider only points above this fraction of the peak to find the centroid
 		gd.addNumericField("PSF variable Gauss blurring (farther from center, higher the sigma", psfParameters.sigmaToRadius,3); // 0.4 variable-sigma blurring to reduce high frequencies more for the pixels farther from the PSF center
@@ -18958,6 +18963,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		psfParameters.useWindow=                 gd.getNextBoolean();
 		psfParameters.symm180=                   gd.getNextBoolean();
 		psfParameters.ignoreChromatic=           gd.getNextBoolean();
+		psfParameters.absoluteCenter=            gd.getNextBoolean();
 		psfParameters.smoothSeparate=            gd.getNextNumber();
 		psfParameters.topCenter=                 gd.getNextNumber();
 		psfParameters.sigmaToRadius=             gd.getNextNumber();
@@ -19680,6 +19686,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		gd.addNumericField("PSF wings energy (searching for ellipse approximation)",      psfParameters.wingsEnergy, 3); //  0.8 fraction of energy in the pixels to be used
 		gd.addNumericField("PSF wings ellipse scale (multiply PSF by elliptical gaussian)",psfParameters.wingsEllipseScale, 3);// 2.0 increase wings cutoff ellipse by this from one defined by the  cutoff energy
 		gd.addCheckbox     ("Ignore lateral chromatic aberrations, center PSF",           psfParameters.ignoreChromatic); // true; // ignore lateral chromatic aberration (center OTF to 0,0)
+		gd.addCheckbox     ("Use absolute PSF center (no adjustment to green center)",    psfParameters.absoluteCenter); 
 
 		gd.addNumericField("OTF cutoff energy (used to determine bounding ellipse)",      inverseParameters.otfCutoffEnergy, 3); //0.6; use frequency points that have inverseParameters.otfCutoffEnergy of the total to determine ellipse for limiting frequency responce
 		gd.addNumericField("OTF size of elliptical window relative to cluster size",      inverseParameters.otfEllipseScale, 3); //1.5;  // size of elliptical window relative to the cluster defined by inverseParameters.otfCutoffEnergy
@@ -19713,6 +19720,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 		psfParameters.wingsEnergy=               gd.getNextNumber();
 		psfParameters.wingsEllipseScale=         gd.getNextNumber();
 		psfParameters.ignoreChromatic=           gd.getNextBoolean();
+		psfParameters.absoluteCenter=            gd.getNextBoolean();
 		inverseParameters.otfCutoffEnergy=       gd.getNextNumber();
 		inverseParameters.otfEllipseScale=       gd.getNextNumber();
 		inverseParameters.otfEllipseGauss=       gd.getNextBoolean();
