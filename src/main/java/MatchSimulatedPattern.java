@@ -3343,16 +3343,16 @@ public class MatchSimulatedPattern {
 		   int numDefinedCells=0;
 		   int debug_left=nodeQueue.size();
 		   for (GridNode gn:nodeQueue){ // trying candidates as grid seeds - until found or nothing left
+			   debug_left--;
 			   if (global_debug_level>1) {
-				   System.out.println("distortions: nodeQueue has "+(debug_left--)+" candidates left (including this one)");
+				   System.out.println("distortions: nodeQueue has "+(debug_left)+" candidates left (excluding this one)");
 			   }
-			   
 			   if (!updating){
 				   double [][] node=gn.getNode();
 				   double [] centerXY=node[0];
 				   if (global_debug_level>0) {
 //					   System.out.println("distortions: node X/Y are "+centerXY[0]+"/"+centerXY[1]);
-					   System.out.println("distortions: nodeQueue has "+(debug_left--)+" candidates left (including this one) :node X/Y are "+centerXY[0]+"/"+centerXY[1]);
+					   System.out.println("distortions: nodeQueue has "+(debug_left)+" candidates left (excluding this one) :node X/Y are "+centerXY[0]+"/"+centerXY[1]);
 					   
 				   }
 				   //				   if (debugLevel>1) {
@@ -4022,7 +4022,12 @@ public class MatchSimulatedPattern {
 			   final boolean updateStatus,
 			   final int debugLevel
 			   ){
-		   
+		   if (debugLevel>0)  {
+			   int debugNumLeft=0;
+			   for (boolean b:triedIndices) if (!b) debugNumLeft++;
+			   System.out.println("findPatternCandidates(), startScanIndex= "+startScanIndex+",triedIndices.length="+triedIndices.length+" debugNumLeft="+debugNumLeft);
+		   }
+
 		   final Thread[] threads = newThreadArray(threadsMax);
 		   final AtomicInteger seqNumber = new AtomicInteger(startScanIndex);
 //		   final AtomicBoolean nodeSet=new AtomicBoolean(false);
