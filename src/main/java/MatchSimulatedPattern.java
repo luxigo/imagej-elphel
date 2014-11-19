@@ -8051,11 +8051,15 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 					 result[2]=contrast;
 
 					 if ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast)) {
-						 if (debug_level>1) System.out.println("Contrast too low - "+contrasts[0]+"<"+distortionParameters.correlationMinContrast);
-						 if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+						 if (debug_level>1) System.out.println("Center contrast too low - "+contrasts[0]+"<"+distortionParameters.correlationMinContrast);
+						 if (debug_level>1) System.out.println("Center contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
 								 " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
 								 IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
 						 return null;
+					 } else {
+						 if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+								 " is good ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+								 IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
 					 }
 
 
@@ -8398,9 +8402,13 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			   if ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast)) {
 				   if (debug_level>1) System.out.println("Contrast too low - "+contrasts[0]+"<"+distortionParameters.correlationMinContrast);
 				   if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
-						   " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   " is TOO LOW ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
 						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
 				   return null;
+			   } else {
+				   if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+						   " is GOOD ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
 			   }
 
 
