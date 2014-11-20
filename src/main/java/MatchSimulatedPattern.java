@@ -3154,7 +3154,7 @@ public class MatchSimulatedPattern {
 //		   double [][][] nodes=null;
 		   Queue<GridNode> nodeQueue = new ConcurrentLinkedQueue<GridNode>();		   
 		   boolean fromVeryBeginning=true;
-		   for (int i=3;i<triedIndices.length;i++) if (triedIndices[i]){ // do not count forst three
+		   for (int i=3;i<triedIndices.length;i++) if (triedIndices[i]){ // do not count first three
 			   fromVeryBeginning=false;
 			   break;
 		   }
@@ -3283,7 +3283,7 @@ public class MatchSimulatedPattern {
 							   System.out.println("All start points tried");
 							   int numLeft=0;
 							   for (boolean b:triedIndices) if (!b) numLeft++;
-							   System.out.println("startScanIndex="+startScanIndex+" numTries="+numTries+" numLeft="+numLeft);
+							   System.out.println("nodeQueue.isEmpty(), startScanIndex="+startScanIndex+" numTries="+numTries+" numLeft="+numLeft);
 						   }
 						   triedIndices[numTries]=true; // all tried
 					   } else {
@@ -4040,7 +4040,7 @@ public class MatchSimulatedPattern {
 					   int nbh, nbv, nh, nv, nb;
 					   double [] point = new double[2];
 					   for (int n=seqNumber.getAndIncrement(); n<(triedIndices.length-1); n=seqNumber.getAndIncrement()) if (!triedIndices[n]){
-						   if (!nodeQueue.isEmpty()) break; // already set at least one element
+						   if (!nodeQueue.isEmpty()) break; // already set at least one element - does it work?
 						   nbh=tryHor-1;
 						   nbv=tryVert-1;
 						   nh=0;
@@ -4083,7 +4083,8 @@ public class MatchSimulatedPattern {
 							   );
 							   if ((node!=null) && (node[0]!=null)) {
 								   nodeQueue.add(new GridNode(node));
-								   if (debugLevel>1)  System.out.println("adding candidate "+n+" x0="+point[0]+" y0="+point[1]+" -> "+ node[0][0]+"/"+node[0][1]);
+//								   if (debugLevel>1)  System.out.println("adding candidate "+n+" x0="+point[0]+" y0="+point[1]+" -> "+ node[0][0]+"/"+node[0][1]);
+								   if (debugLevel>0)  System.out.println("adding candidate "+n+" x0="+point[0]+" y0="+point[1]+" -> "+ node[0][0]+"/"+node[0][1]+" seqNumber.get()="+seqNumber.get()+" n="+n);
 							   }
 						   }
 						   triedIndices[n]=true; // regardless - good or bad
@@ -4093,6 +4094,10 @@ public class MatchSimulatedPattern {
 		   }
 		   startAndJoin(threads);
 //		   if (nodeQueue.isEmpty()) return null;
+		   if (debugLevel>0){
+			   System.out.println("seqNumber after join is "+seqNumber.get());
+		   }
+		   if (seqNumber.get()>=(triedIndices.length-1) ) triedIndices[triedIndices.length-1]=true; // all tried
 		   return nodeQueue; // never null, may be empty
 //		   double [][][] nodes = new double [nodeQueue.size()][][];
 //		   for (int i=0;i<nodes.length;i++) nodes[i]=nodeQueue.poll().getNode();
