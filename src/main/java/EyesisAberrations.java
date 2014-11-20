@@ -2594,6 +2594,8 @@ public class EyesisAberrations {
 		
 		double [][] dbgSimPix=null;
 		
+		double [] localBarray;
+		
 		if ((simArray==null) || (psfParameters.approximateGrid)){ // just for testing
 			/* Calculate pattern parameters, including distortion */
 			if (matchSimulatedPattern.PATTERN_GRID==null) {
@@ -2613,7 +2615,8 @@ public class EyesisAberrations {
 							" W1_phase="+IJ.d2s(distortedPattern[1][2],2));
 
 				}
-				simulationPattern.simulatePatternFullPattern(
+//				simulationPattern.simulatePatternFullPattern( // Not thread safe!
+						localBarray=simulationPattern.simulatePatternFullPatternSafe(
 						distortedPattern[0][0],
 						distortedPattern[0][1],
 						distortedPattern[0][2],
@@ -2655,7 +2658,8 @@ public class EyesisAberrations {
 				wVectors[0][1]=distPatPars[0][1];
 				wVectors[1][0]=distPatPars[1][0];
 				wVectors[1][1]=distPatPars[1][1];
-				simulationPattern.simulatePatternFullPattern(
+//		    	simulationPattern.simulatePatternFullPattern( // Not thread safe!
+				localBarray=simulationPattern.simulatePatternFullPatternSafe(
 						wVectors[0][0],
 						wVectors[0][1],
 						phases[0],
@@ -2667,7 +2671,9 @@ public class EyesisAberrations {
 						fft_size,
 						simulParameters.center_for_g2);
 			}
+//			simul_pixels= simulationPattern.extractSimulPatterns (
 			simul_pixels= simulationPattern.extractSimulPatterns (
+					localBarray,		// this version is thread safe
 					simulParameters,
 					subpixel, // subdivide pixels
 					fft_size*subpixel, // number of Bayer cells in width of the square selection (half number of pixels)
