@@ -45,10 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
-
-//import FocusingField.FocusingFieldMeasurement;
-//import FocusingField.MeasuredSample;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
 
 public class Aberration_Calibration extends PlugInFrame implements ActionListener {
@@ -715,6 +711,10 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		addButton("Calculate grids",panelProcessDistortions,color_goniometer);
 		addButton("Convert X/Y slices to color",panelProcessDistortions); // move elsewhere
 		addButton("Grid candidate",panelProcessDistortions); // just for testing
+//		addButton("Check Phases",panelProcessDistortions); // just for testing
+		addButton("Check Defects",panelProcessDistortions,color_process); // just for testing
+		addButton("Defects",panelProcessDistortions,color_process);
+		addButton("Accummulate",panelProcessDistortions,color_process);
 		add(panelProcessDistortions);
 //panelCorrectGrid
 		panelCorrectGrid = new Panel();
@@ -2696,8 +2696,87 @@ if (MORE_BUTTONS) {
 			}
 			return;
 		}
-//		
+
+/* ======================================================================== */
+		/*
+		if       (label.equals("Check Phases")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			imp_sel = WindowManager.getCurrentImage();
+			if (imp_sel==null){
+				IJ.showMessage("Error","There is no image selected");
+				return;
+			}
+			int tileHalfSize=16;
+			int cmask=9; // // bitmask of color channels to process (9 - two greens) 
+			double binWidth=10.0; // if negative - relative to max-min
+			double gapWidth=20.0;
+			double satLevel=200.0; // ignore pixels above this
+			double baseFrac=0.5; // fraction of "normal" pixels (0.5)
+			int minPixToProcess=100; //
+			int numHistBins=100;
+			boolean forceLinear=false;  // use linear approximation
+			
+		    GenericDialog gd = new GenericDialog("Sensor phase checking");
+		    gd.addNumericField("Tile half size", tileHalfSize, 0 ,4, "pix");
+		    gd.addNumericField("Color channel mask", cmask, 0 ,4, "9 - both green colors");
+		    gd.addNumericField("\"Normal\" pixels variation", binWidth, 3 ,7, "");
+		    gd.addNumericField("Empty level gap between \"normal\" pixels and outlayers (caused by wrong cable phase)", gapWidth, 3 ,7, "");
+		    gd.addNumericField("Disregard pixels above this threshold", satLevel, 3 ,5, "pixel value");
+		    gd.addNumericField("Fraction of \"normal\" pixels to determing their average", baseFrac, 3 ,5, "fraction");
+		    gd.addNumericField("Minimal number of non-satureted pixels to process in a tile", minPixToProcess, 0 ,4, "pix");
+		    gd.addNumericField("Number of histogram bins", numHistBins, 0 ,4, "bins");
+		    gd.addCheckbox("Force linear approximation of the pixel values in a tile (false - use quadratic)", forceLinear);
+		    gd.showDialog();
+		    if (gd.wasCanceled()) return;
+		    tileHalfSize=    (int) gd.getNextNumber();
+		    cmask=           (int) gd.getNextNumber();
+		    binWidth =             gd.getNextNumber();
+		    gapWidth =             gd.getNextNumber();
+		    satLevel =             gd.getNextNumber();
+		    baseFrac =             gd.getNextNumber();
+		    minPixToProcess= (int) gd.getNextNumber();
+		    numHistBins=     (int) gd.getNextNumber();
+		    forceLinear=           gd.getNextBoolean();
+			int [] stats= (new SFEPhases()).getPhaseStats(
+					imp_sel,
+					tileHalfSize,
+					cmask,
+					binWidth,
+					gapWidth,
+					satLevel,
+					baseFrac,
+					minPixToProcess,
+					numHistBins,
+					forceLinear,
+					new MatchSimulatedPattern(DISTORTION.FFTSize), //matchSimulatedPattern= 
+					COMPONENTS,
+					THREADS_MAX,
+					DEBUG_LEVEL);
+			System.out.println("Number of phase outlayer pixels:"+stats[0]);
+			System.out.println("Number of processed pixels:"+stats[1]);
+			return;
+		}
+		*/
+/* ======================================================================== */
+		if       (label.equals("Check Defects")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			checkDefects();
+			return;
+		}
+/* ======================================================================== */
+		if       (label.equals("Defects")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			defects();
+			return;
+		}
 		
+/* ======================================================================== */
+		if       (label.equals("Accummulate")) {
+			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
+			accummulateImages(true);
+			return;
+		}
+//		
 /* ======================================================================== */
 		if       (label.equals("Calculate grids")) {
 		    if ((LASER_POINTERS==null) || (LASER_POINTERS.laserUVMap.length==0)){
@@ -2730,7 +2809,7 @@ if (MORE_BUTTONS) {
             				saveGrids=false; // do not ask about the next ones too
             			} else {
             				path=DISTORTION_PROCESS_CONFIGURATION.gridDirectory+Prefs.getFileSeparator()+path;
-        	    			File rsltFile=new File(path);	
+//        	    			File rsltFile=new File(path);	
             				if ((new File(path)).exists()){
                 				if (DEBUG_LEVEL>0) System.out.println("-->>> Skipping existing "+path+" (as requested in \"Configure Process Distortions\")");
                 				continue;
@@ -3066,7 +3145,7 @@ if (MORE_BUTTONS) {
 			}
 			LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
 			LENS_DISTORTIONS.resetSensorCorrection();
-			LENS_DISTORTIONS.initSensorCorrection(); // set zero corerctions (to be able to save sesnor correction files)
+			LENS_DISTORTIONS.initSensorCorrection(); // set zero corerctions (to be able to save sensor correction files)
 			return;
 		}
 /* ======================================================================== */
@@ -9466,6 +9545,263 @@ if (MORE_BUTTONS) {
 	}
 	
 /* ===== Other methods ==================================================== */
+	public void checkDefects(){
+		imp_sel = WindowManager.getCurrentImage();
+		if (imp_sel==null){
+			IJ.showMessage("Error","There is no image selected");
+			return;
+		}
+		//			int tileHalfSize=16;
+		int cmask=15; // // bitmask of color channels to process (9 - two greens)
+		int numPasses=1000; //
+		int numInBase=5;
+		double sigma=1.5;
+		int tileClearSize=128;
+		int tileMargins=16;
+		double binWidth=10.0; // if negative - relative to max-min
+		double gapWidth=20.0;
+		boolean processNoReplace=true;  // use linear approximation
+
+		int numInBase2=6;
+		double binWidth2=10.0; // if negative - relative to max-min
+		double gapWidth2=20.0;
+		int algNum=2;
+
+
+		GenericDialog gd = new GenericDialog("Sensor phase checking");
+		gd.addNumericField("Tile clearSize", tileClearSize, 0 ,4, "pix");
+		gd.addNumericField("Tile margin (extra) width", tileMargins, 0 ,4, "pix");
+		gd.addNumericField("Color channel mask", cmask, 0 ,4, "9 - both green colors");
+		gd.addNumericField("Number of \"remove outlayers\" passes", numPasses, 0 ,4, "");
+		gd.addNumericField("Number of neighbors (of total 8) to base outlayers", numInBase, 0 ,4, "<=8");
+		gd.addNumericField("Base low-pass sigma ", sigma, 3 ,7, "double pixels");
+		gd.addCheckbox    ("Process tiles with no outlayer replacements", processNoReplace);
+		gd.addNumericField("\"Normal\" pixels variation", binWidth, 3 ,7, "");
+		gd.addNumericField("Empty level gap between \"normal\" pixels and outlayers", gapWidth, 3 ,7, "");
+
+		gd.addNumericField("Post-HPF algorithm number", algNum, 0 ,4, "(1 or 2");
+		gd.addNumericField("Number of neighbors (of total 8) to base outlayers (after high-pass), 0 - no filter", numInBase2, 0 ,4, "<=8");
+		gd.addNumericField("\"Normal\" pixels variation (after high-pass)", binWidth2, 3 ,7, "");
+		gd.addNumericField("Empty level gap between \"normal\" pixels and outlayers (after high-pass)", gapWidth2, 3 ,7, "");
+
+
+		gd.showDialog();
+		if (gd.wasCanceled()) return;
+		tileClearSize=    (int) gd.getNextNumber();
+		tileMargins=    (int) gd.getNextNumber();
+		cmask=           (int) gd.getNextNumber();
+		numPasses=       (int) gd.getNextNumber();
+		numInBase=       (int) gd.getNextNumber();
+		sigma=                 gd.getNextNumber();
+		processNoReplace=      gd.getNextBoolean();
+		binWidth =             gd.getNextNumber();
+		gapWidth =             gd.getNextNumber();
+
+		algNum=          (int) gd.getNextNumber();
+		numInBase2=      (int) gd.getNextNumber();
+		binWidth2 =            gd.getNextNumber();
+		gapWidth2 =            gd.getNextNumber();
+		double [] defectsBayer=(new SFEPhases()).getDefectsBayer(
+				imp_sel,
+				tileClearSize,
+				tileMargins,
+				cmask, // bitmask of color channels to process (9 - two greens)
+				numPasses, // number of passes to replace outlayers (will end if none was replaced)
+				numInBase, // number of neighbors (of 8) to use as a base if they all agree
+				sigma, // for high-pass filtering
+				processNoReplace, // calculate differences even if no replacements were made
+				binWidth, // absolute
+				gapWidth, // absolute
+				algNum,
+				numInBase2,
+				binWidth2,
+				gapWidth2,
+				new MatchSimulatedPattern(DISTORTION.FFTSize), //matchSimulatedPattern= 
+				COMPONENTS,
+				THREADS_MAX,
+				DEBUG_LEVEL);
+		SDFA_INSTANCE.showArrays(
+				defectsBayer,
+				imp_sel.getWidth(),
+				imp_sel.getHeight(),
+				"Outlayer pixels");
+		int numDefects=0;
+		for (double d:defectsBayer) if (d!=0.0) numDefects++;
+		if (numDefects>0) System.out.println("Number of pixel (or phase) defects detected: "+numDefects);
+		else              System.out.println("No pixel defects detected");
+		return;
+	}
+/* ======================================================================== */
+	public void defects(){
+			int cmask=15; // // bitmask of color channels to process (9 - two greens)
+			int numPasses=1000; //
+			int numInBase=5;
+			double sigma=1.5;
+			int tileClearSize=128;
+			int tileMargins=16;
+			double binWidth=10.0; // if negative - relative to max-min
+			double gapWidth=20.0;
+			boolean processNoReplace=true;  // use linear approximation
+			int numInBase2=6;
+			double binWidth2=10.0; // if negative - relative to max-min
+			double gapWidth2=20.0;
+			int algNum=2;
+			GenericDialog gd = new GenericDialog("Sensor defects/phase misalignment checking");
+			gd.addNumericField("Tile clearSize", tileClearSize, 0 ,4, "pix");
+			gd.addNumericField("Tile margin (extra) width", tileMargins, 0 ,4, "pix");
+			gd.addNumericField("Color channel mask", cmask, 0 ,4, "9 - both green colors");
+			gd.addNumericField("Number of \"remove outlayers\" passes", numPasses, 0 ,4, "");
+			gd.addNumericField("Number of neighbors (of total 8) to base outlayers", numInBase, 0 ,4, "<=8");
+			gd.addNumericField("Base low-pass sigma ", sigma, 3 ,7, "double pixels");
+			gd.addCheckbox    ("Process tiles with no outlayer replacements", processNoReplace);
+			gd.addNumericField("\"Normal\" pixels variation", binWidth, 3 ,7, "");
+			gd.addNumericField("Empty level gap between \"normal\" pixels and outlayers", gapWidth, 3 ,7, "");
+
+			gd.addNumericField("Post-HPF algorithm number", algNum, 0 ,4, "(1 or 2");
+			gd.addNumericField("Number of neighbors (of total 8) to base outlayers (after high-pass), 0 - no filter", numInBase2, 0 ,4, "<=8");
+			gd.addNumericField("\"Normal\" pixels variation (after high-pass)", binWidth2, 3 ,7, "");
+			gd.addNumericField("Empty level gap between \"normal\" pixels and outlayers (after high-pass)", gapWidth2, 3 ,7, "");
+
+
+			gd.showDialog();
+			if (gd.wasCanceled()) return;
+			tileClearSize=    (int) gd.getNextNumber();
+			tileMargins=    (int) gd.getNextNumber();
+			cmask=           (int) gd.getNextNumber();
+			numPasses=       (int) gd.getNextNumber();
+			numInBase=       (int) gd.getNextNumber();
+			sigma=                 gd.getNextNumber();
+			processNoReplace=      gd.getNextBoolean();
+			binWidth =             gd.getNextNumber();
+			gapWidth =             gd.getNextNumber();
+
+			algNum=          (int) gd.getNextNumber();
+			numInBase2=      (int) gd.getNextNumber();
+			binWidth2 =            gd.getNextNumber();
+			gapWidth2 =            gd.getNextNumber();
+			SFEPhases.SensorDefects[] defectsStats=(new SFEPhases()).accummulateSensorDefects(
+					DISTORTION_PROCESS_CONFIGURATION,
+//					imp_sel,
+					tileClearSize,
+					tileMargins,
+					cmask, // bitmask of color channels to process (9 - two greens)
+					numPasses, // number of passes to replace outlayers (will end if none was replaced)
+					numInBase, // number of neighbors (of 8) to use as a base if they all agree
+					sigma, // for high-pass filtering
+					processNoReplace, // calculate differences even if no replacements were made
+					binWidth, // absolute
+					gapWidth, // absolute
+					algNum,
+					numInBase2,
+					binWidth2,
+					gapWidth2,
+					new MatchSimulatedPattern(DISTORTION.FFTSize), //matchSimulatedPattern= 
+					COMPONENTS,
+					this.SYNC_COMMAND.stopRequested,
+					THREADS_MAX,
+					DEBUG_LEVEL);
+			double [][] doubleDefectsStats=new double [defectsStats.length][];
+			int [] wh=null;
+			for (SFEPhases.SensorDefects sd:defectsStats) if (sd!=null){
+				wh=sd.getWidthHeight();
+				break;
+			}
+			for (int chn=0;chn<doubleDefectsStats.length;chn++){
+				if (defectsStats[chn]!=null){
+					int [] defReps=defectsStats[chn].getDefectRepetiotions();
+					doubleDefectsStats[chn]=new double [defReps.length];
+					for (int i=0;i<doubleDefectsStats[chn].length;i++) {
+						doubleDefectsStats[chn][i]=defReps[i];
+					}
+				} else {
+					doubleDefectsStats[chn]=new double [wh[0]*wh[1]];
+					for (int i=0;i<doubleDefectsStats[chn].length;i++) {
+						doubleDefectsStats[chn][i]=Double.NaN;
+					}		    		
+				}
+
+			}
+			String [] titles=new String [doubleDefectsStats.length];
+			for (int i=0;i<titles.length;i++){
+				titles[i]="chn_"+i;
+			}
+			this.SDFA_INSTANCE.showArrays(doubleDefectsStats, wh[0], wh[1],  true, "Pixel defects", titles);
+			do {} while ((new SFEPhases()).interactiveDefectivePixelList(
+					defectsStats,
+					true,  // boolean enableHot,
+					true,  // boolean enableCold,
+					false, // boolean enableMixed,
+					4,     // int minConfirmations,
+					1      //int debugLevel
+					));
+			return;
+		}
+//===================================================================================================
+	public void accummulateImages(
+			boolean interactive) {
+///	public ImagePlus[] getInteractiveAccumulatedImages(
+		ImagePlus [] accImages=(new SFEPhases()).getInteractiveAccumulatedImages(
+				DISTORTION_PROCESS_CONFIGURATION,
+				this.SYNC_COMMAND.stopRequested,
+				THREADS_MAX,
+				UPDATE_STATUS,
+				DEBUG_LEVEL);
+		boolean showImages=false;
+		boolean saveImages=true; // not yet implemented
+		if (interactive){
+			GenericDialog gd= new GenericDialog("accummulateImages");
+			gd.addCheckbox    ("Show accumulated images", showImages);
+			gd.addCheckbox    ("Save accumulated images", saveImages);
+			gd.showDialog();
+			if (gd.wasCanceled()) return; // cancel all command
+			showImages=gd.getNextBoolean();
+			saveImages=gd.getNextBoolean();
+		}
+		if (showImages) for (ImagePlus imp:accImages) if (imp!=null) imp.show();
+//	 SFEPhases sfe_phases= new SFEPhases();
+		SFEPhases.Defect[][] defectList=null;
+		//Defect [][] 
+		do {
+			defectList=	(new SFEPhases()).interactiveExtractDefectListsFromAccumulatedImages(
+					accImages,
+					128,  // tileClearSize,
+					16,   // tileMargins,
+					15,   // cmask, // bitmask of color channels to process (9 - two greens)
+					1000, // numPasses, // number of passes to replace outlayers (will end if none was replaced)
+					5,    // numInBase, // number of neighbors (of 8) to use as a base if they all agree
+					1.5,  // sigma, // for high-pass filtering
+					true, // processNoReplace, // calculate differences even if no replacements were made
+					3.0,  // binWidth,
+					5.0,  // gapWidth,
+					2,    // algorithmNumber,
+					6,    // numInBase2, // number of neighbors (of 8) to use as a base if they all agree
+					3.0,  // binWidth2, // absolute
+					5.0,  // gapWidth2, // absolute
+					true, // processHot,
+					true, // processCold,
+					new MatchSimulatedPattern(DISTORTION.FFTSize), //matchSimulatedPattern= 
+					COMPONENTS,
+					THREADS_MAX,
+					DEBUG_LEVEL);
+			if (defectList!=null){
+				System.out.println("Defective pixels lists report");
+				System.out.println("=============================");
+				int numInLine=8;
+				for (int chn=0;chn<defectList.length;chn++) if ((defectList[chn]!=null) && (defectList[chn].length>0)){
+					System.out.print("SFE #"+chn+" ("+defectList[chn].length+"): ");
+					for (int i=0;i<defectList[chn].length;i++){
+						System.out.print(defectList[chn][i].x+":"+defectList[chn][i].y+":"+IJ.d2s(defectList[chn][i].diff,3)+" ");
+						if (((i%numInLine)==(numInLine-1)) || (i == (defectList[chn].length-1))) System.out.println();
+					}
+					System.out.println();
+				}
+			}
+		} while (defectList!=null);
+		return;
+	}
+//===================================================================================================	
+	
+	
 	public boolean restoreFocusingHistory(boolean interactive){
 		if (!interactive && ((FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile==null) || (FOCUS_MEASUREMENT_PARAMETERS.focusingHistoryFile.length()==0))){
 			System.out.println("*** No focusing history to load!");
@@ -12018,7 +12354,7 @@ if (MORE_BUTTONS) {
 							Math.sqrt(sa*sa*x2y2xy[0]+ca*ca*x2y2xy[1]-2*ca*sa*x2y2xy[2]), 
 							Math.sqrt(ca*ca*x2y2xy[0]+sa*sa*x2y2xy[1]+2*ca*sa*x2y2xy[2])};
 */
-					// tanRad[0]/=(focusMeasurementParameters.subdiv/2); // to sesnor pixels
+					// tanRad[0]/=(focusMeasurementParameters.subdiv/2); // to sensor pixels
 					// tanRad[1]/=(focusMeasurementParameters.subdiv/2);
 					double [][]quadCoeff=null;
 					try {

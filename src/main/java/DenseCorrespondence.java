@@ -13,7 +13,7 @@ import javax.swing.SwingUtilities;
 
 
 public class DenseCorrespondence {
-	public double [][] disparityScales=       null; // for each image - a pair of {scaleX, scaleY} or null if undefined (interSesnor has the same)
+	public double [][] disparityScales=       null; // for each image - a pair of {scaleX, scaleY} or null if undefined (interSensor has the same)
 	public ImagePlus impDisparity=null;
 	public int corrFFTSize; // to properties    - 32 *4
 	public int overlapStep; // to properties    - 16

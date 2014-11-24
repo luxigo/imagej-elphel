@@ -629,7 +629,7 @@ Panel panel1,panel2;
 
       double [][] PSF_shifts=         new double [input_bayer.length][];    // X/Y shift of the PSF array, in Bayer component pioxel coordinates (same as PSF arrays)
       double [][] PSF_centroids=      new double [input_bayer.length][];    // X/Y coordinates of the centroids of PSF in Bayer component pioxel coordinates (same as PSF arrays) (after they were optionally shifted)
-      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sesnor pixel coordinates
+      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sensor pixel coordinates
       double [][]kernelsForFFT=       new double [input_bayer.length][];
       double [][] psf_inverted=       new double [input_bayer.length][];
       double [][] psf_inverted_masked=new double [input_bayer.length][];
@@ -5486,7 +5486,7 @@ public double [][][][] reversePSFKernels(double [][][][] PSFKernels, // 2-d arra
       }
       double [][] PSF_shifts=         new double [input_bayer.length][];    // X/Y shift of the PSF array, in Bayer component pioxel coordinates (same as PSF arrays)
       double [][] PSF_centroids=      new double [input_bayer.length][];    // X/Y coordinates of the centroids of PSF in Bayer component pioxel coordinates (same as PSF arrays) (after they were optionally shifted)
-      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sesnor pixel coordinates
+      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sensor pixel coordinates
       double [][] kernelsForFFT=      new double [input_bayer.length][];
       double [][] psf_inverted=       new double [input_bayer.length][];
       double [][] psf_inverted_masked=new double [input_bayer.length][];
@@ -6031,7 +6031,7 @@ public double [] extractCentroidFromReverseKernel(double [] smoothReverseKernel,
     return xy;
 }
 
-/* shift (like lateral chromatic aberration) in Bayer component to sesnor pixels */
+/* shift (like lateral chromatic aberration) in Bayer component to sensor pixels */
 
  public double [] shiftBayerToSensor ( double [] dxy,
                                            int color,

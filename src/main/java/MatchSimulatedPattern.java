@@ -3295,7 +3295,7 @@ public class MatchSimulatedPattern {
 					   );
 					   if (nodeQueue.isEmpty()) { // nodes==null){ 
 //						   if (debugLevel>1) System.out.println("All start points tried");
-						   if (global_debug_level>0) {
+						   if (global_debug_level>1) {
 							   System.out.println("All start points tried");
 							   int numLeft=0;
 							   for (boolean b:triedIndices) if (!b) numLeft++;

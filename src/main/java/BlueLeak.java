@@ -1,7 +1,3 @@
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 /**
 ** -----------------------------------------------------------------------------**
 ** BlueLeak.java
@@ -13,7 +9,7 @@ import java.util.List;
 **
 ** -----------------------------------------------------------------------------**
 **  
-**  EyesisCorrectionParameters.java is free software: you can redistribute it and/or modify
+**  BlueLeak.java is free software: you can redistribute it and/or modify
 **  it under the terms of the GNU General Public License as published by
 **  the Free Software Foundation, either version 3 of the License, or
 **  (at your option) any later version.
@@ -29,6 +25,9 @@ import java.util.List;
 **
 */
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class BlueLeak {
 	private double [][] rgb_in;

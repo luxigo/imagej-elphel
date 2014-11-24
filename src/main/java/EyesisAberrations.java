@@ -1262,7 +1262,7 @@ public class EyesisAberrations {
         							distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel);
                 			if (debugLevel>0) {
                 				if (applied) System.out.println("Applied sensor correction to the projected grid");
-                				else System.out.println("No sesnor correction available to apply to the projected grid");
+                				else System.out.println("No sensor correction available to apply to the projected grid");
                 			}
         				}
         			}

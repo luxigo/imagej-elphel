@@ -1025,7 +1025,7 @@ public class PostProcessing {
 
 	}
 	public class DisparityCorrelationParameters{
-    	public double [][] disparityScales=       null; // for each channel - a pair of {scaleX, scaleY} or null if undefined (interSesnor has the same)
+    	public double [][] disparityScales=       null; // for each channel - a pair of {scaleX, scaleY} or null if undefined (interSensor has the same)
     	public boolean autocorrelation=           false;
     	public int corrFFTSize=                 128;
     	public double corrXC=                  1280.0;
@@ -1437,7 +1437,7 @@ public class PostProcessing {
 			gd.addNumericField("Noise normalization sigma for Cb, Cr components",this.noiseNormalizationSignaCbCr,2,5,"pix"); // 5.0
 			gd.addNumericField("Contrast threshold",this.contrastThreshold,1,5,""); //1.5
 			gd.addCheckbox    ("Use binary alpha)", this.useBinaryAlpha); // true;
-//   	public double [][] disparityScales=       null; // for each channel - a pair of {scaleX, scaleY} or null if undefined (interSesnor has the same)
+//   	public double [][] disparityScales=       null; // for each channel - a pair of {scaleX, scaleY} or null if undefined (interSensor has the same)
 			if (this.disparityScales!=null) {
 				double [] disparityZero={0.0,0.0};
 				double [][] disparityPair={{-0.5,0.0},{0.5,0.0}};

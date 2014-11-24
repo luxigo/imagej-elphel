@@ -878,7 +878,7 @@ public class PixelMapping {
      * Generate a list of sensor pairs that have sufficient overlap areas
      * @param alphaThreshold minimal alpha value to consider (i.e. 0.0 - all with non-zero alpha)
      * @param overlapThreshold minimal fraction of the overlap area to square root of the product of the sensor areas 
-     * @return list of sesnor number pairs
+     * @return list of sensor number pairs
      */
     
     public int [][] findSensorPairs(
@@ -4822,7 +4822,7 @@ public class PixelMapping {
     	
     	
     	public class DisparityTiles{
-        	public double [][] disparityScales=       null; // for each channel - a pair of {scaleX, scaleY} or null if undefined (interSesnor has the same)
+        	public double [][] disparityScales=       null; // for each channel - a pair of {scaleX, scaleY} or null if undefined (interSensor has the same)
     		public ImagePlus impDisparity=null;
     		public int corrFFTSize; // to properties
     		public int overlapStep; // to properties
