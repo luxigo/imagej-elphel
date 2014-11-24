@@ -9748,20 +9748,20 @@ if (MORE_BUTTONS) {
 				DEBUG_LEVEL);
 		boolean showImages=false;
 		boolean saveImages=true; // not yet implemented
-		if (interactive){
-			GenericDialog gd= new GenericDialog("accummulateImages");
-			gd.addCheckbox    ("Show accumulated images", showImages);
-			gd.addCheckbox    ("Save accumulated images", saveImages);
-			gd.showDialog();
-			if (gd.wasCanceled()) return; // cancel all command
-			showImages=gd.getNextBoolean();
-			saveImages=gd.getNextBoolean();
-		}
-		if (showImages) for (ImagePlus imp:accImages) if (imp!=null) imp.show();
-//	 SFEPhases sfe_phases= new SFEPhases();
-		SFEPhases.Defect[][] defectList=null;
 		//Defect [][] 
+		SFEPhases.Defect[][] defectList=null;
 		do {
+			if (interactive){
+				GenericDialog gd= new GenericDialog("accummulateImages");
+				gd.addCheckbox    ("Show accumulated images", showImages);
+				gd.addCheckbox    ("Save accumulated images", saveImages);
+				gd.showDialog();
+				if (gd.wasCanceled()) return; // cancel all command
+				showImages=gd.getNextBoolean();
+				saveImages=gd.getNextBoolean();
+			}
+			if (showImages) for (ImagePlus imp:accImages) if (imp!=null) imp.show();
+//		 SFEPhases sfe_phases= new SFEPhases();
 			defectList=	(new SFEPhases()).interactiveExtractDefectListsFromAccumulatedImages(
 					accImages,
 					128,  // tileClearSize,
@@ -9779,6 +9779,8 @@ if (MORE_BUTTONS) {
 					5.0,  // gapWidth2, // absolute
 					true, // processHot,
 					true, // processCold,
+					true,  // updateSensorCalibrationFiles
+					false,  // clearDefects, // clear defects if none detected
 					new MatchSimulatedPattern(DISTORTION.FFTSize), //matchSimulatedPattern= 
 					COMPONENTS,
 					THREADS_MAX,
