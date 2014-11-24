@@ -5904,8 +5904,17 @@ List calibration
     	imp.setProperty("subchannel",  ""+camerasInterface.getSubChannel(numSensor));
     	imp.setProperty("comment_entrancePupilForward",  "entrance pupil distance from the azimuth/radius/height, outwards in mm");
     	imp.setProperty("entrancePupilForward",  ""+entrancePupilForward); // currently global, decoders will use per-sensor
-    	
-    	
+       	imp.setProperty("comment_defects", "Sensor hot/cold pixels list as x:y:difference");
+       	if (subCam.defectsXY!=null){
+    		StringBuffer sb = new StringBuffer();
+    		for (int i=0;i<subCam.defectsXY.length;i++){
+    			if (sb.length()>0) sb.append(" ");
+    			sb.append(subCam.defectsXY[i][0]+":"+subCam.defectsXY[i][1]+":"+subCam.defectsDiff[i]);
+    		}
+    		imp.setProperty("defects", sb.toString());
+//       	} else {
+//    		imp.setProperty("defects", null);
+       	}
     	
     	//camerasInterface, numSensor
     	(new JP46_Reader_camera(false)).encodeProperiesToInfo(imp);
@@ -6041,6 +6050,21 @@ List calibration
         	// Update intrinsic image parameters        
         	this.lensDistortionParameters.pixelSize=subCam.pixelSize;
         	this.lensDistortionParameters.distortionRadius=subCam.distortionRadius;
+        	if (imp.getProperty("defects")!=null) {
+        		String sDefects=(String) imp.getProperty("defects");
+        		String [] asDefects=sDefects.trim().split(" ");
+        		subCam.defectsXY=new int [asDefects.length][2];
+        		subCam.defectsDiff=new double [asDefects.length];
+        		for (int i=0;i<asDefects.length;i++) {
+        			String [] stDefect=asDefects[i].split(":");
+        			subCam.defectsXY[i][0]=Integer.parseInt(stDefect[0]);
+        			subCam.defectsXY[i][1]=Integer.parseInt(stDefect[1]);
+        			subCam.defectsDiff[i]=Double.parseDouble(stDefect[2]);
+        		}
+        	} else {
+        		subCam.defectsXY=null;
+        		subCam.defectsDiff=null;
+        	}
         }
         for (int imgNum=0;imgNum<fittingStrategy.distortionCalibrationData.getNumImages();imgNum++){
         	int imageSubCam=  fittingStrategy.distortionCalibrationData.getImageSubcamera(imgNum);
@@ -12811,6 +12835,8 @@ Which parameters affect which matrices
 		public double py0=968.0;           // center of the lens on the sensor, pixels
 		public double channelWeightDefault=1.0;
 		public double channelWeightCurrent=1.0;
+		public int [][] defectsXY=null; // pixel defects coordinates list (starting with worst)
+		public double [] defectsDiff=null; // pixel defects value (diff from average of neighbors), matching defectsXY
     	public EyesisSubCameraParameters(
     			double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     			double radius,  // mm, distance from the rotation axis
@@ -12852,7 +12878,11 @@ Which parameters affect which matrices
     		this.py0=py0;
     		this.channelWeightDefault=channelWeightDefault;
     		this.channelWeightCurrent=this.channelWeightDefault;
+    		this.defectsXY=null; // pixel defects coordinates list (starting with worst)
+    		this.defectsDiff=null; // pixel defects value (diff from average of neighbors), matching defectsXY
+
     	}
+    	// defects are not cloned!
     	public EyesisSubCameraParameters clone() {
     		return new EyesisSubCameraParameters(
     				this.azimuth,
