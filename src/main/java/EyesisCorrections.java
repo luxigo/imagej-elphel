@@ -53,6 +53,9 @@ public class EyesisCorrections {
 	public EyesisCorrectionParameters.CorrectionParameters correctionsParameters=null;
 	public boolean [] usedChannels;
 	public float [][] channelVignettingCorrection=null;
+	public int [][][] defectsXY=null; // per each channel: pixel defects coordinates list (starting with worst)
+	public double [][] defectsDiff=null; // per each channel: pixel defects value (diff from average of neighbors), matching defectsXY
+
 	public int   [][] channelWidthHeight=null; 
 	public ImagePlus [] imageNoiseGains=null;
 	public String [] sharpKernelPaths=null;
@@ -392,9 +395,14 @@ public class EyesisCorrections {
 	public void createChannelVignetting(){
 		this.channelWidthHeight=new int [this.usedChannels.length][];
 		this.channelVignettingCorrection=new float [this.usedChannels.length][];
+		this.defectsXY=new int [this.usedChannels.length][][];
+		this.defectsDiff=new double [this.usedChannels.length][];
+		
 		for (int nChn=0;nChn< this.usedChannels.length; nChn++){
 			this.channelWidthHeight[nChn]=null;
 			this.channelVignettingCorrection[nChn]=null;
+			this.defectsXY[nChn]=null;
+			this.defectsDiff[nChn]=null;
 		}
 		int [][] bayer={{1,0},{2,1}}; // GR/BG
 		ImagePlus imp=null,imp_composite=null;
@@ -455,11 +463,29 @@ public class EyesisCorrections {
 								this.channelWidthHeight[srcChannel][1],
 								bayer);
 						if (this.debugLevel>0){
-							System.out.println("Creating vignetting info for channel "+srcChannel+
+							System.out.println("Created vignetting info for channel "+srcChannel+
 									" subchannel="+subChannel+" ("+
 									correctionsParameters.getSourcePaths()[nFile]+")");
 							System.out.println("imageWidth= "+this.channelWidthHeight[srcChannel][0]+" imageHeight="+this.channelWidthHeight[srcChannel][1]);
 						}
+						this.defectsXY[srcChannel]=this.pixelMapping.getDefectsXY(srcChannel);
+						this.defectsDiff[srcChannel]=this.pixelMapping.getDefectsDiff(srcChannel);
+						if (this.debugLevel>0){
+							if (this.defectsXY[srcChannel]==null){
+								System.out.println("No pixel defects info is availabele for channel "+srcChannel);
+							} else {
+								System.out.println("Extracted "+this.defectsXY[srcChannel].length+" pixel outlayers for channel "+srcChannel+
+										" (x:y:difference");
+								int numInLine=8;
+								for (int i=0;i<this.defectsXY[srcChannel].length;i++){
+									System.out.print(this.defectsXY[srcChannel][0]+":"+this.defectsXY[srcChannel][1]);
+									if ((this.defectsDiff[srcChannel]!=null) && (this.defectsDiff[srcChannel].length>i)){
+										System.out.print(":"+IJ.d2s(this.defectsDiff[srcChannel][i],3)+" ");
+									}
+									if (((i%numInLine)==(numInLine-1)) || (i == (this.defectsXY[srcChannel].length-1))) System.out.println();
+								}
+							}
+						}						
 					}
 				}
 			}
@@ -825,7 +851,38 @@ public class EyesisCorrections {
  		return 	imp_warped;
 	}
 
-	
+	public int correctDefects(
+			ImagePlus imp,
+			int channel,
+			int debugLevel){
+		int numApplied=0;
+		if (this.correctionsParameters.pixelDefects && (this.defectsXY!=null)&& (this.defectsXY[channel]!=null)){
+			// apply pixel correction
+			float [] pixels=(float []) imp.getProcessor().getPixels();
+			int width=imp.getWidth();
+			int height=pixels.length/width;
+			int [] dirsRB={2,2*width,-2,-2*width};
+			int [] dirsG={width+1,width-1,-width-1,-width+1};
+			for (int i=0;i<this.defectsXY[channel].length;i++){
+				if ( // difference provided and is smaller than threshold
+						(this.defectsDiff != null) &&
+						(this.defectsDiff[channel]!=null) &&
+						(this.defectsDiff[channel].length>i) &&
+						(Math.abs(this.defectsDiff[channel][i])<this.correctionsParameters.pixelDefectsThreshold)) break;
+				int x=this.defectsXY[channel][i][0];
+				int y=this.defectsXY[channel][i][1];
+				int index=x+y*width;
+				int [] dirs=(((x^y)&1)==0)?dirsG:dirsRB;
+				// do not bother to correct border pixels
+				if ((x<2) || (y<2) || (x>(width-3)) || (y>height-3)) continue;
+				double s=0.0;
+				for (int dir=0;dir<dirs.length;dir++) s+=pixels[index+dirs[dir]];
+				pixels[index]=(float) (s/dirs.length);
+				numApplied++;
+			}
+		}
+		return numApplied;
+	}
 	
 	
 	public ImagePlus processChannelImage(
@@ -852,6 +909,16 @@ public class EyesisCorrections {
 		//		int channel= Integer.parseInt((String) imp_src.getProperty("channel"));
 		int channel= (Integer) imp_src.getProperty("channel");
 		String path= (String) imp_src.getProperty("path");
+		if (this.correctionsParameters.pixelDefects && (this.defectsXY!=null)&& (this.defectsXY[channel]!=null)){
+			// apply pixel correction
+			int numApplied=	correctDefects(
+					imp_src,
+					channel,
+					debugLevel);
+			if ((debugLevel>0) && (numApplied>0)) { // reduce verbosity after verified defect correction works
+				System.out.println("Corrected "+numApplied+" pixels in "+path);
+			}
+		}
 		if (this.correctionsParameters.vignetting){
 			if ((this.channelVignettingCorrection==null) || (channel<0) || (channel>=this.channelVignettingCorrection.length) || (this.channelVignettingCorrection[channel]==null)){
 				System.out.println("No vignetting data for channel "+channel);

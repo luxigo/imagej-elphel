@@ -9775,8 +9775,8 @@ if (MORE_BUTTONS) {
 					5.0,  // gapWidth,
 					2,    // algorithmNumber,
 					6,    // numInBase2, // number of neighbors (of 8) to use as a base if they all agree
-					3.0,  // binWidth2, // absolute
-					5.0,  // gapWidth2, // absolute
+					2.0,  // binWidth2, // absolute
+					4.0,  // gapWidth2, // absolute - will produce minimal defect of 5.0 (binWidth2/2+gapWidth2) 
 					true, // processHot,
 					true, // processCold,
 					true,  // updateSensorCalibrationFiles

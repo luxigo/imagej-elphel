@@ -38,6 +38,8 @@ public class EyesisCorrectionParameters {
     	public boolean swapSubchannels01=      true; // false; // (false: 0-1-2, true - 1-0-2)
   		public boolean split=                  true;
   		public boolean vignetting=             true;
+  		public boolean pixelDefects=           true;
+  		public double  pixelDefectsThreshold=  8.0; // normally none with less than 5.0 are stored?
   		public boolean debayer=                true;
   		public boolean showDebayerEnergy =     false;
   		public boolean saveDebayerEnergy =     true;
@@ -103,6 +105,8 @@ public class EyesisCorrectionParameters {
     	public void setProperties(String prefix,Properties properties){
   			properties.setProperty(prefix+"split",this.split+"");
   			properties.setProperty(prefix+"vignetting",this.vignetting+"");
+  			properties.setProperty(prefix+"pixelDefects",this.pixelDefects+"");
+  			properties.setProperty(prefix+"pixelDefectsThreshold",this.pixelDefectsThreshold+"");
   			properties.setProperty(prefix+"debayer",this.debayer+"");
   			properties.setProperty(prefix+"showDebayerEnergy",this.showDebayerEnergy+"");
   			properties.setProperty(prefix+"saveDebayerEnergy",this.saveDebayerEnergy+"");
@@ -176,6 +180,8 @@ public class EyesisCorrectionParameters {
     	public void getProperties(String prefix,Properties properties){
   		    if (properties.getProperty(prefix+"split")!=null) this.split=Boolean.parseBoolean(properties.getProperty(prefix+"split"));
   		    if (properties.getProperty(prefix+"vignetting")!=null) this.vignetting=Boolean.parseBoolean(properties.getProperty(prefix+"vignetting"));
+  		    if (properties.getProperty(prefix+"pixelDefects")!=null) this.pixelDefects=Boolean.parseBoolean(properties.getProperty(prefix+"pixelDefects"));
+  		    if (properties.getProperty(prefix+"pixelDefectsThreshold")!=null) this.pixelDefectsThreshold=Double.parseDouble(properties.getProperty(prefix+"pixelDefectsThreshold"));
   		    if (properties.getProperty(prefix+"debayer")!=null) this.debayer=Boolean.parseBoolean(properties.getProperty(prefix+"debayer"));
   		    if (properties.getProperty(prefix+"showDebayerEnergy")!=null) this.showDebayerEnergy=Boolean.parseBoolean(properties.getProperty(prefix+"showDebayerEnergy"));
   		    if (properties.getProperty(prefix+"saveDebayerEnergy")!=null) this.saveDebayerEnergy=Boolean.parseBoolean(properties.getProperty(prefix+"saveDebayerEnergy"));
@@ -254,6 +260,8 @@ public class EyesisCorrectionParameters {
     		GenericDialog gd = new GenericDialog(title);
     		gd.addCheckbox ("Splt into Bayer stack (if false will exit)",       this.split);
     		gd.addCheckbox ("Apply vignetting/color correction to source files",this.vignetting);
+    		gd.addCheckbox ("Replace hot/warm/cold pixels with average of neighbors",this.pixelDefects);
+    		gd.addNumericField("Pixel difference thershold to consider it \"bad\" on 255.0 scale (0 - use all)", this.pixelDefectsThreshold, 2,6,"8.0");
 			String [] choices={"none","absolute","relative"};
 			if (this.exposureCorrectionMode<0) this.exposureCorrectionMode=0;
 			else if (this.exposureCorrectionMode>=choices.length) this.exposureCorrectionMode=choices.length-1;
@@ -338,13 +346,13 @@ public class EyesisCorrectionParameters {
     		WindowTools.addScrollBars(gd);
     		gd.showDialog();
     		if (gd.wasCanceled()) return false;
-    		this.split=             gd.getNextBoolean();
+    		this.split=                  gd.getNextBoolean();
     		this.vignetting=             gd.getNextBoolean();
-    		
+    		this.pixelDefects=           gd.getNextBoolean();
+    		this.pixelDefectsThreshold=  gd.getNextNumber();
 			this.exposureCorrectionMode= gd.getNextChoiceIndex();
     		this.referenceExposure=0.001*gd.getNextNumber();
     		this.relativeExposure=       gd.getNextNumber();
-
     		this.debayer=           gd.getNextBoolean();
     		this.showDebayerEnergy= gd.getNextBoolean();
     		this.saveDebayerEnergy= gd.getNextBoolean();

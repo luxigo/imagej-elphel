@@ -177,7 +177,19 @@ public class PixelMapping {
 				height,
 				bayer);
 	}
-       	
+	
+	public int [][] getDefectsXY(
+			int channel){
+		if ((this.sensors == null) || (channel<0)  && (channel>=this.sensors.length))return null;
+		return this.sensors[channel].getDefectsXY();
+	}
+
+	public double[] getDefectsDiff(
+			int channel){
+		if ((this.sensors == null) || (channel<0)  && (channel>=this.sensors.length))return null;
+		return this.sensors[channel].getDefectsDiff();
+	}
+
 ///SensorData
        	/*
 		public float [] getBayerFlatFieldFloat(
@@ -15550,6 +15562,10 @@ public class PixelMapping {
 	    public int    debugLevel=1;
 	    public DirectMap directMap=null;
 	    public EquirectangularMap equirectangularMap=null;
+
+	    public int [][] defectsXY=null; // pixel defects coordinates list (starting with worst)
+		public double [] defectsDiff=null; // pixel defects value (diff from average of neighbors), matching defectsXY
+	    
 	    // TODO - add option to generate individual flat projections
 		public InterSensor interSensor=null; // multiple sensors may have the same instance of the interSensor
 
@@ -15714,6 +15730,12 @@ public class PixelMapping {
 				corrScale[y*width+x]= (float) d;
 			}
 			return corrScale;
+		}
+		public int [][] getDefectsXY(){
+			return this.defectsXY;
+		}
+		public double [] getDefectsDiff(){
+			return this.defectsDiff;
 		}
 	    
 	    public class  DirectMap{
@@ -16048,6 +16070,23 @@ public class PixelMapping {
 	        for (int n=0;n<pixels.length;n++) for (int i= 0;i<this.pixelCorrection[0].length;i++){
 	        	this.pixelCorrection[n][i]=pixels[n][i];
 	        }
+
+	        if (imp.getProperty("defects")!=null) {
+        		String sDefects=(String) imp.getProperty("defects");
+        		String [] asDefects=sDefects.trim().split(" ");
+        		this.defectsXY=new int [asDefects.length][2];
+        		this.defectsDiff=new double [asDefects.length];
+        		for (int i=0;i<asDefects.length;i++) {
+        			String [] stDefect=asDefects[i].split(":");
+        			this.defectsXY[i][0]=Integer.parseInt(stDefect[0]);
+        			this.defectsXY[i][1]=Integer.parseInt(stDefect[1]);
+        			this.defectsDiff[i]=Double.parseDouble(stDefect[2]);
+        		}
+        	} else {
+        		this.defectsXY=null;
+        		this.defectsDiff=null;
+        	}
+	        
 	        // now mask    
 	    }
 	    /**
