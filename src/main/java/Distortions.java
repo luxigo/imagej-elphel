@@ -13681,7 +13681,9 @@ Which parameters affect which matrices
         	}
         	if (this.stationZCorr==null) return this.gridGeometry[v1][u1];
         	double [] result=this.gridGeometry[v1][u1].clone();
-        	result[2]+=this.stationZCorr[v1][u1][station];
+// use lower station if grid file does not have current        	
+        	int useStation=(this.stationZCorr[v1][u1].length>station)?station:(this.stationZCorr[v1][u1].length-1);
+        	result[2]+=this.stationZCorr[v1][u1][useStation];
 			return result;
 //			return this.gridGeometry[v1][u1];
 		}
