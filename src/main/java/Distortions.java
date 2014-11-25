@@ -13836,15 +13836,16 @@ Which parameters affect which matrices
         	int index=u1+v1*this.gridGeometry[0].length;
         	if (getNumStations()<=station) updateNumStations(station+1);
         	int nView=this.viewMap[channel];
-			if (nView>=this.photometricByView[station].length){  // OOB 1// NUll pointer - need to run F-field first?
+        	int useStation=(this.stationZCorr!=null)?((this.stationZCorr[v1][u1].length>station)?station:(this.stationZCorr[v1][u1].length-1)):0;
+        	if (nView>=this.photometricByView[station].length){  // OOB 1// NUll pointer - need to run F-field first? (oob1 when grid had less than now
 				nView=this.photometricByView.length-1;
 			}
-        	int useStation=(this.stationZCorr!=null)?((this.stationZCorr[v1][u1].length>station)?station:(this.stationZCorr[v1][u1].length-1)):-1;
+
         	double [] result= { // null
         			this.gridGeometry[v1][u1][0],
         			this.gridGeometry[v1][u1][1],
 //        			this.gridGeometry[v1][u1][2]+((this.stationZCorr!=null)?this.stationZCorr[v1][u1][station]:0.0), // per-station correction
-        			this.gridGeometry[v1][u1][2]+((useStation>=0)?this.stationZCorr[v1][u1][useStation]:0.0), // per-station correction
+        			this.gridGeometry[v1][u1][2]+((this.stationZCorr!=null)?this.stationZCorr[v1][u1][useStation]:0.0), // per-station correction
         			this.gridGeometry[v1][u1][3],
         			this.photometricByView[station][nView][0][index],
         			this.photometricByView[station][nView][1][index],
