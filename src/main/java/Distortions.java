@@ -3095,12 +3095,20 @@ For each point in the image
 		int sensorWidth=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getSensorWidth(subCamera);
 		int sensorHeight=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getSensorHeight(subCamera);
 		System.out.println("estimateGridOnSensor(): subCamera="+subCamera+", goniometerHorizontal="+goniometerHorizontal+", goniometerAxial="+goniometerAxial);
-		calcInterParamers(
+/*		calcInterParamers(
 				this.lensDistortionParameters, // 22-long parameter vector for the image
 				null, // this.interParameterDerivatives, // [22][]
 				parVector,
 				null); // if no derivatives, null is OK
-//				false); // calculate this.interParameterDerivatives -derivatives array (false - just this.values)
+*/		
+		this.lensDistortionParameters.lensCalcInterParamers(
+				this.lensDistortionParameters, // 22-long parameter vector for the image
+				this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
+				null, // this.interParameterDerivatives, // [22][]
+				parVector,
+				null); // if no derivatives, null is OK
+		
+		
 		if (!lensDistortionParameters.isTargetVisible(this.debugLevel>0)) {
 			if (this.debugLevel>debugThreshold) System.out.println("Camera is looking away from the target");
 //			return null; // camera is looking away from the target (does not mean target is in FOV)
@@ -3216,8 +3224,9 @@ For each point in the image
 //		boolean [] imgMask= fittingStrategy.getImageParametersVectorMask(imgNum);
 		boolean [] imgMask= new boolean[imgVector.length];
 		for (int i=0;i<imgMask.length;i++) imgMask[i]=true;
-		calcInterParamers(
+		this.lensDistortionParameters.lensCalcInterParamers(
 				this.lensDistortionParameters,
+				this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
 				this.interParameterDerivatives, // [22][]
 				imgVector,
 				imgMask); // calculate only selected derivatives (all parVect values are still
@@ -3238,8 +3247,9 @@ For each point in the image
 		for (int i=0;i<this.lensDistortionParameters.getNumInputs();i++){
 			double [] vector_delta=imgVector.clone();
 			vector_delta[i]+=delta;
-			calcInterParamers(
+			this.lensDistortionParameters.lensCalcInterParamers(
 					this.lensDistortionParameters,
+					this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
 					null, // this.interParameterDerivatives, // just values, no derivatives
 					vector_delta, 
 					imgMask);
@@ -3276,7 +3286,9 @@ For each point in the image
 	 *   as a 1-d array that alternates pixel-X and pixel-Y for all images
 	 *   NOTE: this one is not thread safe
 	 */
-	public double [] calculateFxAndJacobian(double [] vector, boolean calcJacobian){ // when false, modifies only this.lensDistortionParameters.*
+	public double [] calculateFxAndJacobian(
+			double [] vector,
+			boolean calcJacobian){ // when false, modifies only this.lensDistortionParameters.*
 		if (vector==null) {
 			calcJacobian=false;
 //			vector = new double[0];
@@ -3321,8 +3333,9 @@ For each point in the image
 			if (this.debugLevel>2) {
 				System.out.println("calculateFxAndJacobian(), imgNum="+imgNum+" calcInterParamers():");
 			}
-			calcInterParamers(
+			this.lensDistortionParameters.lensCalcInterParamers(
 					this.lensDistortionParameters,
+					this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
 					calcJacobian?this.interParameterDerivatives:null, // [22][]
 					imgVector,
 					imgMask); // imgMask may be null if no derivativescalculate only selected derivatives (all parVect values are still
@@ -3437,8 +3450,9 @@ For each point in the image
 		// Calculate/set  this.lensDistortionParameters class, so it will calculate values/derivatives correctly)
 		// and this.interParameterDerivatives
 		if (this.debugLevel>3) System.out.println("calculatePartialFxAndJacobian(), numImage="+numImage+" calcInterParamers():");
-		calcInterParamers(
+		lensDistortionParameters.lensCalcInterParamers(
 				lensDistortionParameters,
+				this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
 				calcJacobian?interParameterDerivatives:null, // [22][]
 						imgVector,
 						imgMask); // calculate only selected derivatives (all parVect values are still
@@ -3492,7 +3506,10 @@ For each point in the image
 	 *   NOTE: this one is not thread safe (used this.lensDistortionParameters)
 	 */
 	// used only to debug derivatives (delta==0 - real derivatives, delta>0 - difference)
-	public double [][] calculateJacobian16(double [] vector, int imgNumber, double delta){ // these parameters can work for one image only
+	public double [][] calculateJacobian16(
+			double [] vector,
+			int imgNumber,
+			double delta){ // these parameters can work for one image only
         int doubleNumAllPoints=this.Y.length; // all points in all images multiplied by 2 (x and y error are separate)		
 		double [][] jacobian16=new double[16][doubleNumAllPoints];
 		double []   values=    new double[doubleNumAllPoints];
@@ -3516,8 +3533,9 @@ For each point in the image
 				if (this.debugLevel>2) {
 					System.out.println("calculateJacobian15(), imgNum="+imgNum+" calcInterParamers():");
 				}
-				calcInterParamers(
+				this.lensDistortionParameters.lensCalcInterParamers(
 						this.lensDistortionParameters,
+						this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
 						null, //this.interParameterDerivatives, // [22][]
 						imgVector,
 						imgMask); // calculate only selected derivatives (all parVect values are still
@@ -4059,8 +4077,9 @@ List calibration
 			if (this.debugLevel>2) {
 				System.out.println("listImageParameters(), imgNum="+imgNum+" calcInterParamers():");
 			}
-			calcInterParamers(
+			this.lensDistortionParameters.lensCalcInterParamers(
 					this.lensDistortionParameters,
+					this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
 					null, //this.interParameterDerivatives, // [22][]
 //					fittingStrategy.distortionCalibrationData.pars[imgNum], // 22-long parameter vector for the image
 					fittingStrategy.distortionCalibrationData.getParameters(imgNum), // 22-long parameter vector for the image
@@ -7478,6 +7497,7 @@ D2=
 			final int threadsMax,
 			final boolean updateStatus
 			){
+		final boolean isTripod=this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod;
 		final int [][] dirs=            {{0,0},{-1,0},{1,0},{0,-1},{0,1}}; // possible to make 8 directions
 		final double [][][] derivatives={ // for of /du, /dv 3 variants, depending on which neighbors are available
 				{
@@ -7527,8 +7547,9 @@ D2=
 						//		int chnNum=fittingStrategy.distortionCalibrationData.gIP[imgNum].channel; // number of sub-camera
 						cameraXYZ[imgNum]=new double[3];
 						// The following method sets this.lensDistortionParameters and invokes this.lensDistortionParameters.recalcCommons();
-						calcInterParamers(
+						lensDistortionParameters.lensCalcInterParamers(
 								lensDistortionParameters,
+								isTripod,
 								null, //this.interParameterDerivatives, // [22][]
 //								fittingStrategy.distortionCalibrationData.pars[imgNum], // 22-long parameter vector for the image
 								fittingStrategy.distortionCalibrationData.getParameters(imgNum), // 22-long parameter vector for the image
@@ -7722,8 +7743,9 @@ D2=
 //			int chnNum=fittingStrategy.distortionCalibrationData.gIP[imgNum].channel; // number of sub-camera
 			cameraXYZ[imgNum]=new double[3];
 			// The following method sets this.lensDistortionParameters and invokes this.lensDistortionParameters.recalcCommons();
-			calcInterParamers(
+			this.lensDistortionParameters.lensCalcInterParamers(
 					this.lensDistortionParameters,
+					this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
 					null, //this.interParameterDerivatives, // [22][]
 //					fittingStrategy.distortionCalibrationData.pars[imgNum], // 22-long parameter vector for the image
 					fittingStrategy.distortionCalibrationData.getParameters(imgNum), // 22-long parameter vector for the image
@@ -9482,683 +9504,6 @@ M * V = B
     public int getGridHeight() {
     	return patternParameters.gridGeometry.length;
     }
-    /**
-     * Calculate/set  this.lensDistortionParameters and this.interParameterDerivatives
-     * UPDATE - Modifies lensDistortionParameters, not "this" formulti-threaded 
-     * @param parVect 21-element vector for eyesis sub-camera, including common and individual parameters
-     * @param mask -mask - which partial derivatives are needed to be calculated (others will be null)
-     * @param calculateDerivatives calculate array of partial derivatives, if false - just the values
-     */
-    public void calcInterParamers(
-    		LensDistortionParameters lensDistortionParameters,
-            double [][] interParameterDerivatives, //partial derivative matrix from subcamera-camera-goniometer to single camera (12x21) if null - just values, no derivatives
-    		double [] parVect,
-    		boolean [] mask // calculate only selected derivatives (all parVect values are still
-//    		boolean calculateDerivatives // calculate this.interParameterDerivatives -derivatives array (false - just this.values)
-    		){
-    	boolean calculateDerivatives=(interParameterDerivatives!=null);  // calculate this.interParameterDerivatives -derivatives array (false - just this.values) 
-    	 // change meaning of goniometerHorizontal (tripod vertical) and goniometerAxial (tripod horizontal) 
-    	boolean isTripod=this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod;
-    	double azimuth=parVect[0];
-    	double radius= parVect[1];
-    	double height= parVect[2];
-    	double phi=    parVect[3];
-    	double theta=  parVect[4];
-    	double psi=    parVect[5];
-    	double goniometerHorizontal=parVect[6];
-    	double goniometerAxial=parVect[7];
-    	double interAxisDistance=parVect[8];
-    	double interAxisAngle=parVect[9];
-    	double horAxisErrPhi=parVect[10];
-    	double horAxisErrPsi=parVect[11];
-    	double entrancePupilForward=parVect[12];
-    	double centerAboveHorizontal=parVect[13];
-    	double GXYZ0=parVect[14];
-    	double GXYZ1=parVect[15];
-    	double GXYZ2=parVect[16];
-    	
-    	double cPS=   Math.cos(psi*Math.PI/180); // subCam.psi
-    	double sPS=   Math.sin(psi*Math.PI/180); // subCam.psi
-    	double cTH=   Math.cos(theta*Math.PI/180); // subCam.theta
-    	double sTH=   Math.sin(theta*Math.PI/180); // subCam.theta
-    	double cAZP=  Math.cos((azimuth+phi)*Math.PI/180); //subCam.azimuth+subCam.phi
-    	double sAZP=  Math.sin((azimuth+phi)*Math.PI/180); //subCam.azimuth+subCam.phi
-    	double cAZ=   Math.cos(azimuth*Math.PI/180); //subCam.azimuth
-    	double sAZ=   Math.sin(azimuth*Math.PI/180); //subCam.azimuth
-    	double cGA=   Math.cos(goniometerAxial*Math.PI/180); //eyesisCameraParameters.goniometerAxial
-    	double sGA=   Math.sin(goniometerAxial*Math.PI/180); //eyesisCameraParameters.goniometerAxial
-    	double cGH=   Math.cos(goniometerHorizontal*Math.PI/180); //eyesisCameraParameters.goniometerHorizontal
-    	double sGH=   Math.sin(goniometerHorizontal*Math.PI/180); //eyesisCameraParameters.goniometerHorizontal
-    	double cGIAA= Math.cos(interAxisAngle*Math.PI/180); // eyesisCameraParameters.interAxisAngle
-    	double sGIAA= Math.sin(interAxisAngle*Math.PI/180); //eyesisCameraParameters.interAxisAngle
-    	double cHAEPH=Math.cos(horAxisErrPhi*Math.PI/180); //eyesisCameraParameters.horAxisErrPhi
-    	double sHAEPH=Math.sin(horAxisErrPhi*Math.PI/180); //eyesisCameraParameters.horAxisErrPhi
-    	double cHAEPS=Math.cos(horAxisErrPsi*Math.PI/180); //eyesisCameraParameters.horAxisErrPsi
-    	double sHAEPS=Math.sin(horAxisErrPsi*Math.PI/180); //eyesisCameraParameters.horAxisErrPsi\
-    	
-/*
- 0) Translate by distance to entrance pupil (lens center)
-    	| Xc0 |   | 0                     |   |Xc|
-    	| Yc0 | = | 0                     | + |Yc|
-    	| Zc0 |   | entrancePupilForward  |   |Zc|
-    	*/
-    	double [][] aT0={{0.0},{0.0},{entrancePupilForward}};
-    	Matrix T0=new Matrix(aT0);
-    	
-/*
-Converting from the sub-camera coordinates to the target coordinates
-1) rotate by -psi around CZ: Vc1= R1*Vc
-| Xc1 |   | cos(psi)  sin(psi)    0         |   |Xc0|
-| Yc1 | = |-sin(psi)  cos(psi)    0         | * |Yc0|
-| Zc1 |   |    0         0        1         |   |Zc0|
-*/
-    	double [][] aR1={{cPS,sPS,0.0},{-sPS,cPS,0.0},{0.0,0.0,1.0}};
-    	Matrix R1=new Matrix(aR1);
-/*    	
-2) rotate by - theta around C1X:Vc2= R2*Vc1
-| Xc2 |   |    1         0         0        |   |Xc1|
-| Yc2 | = |    0    cos(theta)   sin(theta) | * |Yc1|
-| Zc2 |   |    0   -sin(theta)   cos(theta) |   |Zc1|
-*/
-    	double [][] aR2={{1.0,0.0,0.0},{0.0,cTH,sTH},{0.0,-sTH,cTH}};
-    	Matrix R2=new Matrix(aR2);
-/*    	
-3) rotate by -(azimuth+phi) around C2Y:Vc3= R3*Vc2
-| Xc3 |   | cos(azimuth+phi)    0   sin(azimuth+phi)   |   |Xc2|
-| Yc3 | = |     0               1         0            | * |Yc2|
-| Zc3 |   | -sin(azimuth+phi)   0   cos(azimuth+phi)   |   |Zc2|
-*/
-    	double [][] aR3={{cAZP,0.0,sAZP},{0.0,1.0,0.0},{-sAZP,0.0,cAZP}};
-    	Matrix R3=new Matrix(aR3);
-/*    	
-4) Now axes are aligned, just translate to get to eyesis coordinates: Vey= T1+Vc3
-| Xey |   |      r * sin (azimuth)       |   |Xc3|
-| Yey | = | height+centerAboveHorizontal | + |Yc3|
-| Zey |   |      r * cos (azimuth)       |   |Zc3|
-*/
-    	double [][] aT1={{radius*sAZ},{(height+centerAboveHorizontal)},{radius*cAZ}}; // {{subCam.radius*sAZ},{subCam.height},{subCam.radius*cAZ}};
-    	Matrix T1=new Matrix(aT1);
-    	
-/**
-5) rotate around moving goniometer axis, by (-goniometerAxial) - same as around EY: Vgm1=R4*Vey
-| Xgm1 |   |    1           0                     0              |   |Xey|
-| Ygm1 | = |    0   cos(goniometerAxial)  sin(goniometerAxial)   | * |Yey|
-| Zgm1 |   |    0   -sin(goniometerAxial) cos(goniometerAxial)   |   |Zey|
-*/
-    	double [][] aR4_tripod=    {{1.0,0.0,0.0},{0.0,cGA,sGA},{0.0,-sGA,cGA}};
-/*    	
-5) rotate around moving goniometer axis, by (-goniometerAxial) - same as around EY: Vgm1=R4*Vey
-| Xgm1 |   | cos(goniometerAxial)    0   sin(goniometerAxial)   |   |Xey|
-| Ygm1 | = |        0                1             0            | * |Yey|
-| Zgm1 |   |-sin(goniometerAxial)    0   cos(goniometerAxial)   |   |Zey|
-*/
-		double [][] aR4_goniometer={{cGA,0.0,sGA},{0.0,1.0,0.0},{-sGA,0.0,cGA}};
-		Matrix R4=new Matrix(isTripod?aR4_tripod:aR4_goniometer);
-/*    	
-6) move to the goniometer horizontal axis:Vgm2=T2+Vgm1
-| Xgm2 |   |                 0  |   |Xgm1|
-| Ygm2 | = |                 0  | + |Ygm1|
-| Zgm2 |   | interAxisDistance  |   |Zgm1|
-*/
-    	double [][] aT2={{0.0},{0.0},{interAxisDistance}}; //eyesisCameraParameters.interAxisDistance
-    	Matrix T2=new Matrix(aT2);
-/*    	
-7) rotate around Zgm2 by -interAxisAngle, so Xgm3 axis is the same as horizontal goniometer axis: Vgm3=R5*Vgm2
-| Xgm3 |   | cos(interAxisAngle)  sin(interAxisAngle)    0         |   |Xgm2|
-| Ygm3 | = |-sin(interAxisAngle)  cos(interAxisAngle)    0         | * |Ygm2|
-| Zgm3 |   |    0                         0              1         |   |Zgm2|
-*/
-    	double [][] aR5={{cGIAA,sGIAA,0.0},{-sGIAA,cGIAA,0.0},{0.0,0.0,1.0}};
-    	Matrix R5=new Matrix(aR5);
-/**
-8)  rotate around goniometer horizontal axis (Xgm3) by -goniometerHorizontal: Vgm4=R6*Vgm3
-| Xgm4 |   |    cos(goniometerHorizontal)  0   sin(goniometerHorizontal) |   |Xgm3|
-| Ygm4 | = |               0               1               0             | * |Ygm3|
-| Zgm4 |   |   -sin(goniometerHorizontal)  0   cos(goniometerHorizontal) |   |Zgm3|
-*/
-    	double [][] aR6_tripod=    {{cGH,0.0,sGH},{0.0,1.0,0.0},{-sGH,0.0,cGH}};
-/*    	
-8)  rotate around goniometer horizontal axis (Xgm3) by -goniometerHorizontal: Vgm4=R6*Vgm3
-| Xgm4 |   |    1                 0                           0            |   |Xgm3|
-| Ygm4 | = |    0    cos(goniometerHorizontal)   sin(goniometerHorizontal) | * |Ygm3|
-| Zgm4 |   |    0   -sin(goniometerHorizontal)   cos(goniometerHorizontal) |   |Zgm3|
-*/
-    	double [][] aR6_goniometer={{1.0,0.0,0.0},{0.0,cGH,sGH},{0.0,-sGH,cGH}};
-		Matrix R6=new Matrix(isTripod?aR6_tripod:aR6_goniometer);
-/*    	
-9) Correct roll error of the goniometer horizontal axis - rotate by -horAxisErrPsi around Zgm4: Vgm5=R7*Vgm4
-| Xgm5 |   | cos(horAxisErrPsi)  sin(horAxisErrPsi)    0         |   |Xgm4|
-| Ygm5 | = |-sin(horAxisErrPsi)  cos(horAxisErrPsi)    0         | * |Ygm4|
-| Zgm5 |   |         0                   0             1         |   |Zgm4|
-*/
-    	double [][] aR7={{cHAEPS,sHAEPS,0.0},{-sHAEPS,cHAEPS,0.0},{0.0,0.0,1.0}};
-    	Matrix R7=new Matrix(aR7);
-/*    	
-10) Correct azimuth error of the goniometer hoirizontal axis - rotate by -horAxisErrPhi around Ygm5: Vgm6=R8*Vgm5
- 
-| Xgm6 |   | cos(horAxisErrPhi)      0   sin(horAxisErrPhi)   |   |Xgm5|
-| Ygm6 | = |        0                1             0          | * |Ygm5|
-| Zgm6 |   |-sin(horAxisErrPhi)      0   cos(horAxisErrPhi)   |   |Zgm5|
-For Tripod - rotate around X-axis (like theta)
-| Xgm6 |   |   1           0                       0      |   |Xgm5|
-| Ygm6 | = |   0  cos(horAxisErrPhi)  sin(horAxisErrPhi)  | * |Ygm5|
-| Zgm6 |   |   0 -sin(horAxisErrPhi)  cos(horAxisErrPhi)  |   |Zgm5|
-
-*/
-    	double [][] aR8_tripod=    {{1.0,   0.0,   0.0},{0.0,cHAEPH,sHAEPH},{0.0,  -sHAEPH,cHAEPH}};
-    	double [][] aR8_goniometer={{cHAEPH,0.0,sHAEPH},{0.0,   1.0,   0.0},{-sHAEPH,  0.0,cHAEPH}};
-    	Matrix R8=new Matrix(isTripod?aR8_tripod:aR8_goniometer);
-/*    	
-11) translate to the target zero point: Vt=  T3+Vgm6
-| Xt |   | GXYZ[0]  |   |Xgm6|
-| Yt | = |-GXYZ[1]  | + |Ygm6| // Y - up positive
-| Zt |   |-GXYZ[2]  |   |Zgm6| // Z - away positive
-    	 */
-//    	double [][] aT3={{parVect[12]},{-parVect[13]},{-parVect[14]}};//{{eyesisCameraParameters.GXYZ[0]},{eyesisCameraParameters.GXYZ[1]},{eyesisCameraParameters.GXYZ[2]}};
-   	
-    	double [][] aT3={{GXYZ0},{-GXYZ1},{-GXYZ2}};//{{eyesisCameraParameters.GXYZ[0]},{eyesisCameraParameters.GXYZ[1]},{eyesisCameraParameters.GXYZ[2]}};
-//    	double [][] aT3={{parVect[12]},{ parVect[13]},{-parVect[14]}};//{{eyesisCameraParameters.GXYZ[0]},{eyesisCameraParameters.GXYZ[1]},{eyesisCameraParameters.GXYZ[2]}};
-    	Matrix T3=new Matrix(aT3);
-
-// MA=R8*R7*R6*R5*R4*R3*R2*R1;
-// MB=T3+(R8*R7*R6*R5*(T2+R4*T1)); - old
-// MB=T3+(R8*R7*R6*R5*(T2+R4*(T1+R3*R2*R1*T0)));
-        Matrix MA=R8.times(R7.times(R6.times(R5.times(R4.times(R3.times(R2.times(R1)))))));
-//        Matrix MB=T3.plus(R8.times(R7.times(R6.times(R5.times(T2.plus(R4.times(T1)))))));
-        Matrix MB=T3.plus(R8.times(R7.times(R6.times(R5.times(T2.plus(R4.times(T1.plus(R3.times(R2.times(R1.times(T0)))) )))))));
-		if (this.debugLevel>2) {
-			System.out.println("MA:");
-			MA.print(10, 5);
-			System.out.println("MB:");
-			MB.print(10, 5);
-			System.out.println("T3:");
-			T3.print(10, 5);
-//			System.out.println("interParameterDerivatives[0]="+sprintfArray(interParameterDerivatives[0]));
-		}
-        double [] extrinsicParams=lensDistortionParameters.parametersFromMAMB(MA,MB); // all after 6 are 0;
-        lensDistortionParameters.distance=extrinsicParams[2];
-        lensDistortionParameters.x0=extrinsicParams[0];
-        lensDistortionParameters.y0=extrinsicParams[1];
-        lensDistortionParameters.z0=0.0; // used here
-        lensDistortionParameters.pitch=extrinsicParams[4];
-        lensDistortionParameters.yaw=  extrinsicParams[3];
-        lensDistortionParameters.roll= extrinsicParams[5];
-//		lensDistortionParameters.focalLength=parVect[15]; //subCam.focalLength;
-//		lensDistortionParameters.px0=parVect[16]; //subCam.px0;
-//		lensDistortionParameters.py0=parVect[17]; //subCam.py0;
-//		lensDistortionParameters.distortionA5=parVect[18]; //subCam.distortion5;
-//		lensDistortionParameters.distortionA=parVect[19]; //subCam.distortionA;
-//		lensDistortionParameters.distortionB=parVect[20]; //subCam.distortionB;
-//		lensDistortionParameters.distortionC=parVect[21]; //subCam.distortionC;
-
-		lensDistortionParameters.focalLength=parVect[17]; //subCam.focalLength;
-		lensDistortionParameters.px0=parVect[18]; //subCam.px0;
-		lensDistortionParameters.py0=parVect[19]; //subCam.py0;
-		lensDistortionParameters.distortionA8=parVect[20]; //subCam.distortion5;
-		lensDistortionParameters.distortionA7=parVect[21]; //subCam.distortion5;
-		lensDistortionParameters.distortionA6=parVect[22]; //subCam.distortion5;
-		lensDistortionParameters.distortionA5=parVect[23]; //subCam.distortion5;
-		lensDistortionParameters.distortionA=parVect[24]; //subCam.distortionA;
-		lensDistortionParameters.distortionB=parVect[25]; //subCam.distortionB;
-		lensDistortionParameters.distortionC=parVect[26]; //subCam.distortionC;
-
-		
-		lensDistortionParameters.recalcCommons();
-        
-        
-        if (this.debugLevel>2){
-        	System.out.println("lensDistortionParameters.recalcCommons()");
-        	System.out.println("lensDistortionParameters.distance="+IJ.d2s(lensDistortionParameters.distance, 3));
-        	System.out.println("lensDistortionParameters.x0="+      IJ.d2s(lensDistortionParameters.x0, 3));
-        	System.out.println("lensDistortionParameters.y0="+      IJ.d2s(lensDistortionParameters.y0, 3));
-        	System.out.println("lensDistortionParameters.z0="+      IJ.d2s(lensDistortionParameters.z0, 3));
-        	System.out.println("lensDistortionParameters.pitch="+   IJ.d2s(lensDistortionParameters.pitch, 3));
-        	System.out.println("lensDistortionParameters.yaw="+IJ.d2s(lensDistortionParameters.yaw, 3));
-        	System.out.println("lensDistortionParameters.roll="+IJ.d2s(lensDistortionParameters.roll, 3));
-        	System.out.println("lensDistortionParameters.focalLength="+IJ.d2s(lensDistortionParameters.focalLength, 3));
-        	System.out.println("lensDistortionParameters.px0="+IJ.d2s(lensDistortionParameters.px0, 3));
-        	System.out.println("lensDistortionParameters.py0="+IJ.d2s(lensDistortionParameters.py0, 3));
-        	System.out.println("lensDistortionParameters.distortionA8="+IJ.d2s(lensDistortionParameters.distortionA8, 4));
-        	System.out.println("lensDistortionParameters.distortionA7="+IJ.d2s(lensDistortionParameters.distortionA7, 4));
-        	System.out.println("lensDistortionParameters.distortionA6="+IJ.d2s(lensDistortionParameters.distortionA6, 4));
-        	System.out.println("lensDistortionParameters.distortionA5="+IJ.d2s(lensDistortionParameters.distortionA5, 4));
-        	System.out.println("lensDistortionParameters.distortionA="+IJ.d2s(lensDistortionParameters.distortionA, 4));
-        	System.out.println("lensDistortionParameters.distortionB="+IJ.d2s(lensDistortionParameters.distortionB, 4));
-        	System.out.println("lensDistortionParameters.distortionC="+IJ.d2s(lensDistortionParameters.distortionC, 4));
-        }
-        if (!calculateDerivatives) return; 
-/* Calculate all derivativs as a matrix.
- *  Input parameters (columns):
-0    	public double azimuth; // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
-1    	public double radius;  // mm, distance from the rotation axis
-2   	public double height;       // mm, up (was downwards?) - from the origin point
-3   	public double phi;     // degrees, optical axis from azimuth/r vector, clockwise
-4   	public double theta;   // degrees, optical axis from the eyesis horizon, positive - up
-5   	public double psi;     // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
-6   	public double goniometerHorizontal; // goniometer rotation around "horizontal" axis (tilting from the target - positive)
-7   	public double goniometerAxial; // goniometer rotation around Eyesis axis (clockwise in plan - positive 
-8   	public double interAxisDistance; // distance in mm between two goniometer axes
-9    	public double interAxisAngle;    // angle in degrees between two goniometer axes minus 90. negative if "vertical" axis is rotated
-10   	public double horAxisErrPhi;   // angle in degrees "horizontal" goniometer axis is rotated around target Y axis from target X axis (CW)
-11   	public double horAxisErrPsi;   // angle in degrees "horizontal" goniometer axis is rotated around moving X axis (up)
-Two new parameters
-12    	public double entrancePupilForward; // common to all lenses - distance from the sensor to the lens entrance pupil
-13    	public double centerAboveHorizontal; // camera center distance along camera axis above the closest point to horizontal rotation axis (adds to 
-14(12)  x	public double [] GXYZ=null; // coordinates (in mm) of the goniometer horizontal axis closest to the moving one in target system 
-15(13)  y
-16(14)  z
-17(15)	public double focalLength=4.5;
-18(16)	public double px0=1296.0;          // center of the lens on the sensor, pixels
-19(17)		public double py0=968.0;           // center of the lens on the sensor, pixels
-20(18)		public double distortionA8=0.0; // r^5 (normalized to focal length or to sensor half width?)
-21(19)		public double distortionA7=0.0; // r^5 (normalized to focal length or to sensor half width?)
-22(20)		public double distortionA6=0.0; // r^5 (normalized to focal length or to sensor half width?)
-23(21)		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
-24(22)		public double distortionA=0.0; // r^4 (normalized to focal length or to sensor half width?)
-25(23)		public double distortionB=0.0; // r^3
-26(24)		public double distortionC=0.0; // r^2
-
- * Output parameters (rows):
-0		public double x0=0;      // lens axis from pattern center, mm (to the right)
-1		public double y0=0;      // lens axis from pattern center, mm (down)
-2		public double distance=2360; // distance from the lens input pupil to the pattern plane along the camera axis, mm
-3		public double yaw=0.0;   // angle in degrees from perpendicular to the pattern, 0 - towards wall, positive - clockwise from top
-4		public double pitch=0.0; // angle in degrees from perpendicular to the pattern, 0 - towards wall, positive - up
-5		public double roll=0.0;  // angle in degrees rotation around camera optical axis (perpendicular to pattern if yaw==0, pitch==0), positive - clockwise
-6		public double focalLength=4.5;
-7		public double px0=1296.0;           // center of the lens on the sensor, pixels
-8		public double py0=968.0;           // center of the lens on the sensor, pixels
- 		public double distortionRadius=  2.8512; // mm - half width of the sensor
-9		public double distortionA8=0.0; // r^8 (normalized to focal length or to sensor half width?)
-10		public double distortionA7=0.0; // r^7 (normalized to focal length or to sensor half width?)
-11		public double distortionA6=0.0; // r^6 (normalized to focal length or to sensor half width?)
-12		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
-13		public double distortionA=0.0; // r^4 (normalized to focal length or to sensor half width?)
-14		public double distortionB=0.0; // r^3
-15		public double distortionC=0.0; // r^2
- */
-//        interParameterDerivatives=new double[getNumInputs()][]; //partial derivative matrix from subcamera-camera-goniometer to single camera (12x21)
-        
-//calculate dMA_azimuth        
-//calculate dMB_azimuth        
-/*
-// MA=R8*R7*R6*R5*R4*R3*R2*R1;
-// MB=T3+(R8*R7*R6*R5*(T2+R4*T1)); - old
-// MB=T3+(R8*R7*R6*R5*(T2+R4*(T1+R3*R2*R1*T0)));
-        Matrix MA=R8.times(R7.times(R6.times(R5.times(R4.times(R3.times(R2.times(R1)))))));
-        Matrix MB=T3.plus(R8.times(R7.times(R6.times(R5.times(T2.plus(R4.times(T1)))))));  old
-        Matrix MB=T3.plus(R8.times(R7.times(R6.times(R5.times(T2.plus(R4.times(T1.plus(R3.times(R2.times(R1.times(T0)))) )))))));
-3) rotate by -(azimuth+phi) around C2Y:Vc3= R3*Vc2
-| Xc3 |   | cos(azimuth+phi)    0   sin(azimuth+phi)   |   |Xc2|
-| Yc3 | = |     0               1         0            | * |Yc2|
-| Zc3 |   | -sin(azimuth+phi)   0   cos(azimuth+phi)   |   |Zc2|
-    	double [][] aR3={{cAZP,0.0,sAZP},{0.0,1.0,0.0},{-sAZP,0.0,cAZP}};
-    	Matrix R3=new Matrix(aR3);
-4) Now axes are aligned, just translate to get to eyesis coordinates: Vey= T1+Vc3
-| Xey |   |  r * sin (azimuth)  |   |Xc3|
-| Yey | = |             height  | + |Yc3|
-| Zey |   |  r * cos (azimuth)  |   |Zc3|
-    	double [][] aT1={{subCam.radius*sAZ},{subCam.height},{subCam.radius*cAZ}};
-    	Matrix T1=new Matrix(aT1);
-
-        Matrix 
-// Make a function MA, MB - >parameters (column) - reuse it above and for each    interParameterDerivatives row
-Matrix dMA_azimuth=R8*R7*R6*R5*R4*dR3_azimuth*R2*R1;
-Matrix dMB_azimuth=T3+(R8*R7*R6*R5*(R4*dT1_azimuth));
-
-Use extrinsicParams=parametersFromMAMB(dMA_azimuth,dMB_azimuth);
-	       		if (this.debugLevel>3) {
-	    			System.out.println("calculateFxAndJacobian->calcPartialDerivatives("+IJ.d2s(targetXYZ[fullIndex][0],2)+","+
-	    					IJ.d2s(targetXYZ[fullIndex][1],2)+","+
-	    					IJ.d2s(targetXYZ[fullIndex][2],2)+" ("+calcJacobian+") -> "+
-	    					IJ.d2s(derivatives14[0][0],2)+"/"+IJ.d2s(derivatives14[0][1],2));
-	    		}
-
-Which parameters affect which matrices
-                                               R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 || T0 | T1 | T2 | T3 |
-0    	public double azimuth;              //    |    | +  |    |    |    |    |    ||    | +  |    |    |
-1    	public double radius;               //    |    |    |    |    |    |    |    ||    | +  |    |    |
-2   	public double height;               //    |    |    |    |    |    |    |    ||    | +  |    |    |
-3   	public double phi;                  //    |    | +  |    |    |    |    |    ||    |    |    |    |
-4   	public double theta;                //    | +  |    |    |    |    |    |    ||    |    |    |    |
-5   	public double psi;                  // +  |    |    |    |    |    |    |    ||    |    |    |    |
-6   	public double goniometerHorizontal; //    |    |    |    |    | +  |    |    ||    |    |    |    |
-7   	public double goniometerAxial;      //    |    |    | +  |    |    |    |    ||    |    |    |    |
-8   	public double interAxisDistance;    //    |    |    |    |    |    |    |    ||    |    | +  |    |
-9    	public double interAxisAngle;       //    |    |    |    | +  |    |    |    ||    |    |    |    |
-10   	public double horAxisErrPhi;        //    |    |    |    |    |    |    | +  ||    |    |    |    |
-11   	public double horAxisErrPsi;        //    |    |    |    |    |    | +  |    ||    |    |    |    |
-12      public double entrancePupilForward  //    |    |    |    |    |    |    |    || +  |    |    |    |
-13      public double centerAboveHorizontal //    |    |    |    |    |    |    |    ||    | +  |    |    |
-14  x	public double [] GXYZ=null;         //    |    |    |    |    |    |    |    ||    |    |    | +  |
-15  y                                       //    |    |    |    |    |    |    |    ||    |    |    | +  |
-16  z                                       //    |    |    |    |    |    |    |    ||    |    |    | +  |
-
- */
-// Below can be optimized with common intermediate results
-   		if (this.debugLevel>2) {
-   			for (int i=0;i<parVect.length;i++){
-   				System.out.println("calcInterParamers(): parVect["+i+"]="+parVect[i]);
-   			}
-   		}
-//0    	public double azimuth; // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
-        if (mask[0]) {
-        	double [][] adR3_azimuth={{-sAZP,0.0,cAZP},{0.0,0.0,0.0},{-cAZP,0.0,-sAZP}};
-        	Matrix dR3_azimuth=new Matrix(adR3_azimuth);
-//        	double [][] adT1_azimuth={{radius*cAZ},{height},{-radius*sAZ}}; //{{subCam.radius*cAZ},{subCam.height},{-subCam.radius*sAZ}}
-        	double [][] adT1_azimuth={{radius*cAZ},{0.0},{-radius*sAZ}}; //{{subCam.radius*cAZ},{subCam.height},{-subCam.radius*sAZ}}
-        	Matrix dT1_azimuth=new Matrix(adT1_azimuth);
-        	
-        	Matrix dMA_azimuth=R8.times(R7.times(R6.times(R5.times(R4.times(dR3_azimuth.times(R2.times(R1)))))));
-        	Matrix dMB0_azimuth=R8.times(R7.times(R6.times(R5.times(R4.times(dT1_azimuth)))));
-        	Matrix dMB_azimuth=dMB0_azimuth.plus(dMA_azimuth.times(T0)); // new term
-        	interParameterDerivatives[0]=lensDistortionParameters.d_parametersFromMAMB(dMA_azimuth,dMB_azimuth,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_azimuth:");
-    			dMA_azimuth.print(10, 5);
-    			System.out.println("dMB_azimuth:");
-    			dMB_azimuth.print(10, 5);
-    			System.out.println("interParameterDerivatives[0]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[0]));
-    		}
-        	
-        } else interParameterDerivatives[0]=null;
-//1    	public double radius;  // mm, distance from the rotation axis
-        if (mask[1]) {
-        	double [][] adT1_radius={{sAZ},{0.0},{cAZ}}; //{{subCam.radius*sAZ},{0.0},{subCam.radius*cAZ}}
-        	Matrix dT1_radius=new Matrix(adT1_radius);
-        	Matrix dMA_radius=new Matrix(3,3,0.0);
-        	Matrix dMB_radius=R8.times(R7.times(R6.times(R5.times(R4.times(dT1_radius)))));
-        	interParameterDerivatives[1]=lensDistortionParameters.d_parametersFromMAMB(dMA_radius,dMB_radius,MA,MB,false); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_radius:");
-    			dMA_radius.print(10, 5);
-    			System.out.println("dMB_radius:");
-    			dMB_radius.print(10, 5);
-    			System.out.println("interParameterDerivatives[1]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[1]));
-    		}
-        } else interParameterDerivatives[1]=null; 
-//2   	public double height;       // mm, downwards - from the origin point
-        if (mask[2]) {
-        	double [][] adT1_height={{0.0},{1.0},{0.0}};
-        	Matrix dT1_height=new Matrix(adT1_height);
-        	Matrix dMA_height=new Matrix(3,3,0.0);
-        	Matrix dMB_height=R8.times(R7.times(R6.times(R5.times(R4.times(dT1_height)))));
-        	interParameterDerivatives[2]=lensDistortionParameters.d_parametersFromMAMB(dMA_height,dMB_height,MA,MB,false); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_height:");
-    			dMA_height.print(10, 5);
-    			System.out.println("dMB_height:");
-    			dMB_height.print(10, 5);
-    			System.out.println("interParameterDerivatives[2]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[2]));
-    		}
-        } else interParameterDerivatives[2]=null; 
-//3   	public double phi;     // degrees, optical axis from azimuth/r vector, clockwise
-        if (mask[3]) {
-        	double [][] adR3_phi={{-sAZP,0.0,cAZP},{0.0,0.0,0.0},{-cAZP,0.0,-sAZP}}; // same as adR3_azimuth
-        	Matrix dR3_phi=new Matrix(adR3_phi); // same as dR3_azimuth
-        	Matrix dMA_phi=R8.times(R7.times(R6.times(R5.times(R4.times(dR3_phi.times(R2.times(R1))))))); //same as dMA_azimuth
-//        	Matrix dMB_phi=new Matrix(3,1,0.0);
-        	Matrix dMB_phi=dMA_phi.times(T0); // new term
-        	interParameterDerivatives[3]=lensDistortionParameters.d_parametersFromMAMB(dMA_phi,dMB_phi,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_phi:");
-    			dMA_phi.print(10, 5);
-    			System.out.println("dMB_phi:");
-    			dMB_phi.print(10, 5);
-    			System.out.println("interParameterDerivatives[3]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[3]));
-    		}
-        } else interParameterDerivatives[3]=null; 
-//4   	public double theta;   // degrees, optical axis from the eyesis horizon, positive - up
-        if (mask[4]) {
-        	double [][] adR2_theta={{0.0,0.0,0.0},{0.0,-sTH,cTH},{0.0,-cTH,-sTH}};
-        	Matrix dR2_theta=new Matrix(adR2_theta);
-        	Matrix dMA_theta=R8.times(R7.times(R6.times(R5.times(R4.times(R3.times(dR2_theta.times(R1)))))));
-//        	Matrix dMB_theta=new Matrix(3,1,0.0);
-        	Matrix dMB_theta=dMA_theta.times(T0); // new term
-        	interParameterDerivatives[4]=lensDistortionParameters.d_parametersFromMAMB(dMA_theta,dMB_theta,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_theta:");
-    			dMA_theta.print(10, 5);
-    			System.out.println("dMB_theta:");
-    			dMB_theta.print(10, 5);
-    			System.out.println("interParameterDerivatives[4]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[4]));
-    		}
-        } else interParameterDerivatives[4]=null; 
-//5   	public double psi;     // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
-        if (mask[5]) {
-        	double [][] adR1_psi={{-sPS,cPS,0.0},{-cPS,-sPS,0.0},{0.0,0.0,0.0}};
-        	Matrix dR1_psi=new Matrix(adR1_psi);
-        	Matrix dMA_psi=R8.times(R7.times(R6.times(R5.times(R4.times(R3.times(R2.times(dR1_psi)))))));
-//        	Matrix dMB_psi=new Matrix(3,1,0.0);
-        	Matrix dMB_psi=dMA_psi.times(T0); // new term
-        	interParameterDerivatives[5]=lensDistortionParameters.d_parametersFromMAMB(dMA_psi,dMB_psi,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-/*    			
-    			System.out.print("R1:");
-    			R1.print(10, 5);
-    			System.out.print("dR1_psi:");
-    			dR1_psi.print(10, 5);
-    			Matrix R82_psi=R8.times(R7.times(R6.times(R5.times(R4.times(R3.times(R2))))));
-    			System.out.print("R82_psi:");
-    			R82_psi.print(10, 5);
-    			*/
-    			System.out.print("dMA_psi:");
-    			dMA_psi.print(10, 5);
-    			System.out.print("dMB_psi:");
-    			dMB_psi.print(10, 5);
-    			System.out.println("interParameterDerivatives[5]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[5]));
-    		}
-        } else interParameterDerivatives[5]=null; 
-//6   	public double goniometerHorizontal; // goniometer rotation around "horizontal" axis (tilting from the target - positive)
-        if (mask[6]) {
-/* define for isTripod */
-        	double [][] adR6_goniometerHorizontal_tripod=    {{-sGH,0.0,cGH},{0.0, 0.0,0.0},{-cGH, 0.0,-sGH}};
-        	double [][] adR6_goniometerHorizontal_goniometer={{ 0.0,0.0,0.0},{0.0,-sGH,cGH},{ 0.0,-cGH,-sGH}};
-        	Matrix dR6_goniometerHorizontal=new Matrix(isTripod?adR6_goniometerHorizontal_tripod:adR6_goniometerHorizontal_goniometer);
-        	Matrix dMA_goniometerHorizontal=R8.times(R7.times(dR6_goniometerHorizontal.times(R5.times(R4.times(R3.times(R2.times(R1)))))));
-        	Matrix dMB_goniometerHorizontal=R8.times(R7.times(dR6_goniometerHorizontal.times(R5.times(T2.plus(R4.times(T1))))));
-        	interParameterDerivatives[6]=lensDistortionParameters.d_parametersFromMAMB(dMA_goniometerHorizontal,dMB_goniometerHorizontal,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_goniometerHorizontal:");
-    			dMA_goniometerHorizontal.print(10, 5);
-    			System.out.println("dMB_goniometerHorizontal:");
-    			dMB_goniometerHorizontal.print(10, 5);
-    			System.out.println("interParameterDerivatives[6]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[6]));
-    		}
-        } else interParameterDerivatives[6]=null; 
-//7   	public double goniometerAxial; // goniometer rotation around Eyesis axis (clockwise in plan - positive 
-        if (mask[7]) {
-// define for isTripod
-        	double [][] adR4_goniometerAxial_tripod=    {{ 0.0,0.0,0.0},{0.0,-sGA,cGA},{ 0.0,-cGA,-sGA}};
-        	double [][] adR4_goniometerAxial_goniometer={{-sGA,0.0,cGA},{0.0, 0.0,0.0},{-cGA, 0.0,-sGA}};
-        	Matrix dR4_goniometerAxial=new Matrix(isTripod?adR4_goniometerAxial_tripod:adR4_goniometerAxial_goniometer);
-        	Matrix dMA_goniometerAxial=R8.times(R7.times(R6.times(R5.times(dR4_goniometerAxial.times(R3.times(R2.times(R1)))))));
-        	Matrix dMB_goniometerAxial=R8.times(R7.times(R6.times(R5.times(dR4_goniometerAxial.times(T1)))));
-        	interParameterDerivatives[7]=lensDistortionParameters.d_parametersFromMAMB(dMA_goniometerAxial,dMB_goniometerAxial,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_goniometerAxial:");
-    			dMA_goniometerAxial.print(10, 5);
-    			System.out.println("dMB_goniometerAxial:");
-    			dMB_goniometerAxial.print(10, 5);
-    			System.out.println("interParameterDerivatives[7]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[7]));
-    		}
-        } else interParameterDerivatives[7]=null; 
-//8   	public double interAxisDistance; // distance in mm between two goniometer axes
-        if (mask[8]) {
-        	double [][] adT2_interAxisDistance={{0.0},{0.0},{1.0}};
-        	Matrix dT2_interAxisDistance=new Matrix(adT2_interAxisDistance);
-        	Matrix dMA_interAxisDistance=new Matrix(3,3,0.0);
-        	Matrix dMB_interAxisDistance=R8.times(R7.times(R6.times(R5.times(dT2_interAxisDistance))));
-        	interParameterDerivatives[8]=lensDistortionParameters.d_parametersFromMAMB(dMA_interAxisDistance,dMB_interAxisDistance,MA,MB,false); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_interAxisDistance:");
-    			dMA_interAxisDistance.print(10, 5);
-    			System.out.println("dMB_interAxisDistance:");
-    			dMB_interAxisDistance.print(10, 5);
-    			System.out.println("interParameterDerivatives[8]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[8]));
-    		}
-        } else interParameterDerivatives[8]=null; 
-//9    	public double interAxisAngle;    // angle in degrees between two goniometer axes minus 90. negative if "vertical" axis is rotated
-        if (mask[9]) {
-        	double [][] adR5_interAxisAngle={{-sGIAA,cGIAA,0.0},{-cGIAA,-sGIAA,0.0},{0.0,0.0,0.0}};
-        	Matrix dR5_interAxisAngle=new Matrix(adR5_interAxisAngle);
-        	Matrix dMA_interAxisAngle=R8.times(R7.times(R6.times(dR5_interAxisAngle.times(R4.times(R3.times(R2.times(R1)))))));
-        	Matrix dMB_interAxisAngle=R8.times(R7.times(R6.times(dR5_interAxisAngle.times(T2.plus(R4.times(T1))))));    	
-        	interParameterDerivatives[9]=lensDistortionParameters.d_parametersFromMAMB(dMA_interAxisAngle,dMB_interAxisAngle,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_interAxisAngle:");
-    			dMA_interAxisAngle.print(10, 5);
-    			System.out.println("dMB_interAxisAngle:");
-    			dMB_interAxisAngle.print(10, 5);
-    			System.out.println("interParameterDerivatives[9]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[9]));
-    		}
-        } else interParameterDerivatives[9]=null; 
-//10   	public double horAxisErrPhi;   // angle in degrees "horizontal" goniometer axis is rotated around target Y axis from target X axis (CW)
-        
-// change sHAEPH to rotate like theta /1 0 0 /0 c s/ 0 -s c/ (derivative -/0 0 0 /0 -s c/ 0 -c -s/         
-        if (mask[10]) {
-        	double [][] adR8_horAxisErrPhi_tripod=    {{0.0,   0.0,    0.0},{0.0,-sHAEPH,cHAEPH},{    0.0,-cHAEPH,-sHAEPH}};
-        	double [][] adR8_horAxisErrPhi_goniometer={{-sHAEPH,0.0,cHAEPH},{0.0,    0.0,   0.0},{-cHAEPH,    0.0,-sHAEPH}};
-        	Matrix dR8_horAxisErrPhi=new Matrix(isTripod?adR8_horAxisErrPhi_tripod:adR8_horAxisErrPhi_goniometer);
-        	Matrix dMA_horAxisErrPhi=dR8_horAxisErrPhi.times(R7.times(R6.times(R5.times(R4.times(R3.times(R2.times(R1)))))));
-        	Matrix dMB_horAxisErrPhi=dR8_horAxisErrPhi.times(R7.times(R6.times(R5.times(T2.plus(R4.times(T1))))));
-        	interParameterDerivatives[10]=lensDistortionParameters.d_parametersFromMAMB(dMA_horAxisErrPhi,dMB_horAxisErrPhi,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_horAxisErrPhi:");
-    			dMA_horAxisErrPhi.print(10, 5);
-    			System.out.println("dMB_horAxisErrPhi:");
-    			dMB_horAxisErrPhi.print(10, 5);
-    			System.out.println("interParameterDerivatives[10]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[10]));
-    		}
-        } else interParameterDerivatives[10]=null; 
-//11   	public double horAxisErrPsi;   // angle in degrees "horizontal" goniometer axis is rotated around moving X axis (up)
-        if (mask[11]) {
-        	double [][] adR7_horAxisErrPsi={{-sHAEPS,cHAEPS,0.0},{-cHAEPS,-sHAEPS,0.0},{0.0,0.0,0.0}};
-        	Matrix dR7_horAxisErrPsi=new Matrix(adR7_horAxisErrPsi);
-        	Matrix dMA_horAxisErrPsi=R8.times(dR7_horAxisErrPsi.times(R6.times(R5.times(R4.times(R3.times(R2.times(R1)))))));
-        	Matrix dMB_horAxisErrPsi=R8.times(dR7_horAxisErrPsi.times(R6.times(R5.times(T2.plus(R4.times(T1))))));
-        	interParameterDerivatives[11]=lensDistortionParameters.d_parametersFromMAMB(dMA_horAxisErrPsi,dMB_horAxisErrPsi,MA,MB,true); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_horAxisErrPsi:");
-    			dMA_horAxisErrPsi.print(10, 5);
-    			System.out.println("dMB_horAxisErrPsi:");
-    			dMB_horAxisErrPsi.print(10, 5);
-    			System.out.println("interParameterDerivatives[11]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[11]));
-    		}
-        } else interParameterDerivatives[11]=null; 
-//                                          // R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 || T0 | T1 | T2 | T3 |
-//12   	public double entrancePupilForward  //    |    |    |    |    |    |    |    || +  |    |    |    |
-//13   	public double centerAboveHorizontal //    |    |    |    |    |    |    |    ||    | +  |    |    |
-
-        if (mask[12]) {
-        	double [][] adT0_entrancePupilForward={{0.0},{0.0},{1.0}};
-        	Matrix dT0_entrancePupilForward=new Matrix(adT0_entrancePupilForward);
-        	Matrix dMA_entrancePupilForward=new Matrix(3,3,0.0);
-        	Matrix dMB_entrancePupilForward=MA.times(dT0_entrancePupilForward);
-        	interParameterDerivatives[12]=lensDistortionParameters.d_parametersFromMAMB(dMA_entrancePupilForward,dMB_entrancePupilForward,MA,MB,false); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_centerAboveHorizontal:");
-    			dMA_entrancePupilForward.print(10, 5);
-    			System.out.println("dMB_centerAboveHorizontal:");
-    			dMB_entrancePupilForward.print(10, 5);
-    			System.out.println("interParameterDerivatives[12]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[12]));
-    		}
-        } else interParameterDerivatives[12]=null; 
-        
-        if (mask[13]) {
-        	double [][] adT1_centerAboveHorizontal={{0.0},{1.0},{0.0}};
-        	Matrix dT1_centerAboveHorizontal=new Matrix(adT1_centerAboveHorizontal);
-        	Matrix dMA_centerAboveHorizontal=new Matrix(3,3,0.0);
-        	Matrix dMB_centerAboveHorizontal=R8.times(R7.times(R6.times(R5.times(R4.times(dT1_centerAboveHorizontal)))));
-        	interParameterDerivatives[13]=lensDistortionParameters.d_parametersFromMAMB(dMA_centerAboveHorizontal,dMB_centerAboveHorizontal,MA,MB,false); // all after 6 are 0;
-    		if (this.debugLevel>2) {
-    			System.out.println("dMA_centerAboveHorizontal:");
-    			dMA_centerAboveHorizontal.print(10, 5);
-    			System.out.println("dMB_centerAboveHorizontal:");
-    			dMB_centerAboveHorizontal.print(10, 5);
-    			System.out.println("interParameterDerivatives[13]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[13]));
-    		}
-        } else interParameterDerivatives[13]=null; 
-        
-        
-//14  x	public double [] GXYZ=null; // coordinates (in mm) of the goniometer horizontal axis closest to the moving one in target system
-        if (mask[14]) {
-        	double [][] adT3_GXYZ0={{1.0},{0.0},{0.0}};
-        	Matrix dMA_GXYZ0=new Matrix(3,3,0.0);
-        	Matrix dMB_GXYZ0=new Matrix(adT3_GXYZ0);
-        	interParameterDerivatives[14]=lensDistortionParameters.d_parametersFromMAMB(dMA_GXYZ0,dMB_GXYZ0,MA,MB,false); // all after 6 are 0;
-        	if (this.debugLevel>2) {
-        		System.out.println("dMA_GXYZ0:");
-        		dMA_GXYZ0.print(10, 5);
-        		System.out.println("dMA_GXYZ0:");
-        		dMB_GXYZ0.print(10, 5);
-        		System.out.println("interParameterDerivatives[14]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[14]));
-        	}
-        } else interParameterDerivatives[14]=null; 
-//13  y
-        if (mask[15]) {
-//    	double [][] adT3_GXYZ1={{0.0},{1.0},{0.0}};
-        	double [][] adT3_GXYZ1={{0.0},{-1.0},{0.0}}; // up - positive
-//        	double [][] adT3_GXYZ1={{0.0},{ 1.0},{0.0}}; // up - positive
-        	Matrix dMA_GXYZ1=new Matrix(3,3,0.0);
-        	Matrix dMB_GXYZ1=new Matrix(adT3_GXYZ1);
-        	interParameterDerivatives[15]=lensDistortionParameters.d_parametersFromMAMB(dMA_GXYZ1,dMB_GXYZ1,MA,MB,false); // all after 6 are 0;
-        	if (this.debugLevel>2) {
-        		System.out.println("dMA_GXYZ1:");
-        		dMA_GXYZ1.print(10, 5);
-        		System.out.println("dMB_GXYZ1:");
-        		dMB_GXYZ1.print(10, 5);
-        		System.out.println("interParameterDerivatives[15]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[15]));
-        	}
-        } else interParameterDerivatives[15]=null; 
-//14  z
-        if (mask[16]) {
-//    	double [][] adT3_GXYZ2={{0.0},{0.0},{1.0}};
-        	double [][] adT3_GXYZ2={{0.0},{0.0},{-1.0}}; // away - positive
-        	Matrix dMA_GXYZ2=new Matrix(3,3,0.0);
-        	Matrix dMB_GXYZ2=new Matrix(adT3_GXYZ2);
-        	interParameterDerivatives[16]=lensDistortionParameters.d_parametersFromMAMB(dMA_GXYZ2,dMB_GXYZ2,MA,MB,false); // all after 6 are 0;
-        	if (this.debugLevel>2) {
-        		System.out.println("dMA_GXYZ2:");
-        		dMA_GXYZ2.print(10, 5);
-        		System.out.println("dMB_GXYZ2:");
-        		dMB_GXYZ2.print(10, 5);
-        		System.out.println("interParameterDerivatives[16]="+lensDistortionParameters.sprintfArray(interParameterDerivatives[16]));
-        	}
-        } else interParameterDerivatives[16]=null; 
-// now fill the rest, unchanged parameters
-/*
-    int numInputs=22;   //was 21  parameters in subcamera+...
-    int numOutputs=13;  //was 12  parameters in a single camera
-
- */
-//17 (15)		public double focalLength=4.5;
-//18 (16)		public double px0=1296.0;          // center of the lens on the sensor, pixels
-//19 (17)		public double py0=968.0;           // center of the lens on the sensor, pixels
-//20 (18)		public double distortionA8=0.0; // r^8 (normalized to focal length or to sensor half width?)
-//21 (19)		public double distortionA7=0.0; // r^7 (normalized to focal length or to sensor half width?)
-//22 (20)		public double distortionA6=0.0; // r^6 (normalized to focal length or to sensor half width?)
-//23 (21)		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
-//24 (22)		public double distortionA=0.0; // r^4 (normalized to focal length or to sensor half width?)
-//25 (23)		public double distortionB=0.0; // r^3
-//26 (24)		public double distortionC=0.0; // r^2
-
-//        for (int inpPar=15; inpPar<getNumInputs(); inpPar++){
-        for (int inpPar=17; inpPar<this.lensDistortionParameters.getNumInputs(); inpPar++){ // OK with A8
-        	if (mask[inpPar]){
-        		interParameterDerivatives[inpPar]=new double[this.lensDistortionParameters.getNumOutputs()];
-        		for (int outPar=0; outPar<this.lensDistortionParameters.getNumOutputs(); outPar++){
-        			interParameterDerivatives[inpPar][outPar]=((this.lensDistortionParameters.getNumOutputs()-outPar)==(this.lensDistortionParameters.getNumInputs()-inpPar))?1.0:0.0;
-            		if (this.debugLevel>2) {
-            			System.out.println("interParameterDerivatives["+inpPar+"]["+outPar+"]="+interParameterDerivatives[inpPar][outPar]);
-            		}
-        		}
-        	} else interParameterDerivatives[inpPar]=null;
-        }
-    }
- 
-        
-    
     
     public double [][] prepareDisplayGrid(){
     	int gridHeight=this.patternParameters.gridGeometry.length;

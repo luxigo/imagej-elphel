@@ -58,6 +58,7 @@ import Jama.Matrix;
 	    		){
 	    	this.debugLevel=debugLevel;
 	    	lensCalcInterParamers( // changed name to move calcInterParamers method from enclosing class
+	    			this,
 		    		isTripod,
 		            interParameterDerivatives, //partial derivative matrix from subcamera-camera-goniometer to single camera (12x21) if null - just values, no derivatives
 		    		parVect,
@@ -1021,19 +1022,20 @@ dPXmmc/dphi=
 		}
 	    /**
 	     * Calculate/set  this.lensDistortionParameters and this.interParameterDerivatives
+     * UPDATE - Modifies lensDistortionParameters, not "this" formulti-threaded 
 	     * @param parVect 21-element vector for eyesis sub-camera, including common and individual parameters
 	     * @param mask -mask - which partial derivatives are needed to be calculated (others will be null)
 	     * @param calculateDerivatives calculate array of partial derivatives, if false - just the values
 	     */
 	    public void lensCalcInterParamers(
-//	    		LensDistortionParameters lensDistortionParameters,
+	    		LensDistortionParameters lensDistortionParameters,
 	    		boolean isTripod,
 	            double [][] interParameterDerivatives, //partial derivative matrix from subcamera-camera-goniometer to single camera (12x21) if null - just values, no derivatives
 	    		double [] parVect,
 	    		boolean [] mask // calculate only selected derivatives (all parVect values are still
 //	    		boolean calculateDerivatives // calculate this.interParameterDerivatives -derivatives array (false - just this.values)
 	    		){
-	    	LensDistortionParameters lensDistortionParameters=this;
+//	    	LensDistortionParameters lensDistortionParameters=this;
 	    	boolean calculateDerivatives=(interParameterDerivatives!=null);  // calculate this.interParameterDerivatives -derivatives array (false - just this.values) 
 	    	 // change meaning of goniometerHorizontal (tripod vertical) and goniometerAxial (tripod horizontal) 
 //	    	boolean isTripod=this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod;
@@ -1294,7 +1296,7 @@ dPXmmc/dphi=
 	23(21)		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
 	24(22)		public double distortionA=0.0; // r^4 (normalized to focal length or to sensor half width?)
 	25(23)		public double distortionB=0.0; // r^3
-	26(22)		public double distortionC=0.0; // r^2
+	26(24)		public double distortionC=0.0; // r^2
 
 	 * Output parameters (rows):
 	0		public double x0=0;      // lens axis from pattern center, mm (to the right)
@@ -1307,9 +1309,9 @@ dPXmmc/dphi=
 	7		public double px0=1296.0;           // center of the lens on the sensor, pixels
 	8		public double py0=968.0;           // center of the lens on the sensor, pixels
 	 		public double distortionRadius=  2.8512; // mm - half width of the sensor
-	9		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
-	10		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
-	11		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
+	9		public double distortionA8=0.0; // r^8 (normalized to focal length or to sensor half width?)
+	10		public double distortionA7=0.0; // r^7 (normalized to focal length or to sensor half width?)
+	11		public double distortionA6=0.0; // r^6 (normalized to focal length or to sensor half width?)
 	12		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
 	13		public double distortionA=0.0; // r^4 (normalized to focal length or to sensor half width?)
 	14		public double distortionB=0.0; // r^3
@@ -1673,9 +1675,9 @@ dPXmmc/dphi=
 	//17 (15)		public double focalLength=4.5;
 	//18 (16)		public double px0=1296.0;          // center of the lens on the sensor, pixels
 	//19 (17)		public double py0=968.0;           // center of the lens on the sensor, pixels
-	//20 (18)		public double distortionA8=0.0; // r^5 (normalized to focal length or to sensor half width?)
-	//21 (19)		public double distortionA7=0.0; // r^5 (normalized to focal length or to sensor half width?)
-	//22 (20)		public double distortionA6=0.0; // r^5 (normalized to focal length or to sensor half width?)
+	//20 (18)		public double distortionA8=0.0; // r^8 (normalized to focal length or to sensor half width?)
+	//21 (19)		public double distortionA7=0.0; // r^7 (normalized to focal length or to sensor half width?)
+	//22 (20)		public double distortionA6=0.0; // r^6 (normalized to focal length or to sensor half width?)
 	//23 (21)		public double distortionA5=0.0; // r^5 (normalized to focal length or to sensor half width?)
 	//24 (22)		public double distortionA=0.0; // r^4 (normalized to focal length or to sensor half width?)
 	//25 (23)		public double distortionB=0.0; // r^3
@@ -1694,7 +1696,7 @@ dPXmmc/dphi=
 	        	} else interParameterDerivatives[inpPar]=null;
 	        }
 	    }
-	 
+
 	    
 	     public double [] parametersFromMAMB(Matrix MA, Matrix MB){
 	    	double [] result= new double [getNumOutputs()]; // only first 6 are used
