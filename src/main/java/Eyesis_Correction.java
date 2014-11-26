@@ -2516,7 +2516,7 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 		return false;
   }
 /* ======================================================================== */
-  private String [] selectSourceFiles(String [] defaultPaths) {
+  public String [] selectSourceFiles(String [] defaultPaths) {
 	  String []patterns={".jp4",".jp46",".tiff",".tif"};
 	  return selectFiles(false, // save  
 			  "Source file(s) selection", // title

@@ -371,7 +371,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     	         	       1,1};
 	public static Distortions LENS_DISTORTIONS;
   
-    public static Distortions.PatternParameters PATTERN_PARAMETERS=new Distortions.PatternParameters(
+    public static PatternParameters PATTERN_PARAMETERS=new PatternParameters(
     		viewMap,
     		1, // initial number of stations
     		3022.6, // double patternWidth;  // pattern full width in mm
@@ -379,10 +379,10 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     		41.6667, // patternHalfPeriod;    // distance between opposite sign nodes
     		5.0     // double patternTilt;   // pattern tilt (degrees) - U clockwise from X-right (V clockwise from Y-down)
     		);
-//    public static Distortions.LensDistortionParameters LENS_DISTORTION_PARAMETERS=new Distortions.LensDistortionParameters(
+//    public static LensDistortionParameters LENS_DISTORTION_PARAMETERS=new LensDistortionParameters(
 
-//    public static Distortions.LensDistortionParameters LENS_DISTORTION_PARAMETERS=LENS_DISTORTIONS.new LensDistortionParameters(
-  	  public static Distortions.LensDistortionParameters LENS_DISTORTION_PARAMETERS=(new Distortions()).new LensDistortionParameters(
+//    public static LensDistortionParameters LENS_DISTORTION_PARAMETERS=LENS_DISTORTIONS.new LensDistortionParameters(
+  	  public static LensDistortionParameters LENS_DISTORTION_PARAMETERS=new LensDistortionParameters(
     		4.5, // double focalLength
     		2.2, // double pixelSize (um)
     		2.8512, //double distortionRadius mm - half width of the sensor
@@ -406,7 +406,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     		true//  boolean flipVertical // acquired image is mirrored vertically (mirror used)
     		);
 //    public static double [] defaultGoniometerPosition={0.0, 0.0, 2360};
-    public static Distortions.EyesisCameraParameters EYESIS_CAMERA_PARAMETERS=new Distortions.EyesisCameraParameters(
+    public static EyesisCameraParameters EYESIS_CAMERA_PARAMETERS=new EyesisCameraParameters(
     		1,    //int numStations,
     		true, //false, // boolean isTripod=false; // when true - make goniometerHorizontal rotation around "vertical" axis and "goniometerAxial" - around 
 	    	0.0, // double goniometerHorizontal, // goniometer rotation around "horizontal" axis (tilting from the target - positive)
@@ -491,8 +491,8 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     );
     
     public static Distortions.RefineParameters REFINE_PARAMETERS = new Distortions.RefineParameters();
-    public static Distortions.DistortionCalibrationData DISTORTION_CALIBRATION_DATA=null; 
-//    public static Distortions.FittingStrategy FITTING_STRATEGY=null; 
+    public static DistortionCalibrationData DISTORTION_CALIBRATION_DATA=null; 
+//    public static FittingStrategy FITTING_STRATEGY=null; 
     
 //	public static boolean ADVANCED_MODE=false;
 	public static boolean ADVANCED_MODE=true;
@@ -532,7 +532,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 	public static CalibrationHardwareInterface.CamerasInterface CAMERAS=new CalibrationHardwareInterface.CamerasInterface(26,LASERS);
 	public static CalibrationHardwareInterface.FocusingMotors MOTORS=new CalibrationHardwareInterface.FocusingMotors();
 	
-	public static Distortions.DistortionProcessConfiguration DISTORTION_PROCESS_CONFIGURATION=new Distortions.DistortionProcessConfiguration();
+	public static DistortionProcessConfiguration DISTORTION_PROCESS_CONFIGURATION=new DistortionProcessConfiguration();
 	
 	public static LensAdjustment.FocusMeasurementParameters FOCUS_MEASUREMENT_PARAMETERS= new LensAdjustment.FocusMeasurementParameters(MOTORS.curpos);
 	public static CalibrationHardwareInterface.GoniometerMotors GONIOMETER_MOTORS= new CalibrationHardwareInterface.GoniometerMotors();
@@ -1106,7 +1106,7 @@ if (MORE_BUTTONS) {
 	    				ABERRATIONS_PARAMETERS,
 	    				LENS_DISTORTIONS, // should be initialized, after update DISTORTION_CALIBRATION_DATA from this
 	    				PATTERN_PARAMETERS,
-	    				EYESIS_CAMERA_PARAMETERS, //Distortions.EyesisCameraParameters eyesisCameraParameters,
+	    				EYESIS_CAMERA_PARAMETERS, //EyesisCameraParameters eyesisCameraParameters,
 	    				UPDATE_STATUS,
 	    				DEBUG_LEVEL
 	    		);
@@ -2273,8 +2273,8 @@ if (MORE_BUTTONS) {
 					" +DISTORTION_CALIBRATION_DATA.eyesisCameraParameters.goniometerHorizontal.length="+DISTORTION_CALIBRATION_DATA.eyesisCameraParameters.goniometerHorizontal.length);
 			}
 
-			Distortions.DistortionCalibrationData dcd=(DISTORTION_CALIBRATION_DATA!=null)?DISTORTION_CALIBRATION_DATA:
-				new Distortions.DistortionCalibrationData(EYESIS_CAMERA_PARAMETERS);
+			DistortionCalibrationData dcd=(DISTORTION_CALIBRATION_DATA!=null)?DISTORTION_CALIBRATION_DATA:
+				new DistortionCalibrationData(EYESIS_CAMERA_PARAMETERS);
 			if (DEBUG_LEVEL>1) System.out.println("+++++++++++ dcd.eyesisCameraParameters.numStations="+dcd.eyesisCameraParameters.numStations+
 					" +dcd.eyesisCameraParameters.goniometerHorizontal.length="+dcd.eyesisCameraParameters.goniometerHorizontal.length);
 			dcd.listCameraParameters();
@@ -2342,7 +2342,7 @@ if (MORE_BUTTONS) {
 			PATTERN_PARAMETERS.debugLevel=MASTER_DEBUG_LEVEL;
 			EYESIS_CAMERA_PARAMETERS.updateNumstations (numStations);
 //if (MASTER_DEBUG_LEVEL==0) return; //TODO: Remove - just debugging
-			DISTORTION_CALIBRATION_DATA=new Distortions.DistortionCalibrationData(
+			DISTORTION_CALIBRATION_DATA=new DistortionCalibrationData(
 					gridFiles,
 					PATTERN_PARAMETERS,
 					EYESIS_CAMERA_PARAMETERS,
@@ -2363,7 +2363,7 @@ if (MORE_BUTTONS) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			
 			LENS_DISTORTIONS=new Distortions(LENS_DISTORTION_PARAMETERS,PATTERN_PARAMETERS,REFINE_PARAMETERS);
-			DISTORTION_CALIBRATION_DATA=new Distortions.DistortionCalibrationData(gridFiles,PATTERN_PARAMETERS,EYESIS_CAMERA_PARAMETERS);
+			DISTORTION_CALIBRATION_DATA=new DistortionCalibrationData(gridFiles,PATTERN_PARAMETERS,EYESIS_CAMERA_PARAMETERS);
 			LENS_DISTORTIONS.initImageSet(
  					DISTORTION_CALIBRATION_DATA,
 					EYESIS_CAMERA_PARAMETERS
@@ -2396,9 +2396,9 @@ if (MORE_BUTTONS) {
 		if       (label.equals("Restore Calibration")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			String defaultPath= (DISTORTION_CALIBRATION_DATA!=null)?DISTORTION_CALIBRATION_DATA.pathName:"";
-//    public static Distortions.DistortionCalibrationData DISTORTION_CALIBRATION_DATA=null; 
-			Distortions.DistortionCalibrationData oldDISTORTION_CALIBRATION_DATA=DISTORTION_CALIBRATION_DATA;
-			DISTORTION_CALIBRATION_DATA=new Distortions.DistortionCalibrationData(
+//    public static DistortionCalibrationData DISTORTION_CALIBRATION_DATA=null; 
+			DistortionCalibrationData oldDISTORTION_CALIBRATION_DATA=DISTORTION_CALIBRATION_DATA;
+			DISTORTION_CALIBRATION_DATA=new DistortionCalibrationData(
 					false,
 					defaultPath,
 					PATTERN_PARAMETERS,
@@ -2434,7 +2434,7 @@ if (MORE_BUTTONS) {
 			}
 			LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
 			if (DEBUG_LEVEL>2) System.out.println("New Strategy");
-			LENS_DISTORTIONS.fittingStrategy=new Distortions.FittingStrategy(DISTORTION_CALIBRATION_DATA);
+			LENS_DISTORTIONS.fittingStrategy=new FittingStrategy(DISTORTION_CALIBRATION_DATA);
 			LENS_DISTORTIONS.fittingStrategy.debugLevel=DEBUG_LEVEL;
 			IJ.showMessage("Empty new strategy initialized");
 			return;
@@ -2457,7 +2457,7 @@ if (MORE_BUTTONS) {
 			LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
 			if (LENS_DISTORTIONS.fittingStrategy==null) {
 				if (DISTORTION_CALIBRATION_DATA==null) return;
-				LENS_DISTORTIONS.fittingStrategy=new Distortions.FittingStrategy(DISTORTION_CALIBRATION_DATA);
+				LENS_DISTORTIONS.fittingStrategy=new FittingStrategy(DISTORTION_CALIBRATION_DATA);
 			}
 			LENS_DISTORTIONS.fittingStrategy.debugLevel=DEBUG_LEVEL;
 			LENS_DISTORTIONS.fittingStrategy.selectStrategy(LENS_DISTORTIONS.seriesNumber);
@@ -2494,9 +2494,9 @@ if (MORE_BUTTONS) {
 				LENS_DISTORTIONS=new Distortions(LENS_DISTORTION_PARAMETERS,PATTERN_PARAMETERS,REFINE_PARAMETERS,this.SYNC_COMMAND.stopRequested);
 			}
 			LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
-			Distortions.FittingStrategy fs=LENS_DISTORTIONS.fittingStrategy; // save old value
+			FittingStrategy fs=LENS_DISTORTIONS.fittingStrategy; // save old value
 			String defaultPath= ((fs!=null) && (fs.pathName != null) && (fs.pathName.length()>0)) ? fs.pathName : "";
-			LENS_DISTORTIONS.fittingStrategy=new Distortions.FittingStrategy(
+			LENS_DISTORTIONS.fittingStrategy=new FittingStrategy(
 					false,
 					defaultPath,
 					DISTORTION_CALIBRATION_DATA);
@@ -3821,7 +3821,7 @@ if (MORE_BUTTONS) {
 			if (findCenter){
 				// Read required calibration files
 				// initial calibration			
-				DISTORTION_CALIBRATION_DATA=new Distortions.DistortionCalibrationData(
+				DISTORTION_CALIBRATION_DATA=new DistortionCalibrationData(
 						true, // skip dialog if file exists
 						FOCUS_MEASUREMENT_PARAMETERS.initialCalibrationFile,
 						PATTERN_PARAMETERS,
@@ -3849,7 +3849,7 @@ if (MORE_BUTTONS) {
 				}
 				LENS_DISTORTIONS.debugLevel=DEBUG_LEVEL;
 
-				LENS_DISTORTIONS.fittingStrategy=new Distortions.FittingStrategy(
+				LENS_DISTORTIONS.fittingStrategy=new FittingStrategy(
 						true,
 						FOCUS_MEASUREMENT_PARAMETERS.strategyFile,
 						DISTORTION_CALIBRATION_DATA);
@@ -3892,7 +3892,7 @@ if (MORE_BUTTONS) {
 				if (DEBUG_LEVEL>0) System.out.println("Finished LMA at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 				int stationNumber=0;
 				// Read camera parameters
-				Distortions.EyesisCameraParameters camPars=
+				EyesisCameraParameters camPars=
 					LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters;
 				double threadPitch=0.35; // M1.6
 				double dPx0=camPars.eyesisSubCameras[stationNumber][0].px0-(camPars.sensorWidth/2)-FOCUS_MEASUREMENT_PARAMETERS.centerDeltaX;
@@ -5951,7 +5951,7 @@ if (MORE_BUTTONS) {
 						CAMERAS, // CalibrationHardwareInterface.CamerasInterface cameras,
 						DISTORTION, //MatchSimulatedPattern.DistortionParameters distortion,
 						PATTERN_DETECT, //MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
-						EYESIS_CAMERA_PARAMETERS, //Distortions.EyesisCameraParameters eyesisCameraParameters,
+						EYESIS_CAMERA_PARAMETERS, //EyesisCameraParameters eyesisCameraParameters,
 						LASER_POINTERS, // MatchSimulatedPattern.LaserPointer laserPointers
 						SIMUL,                       //SimulationPattern.SimulParameters  simulParametersDefault,
 						GONIOMETER_PARAMETERS, //LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
@@ -5982,7 +5982,7 @@ if (MORE_BUTTONS) {
 						CAMERAS, // CalibrationHardwareInterface.CamerasInterface cameras,
 						DISTORTION, //MatchSimulatedPattern.DistortionParameters distortion,
 						PATTERN_DETECT, //MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
-						EYESIS_CAMERA_PARAMETERS, //Distortions.EyesisCameraParameters eyesisCameraParameters,
+						EYESIS_CAMERA_PARAMETERS, //EyesisCameraParameters eyesisCameraParameters,
 						LASER_POINTERS, // MatchSimulatedPattern.LaserPointer laserPointers
 						SIMUL,                       //SimulationPattern.SimulParameters  simulParametersDefault,
 						GONIOMETER_PARAMETERS, //LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
@@ -5997,8 +5997,8 @@ if (MORE_BUTTONS) {
 			
 			// calculate angular size of the target as visible from the camera
 			/*
-			Distortions.DistortionCalibrationData dcd=(DISTORTION_CALIBRATION_DATA!=null)?DISTORTION_CALIBRATION_DATA:
-				new Distortions.DistortionCalibrationData(EYESIS_CAMERA_PARAMETERS);*/
+			DistortionCalibrationData dcd=(DISTORTION_CALIBRATION_DATA!=null)?DISTORTION_CALIBRATION_DATA:
+				new DistortionCalibrationData(EYESIS_CAMERA_PARAMETERS);*/
 //			double distanceToTarget=dcd.eyesisCameraParameters.GXYZ[2];
 			double distanceToTarget=GONIOMETER_PARAMETERS.targetDistance;
 			double patternWidth= PATTERN_PARAMETERS.patternWidth;
@@ -6420,7 +6420,7 @@ if (MORE_BUTTONS) {
 						CAMERAS, // CalibrationHardwareInterface.CamerasInterface cameras,
 						DISTORTION, //MatchSimulatedPattern.DistortionParameters distortion,
 						PATTERN_DETECT, //MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
-						EYESIS_CAMERA_PARAMETERS, //Distortions.EyesisCameraParameters eyesisCameraParameters,
+						EYESIS_CAMERA_PARAMETERS, //EyesisCameraParameters eyesisCameraParameters,
 						LASER_POINTERS, // MatchSimulatedPattern.LaserPointer laserPointers
 						SIMUL,                       //SimulationPattern.SimulParameters  simulParametersDefault,
 						GONIOMETER_PARAMETERS, //LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
@@ -6433,7 +6433,7 @@ if (MORE_BUTTONS) {
 				System.out.println("GONIOMETER was initialized");
 			}
 			// initialize needed classes
-			DISTORTION_CALIBRATION_DATA=new Distortions.DistortionCalibrationData( // images are not setup yet
+			DISTORTION_CALIBRATION_DATA=new DistortionCalibrationData( // images are not setup yet
 	        		EYESIS_CAMERA_PARAMETERS); //EyesisCameraParameters eyesisCameraParameters
 			if ((LENS_DISTORTIONS!=null) && (LENS_DISTORTIONS.fittingStrategy!=null)) {
 				LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData=DISTORTION_CALIBRATION_DATA;
@@ -6487,8 +6487,8 @@ if (MORE_BUTTONS) {
 //					PATTERN_DETECT, //MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
 //					LASER_POINTERS, //MatchSimulatedPattern.LaserPointer laserPointer, // null OK
 //					SIMUL,                       //SimulationPattern.SimulParameters  simulParametersDefault,
-					DISTORTION_CALIBRATION_DATA, // Distortions.DistortionCalibrationData distortionCalibrationData,
-					PATTERN_PARAMETERS,          //Distortions.PatternParameters patternParameters, // should not be null
+					DISTORTION_CALIBRATION_DATA, // DistortionCalibrationData distortionCalibrationData,
+					PATTERN_PARAMETERS,          //PatternParameters patternParameters, // should not be null
 					LENS_DISTORTIONS,            //Distortions lensDistortions, // should not be null
 					COMPONENTS.equalizeGreens,   //boolean equalizeGreens,
 					THREADS_MAX,                 // int       threadsMax,
@@ -6519,7 +6519,7 @@ if (MORE_BUTTONS) {
 						CAMERAS, // CalibrationHardwareInterface.CamerasInterface cameras,
 						DISTORTION, //MatchSimulatedPattern.DistortionParameters distortion,
 						PATTERN_DETECT, //MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
-						EYESIS_CAMERA_PARAMETERS, //Distortions.EyesisCameraParameters eyesisCameraParameters,
+						EYESIS_CAMERA_PARAMETERS, //EyesisCameraParameters eyesisCameraParameters,
 						LASER_POINTERS, // MatchSimulatedPattern.LaserPointer laserPointers
 						SIMUL,                       //SimulationPattern.SimulParameters  simulParametersDefault,
 						GONIOMETER_PARAMETERS, //LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
@@ -6547,8 +6547,8 @@ if (MORE_BUTTONS) {
 			GONIOMETER.testHintedTarget (
 					images, //CAMERAS.getImages(0), // last acquired images with number of pointers detected>=0
 					LENS_DISTORTIONS,            //Distortions lensDistortions, // should not be null
-					DISTORTION_CALIBRATION_DATA, // Distortions.DistortionCalibrationData distortionCalibrationData,
-					PATTERN_PARAMETERS,          //Distortions.PatternParameters patternParameters, // should not be null
+					DISTORTION_CALIBRATION_DATA, // DistortionCalibrationData distortionCalibrationData,
+					PATTERN_PARAMETERS,          //PatternParameters patternParameters, // should not be null
 					COMPONENTS.equalizeGreens,   //boolean equalizeGreens,
 					THREADS_MAX,                 // int       threadsMax,
 					UPDATE_STATUS,               //boolean   updateStatus,
@@ -6565,7 +6565,7 @@ if (MORE_BUTTONS) {
 						CAMERAS, // CalibrationHardwareInterface.CamerasInterface cameras,
 						DISTORTION, //MatchSimulatedPattern.DistortionParameters distortion,
 						PATTERN_DETECT, //MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
-						EYESIS_CAMERA_PARAMETERS, //Distortions.EyesisCameraParameters eyesisCameraParameters,
+						EYESIS_CAMERA_PARAMETERS, //EyesisCameraParameters eyesisCameraParameters,
 						LASER_POINTERS, // MatchSimulatedPattern.LaserPointer laserPointers
 						SIMUL,                       //SimulationPattern.SimulParameters  simulParametersDefault,
 						GONIOMETER_PARAMETERS, //LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
@@ -6593,8 +6593,8 @@ if (MORE_BUTTONS) {
 			GONIOMETER.testHintedTarget (
 					CAMERAS.getImages(0), // last acquired images with number of pointers detected>=0
 					LENS_DISTORTIONS,            //Distortions lensDistortions, // should not be null
-					DISTORTION_CALIBRATION_DATA, // Distortions.DistortionCalibrationData distortionCalibrationData,
-					PATTERN_PARAMETERS,          //Distortions.PatternParameters patternParameters, // should not be null
+					DISTORTION_CALIBRATION_DATA, // DistortionCalibrationData distortionCalibrationData,
+					PATTERN_PARAMETERS,          //PatternParameters patternParameters, // should not be null
 					COMPONENTS.equalizeGreens,   //boolean equalizeGreens,
 					THREADS_MAX,                 // int       threadsMax,
 					UPDATE_STATUS,               //boolean   updateStatus,
@@ -10173,8 +10173,8 @@ if (MORE_BUTTONS) {
 	public boolean autoLoadFiles(
 			EyesisAberrations.AberrationParameters aberrationParameters,
 			Distortions distortions, // should be initialized, after update DISTORTION_CALIBRATION_DATA from this
-			Distortions.PatternParameters patternParameters,
-    		Distortions.EyesisCameraParameters eyesisCameraParameters,
+			PatternParameters patternParameters,
+    		EyesisCameraParameters eyesisCameraParameters,
     		boolean updateStstus,
     		int debugLevel
 			){
@@ -10186,7 +10186,7 @@ if (MORE_BUTTONS) {
 		if (configPaths[0]==null) return false;
 		System.out.println("+++++++++++ autoLoadFiles() eyesisCameraParameters.numStations="+eyesisCameraParameters.numStations+
 				" +eyesisCameraParameters.goniometerHorizontal.length="+eyesisCameraParameters.goniometerHorizontal.length);
-		Distortions.DistortionCalibrationData dcd=new Distortions.DistortionCalibrationData(
+		DistortionCalibrationData dcd=new DistortionCalibrationData(
 				true,
 				configPaths[0],
 				patternParameters,
@@ -10201,8 +10201,8 @@ if (MORE_BUTTONS) {
 
 		
 		if (configPaths[1]!=null) {
-			Distortions.FittingStrategy fs=distortions.fittingStrategy; // save old value
-			distortions.fittingStrategy=new Distortions.FittingStrategy(
+			FittingStrategy fs=distortions.fittingStrategy; // save old value
+			distortions.fittingStrategy=new FittingStrategy(
 					true, // do not ask if specified
 					configPaths[1],
 					dcd);
@@ -10240,7 +10240,7 @@ if (MORE_BUTTONS) {
 			boolean alwaysShow, // true overwrites focusMeasurementParameters.showResults
 			boolean alwaysSave, // true overwrites focusMeasurementParameters.saveResults
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			boolean updateStatus,
 			int debugLevel
@@ -10369,7 +10369,7 @@ if (MORE_BUTTONS) {
 			double focusTolerance, // will exit after whatever comes first tolearance or number of iterations
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -10471,7 +10471,7 @@ if (MORE_BUTTONS) {
 			int numIterations, // maximal number of iterations (0 - suggest only, do not move). When calling from the button - first time single iteration, second time - as specified
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -10661,7 +10661,7 @@ if (MORE_BUTTONS) {
 			int numIterations, // maximal number of iterations (0 - suggest only, do not move). When calling from the button - first time single iteration, second time - as specified
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -10869,7 +10869,7 @@ if (MORE_BUTTONS) {
 			int numIterations, // maximal number of iterations (0 - suggest only, do not move). When calling from the button - first time single iteration, second time - as specified
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -10979,7 +10979,7 @@ if (MORE_BUTTONS) {
 			int numIterations, // maximal number of iterations (0 - suggest only, do not move). When calling from the button - first time single iteration, second time - as specified
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			boolean   updateStatus,
@@ -11052,7 +11052,7 @@ if (MORE_BUTTONS) {
 			int [] centerMotorPos, // null OK
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -11384,7 +11384,7 @@ if (MORE_BUTTONS) {
 			int [] centerMotorPos, // null OK
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-		    Distortions.LensDistortionParameters lensDistortionParameters,
+		    LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -11514,7 +11514,7 @@ if (MORE_BUTTONS) {
 			int [] newMotorPos, // null OK
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-		    Distortions.LensDistortionParameters lensDistortionParameters,
+		    LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -11555,7 +11555,7 @@ if (MORE_BUTTONS) {
 			int [] newMotorPos, // null OK
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-		    Distortions.LensDistortionParameters lensDistortionParameters,
+		    LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -11721,7 +11721,7 @@ if (MORE_BUTTONS) {
 			int [] newMotorPos, // null OK
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-		    Distortions.LensDistortionParameters lensDistortionParameters,
+		    LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -11815,7 +11815,7 @@ if (MORE_BUTTONS) {
 			int [] newMotorPos, // null OK
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-		    Distortions.LensDistortionParameters lensDistortionParameters,
+		    LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -11984,7 +11984,7 @@ if (MORE_BUTTONS) {
 			int [] newMotorPos, // null OK
 			CalibrationHardwareInterface.FocusingMotors focusingMotors,
 			CalibrationHardwareInterface.CamerasInterface camerasInterface,
-			Distortions.LensDistortionParameters lensDistortionParameters,
+			LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern, // should not bee null
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			boolean   updateStatus,
@@ -12049,7 +12049,7 @@ if (MORE_BUTTONS) {
 
 	public double [][] measurePSFMetrics(
 			ImagePlus imp_sel,
-		    Distortions.LensDistortionParameters lensDistortionParameters,
+		    LensDistortionParameters lensDistortionParameters,
 			MatchSimulatedPattern matchSimulatedPattern,
 			LensAdjustment.FocusMeasurementParameters focusMeasurementParameters,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,

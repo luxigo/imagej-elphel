@@ -972,7 +972,7 @@ public class EyesisAberrations {
    	
    	public String [][]  preparePartialKernelsFilesList(
    			int debugLevel){
-   		Distortions.DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
+   		DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
    		boolean [] selectedImages=distortions.fittingStrategy.selectedImagesNoBadKernels(this.aberrationParameters.allImages?-1:this.aberrationParameters.seriesNumber); // negative series number OK - will select all enabled
    		int num=0;
    		for (int imgNum=0;imgNum<selectedImages.length;imgNum++) if (selectedImages[imgNum]) num++;
@@ -1072,7 +1072,7 @@ public class EyesisAberrations {
 			int loopDebugLevel, // debug level used inside loops
 			int debugLevel
 			){
-    	Distortions.DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
+    	DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
     	boolean partialToReprojected=this.aberrationParameters.partialToReprojected;
     	boolean applySensorCorrection=this.aberrationParameters.partialCorrectSensor;
     	// this.distortions is set to top level LENS_DISTORTIONS
