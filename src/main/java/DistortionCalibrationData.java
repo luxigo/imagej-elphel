@@ -264,7 +264,7 @@ import org.apache.commons.configuration.XMLConfiguration;
         	}
     	}
     	public class GridImageSet{
-    		private int numPars=27;
+    		private int numPars=53; // 27;
     		private int thisParsStartIndex=6;
 
     		public int         stationNumber=0; // changes when camera/goniometer is moved to new position
@@ -465,12 +465,48 @@ import org.apache.commons.configuration.XMLConfiguration;
     			{"subcamDistortionA5",   "Distortion A5(r^5)","relative","S","I"},                                                              //23 (21)
     			{"subcamDistortionA",    "Distortion A (r^4)","relative","S","I"},                                                              //24 (22)
     			{"subcamDistortionB",    "Distortion B (r^3)","relative","S","I"},                                                              //25 (23)
-    			{"subcamDistortionC",    "Distortion C (r^2)","relative","S","I"}                                                               //26 (24)
+    			{"subcamDistortionC",    "Distortion C (r^2)","relative","S","I"},                                                               //26 (24)
+    			
+        		{"subcamElong_C_o",      "Orthogonal elongation for r^2","relative","S","I"},     // 27 39 (37)
+        		{"subcamElong_C_d",      "Diagonal   elongation for r^2","relative","S","I"},     // 28 40 (38)
+
+        		{"subcamEccen_B_x",      "Distortion center shift X for r^3","relative","S","I"}, // 29 27 (25)
+        		{"subcamEccen_B_y",      "Distortion center shift Y for r^3","relative","S","I"}, // 30 28 (26)
+        		{"subcamElong_B_o",      "Orthogonal elongation for r^3","relative","S","I"},     // 31 41 (39)
+        		{"subcamElong_B_d",      "Diagonal   elongation for r^3","relative","S","I"},     // 32 42 (40)
+
+        		{"subcamEccen_A_x",      "Distortion center shift X for r^4","relative","S","I"}, // 33 29 (27)
+        		{"subcamEccen_A_y",      "Distortion center shift Y for r^4","relative","S","I"}, // 34 30 (28)
+        		{"subcamElong_A_o",      "Orthogonal elongation for r^4","relative","S","I"},     // 35 43 (41)
+        		{"subcamElong_A_d",      "Diagonal   elongation for r^4","relative","S","I"},     // 36 44 (42)
+
+        		{"subcamEccen_A5_x",     "Distortion center shift X for r^5","relative","S","I"}, // 37 31 (29)
+        		{"subcamEccen_A5_y",     "Distortion center shift Y for r^5","relative","S","I"}, // 38 32 (30)
+        		{"subcamElong_A5_o",     "Orthogonal elongation for r^5","relative","S","I"},     // 39 45 (43)
+        		{"subcamElong_A5_d",     "Diagonal   elongation for r^5","relative","S","I"},     // 40 46 (44)
+
+        		{"subcamEccen_A6_x",     "Distortion center shift X for r^6","relative","S","I"}, // 41 33 (31)
+        		{"subcamEccen_A6_y",     "Distortion center shift Y for r^6","relative","S","I"}, // 42 34 (32)
+        		{"subcamElong_A6_o",     "Orthogonal elongation for r^6","relative","S","I"},     // 43 47 (45)
+        		{"subcamElong_A6_d",     "Diagonal   elongation for r^6","relative","S","I"},     // 44 48 (46)
+
+        		{"subcamEccen_A7_x",     "Distortion center shift X for r^7","relative","S","I"}, // 45 35 (33)
+        		{"subcamEccen_A7_y",     "Distortion center shift Y for r^7","relative","S","I"}, // 46 36 (34)
+        		{"subcamElong_A7_o",     "Orthogonal elongation for r^7","relative","S","I"},     // 47 49 (47)
+        		{"subcamElong_A7_d",     "Diagonal   elongation for r^7","relative","S","I"},     // 48 50 (48)
+
+        		{"subcamEccen_A8_x",     "Distortion center shift X for r^8","relative","S","I"}, // 49 37 (35)
+        		{"subcamEccen_A8_y",     "Distortion center shift Y for r^8","relative","S","I"}, // 50 38 (36)
+        		{"subcamElong_A8_o",     "Orthogonal elongation for r^8","relative","S","I"},     // 51 51 (49)
+        		{"subcamElong_A8_d",     "Diagonal   elongation for r^8","relative","S","I"}      // 52 52 (50)
         };
         public String [] channelSuffixes={ // natural order (same as array indices, may be modified to camera/subcamera
         		"00","01","02","03","04","05","06","07","08","09",
         		"10","11","12","13","14","15","16","17","18","19",
         		"20","21","22","23","24","25","26","27","28","29"};
+        public boolean isNonRadial(int index){
+        	return parameterDescriptions[index][0].startsWith("subcamEccen_") || parameterDescriptions[index][0].startsWith("subcamElong_");
+        }
         public int getParameterIndexByName(String name){
         	for (int i=0;i<this.parameterDescriptions.length;i++) if (this.parameterDescriptions[i][0].equals(name)){
         		return i;
@@ -1550,7 +1586,7 @@ import org.apache.commons.configuration.XMLConfiguration;
                 	int minIndex=       this.gIS[index].getMinIndex();
                 	int maxIndexPlusOne=this.gIS[index].getMaxIndexPlusOne();
                 	for (int j=minIndex;j<maxIndexPlusOne;j++) if (sub.getString(parameterDescriptions[j][0])!=null) {
-                		this.gIS[index].setParameterValue(j,Double.parseDouble((sub.getString(parameterDescriptions[j][0]))), false);
+                		this.gIS[index].setParameterValue(j,Double.parseDouble(sub.getString(parameterDescriptions[j][0])), false);
                 	}
             		if (sub.getString("orientationEstimated")!=null) {
             			this.gIS[i].orientationEstimated=Boolean.parseBoolean(sub.getString("orientationEstimated"));
@@ -1589,8 +1625,12 @@ import org.apache.commons.configuration.XMLConfiguration;
         		for (int j=0;j<this.parameterDescriptions.length;j++){
         			if (sub.getString(parameterDescriptions[j][0])!=null)
         				this.pars[i][j] = Double.parseDouble(sub.getString(parameterDescriptions[j][0]));
-        			else 
-        				this.pars[i][j] = Double.NaN;
+        			else
+        				if (isNonRadial(j)){
+        					this.pars[i][j] = 0.0; // old calibration files without non-radial parameters
+        				} else {
+        					this.pars[i][j] = Double.NaN;
+        				}
         		}
         	}
         	if (this.gIS!=null){

@@ -879,6 +879,42 @@ import org.apache.commons.configuration.XMLConfiguration;
     				gd.addNumericField("Distortion C (r^2)",              subCam.distortionC, 6,8,"");
     				gd.addNumericField("Lens axis on the sensor (horizontal, from left edge)", subCam.px0, 2,7,"pixels");
     				gd.addNumericField("Lens axis on the sensor (vertical, from top  edge)",   subCam.py0, 2,7,"pixels");
+    				
+    				gd.addMessage("=== non-radial model parameters ===");
+    				gd.addMessage("For r^2 (Distortion C):");
+    				gd.addNumericField("Orthogonal elongation for r^2",   100*subCam.r_od[0][0], 3,7,"%");
+    				gd.addNumericField("Diagonal elongation for r^2",     100*subCam.r_od[0][1], 3,7,"%");
+    				gd.addMessage("For r^3 (Distortion B):");
+    				gd.addNumericField("Distortion center shift X for r^3", 100*subCam.r_xy[0][0], 1,6,"%");
+    				gd.addNumericField("Distortion center shift Y for r^3", 100*subCam.r_xy[0][1], 1,6,"%");
+    				gd.addNumericField("Orthogonal elongation for r^3",  100*subCam.r_od[1][0], 3,7,"%");
+    				gd.addNumericField("Diagonal elongation for r^3",    100*subCam.r_od[1][1], 3,7,"%");
+    				gd.addMessage("For r^4 (Distortion A):");
+    				gd.addNumericField("Distortion center shift X for r^4", 100*subCam.r_xy[1][0], 1,6,"%");
+    				gd.addNumericField("Distortion center shift Y for r^4", 100*subCam.r_xy[1][1], 1,6,"%");
+    				gd.addNumericField("Orthogonal elongation for r^4",  100*subCam.r_od[2][0], 3,7,"%");
+    				gd.addNumericField("Diagonal elongation for r^4",    100*subCam.r_od[2][1], 3,7,"%");
+    				gd.addMessage("For r^5 (Distortion A5):");
+    				gd.addNumericField("Distortion center shift X for r^5", 100*subCam.r_xy[2][0], 1,6,"%");
+    				gd.addNumericField("Distortion center shift Y for r^5", 100*subCam.r_xy[2][1], 1,6,"%");
+    				gd.addNumericField("Orthogonal elongation for r^5",  100*subCam.r_od[3][0], 3,7,"%");
+    				gd.addNumericField("Diagonal elongation for r^5",    100*subCam.r_od[3][1], 3,7,"%");
+    				gd.addMessage("For r^6 (Distortion A6:");
+    				gd.addNumericField("Distortion center shift X for r^6", 100*subCam.r_xy[3][0], 1,6,"%");
+    				gd.addNumericField("Distortion center shift Y for r^6", 100*subCam.r_xy[3][1], 1,6,"%");
+    				gd.addNumericField("Orthogonal elongation for r^6",  100*subCam.r_od[4][0], 3,7,"%");
+    				gd.addNumericField("Diagonal elongation for r^6",    100*subCam.r_od[4][1], 3,7,"%");
+    				gd.addMessage("For r^7 (Distortion A7):");
+    				gd.addNumericField("Distortion center shift X for r^7", 100*subCam.r_xy[4][0], 1,6,"%");
+    				gd.addNumericField("Distortion center shift Y for r^7", 100*subCam.r_xy[4][1], 1,6,"%");
+    				gd.addNumericField("Orthogonal elongation for r^7",  100*subCam.r_od[5][0], 3,7,"%");
+    				gd.addNumericField("Diagonal elongation for r^7",    100*subCam.r_od[5][1], 3,7,"%");
+    				gd.addMessage("For r^8 (Distortion A8):");
+    				gd.addNumericField("Distortion center shift X for r^8", 100*subCam.r_xy[5][0], 1,6,"%");
+    				gd.addNumericField("Distortion center shift Y for r^8", 100*subCam.r_xy[5][1], 1,6,"%");
+    				gd.addNumericField("Orthogonal elongation for r^8",  100*subCam.r_od[6][0], 3,7,"%");
+    				gd.addNumericField("Diagonal elongation for r^8",    100*subCam.r_od[6][1], 3,7,"%");
+    				
     			}
     		}
    	        gd.enableYesNoCancel("OK", "Done");
@@ -912,6 +948,33 @@ import org.apache.commons.configuration.XMLConfiguration;
     				subCam.distortionC=     gd.getNextNumber();
     				subCam.px0=             gd.getNextNumber();
     				subCam.py0=             gd.getNextNumber();
+    				
+    				subCam.r_od[0][0]= 0.01*gd.getNextNumber();
+    				subCam.r_od[0][1]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[0][0]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[0][1]= 0.01*gd.getNextNumber();
+    				subCam.r_od[1][0]= 0.01*gd.getNextNumber();
+    				subCam.r_od[1][1]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[1][0]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[1][1]= 0.01*gd.getNextNumber();
+    				subCam.r_od[2][0]= 0.01*gd.getNextNumber();
+    				subCam.r_od[2][1]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[2][0]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[2][1]= 0.01*gd.getNextNumber();
+    				subCam.r_od[3][0]= 0.01*gd.getNextNumber();
+    				subCam.r_od[3][1]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[3][0]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[3][1]= 0.01*gd.getNextNumber();
+    				subCam.r_od[4][0]= 0.01*gd.getNextNumber();
+    				subCam.r_od[4][1]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[4][0]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[4][1]= 0.01*gd.getNextNumber();
+    				subCam.r_od[5][0]= 0.01*gd.getNextNumber();
+    				subCam.r_od[5][1]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[5][0]= 0.01*gd.getNextNumber();
+    				subCam.r_xy[5][1]= 0.01*gd.getNextNumber();
+    				subCam.r_od[6][0]= 0.01*gd.getNextNumber();
+    				subCam.r_od[6][1]= 0.01*gd.getNextNumber();
     			}
     		}
     		return gd.wasOKed();
@@ -984,6 +1047,32 @@ import org.apache.commons.configuration.XMLConfiguration;
         			subCam.distortionA,        //24 (22)  r^4 (normalized to focal length or to sensor half width?)
         			subCam.distortionB,        //25 (23)  r^3
         			subCam.distortionC,        //26 (24)  r^2
+        			subCam.r_od[0][0],
+        			subCam.r_od[0][1],
+        			subCam.r_xy[0][0],
+        			subCam.r_xy[0][1],
+        			subCam.r_od[1][0],
+        			subCam.r_od[1][1],
+        			subCam.r_xy[1][0],
+        			subCam.r_xy[1][1],
+        			subCam.r_od[2][0],
+        			subCam.r_od[2][1],
+        			subCam.r_xy[2][0],
+        			subCam.r_xy[2][1],
+        			subCam.r_od[3][0],
+        			subCam.r_od[3][1],
+        			subCam.r_xy[3][0],
+        			subCam.r_xy[3][1],
+        			subCam.r_od[4][0],
+        			subCam.r_od[4][1],
+        			subCam.r_xy[4][0],
+        			subCam.r_xy[4][1],
+        			subCam.r_od[5][0],
+        			subCam.r_od[5][1],
+        			subCam.r_xy[5][0],
+        			subCam.r_xy[5][1],
+        			subCam.r_od[6][0],
+        			subCam.r_od[6][1]
         	};
         	// Global parameters, not adjusted - just copied once when camera is selected
     // or should they stay fixed and not copied at all?    	
@@ -1030,15 +1119,14 @@ import org.apache.commons.configuration.XMLConfiguration;
         		int stationNumber,
         		int subCamNumber // 
                 ){
-        	if (parVect.length!=27) throw new IllegalArgumentException ("Wrong length of the parameters vector: "+parVect.length+"(should be 27)");
+//        	if (parVect.length!=27) throw new IllegalArgumentException ("Wrong length of the parameters vector: "+parVect.length+"(should be 27)");
+        	if (parVect.length!=53) throw new IllegalArgumentException ("Wrong length of the parameters vector: "+parVect.length+"(should be 53)");
         	if (
         			(this.eyesisSubCameras==null) ||
         			(this.numStations<=stationNumber) ||
         			(this.eyesisSubCameras.length<=stationNumber) ||
         			(this.eyesisSubCameras[stationNumber].length<=subCamNumber)) throw new IllegalArgumentException
             ("Nonexistent subcamera "+subCamNumber+ " and/or station number="+stationNumber);
-        	
-        	
         	EyesisSubCameraParameters subCam=this.eyesisSubCameras[stationNumber][subCamNumber];
         	if (update[0]) subCam.azimuth=parVect[0];            // 0 azimuth of the lens entrance pupil center, degrees, clockwise looking from top
         	if (update[1]) subCam.radius=parVect[1];             // 1 mm, distance from the rotation axis
@@ -1067,7 +1155,34 @@ import org.apache.commons.configuration.XMLConfiguration;
         	if (update[24]) subCam.distortionA= parVect[24];      //24  r^4 (normalized to focal length or to sensor half width?)
         	if (update[25]) subCam.distortionB= parVect[25];      //25  r^3
         	if (update[26]) subCam.distortionC= parVect[26];      //26  r^2
+        	if (update[27]) subCam.r_od[0][0]= parVect[27];
+        	if (update[28]) subCam.r_od[0][1]= parVect[28];
+        	if (update[29]) subCam.r_xy[0][0]= parVect[29];
+        	if (update[30]) subCam.r_xy[0][1]= parVect[30];
+        	if (update[31]) subCam.r_od[1][0]= parVect[31];
+        	if (update[32]) subCam.r_od[1][1]= parVect[32];
+        	if (update[33]) subCam.r_xy[1][0]= parVect[33];
+        	if (update[34]) subCam.r_xy[1][1]= parVect[34];
+        	if (update[35]) subCam.r_od[2][0]= parVect[35];
+        	if (update[36]) subCam.r_od[2][1]= parVect[36];
+        	if (update[37]) subCam.r_xy[2][0]= parVect[37];
+        	if (update[38]) subCam.r_xy[2][1]= parVect[38];
+        	if (update[39]) subCam.r_od[3][0]= parVect[39];
+        	if (update[40]) subCam.r_od[3][1]= parVect[40];
+        	if (update[41]) subCam.r_xy[3][0]= parVect[41];
+        	if (update[42]) subCam.r_xy[3][1]= parVect[42];
+        	if (update[43]) subCam.r_od[4][0]= parVect[43];
+        	if (update[44]) subCam.r_od[4][1]= parVect[44];
+        	if (update[45]) subCam.r_xy[4][0]= parVect[45];
+        	if (update[46]) subCam.r_xy[4][1]= parVect[46];
+        	if (update[47]) subCam.r_od[5][0]= parVect[47];
+        	if (update[48]) subCam.r_od[5][1]= parVect[48];
+        	if (update[49]) subCam.r_xy[5][0]= parVect[49];
+        	if (update[50]) subCam.r_xy[5][1]= parVect[50];
+        	if (update[51]) subCam.r_od[6][0]= parVect[51];
+        	if (update[52]) subCam.r_od[6][1]= parVect[52];
         }
+        
     	public void initSubCameras(
     			int numStation,
     			int numSubCameras){
@@ -1094,6 +1209,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			this.eyesisSubCameras[numStation][1]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
     					30.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
@@ -1114,6 +1231,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			this.eyesisSubCameras[numStation][2]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
     					-30.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
@@ -1134,6 +1253,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     		} else if (numSubCameras==1) {
     			this.eyesisSubCameras[numStation][0]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
@@ -1155,6 +1276,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     		} else {
     			// default setup for the 26 sub-cameras	    		
@@ -1177,6 +1300,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			for (int i=8;i<16;i++) if (i<numSubCameras) 	this.eyesisSubCameras[numStation][i]=new EyesisSubCameraParameters( // middle 8 cameras
     					45.0*(i-8),  // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
@@ -1197,6 +1322,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			for (int i=16;i<24;i++) if (i<numSubCameras) 	this.eyesisSubCameras[numStation][i]=new EyesisSubCameraParameters( // bottom eight cameras
     					45.0*(i-16), // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
@@ -1217,6 +1344,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			if (24<numSubCameras) 	this.eyesisSubCameras[numStation][24]=new EyesisSubCameraParameters(
     					90,      // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
@@ -1237,6 +1366,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					4.0); //channelWeightDefault
     			if (25<numSubCameras) 	this.eyesisSubCameras[numStation][25]=new EyesisSubCameraParameters(
     					270,     // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
@@ -1257,6 +1388,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		0.0,    // double distortionC // r^2
     		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
     					4.0); //channelWeightDefault
     		}
     	}
@@ -1322,8 +1455,6 @@ import org.apache.commons.configuration.XMLConfiguration;
     			}
 
     		}
-    		
-    		
     	}
     }
  

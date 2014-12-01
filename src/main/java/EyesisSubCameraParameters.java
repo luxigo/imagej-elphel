@@ -47,6 +47,24 @@ import java.util.Properties;
 		public double channelWeightCurrent=1.0;
 		public int [][] defectsXY=null; // pixel defects coordinates list (starting with worst)
 		public double [] defectsDiff=null; // pixel defects value (diff from average of neighbors), matching defectsXY
+		
+		final private double [][] r_xy_dflt={{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0}}; // only 6, as for the first term delta x, delta y ==0  
+		final private double [][] r_od_dflt=   {{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0}}; // ortho
+		
+		public double [][] r_xy=null; // only 6, as for the first term delta x, delta y ==0  
+		public double [][] r_od=null; // ortho
+		/*
+		 Modifying to accommodate for eccentricity of different terms (2 parameters per term) and elliptical shape (another 2 terms). When all are
+		 zeroes, the old parameters are in effect:
+				Rdist/R=A8*R^7+A7*R^6+A6*R^5+A5*R^4+A*R^3+B*R^2+C*R+(1-A6-A7-A6-A5-A-B-C)");
+				Rdist/R=A8*R6^7+A7*R5^6+A6*R4^5+A5*R3^4+A*R2^3+B*R1^2+C*R0+(1-A6-A7-A6-A5-A-B-C)");
+				R[i] depends on px,py and r_xy[i][], r_o[i] (positive - "landscape", negative - "portrait"), r_d (positive - along y=x, negative - along y=-x)
+				R[i] = r0[i]*(1+  (r_od[i][0]*(y[i]**2-x[i]**2)+ 2*r_od[i][1]*x[i]*y[i])/r0[i]**2;
+				r0[i]=sqrt(x[i]**2+y[2]**2)
+				x[i]=pixel_x-px0-((i>0)?r_xy[i-1][0]:0) 
+				y[i]=pixel_y-py0-((i>0)?r_xy[i-1][1]:0)
+		*/		
+		
     	public EyesisSubCameraParameters(
     			double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     			double radius,  // mm, distance from the rotation axis
@@ -66,6 +84,8 @@ import java.util.Properties;
     			double distortionC, // r^2
     			double px0,           // center of the lens on the sensor, pixels
     			double py0,           // center of the lens on the sensor, pixels
+				double [][] r_xy,     // eccentricity for b,a,a5,a6,a7,a8
+				double [][] r_od,     // elongation for c,b,a,a5,a6,a7,a8
     			double channelWeightDefault
     	){
     		this.azimuth=azimuth;
@@ -86,6 +106,12 @@ import java.util.Properties;
     		this.distortionC=distortionC; // r^2
     		this.px0=px0;
     		this.py0=py0;
+			if (r_xy==null) r_xy=r_xy_dflt;
+			if (r_od==null) r_od=r_od_dflt;
+			this.r_xy=new double [r_xy.length][2];
+			for (int i=0;i<r_xy.length;i++)this.r_xy[i]=r_xy[i].clone();
+			this.r_od=new double [r_od.length][2];
+			for (int i=0;i<r_od.length;i++)this.r_od[i]=r_od[i].clone();
     		this.channelWeightDefault=channelWeightDefault;
     		this.channelWeightCurrent=this.channelWeightDefault;
     		this.defectsXY=null; // pixel defects coordinates list (starting with worst)
@@ -113,10 +139,18 @@ import java.util.Properties;
     	    		this.distortionC,
     	    		this.px0,
     	    		this.py0,
+    				this.r_xy,
+    				this.r_od,
     	    		this.channelWeightDefault
     				);
     	}
-
+    	public void setDefaultNonRadial(){
+			r_od=new double [r_od_dflt.length][2];
+			for (int i=0;i<r_od.length;i++) r_od[i]=r_od_dflt[i].clone();
+			r_xy=new double [r_xy_dflt.length][2];
+			for (int i=0;i<r_xy.length;i++) r_xy[i]=r_xy_dflt[i].clone();
+    	}
+// TODO: add/restore new properties
     	public void setProperties(String prefix,Properties properties){
     		properties.setProperty(prefix+"azimuth",this.azimuth+"");
     		properties.setProperty(prefix+"radius",this.radius+"");
@@ -136,6 +170,14 @@ import java.util.Properties;
 			properties.setProperty(prefix+"distortionC",this.distortionC+"");
 			properties.setProperty(prefix+"px0",this.px0+"");
 			properties.setProperty(prefix+"py0",this.py0+"");
+			for (int i=0;i<this.r_xy.length;i++){
+				properties.setProperty(prefix+"r_xy_"+i+"_x",this.r_xy[i][0]+"");
+				properties.setProperty(prefix+"r_xy_"+i+"_y",this.r_xy[i][1]+"");
+			}
+			for (int i=0;i<this.r_od.length;i++){
+				properties.setProperty(prefix+"r_od_"+i+"_o",this.r_od[i][0]+"");
+				properties.setProperty(prefix+"r_od_"+i+"_d",this.r_od[i][1]+"");
+			}
 			properties.setProperty(prefix+"channelWeightDefault",this.channelWeightDefault+"");
     	}
     	public void getProperties(String prefix,Properties properties){
@@ -175,9 +217,19 @@ import java.util.Properties;
 				this.px0=Double.parseDouble(properties.getProperty(prefix+"px0"));
 			if (properties.getProperty(prefix+"py0")!=null)
 				this.py0=Double.parseDouble(properties.getProperty(prefix+"py0"));
+			setDefaultNonRadial();
+			for (int i=0;i<this.r_xy.length;i++){
+				if (properties.getProperty(prefix+"r_xy_"+i+"_x")!=null) this.r_xy[i][0]=Double.parseDouble(properties.getProperty(prefix+"r_xy_"+i+"_x"));
+				if (properties.getProperty(prefix+"r_xy_"+i+"_y")!=null) this.r_xy[i][1]=Double.parseDouble(properties.getProperty(prefix+"r_xy_"+i+"_y"));
+			}
+			for (int i=0;i<this.r_od.length;i++){
+				if (properties.getProperty(prefix+"r_od_"+i+"_o")!=null) this.r_od[i][0]=Double.parseDouble(properties.getProperty(prefix+"r_od_"+i+"_o"));
+				if (properties.getProperty(prefix+"r_od_"+i+"_d")!=null) this.r_od[i][1]=Double.parseDouble(properties.getProperty(prefix+"r_od_"+i+"_d"));
+			}
+
 			if (properties.getProperty(prefix+"channelWeightDefault")!=null) {
 				this.channelWeightDefault=Double.parseDouble(properties.getProperty(prefix+"channelWeightDefault"));
-	    		this.channelWeightCurrent=this.channelWeightDefault;
+				this.channelWeightCurrent=this.channelWeightDefault;
 			}
     	}
     	public void setChannelWeightCurrent(
@@ -190,5 +242,4 @@ import java.util.Properties;
     	public double getChannelWeightDefault(){
     		return this.channelWeightDefault;
     	}
-
     }

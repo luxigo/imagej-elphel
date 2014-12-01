@@ -422,6 +422,34 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 			this.pathName=pathname;
         	return true;
         }
+        public int findLastValidSeries(int numSeries){
+        	for (;numSeries>=0;numSeries--) if (isSeriesValid(numSeries)) return numSeries;
+        	return -1; // none valid
+        }
+        public boolean copySeries(int sourceSeries, int numSeries){
+     		if (isSeriesValid(sourceSeries)){
+    				invalidateSelectedImages(numSeries); // just in case -= will be recalculated
+    				for (int i =0; i<this.distortionCalibrationData.getNumImages();i++){
+    					this.selectedImages[numSeries][i]=this.selectedImages[sourceSeries][i]; // copy for all, not only enabled
+    				}
+    				for (int i =0; i<this.parameterEnable.length;i++) if (this.parameterEnable[i]){
+    					this.parameterMode[numSeries][i]=this.parameterMode[sourceSeries][i];
+    					this.parameterGroups[numSeries][i]=(this.parameterGroups[sourceSeries][i]==null)?null:this.parameterGroups[sourceSeries][i].clone();
+    				}
+    				this.masterImages[numSeries]=this.masterImages[sourceSeries];
+    				this.lambdas[numSeries]=this.lambdas[sourceSeries];
+    				this.stepDone[numSeries]=this.stepDone[sourceSeries];
+    				this.stopAfterThis[numSeries]=this.stopAfterThis[sourceSeries];
+    				this.varianceModes[numSeries]=this.varianceModes[sourceSeries];
+    				this.zGroups[numSeries]=(this.zGroups[sourceSeries]!=null)?this.zGroups[sourceSeries].clone():null;
+    				return true;
+    		} else {
+    			return false;
+    		}
+        }
+        
+        
+        
         /**
          * Verifies that series exists and is not empty (valid for LMA)
          * @param num - series to verify
@@ -1406,31 +1434,13 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     			sNumNewEnabledPerStation+=numNewEnabledPerStation[i];
     		}
      		if (!isSeriesValid(numSeries)){
-    			int sourceSeries=-1;
-    			for (int i=numSeries-1;i>=0;i--) if (isSeriesValid(i)){
-    				sourceSeries=i;
-    				break;
-    			}
-    			if (sourceSeries>=0){
-    				invalidateSelectedImages(numSeries); // just in case -= will be recalculated
-    				for (int i =0; i<this.distortionCalibrationData.getNumImages();i++){
-    					this.selectedImages[numSeries][i]=this.selectedImages[sourceSeries][i]; // copy for all, not only enabled
-    				}
-    				for (int i =0; i<this.parameterEnable.length;i++) if (this.parameterEnable[i]){
-    					this.parameterMode[numSeries][i]=this.parameterMode[sourceSeries][i];
-    					this.parameterGroups[numSeries][i]=(this.parameterGroups[sourceSeries][i]==null)?null:this.parameterGroups[sourceSeries][i].clone();
-    				}
-    				this.masterImages[numSeries]=this.masterImages[sourceSeries];
-    				this.lambdas[numSeries]=this.lambdas[sourceSeries];
-    				this.stepDone[numSeries]=this.stepDone[sourceSeries];
-    				this.stopAfterThis[numSeries]=this.stopAfterThis[sourceSeries];
-    				this.varianceModes[numSeries]=this.varianceModes[sourceSeries];
-    				this.zGroups[numSeries]=(this.zGroups[sourceSeries]!=null)?this.zGroups[sourceSeries].clone():null;
-    			}
+    			int sourceSeries= findLastValidSeries(numSeries);
+    			if (sourceSeries>=0)  copySeries(sourceSeries, numSeries);
     		}
     		
 			GenericDialog gd = new GenericDialog("Fitting Strategy Step Configuration, step "+numSeries+" number of enabled images="+this.distortionCalibrationData.getNumEnabled());
-			gd.addCheckbox("Copy all from previous series (ignore all other fields)", false);
+			gd.addCheckbox("Copy all from the series below, ignore all other fields", false);
+			gd.addNumericField("Source series to copy from", (numSeries>0)?(numSeries-1):(numSeries+1), 0, 3, "");
 			gd.addCheckbox("Remove all (but first) images, reopen dialog", false); // remove all will be invalid, copied from the previous
 			gd.addCheckbox("Select all images, reopen dialog", false);
 			if (numEstimated>0){
@@ -1571,6 +1581,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 			gd.showDialog();
 			if (gd.wasCanceled()) return -2;
 			boolean copyFromPrevious=gd.getNextBoolean();
+			int sourceStrategy= (int) gd.getNextNumber();
 			boolean removeAllImages=gd.getNextBoolean();
 			boolean selectAllImages=gd.getNextBoolean();
 			boolean selectEstimated=false;
@@ -1595,7 +1606,17 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 				return numSeries; // caller will repeat with the same series
 			}
 			
-			if (copyFromPrevious || removeAllImages || selectAllImages) {
+			if (copyFromPrevious){
+    			int sourceSeries= findLastValidSeries(sourceStrategy);
+    			if (sourceSeries>=0) {
+    				copySeries(sourceSeries, numSeries);
+    			} else {
+    				System.out.println("Could not copy from invalid series "+sourceSeries);
+    			}
+				return numSeries; // caller will repeat with the same series
+			}
+			if (removeAllImages || selectAllImages) {
+//				
 				for (int i =0; i<this.distortionCalibrationData.getNumImages();i++){
 //					this.selectedImages[numSeries][i]=false; // invalidate - all, regardless of .enabled
 					this.selectedImages[numSeries][i]=selectAllImages || ((i==0) && removeAllImages); // invalidate - all, regardless of .enabled
@@ -1777,7 +1798,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 
 		}
     	public boolean selectStrategy(int startSerNumber){
-    		int defaultLength=20;
+    		int defaultLength=30;
     		boolean selectImages=    false;
     		boolean allImages=       false;
     		boolean selectParameters=true;

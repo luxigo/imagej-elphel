@@ -403,7 +403,9 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     		2360,// double distance// distance from the lens input pupil to the pattern plane along the camera axis, mm 
     		1296.0, // double px0     // lens axis from sensor, horizontal, from left (pixels)
     		968.0, // double py0     // lens axis from sensor, vertical, from top (pixels)
-    		true//  boolean flipVertical // acquired image is mirrored vertically (mirror used)
+    		true, //  boolean flipVertical // acquired image is mirrored vertically (mirror used)
+    		null, //  double [][] r_xy,
+    		null  //  double [][] r_od
     		);
 //    public static double [] defaultGoniometerPosition={0.0, 0.0, 2360};
     public static EyesisCameraParameters EYESIS_CAMERA_PARAMETERS=new EyesisCameraParameters(

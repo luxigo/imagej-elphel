@@ -30,8 +30,10 @@ import ij.io.Opener;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.text.TextWindow;
+
 import java.awt.Rectangle;
 import java.awt.geom.Point2D;
+import java.util.Arrays;
 //import java.io.StringWriter;
 import java.util.List;
 import java.util.ArrayList;
@@ -3299,7 +3301,7 @@ For each point in the image
 		double [] vectorFX=new double[doubleNumAllPoints];
 //		this.fX=new double[doubleNumAllPoints];
 		if (this.debugLevel>2) {
-			System.out.println("calculateFxAndJacobian(), calcJacobian="+calcJacobian);
+			System.out.println("calculateFxAndJacobian(), calcJacobian="+calcJacobian+" D3304 + this.debugLevel="+this.debugLevel);
 			if (vector!=null) {
 			  for (int ii=0;ii<vector.length;ii++) System.out.println(ii+": "+vector[ii]);
 			} else {
@@ -3331,8 +3333,9 @@ For each point in the image
 // and this.interParameterDerivatives
 //			if (this.debugLevel>1) {
 			if (this.debugLevel>2) {
-				System.out.println("calculateFxAndJacobian(), imgNum="+imgNum+" calcInterParamers():");
+				System.out.println("calculateFxAndJacobian(), imgNum="+imgNum+" calcInterParamers(): (D3336)");
 			}
+			this.lensDistortionParameters.debugLevel=this.debugLevel;
 			this.lensDistortionParameters.lensCalcInterParamers(
 					this.lensDistortionParameters,
 					this.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.isTripod,
@@ -3359,7 +3362,7 @@ For each point in the image
 	    					IJ.d2s(targetXYZ[fullIndex][1],2)+","+
 	    					IJ.d2s(targetXYZ[fullIndex][2],2)+" ("+calcJacobian+") -> "+
 	    					IJ.d2s(derivatives15[0][0],2)+"/"+IJ.d2s(derivatives15[0][1],2));
-	    			String all="derivatives15:";
+	    			String all="derivatives15: D3365";
 	    			for (int ii=0;ii<derivatives15.length;ii++) all+=" "+ii+":"+IJ.d2s(derivatives15[ii][0],3)+"/"+IJ.d2s(derivatives15[ii][1],3);
 	    			System.out.println(all);
 	    		}
@@ -3470,7 +3473,7 @@ For each point in the image
 						IJ.d2s(patternXYZ[fullIndex][1],2)+","+
 						IJ.d2s(patternXYZ[fullIndex][2],2)+" ("+calcJacobian+") -> "+
 						IJ.d2s(derivatives15[0][0],2)+"/"+IJ.d2s(derivatives15[0][1],2));
-				String all="derivatives15:";
+				String all="derivatives15: D3476";
 				for (int ii=0;ii<derivatives15.length;ii++) all+=" "+ii+":"+IJ.d2s(derivatives15[ii][0],3)+"/"+IJ.d2s(derivatives15[ii][1],3);
 				System.out.println(all);
 			}
@@ -3557,7 +3560,7 @@ For each point in the image
 									IJ.d2s(targetXYZ[fullIndex][1],2)+","+
 									IJ.d2s(targetXYZ[fullIndex][2],2)+" -> "+
 									IJ.d2s(derivatives15[0][0],2)+"/"+IJ.d2s(derivatives15[0][1],2));
-							String all="derivatives15:";
+							String all="derivatives15: D3563";
 							for (int ii=0;ii<derivatives15.length;ii++) all+=" "+ii+":"+IJ.d2s(derivatives15[ii][0],3)+"/"+IJ.d2s(derivatives15[ii][1],3);
 							System.out.println(all);
 						}
@@ -5916,6 +5919,14 @@ List calibration
     	imp.setProperty("comment_entrancePupilForward",  "entrance pupil distance from the azimuth/radius/height, outwards in mm");
     	imp.setProperty("entrancePupilForward",  ""+entrancePupilForward); // currently global, decoders will use per-sensor
        	imp.setProperty("comment_defects", "Sensor hot/cold pixels list as x:y:difference");
+		for (int i=0;i<subCam.r_xy.length;i++){
+			imp.setProperty("r_xy_"+i+"_x",subCam.r_xy[i][0]+"");
+			imp.setProperty("r_xy_"+i+"_y",subCam.r_xy[i][1]+"");
+		}
+		for (int i=0;i<subCam.r_od.length;i++){
+			imp.setProperty("r_od_"+i+"_o",subCam.r_od[i][0]+"");
+			imp.setProperty("r_od_"+i+"_d",subCam.r_od[i][1]+"");
+		}
        	if (subCam.defectsXY!=null){
     		StringBuffer sb = new StringBuffer();
     		for (int i=0;i<subCam.defectsXY.length;i++){
@@ -6076,6 +6087,16 @@ List calibration
         		subCam.defectsXY=null;
         		subCam.defectsDiff=null;
         	}
+ // non-radial
+        	subCam.setDefaultNonRadial();
+			for (int i=0;i<subCam.r_xy.length;i++) {
+				if (imp.getProperty("r_xy_"+i+"_x")  !=null) subCam.r_xy[i][0]= Double.parseDouble((String) imp.getProperty("r_xy_"+i+"_x"));
+				if (imp.getProperty("r_xy_"+i+"_y")  !=null) subCam.r_xy[i][1]= Double.parseDouble((String) imp.getProperty("r_xy_"+i+"_y"));
+			}
+			for (int i=0;i<subCam.r_od.length;i++) {
+				if (imp.getProperty("r_od_"+i+"_o")  !=null) subCam.r_od[i][0]= Double.parseDouble((String) imp.getProperty("r_od_"+i+"_o"));
+				if (imp.getProperty("r_od_"+i+"_d")  !=null) subCam.r_od[i][1]= Double.parseDouble((String) imp.getProperty("r_od_"+i+"_d"));
+			}
         }
         for (int imgNum=0;imgNum<fittingStrategy.distortionCalibrationData.getNumImages();imgNum++){
         	int imageSubCam=  fittingStrategy.distortionCalibrationData.getImageSubcamera(imgNum);
@@ -9289,7 +9310,7 @@ M * V = B
 			gd.addNumericField("Select parameter number (0.."+(parameterNames.length-1)+") from above", 0, 0);
 
 	    }
-		if (debugDerivatives) gd.addNumericField("Select delta to increment selected parameter", .01, 5);
+		if (debugDerivatives) gd.addNumericField("Select delta to increment selected parameter", .001, 5);
 		if (debugDerivatives) gd.addCheckbox("Show inter-parameter derivatives matrix", true);
 	    gd.showDialog();
 	    if (gd.wasCanceled()) return;
@@ -9304,7 +9325,7 @@ M * V = B
 	    String title;
 	    if (useActualParameters) {
 	    	this_currentfX=calculateFxAndJacobian(this.currentVector, true); // is it always true here (this.jacobian==null)
-	    	d_derivative=this.jacobian[selectedParameter].clone();
+	    	d_derivative=this.jacobian[selectedParameter].clone(); //  wrong?
 	    	if (debugDerivatives) {
 	    		double[] modVector=this.currentVector.clone();
 	    		modVector[selectedParameter]+=delta;
@@ -9354,13 +9375,17 @@ M * V = B
 	 * @return rms 
 	 */
 	public double showCompareDerivatives(int imgNumber, double [] d_derivative, double [] d_delta, boolean applySensorMask, String title ){
-		String [] titlesDebug={"dX-derivative","dY-derivative","abs-derivative","diff-X (should be 0)","diff-Y (should be 0)","dX-delta/delta","dY-delta/delta"};
+		String [] titlesDebug={"dX-derivative","dY-derivative","abs-derivative","diff-X (should be 0)","diff-Y (should be 0)","dX-delta/delta","dY-delta/delta","dX-delta","dY-delta"};
 		String [] titlesNoDebug={"dX-derivative","dY-derivative","abs-derivative"};
 		String [] titles= (d_delta==null)? titlesNoDebug:titlesDebug;
 		double [] d_diff=new double [d_derivative.length];
+		double [] r_diff=new double [d_derivative.length];
 		double [] aDeriv=new double [d_derivative.length/2];
 		
-		if (d_delta!=null) for (int i=0;i<d_diff.length;i++) d_diff[i]=d_derivative[i]-d_delta[i];
+		if (d_delta!=null) for (int i=0;i<d_diff.length;i++){
+			d_diff[i]=d_derivative[i]-d_delta[i];
+			r_diff[i]=d_diff[i]/d_delta[i];
+		}
 // find data range for the selected image
 		int index=0;
 		int numImg=fittingStrategy.distortionCalibrationData.getNumImages();
@@ -9396,8 +9421,10 @@ M * V = B
 			if (d_delta!=null) {
 				imgData[3][vu]=   d_diff[2*(index+i)];
 				imgData[4][vu]=   d_diff[2*(index+i)+1];
-				imgData[5][vu]=   d_delta[2*(index+i)];
-				imgData[6][vu]=   d_delta[2*(index+i)+1];
+				imgData[5][vu]=   r_diff[2*(index+i)];
+				imgData[6][vu]=   r_diff[2*(index+i)+1];
+				imgData[7][vu]=   d_delta[2*(index+i)];
+				imgData[8][vu]=   d_delta[2*(index+i)+1];
 			}
 		}
 		this.SDFA_INSTANCE.showArrays(imgData, width, getGridHeight(),  true, title, titles);
@@ -9456,6 +9483,14 @@ M * V = B
         	System.out.println("this.lensDistortionParameters.distortionA="+IJ.d2s(this.lensDistortionParameters.distortionA, 5));
         	System.out.println("this.lensDistortionParameters.distortionB="+IJ.d2s(this.lensDistortionParameters.distortionB, 5));
         	System.out.println("this.lensDistortionParameters.distortionC="+IJ.d2s(this.lensDistortionParameters.distortionC, 5));
+        	for (int i=0;i<this.lensDistortionParameters.r_xy.length;i++){
+            	System.out.println("this.lensDistortionParameters.r_xy["+i+"][0]="+IJ.d2s(this.lensDistortionParameters.r_xy[i][0], 5));
+            	System.out.println("this.lensDistortionParameters.r_xy["+i+"][1]="+IJ.d2s(this.lensDistortionParameters.r_xy[i][1], 5));
+        	}
+        	for (int i=0;i<this.lensDistortionParameters.r_od.length;i++){
+            	System.out.println("this.lensDistortionParameters.r_od["+i+"][0]="+IJ.d2s(this.lensDistortionParameters.r_od[i][0], 5));
+            	System.out.println("this.lensDistortionParameters.r_od["+i+"][1]="+IJ.d2s(this.lensDistortionParameters.r_od[i][1], 5));
+        	}
         }
         LensDistortionParameters ldp=this.lensDistortionParameters.clone();
 //		public void setLensDistortionParameters(LensDistortionParameters ldp
@@ -9612,6 +9647,7 @@ M * V = B
     		DistortionCalibrationData distortionCalibrationData,
     		EyesisCameraParameters eyesisCameraParameters
     ){
+    	boolean resetParametersToZero=false;
     	boolean [] parameterMask= new boolean[distortionCalibrationData.getNumParameters()];
     	boolean [] channelMask=   new boolean[distortionCalibrationData.getNumSubCameras()];
     	boolean [] stationMask=   new boolean[distortionCalibrationData.getNumStations()];
@@ -9619,7 +9655,9 @@ M * V = B
     	for (int i=0;i<channelMask.length;i++)   channelMask[i]=  true;
     	for (int i=0;i<stationMask.length;i++)   stationMask[i]=  true;
     	GenericDialog gd=new GenericDialog("Update (new) image settings from known data");
-    	gd.addMessage("Select which individual image parameters to be updated from the camera parameters");
+    	//
+    	gd.addCheckbox("Reset selected parameters to zero (false - update from camera parameters)", resetParametersToZero);
+    	gd.addMessage("Select which individual image parameters to be updated from the camera parameters (or reset to 0)");
     	for (int i=0;i<parameterMask.length;i++) gd.addCheckbox(i+": "+distortionCalibrationData.getParameterName(i), parameterMask[i]);
     	gd.addMessage("----------");
     	gd.addMessage("Select which channels (sub-cameras) to update");
@@ -9637,6 +9675,7 @@ M * V = B
 	    WindowTools.addScrollBars(gd);
     	gd.showDialog();
     	if (gd.wasCanceled()) return false;
+    	resetParametersToZero=gd.getNextBoolean();
     	for (int i=0;i<parameterMask.length;i++) parameterMask[i]= gd.getNextBoolean();
     	for (int i=0;i<channelMask.length;i++)   channelMask[i]=   gd.getNextBoolean();
     	if (stationMask.length>1) {
@@ -9653,6 +9692,7 @@ M * V = B
 		
 //		boolean updateDisabled=       gd.getNextBoolean();
     	updateImageSetFromCamera(
+    			resetParametersToZero,
     			distortionCalibrationData,
     			eyesisCameraParameters,
     			parameterMask, //boolean [] parameterMask,
@@ -9741,6 +9781,7 @@ M * V = B
     	}
     	
     	if (updateFromCamera) updateImageSetFromCamera(
+    			false, //resetParametersToZero
     			distortionCalibrationData,
     			eyesisCameraParameters,
     			parameterMask, //boolean [] parameterMask,
@@ -9771,6 +9812,7 @@ M * V = B
      * @param copyOrientation copy 2 goniometer angles, normally should be false
      */
     public void updateImageSetFromCamera(
+    		boolean resetParametersToZero, // reset to 0 instead of camera parameters
     		DistortionCalibrationData distortionCalibrationData,
     		EyesisCameraParameters eyesisCameraParameters,
     		boolean [] parameterMask,
@@ -9785,7 +9827,17 @@ M * V = B
     		if ((stationMask!=null) && !stationMask[stationNumber]) continue;
     		double [] oldVector=distortionCalibrationData.getParameters(i);
     		double [] newVector=eyesisCameraParameters.getParametersVector(stationNumber,subCam);
-    		for (int j=0;j<oldVector.length;j++) if (parameterMask[j]) oldVector[j]=newVector[j];
+    		for (int j=0;j<oldVector.length;j++) if (parameterMask[j]){
+    			if (resetParametersToZero) newVector[j]=0.0;
+    			oldVector[j]=newVector[j];
+    		}
+    		if (resetParametersToZero){
+    			eyesisCameraParameters.setParametersVector(
+    					newVector,
+    					parameterMask,
+    					stationNumber,
+    					subCam);
+    		}
     		distortionCalibrationData.setParameters(oldVector, i);
     		this.lensDistortionParameters.pixelSize=eyesisCameraParameters.getPixelSize(subCam);
     		this.lensDistortionParameters.distortionRadius=eyesisCameraParameters.getDistortionRadius(subCam);
