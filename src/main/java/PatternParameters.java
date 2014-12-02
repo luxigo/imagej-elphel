@@ -755,8 +755,9 @@ import java.util.Properties;
         		throw new IllegalArgumentException (msg);
         	}
         	if (this.stationZCorr==null) return this.gridGeometry[v1][u1];
+        	if (station>this.stationZCorr[v1][u1].length) station = this.stationZCorr[v1][u1].length-1;
         	double [] result=this.gridGeometry[v1][u1].clone();
-        	result[2]+=this.stationZCorr[v1][u1][station];
+        	result[2]+=this.stationZCorr[v1][u1][station]; // if pattern did not have multi-station?
 			return result;
 		}
 		public double[] getXYZMAverage(int u, int v){ // u=0,v=0 - center!
