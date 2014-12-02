@@ -143,7 +143,32 @@ public class SimulationPattern {
 	}
 
 /* ======================================================================== */
-	public void  simulatePatternFullPattern(
+	public void simulatePatternFullPattern(
+			double freqX1,
+			double freqY1,
+			double phase1,
+			double freqX2,
+			double freqY2,
+			double phase2,
+			double [] corr,
+			int subdiv,
+			int size,
+			boolean center_for_g2) {
+		this.barray=simulatePatternFullPatternSafe(
+				freqX1,
+				freqY1,
+				phase1,
+				freqX2,
+				freqY2,
+				phase2,
+				corr,
+				subdiv,
+				size,
+				center_for_g2);
+	}
+
+	
+	public double [] simulatePatternFullPatternSafe(
 			double freqX1,
 			double freqY1,
 			double phase1,
@@ -158,8 +183,7 @@ public class SimulationPattern {
 		double twicePatternSize=2*patternSize;
 		int i,j;
 		int fullSize=subdiv*(size+4)*2;
-//		this.barray=new double [fullSize][fullSize];
-		this.barray=new double [fullSize*fullSize];
+		double [] localBarray=new double [fullSize*fullSize];
 		double xl,yl; //,x,y;//,p1,p2;
 
 
@@ -212,8 +236,7 @@ public class SimulationPattern {
 					uv[1]-=0.5;
 				}
 				if (this.bPattern==null) {
-///					this.barray[i][j]=invert?0.0:1.0; //!invert;
-					this.barray[i*fullSize+j]=invert?0.0:1.0; //!invert;
+					localBarray[i*fullSize+j]=invert?0.0:1.0; //!invert;
 				} else {
 					iu= (int) Math.round(uv[0]*twicePatternSize);
 					iv= (int) Math.round(uv[1]*twicePatternSize);
@@ -225,19 +248,18 @@ public class SimulationPattern {
 						invert=!invert;
 						iv=(iv+patternSize)% patternSize;
 					}
-//					this.barray[i][j]=invert ^ this.bPattern[iv*patternSize + iu];
-///					this.barray[i][j]=invert?(1.0-this.bPattern[iv*patternSize + iu]): this.bPattern[iv*patternSize + iu];
-					this.barray[i*fullSize+j]=invert?(1.0-this.bPattern[iv*patternSize + iu]): this.bPattern[iv*patternSize + iu];
+					localBarray[i*fullSize+j]=invert?(1.0-this.bPattern[iv*patternSize + iu]): this.bPattern[iv*patternSize + iu];
 				}
 			}
 		}
 // Blur barray pattern if sigma >0		
 		if (this.barraySigma>0) {
 			double sigma=this.barraySigma*subdiv; //*/ 2? 
-			if (this.debugLevel>3) SDFA_INSTANCE.showArrays(this.barray, "barray");
-			this.gb.blurDouble(this.barray,fullSize,fullSize,sigma,sigma, 0.01);
-			if (this.debugLevel>3) SDFA_INSTANCE.showArrays(this.barray, "barray-blured");
+			if (this.debugLevel>3) SDFA_INSTANCE.showArrays(localBarray, "localBarray");
+			this.gb.blurDouble(localBarray,fullSize,fullSize,sigma,sigma, 0.01);
+			if (this.debugLevel>3) SDFA_INSTANCE.showArrays(localBarray, "localBarray-blured");
 		}
+		return localBarray;
 	}
 /* ======================================================================== */
 	public double [] recursiveFillPixels ( // invert pattern in the caller, return signed value (-1..1 - pattern is 0..1) 
@@ -845,12 +867,28 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 /* ======================================================================== */
 /* make it faster when outSubdiv =2*n (usually so) */
 /* TODO: cleanup shifts - they seem now to work correctly */
-	public double [][] extractSimulPatterns (
-			SimulParameters  simulParameters,
-			int outSubdiv,  // subdivide output pixels
-			int size,    // number of Bayer cells in width of the square selection (half number of pixels)
-			double x0,    // selection center, X (in pixels)
-			double y0) {
+		public double [][] extractSimulPatterns (
+				SimulParameters  simulParameters,
+				int outSubdiv,  // subdivide output pixels
+				int size,    // number of Bayer cells in width of the square selection (half number of pixels)
+				double x0,    // selection center, X (in pixels)
+				double y0) {
+			return extractSimulPatterns (
+					this.barray,
+					simulParameters,
+					outSubdiv,  // subdivide output pixels
+					size,    // number of Bayer cells in width of the square selection (half number of pixels)
+					x0,    // selection center, X (in pixels)
+					y0);
+		}
+		
+		public double [][] extractSimulPatterns (
+				double [] localbArray,
+				SimulParameters  simulParameters,
+				int outSubdiv,  // subdivide output pixels
+				int size,    // number of Bayer cells in width of the square selection (half number of pixels)
+				double x0,    // selection center, X (in pixels)
+				double y0) {
 		int sampleWidth=(int) (Math.sqrt(simulParameters.fill)*simulParameters.subdiv);
 		int sampleN=sampleWidth*sampleWidth;
 		if      (sampleWidth<1)     sampleWidth=1;
@@ -858,8 +896,7 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 		double sampleAverage=0.5*sampleN;
 
 		int n,i,j;
-//		int fullSize=this.barray.length;
-		int fullSize=(int) Math.sqrt(this.barray.length);
+		int fullSize=(int) Math.sqrt(localbArray.length);
 		double [][] simul_pixels=new double [5][size*size];
 		int ix,iy, iy0,ix0,px,py;
 		double bx,by;
@@ -876,8 +913,13 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 					ix0=(fullSize/2) + (int) ((-span+x0+bx+0.5   +2.0*ix/outSubdiv)*simulParameters.subdiv);
 					s=0.0;
 					for (py=iy0+sampLow;py<iy0+sampHigh;py++) for (px=ix0+sampLow;px<ix0+sampHigh;px++) {
-///						s+=this.barray[py][px];
-						s+=this.barray[py*fullSize+px];
+						try {
+							s+=localbArray[py*fullSize+px];
+						} catch (Exception e){
+							System.out.println("Bug in extractSimulPatterns(): px="+px+" py="+py+" fullSize="+fullSize+" size="+size+" x0="+x0+" y0="+y0);
+							e.printStackTrace();
+							return null;
+						}
 					}
 					simul_pixels[n][iy*size+ix]= (s-sampleAverage)/sampleAverage;
 				}
@@ -895,8 +937,7 @@ Cv=(Cy*x-Cx*y)+(-Cy*Dx+Cx*Dy)
 					ix0=(fullSize/2) + (int) ((-span+x0+bx  +0.5  +1.0*(iy+ix)/outSubdiv)*simulParameters.subdiv);
 					s=0.0;
 					for (py=iy0+sampLow;py<iy0+sampHigh;py++) for (px=ix0+sampLow;px<ix0+sampHigh;px++) {
-///						s+=this.barray[py][px];
-						s+=this.barray[py*fullSize+px];
+						s+=localbArray[py*fullSize+px];
 					}
 					simul_pixels[n][iy*size+ix]= (s-sampleAverage)/sampleAverage;
 				}

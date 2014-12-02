@@ -131,7 +131,8 @@ public class LensAdjustment {
 					imp_eq, // image to process
 					threadsMax,
 					updateStatus,
-					debug_level);// debug level used inside loops
+					debug_level,// debug level used inside loops
+					debug_level); // global debug level ?
 			if (debug_level>1) System.out.println("distortions() finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 
 			matchSimulatedPattern.recalculateWaveVectors (

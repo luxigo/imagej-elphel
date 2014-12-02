@@ -94,7 +94,126 @@ horizontal axis:
 	}
 
 	//goniometerMotors
+	private enum MOT_ACT {
+		MOVE_SPEC,
+		HOME,
+		TILT_P85,
+		TILT_M85,
+		RCW200,
+		RCCW200,
+		SET_HOME};
+	private final String [] options={
+			"Move to specified position",
+			"Move home",
+			"Tilt up (from target) 85 degrees",
+			"Tilt down (to target) 85 degrees",
+			"Rotate to clockwise 200 degrees",
+			"Rotate to counter-clockwise 200 degrees",
+			"set current position as new home"};
 	
+
+	public boolean manualMove(
+			AtomicInteger stopRequested, // 1 - stop now, 2 - when convenient
+			boolean updateStatus){
+		int tiltMotor=2;  // 0-1-2
+		int axialMotor=1; // 0-1-2
+		boolean needsInit=false;
+		
+		int [] currentMotors=this.goniometerParameters.goniometerMotors.getCurrentPositions();
+		double currentTilt=currentMotors[tiltMotor]/this.goniometerParameters.goniometerMotors.stepsPerDegreeTilt;
+		double currentAxial=currentMotors[axialMotor]/this.goniometerParameters.goniometerMotors.stepsPerDegreeAxial;
+		currentTilt=0.1*Math.round(10.0*currentTilt);
+		currentAxial=0.1*Math.round(10.0*currentAxial);
+		this.goniometerParameters.goniometerMotors.debugLevel=this.debugLevel+1;
+		System.out.println(
+				"Current position:\n"+
+				"Tilt:  "+IJ.d2s(currentTilt,1)+" degrees ("+currentMotors[tiltMotor]+" steps)\n"+
+				"Axial: "+IJ.d2s(currentAxial,1)+" degrees ("+currentMotors[axialMotor]+" steps)\n");
+		
+		GenericDialog gd = new GenericDialog("User interrupt");
+
+		gd.addRadioButtonGroup("Select action", options, 7, 1, options[0]);
+		gd.addNumericField("Goniometer tilt angle",    currentTilt, 1,5,"\u00b0 (positive - look up)");
+		gd.addNumericField("Goniometer axial angle",    currentAxial, 1,5,"\u00b0 (positive - CCW)");
+		gd.addCheckbox("Initialize goniometer motor driver",needsInit);
+		gd.addNumericField("Debug level",    debugLevel, 0,1,"");
+		gd.showDialog();
+		if (gd.wasCanceled()) return false;
+		String selectedAction=gd.getNextRadioButton();
+		currentTilt=  gd.getNextNumber();
+		currentAxial= gd.getNextNumber();
+		needsInit=    gd.getNextBoolean();
+		debugLevel=(int)gd.getNextNumber();
+		this.goniometerParameters.goniometerMotors.debugLevel=this.debugLevel; // +1;
+		if (needsInit){
+			if (!this.goniometerParameters.goniometerMotors.tryInit(true,updateStatus)){
+				String msg="Failed to initialize goniometer motor driver";
+				System.out.println("Error: "+msg);
+				IJ.showMessage("Error",msg);
+				return false; // failed initialization
+			}
+		}
+		if (selectedAction.equals(options[MOT_ACT.SET_HOME.ordinal()])){
+			if (this.goniometerParameters.goniometerMotors.setHome()==null){
+				String msg="Failed to set new home position";
+				System.out.println("Error: "+msg);
+				IJ.showMessage("Error",msg);
+				return false; // failed set home
+			}
+			return true;
+		}
+		MOT_ACT act=MOT_ACT.MOVE_SPEC;
+		for (MOT_ACT a: MOT_ACT.values()){
+			if (selectedAction.equals(options[a.ordinal()])){
+				act=a;
+				break;
+			}
+		}
+		double targetTilt=currentTilt;
+		double targetAxial=currentAxial;
+		switch (act) {
+		case HOME:
+			targetTilt=0;
+			targetAxial=0;
+			act=MOT_ACT.MOVE_SPEC;
+			break;
+		case TILT_P85:
+			targetTilt=85.0;
+			act=MOT_ACT.MOVE_SPEC;
+			break;
+		case TILT_M85:
+			targetTilt=-85.0;
+			act=MOT_ACT.MOVE_SPEC;
+			break;
+		case RCW200:
+			targetAxial=-200.0;
+			act=MOT_ACT.MOVE_SPEC;
+			break;
+		case RCCW200:
+			targetAxial=200.0;
+			act=MOT_ACT.MOVE_SPEC;
+			break;
+		default:
+			break;
+		}
+		if (act!=MOT_ACT.MOVE_SPEC){
+			String msg="Program BUG, action "+selectedAction+" can not be processed";
+			System.out.println("Error: "+msg);
+			IJ.showMessage("Error",msg);
+			return false;
+		}
+		int tiltMotorPosition= (int) Math.round(targetTilt*this.goniometerParameters.goniometerMotors.stepsPerDegreeTilt);
+		int axialMotorPosition= (int) Math.round(targetAxial*this.goniometerParameters.goniometerMotors.stepsPerDegreeAxial);
+		boolean OK= motorsMove(
+				tiltMotor,
+				axialMotor,
+				tiltMotorPosition,
+				axialMotorPosition,
+				stopRequested,
+				updateStatus);
+		if (!OK) System.out.println("motorsMove()->false");
+		return true; // OK; // So will re-open dialog even after abort
+	}
 	public boolean scanAndAcquire(
 			double targetAngleHorizontal,
 			double targetAngleVertical,
@@ -251,43 +370,45 @@ horizontal axis:
 		}
 		startAxial=startStep-this.lastScanStep;
 		this.lastScanStep=startStep-1;
-		
+		 Runtime runtime = Runtime.getRuntime();
 		for (int nTilt=startTilt;nTilt<numTiltSteps;nTilt++){
 			double tilt=tilts[nTilt];
 			tilt=0.1*Math.round(10*tilt); // is that needed?
 			int tiltMotorPosition= (int) Math.round(tilt*this.goniometerParameters.goniometerMotors.stepsPerDegreeTilt);
-			
+
 			status=IJ.d2s(1E-9*(System.nanoTime()-startTime),3)+": Tilt run "+(nTilt+1)+" (of "+numTiltSteps+"), tilt angle "+
-			IJ.d2s(tilt,2)+" degrees, motor steps: "+tiltMotorPosition;
+					IJ.d2s(tilt,2)+" degrees, motor steps: "+tiltMotorPosition;
 			if (this.debugLevel>0) System.out.println(status);
 			if (updateStatus) IJ.showStatus(status);
 			this.goniometerParameters.motorsSimultaneous=false; // not yet implemented
-//			if (!this.goniometerParameters.motorsSimultaneous){
-				OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
-				if (!OK) {
-					String msg="Could not set motor "+(tiltMotor+1)+" to move to "+tiltMotorPosition+" - may be out of limit";
-					System.out.println("Error: "+msg);
-					IJ.showMessage("Error",msg);
-					return false;
-				}
-				OK=this.goniometerParameters.goniometerMotors.waitMotor(tiltMotor);
-				if (!OK) {
-					String msg="Motor "+(tiltMotor+1)+" failed to reach "+tiltMotorPosition+".";
-					System.out.println("Error: "+msg);
-					IJ.showMessage("Error",msg);
-					return false;
-				}
-//			}
+			//			if (!this.goniometerParameters.motorsSimultaneous){
+			OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
+			if (!OK) {
+				String msg="Could not set motor "+(tiltMotor+1)+" to move to "+tiltMotorPosition+" - may be out of limit";
+				System.out.println("Error: "+msg);
+				IJ.showMessage("Error",msg);
+				return false;
+			}
+			OK=this.goniometerParameters.goniometerMotors.waitMotor(tiltMotor, null, false,updateStatus); // no interrupts during movement
+			if (!OK) {
+				String msg="Motor "+(tiltMotor+1)+" failed to reach "+tiltMotorPosition+".";
+				System.out.println("Error: "+msg);
+				IJ.showMessage("Error",msg);
+				return false;
+			}
+			//			}
 			for (int nAxial=((nTilt==startTilt)?startAxial:0);nAxial<rots[nTilt].length;nAxial++){
 				double axial=rots[nTilt][nAxial];
 				axial=0.1*Math.round(10*axial);
 				int axialMotorPosition= (int) Math.round(axial*this.goniometerParameters.goniometerMotors.stepsPerDegreeAxial);
 				status=(this.lastScanStep+1)+"( last="+(numStops-1)+") "+IJ.d2s(1E-9*(System.nanoTime()-startTime),3)+" sec.  tilt:"+(nTilt+1)+"/"+numTiltSteps+" , "+
-				IJ.d2s(tilt,2)+" deg., axial:"+
-				(nAxial+1)+"/"+rots[nTilt].length+" , "+IJ.d2s(axial,2)+" deg.";
-				if (this.debugLevel>0) System.out.println(status+", axial motor steps: "+axialMotorPosition);
+						IJ.d2s(tilt,2)+" deg., axial:"+
+						(nAxial+1)+"/"+rots[nTilt].length+" , "+IJ.d2s(axial,2)+" deg.";
+				runtime.gc();
+				String memoryStatus="Free memory="+runtime.freeMemory()+" (of "+runtime.totalMemory()+")";
+				if (this.debugLevel>0) System.out.println(status+", axial motor steps: "+axialMotorPosition+" "+memoryStatus);
 				if (updateStatus) IJ.showStatus(status);
-				
+
 				OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(axialMotor, axialMotorPosition);
 				if (!OK) {
 					String msg="Could not set motor "+(axialMotor+1)+" to move to "+axialMotorPosition+" - may be out of limit";
@@ -295,15 +416,15 @@ horizontal axis:
 					IJ.showMessage("Error",msg);
 					return false;
 				}
-				OK=this.goniometerParameters.goniometerMotors.waitMotor(axialMotor);
+				OK=this.goniometerParameters.goniometerMotors.waitMotor(axialMotor, null, false,updateStatus);
 				if (!OK) {
 					String msg="Motor "+(axialMotor+1)+" failed to reach "+axialMotorPosition+".";
 					System.out.println("Error: "+msg);
 					IJ.showMessage("Error",msg);
 					return false;
 				}
-// update motor positions in the image properties, acquire and save images.
-// TODO: Make acquisition/decoding/laser identification multi-threaded				
+				// update motor positions in the image properties, acquire and save images.
+				// TODO: Make acquisition/decoding/laser identification multi-threaded				
 				this.cameras.setMotorsPosition(this.goniometerParameters.goniometerMotors.getTargetPositions()); // Used target, not current to prevent minor variations
 				this.cameras.reportTiming=debugTiming;
 
@@ -326,32 +447,37 @@ horizontal axis:
 								axialMotor,
 								0, //tiltMotorPosition,
 								0, //axialMotorPosition,
+								null, // no interrupts
 								updateStatus);
-						 return false;
+						return false;
 					}
 				}
 
 			}
-			
+
 		}
 		OK=motorsMove(
 				tiltMotor,
 				axialMotor,
 				0, //tiltMotorPosition,
 				0, //axialMotorPosition,
+				null, // no interrupts
 				updateStatus);
 		if (this.debugLevel>0) System.out.println("Scan finished in "+IJ.d2s(1E-9*(System.nanoTime()-startTime),3)+" seconds.");
 
 		return OK;
-		
+
 	}
 	public boolean motorsMove(
 			int tiltMotor,
 			int axialMotor,
 			int tiltMotorPosition,
 			int axialMotorPosition,
+			AtomicInteger stopRequested, // or null
 			boolean updateStatus){
-		String status="Movin axial motor to "+axialMotorPosition+"...";
+		String status;
+		if (!this.goniometerParameters.goniometerMotors.checkGotTarget(axialMotor,axialMotorPosition)) {
+			status="Moving axial motor to "+axialMotorPosition+"...";
 			if (updateStatus) IJ.showStatus(status);
 			boolean OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(axialMotor, axialMotorPosition);
 			if (!OK) {
@@ -360,28 +486,33 @@ horizontal axis:
 				IJ.showMessage("Error",msg);
 				return false;
 			}
-			OK=this.goniometerParameters.goniometerMotors.waitMotor(axialMotor);
+			OK=this.goniometerParameters.goniometerMotors.waitMotor(axialMotor, stopRequested, false,updateStatus);
 			if (!OK) {
 				String msg="Motor "+(axialMotor+1)+" failed to reach "+axialMotorPosition+".";
 				System.out.println("Error: "+msg);
 				IJ.showMessage("Error",msg);
 				return false;
 			}
-			OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
+		}
+		if (!this.goniometerParameters.goniometerMotors.checkGotTarget(tiltMotor,tiltMotorPosition)) {
+			status="Moving tilt motor to "+tiltMotorPosition+"...";
+			if (updateStatus) IJ.showStatus(status);
+			boolean OK= this.goniometerParameters.goniometerMotors.moveMotorSetETA(tiltMotor, tiltMotorPosition);
 			if (!OK) {
 				String msg="Could not set motor "+(tiltMotor+1)+" to move to "+tiltMotorPosition+" - may be out of limit";
 				System.out.println("Error: "+msg);
 				IJ.showMessage("Error",msg);
 				return false;
 			}
-			OK=this.goniometerParameters.goniometerMotors.waitMotor(tiltMotor);
+			OK=this.goniometerParameters.goniometerMotors.waitMotor(tiltMotor,stopRequested, false, updateStatus);
 			if (!OK) {
 				String msg="Motor "+(tiltMotor+1)+" failed to reach "+tiltMotorPosition+".";
 				System.out.println("Error: "+msg);
 				IJ.showMessage("Error",msg);
 				return false;
 			}
-			return true;
+		}
+		return true;
 	}
 
 	
@@ -467,7 +598,8 @@ horizontal axis:
 				subCam,
 				goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 				goniometerTiltAxial[1],  // Axial,goniometerAxial
-				-1 // use camera parameters, not imageSet
+				-1, // use camera parameters, not imageSet
+				true // filter border
 				);
 		if (hintGrid==null){
 			String msg= "Target is not visible";
@@ -717,7 +849,7 @@ horizontal axis:
 				// TODO - here - multiple images possible, not just one!
 				// First - create sparse, then remove nulls
 
-				imp_calibrated[numSensor] = this.matchSimulatedPatterns[numSensor].getCalibratedPatternAsImage(images[numSensor],numAbsolutePoints);
+				imp_calibrated[numSensor] = this.matchSimulatedPatterns[numSensor].getCalibratedPatternAsImage(images[numSensor],"grid-",numAbsolutePoints);
 				if (this.goniometerParameters.showAcquiredImages)
 					imp_calibrated[numSensor].show(); // DISTORTION_PROCESS_CONFIGURATION.showGridImages
 			} // for (int numSensor=0;numSensor<images.length;numSensor++) if

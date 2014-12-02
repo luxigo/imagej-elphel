@@ -1066,12 +1066,16 @@ public class EyesisAberrations {
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
 			SimulationPattern.SimulParameters  simulParameters,
 			ColorComponents colorComponents,
+			boolean resetBadKernels, // ignore and reset noUsefulKernels mark for selected channel
 			int threadsMax,
 			boolean updateStatus,
 			int loopDebugLevel, // debug level used inside loops
 			int debugLevel
 			){
     	Distortions.DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
+    	boolean partialToReprojected=this.aberrationParameters.partialToReprojected;
+    	boolean applySensorCorrection=this.aberrationParameters.partialCorrectSensor;
+    	// this.distortions is set to top level LENS_DISTORTIONS
 		if (distortions==null){
     		String msg="Distortions instance does not exist, exiting";
     		IJ.showMessage("Error",msg);
@@ -1085,18 +1089,35 @@ public class EyesisAberrations {
 		}
 		long startTime=System.nanoTime(); // restart timer after possible interactive dialogs
 //		long tmpTime;
-    	boolean [] selectedImages=distortions.fittingStrategy.selectedImagesNoBadKernels(this.aberrationParameters.allImages?-1:this.aberrationParameters.seriesNumber); // negative series number OK - will select all enabled
+		//resetBadKernels
+		int serNumber=this.aberrationParameters.allImages?-1:this.aberrationParameters.seriesNumber;
+    	boolean [] selectedImages=resetBadKernels?
+    			distortions.fittingStrategy.selectedImages(serNumber):
+    			distortions.fittingStrategy.selectedImagesNoBadKernels(serNumber); // negative series number OK - will select all enabled
     	boolean [] selectedChannels=this.aberrationParameters.getChannelSelection(distortions);
     	int numSelected=0;
     	int numDeselected=0;
+    	if (debugLevel>2){
+    		for (int i=0;i<selectedChannels.length;i++){
+    			System.out.println("Channel "+i+" is "+(selectedChannels[i]?"Enabled":"Disabled"));
+    		}
+    	}
     	for (int imgNum=0;imgNum<selectedImages.length;imgNum++) if (selectedImages[imgNum]) {
     		int numChannel=distortionCalibrationData.gIP[imgNum].channel;
+        	if (debugLevel>2){
+        		System.out.println("Image "+imgNum+" channel "+numChannel+" is "+(selectedChannels[numChannel]?"ENABLED":"DISABLED"));
+        	}    		
     		if (!selectedChannels[numChannel]){
     			selectedImages[imgNum]=false;
     			numDeselected++;
-    		}	else numSelected++;
+    		}else{
+    			distortions.fittingStrategy.setNoUsefulPSFKernels(imgNum,false); // reset noUsefulKernels mark (if it was not set - OK)
+    			numSelected++;
+    		}
+    	} else if (debugLevel>2){
+    		System.out.println("Skipping disabled image "+imgNum);
     	}
-    	if (debugLevel>0)System.out.println("Enabled "+numSelected+" source files ("+numDeselected+") were removed by channel selection");
+    	if (debugLevel>0)System.out.println("Enabled "+numSelected+" source files ("+numDeselected+") were removed by channel selection. partialToReprojected="+partialToReprojected);
 
     	String [] sourcePaths=new String [selectedImages.length];
     	// Set/verify source paths
@@ -1194,7 +1215,7 @@ public class EyesisAberrations {
     	}
     	// reorder in the ascending channel number order
     	String [][] files=new String [numFiles][2]; // 0 - source, 1 - result
-    	int [] fileIndices =new int [numFiles]; // needed to mark bad kernels
+    	int [] fileIndices =new int [numFiles]; // needed to mark bad kernels (and also to reference grid parameters to replace extracted)
     	int numListedFiles=0;
     	int numChannel=0;
     	while (numListedFiles<numFiles) {
@@ -1219,9 +1240,34 @@ public class EyesisAberrations {
 
         	int MaxRetries=4;
         	int iRetry=0;
-        	for (iRetry=0;iRetry<MaxRetries;iRetry++){
+        	for (iRetry=0;iRetry<MaxRetries;iRetry++){ // is this retry needed?
         		try {
-        			matchSimulatedPattern.calculateDistortions(
+        			
+        			double [][][] projectedGrid=null;
+        			double hintTolerance=0.0; 
+        			if (partialToReprojected){ // replace px, py with projected values form the grid
+        				// this.distortions is set to the global LENS_DISTORTIONS
+        				int numGridImage=fileIndices[imgNum];
+        				projectedGrid=distortions.estimateGridOnSensor( // return grid array [v][u][0- x,  1 - y, 2 - u, 3 - v] 
+        						distortions.fittingStrategy.distortionCalibrationData.getImageStation(numGridImage), // station number,
+        						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel, // subCamera,
+        						Double.NaN, // goniometerHorizontal, - not used
+        						Double.NaN, // goniometerAxial, - not used
+        						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].getSetNumber(), //imageSet,
+        						true); //filterBorder)
+        				hintTolerance=5.0; // TODO:set from configurable parameter
+        				if (applySensorCorrection){
+        					boolean applied=distortions.correctGridOnSensor(
+        							projectedGrid,
+        							distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel);
+                			if (debugLevel>0) {
+                				if (applied) System.out.println("Applied sensor correction to the projected grid");
+                				else System.out.println("No sensor correction available to apply to the projected grid");
+                			}
+        				}
+        			}
+        			
+        			int rslt=matchSimulatedPattern.calculateDistortions(
         					distortionParameters, //
         					patternDetectParameters,
         					simulParameters,
@@ -1229,15 +1275,22 @@ public class EyesisAberrations {
         					imp,
         					null, // LaserPointer laserPointer, // LaserPointer object or null
         					true, // don't care -removeOutOfGridPointers
-        					null, //   double [][][] hintGrid, // predicted grid array (or null)
-        					0,    //   double  hintGridTolerance, // allowed mismatch (fraction of period) or 0 - orientation only
-
+        					projectedGrid, // null, //   double [][][] hintGrid, // predicted grid array (or null)
+        					hintTolerance, // 0,    //   double  hintGridTolerance, // allowed mismatch (fraction of period) or 0 - orientation only
         					threadsMax,
         					updateStatus,
         					debugLevel,
         					loopDebugLevel, // debug level
         					aberrationParameters.noMessageBoxes);
-        			
+        			if (rslt<0){
+            			if (debugLevel>0) System.out.println("calculateDistortions failed, returned error code "+rslt+" iRetry="+iRetry+" (of "+MaxRetries+")");
+            			continue;
+        			}
+        			// now replace extracted grid X,Y with projected (need to add sensor correction)
+        			if (projectedGrid!=null){
+        				int numReplaced= matchSimulatedPattern.replaceGridXYWithProjected(projectedGrid);
+            			if (debugLevel>0) System.out.println("Replaced extracted XY with projected ones for "+numReplaced+" nodes");
+        			}
         			correlationSizesUsed=matchSimulatedPattern.getCorrelationSizesUsed();
         			simArray=	(new SimulationPattern(simulParameters)).simulateGridAll (
         					imp.getWidth(),
@@ -1281,7 +1334,14 @@ public class EyesisAberrations {
         			continue;
         		}
         	}
-        	if (iRetry==MaxRetries) continue;
+        	if (iRetry==MaxRetries) {
+				System.out.println("File "+files[imgNum][1]+ " has problems - finished at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+	    		if 	(stopRequested.get()>0) {				
+					if (debugLevel>0) System.out.println("User requested stop");
+					break;
+	    		}
+        		continue;
+        	}
         	
 			
 			ImageStack stack=mergeKernelsToStack(this.pdfKernelMap);
@@ -1386,7 +1446,7 @@ public class EyesisAberrations {
 			int                    globalDebugLevel
 	){	
 		double [][][][] psfKernelMap; // will be lost - do we need it outside
-		double [][][][][] kernelsElllipsePars = new double[filenames.length][][][][];
+		double [][][][][] kernelsElllipsePars = new double[filenames.length][][][][]; //x0,y0,a,b,c,area
 		if (thisDebugLevel>0){
 			System.out.println("combinePSFKernels(): filenames.length="+filenames.length);
 		}
@@ -1443,15 +1503,15 @@ public class EyesisAberrations {
 				//   			  System.out.println("nChn="+nChn+" nFile="+nFile+" tileY="+tileY+" tileX="+tileX);
 				if (kernelsElllipsePars[nFile][tileY][tileX][chn]!=null) {
 					channels[chn]=true;
-					c[0][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][0];
-					c[1][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][1];
-					c[2][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][2];
-					c[3][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][3];
-					c[4][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][4];
+					c[0][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][0]; // x0
+					c[1][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][1]; // y0
+					c[2][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][2]; // a
+					c[3][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][3]; // b
+					c[4][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][4]; // c
 					a=1/Math.sqrt(kernelsElllipsePars[nFile][tileY][tileX][chn][2]*kernelsElllipsePars[nFile][tileY][tileX][chn][3]-
 							kernelsElllipsePars[nFile][tileY][tileX][chn][4]*kernelsElllipsePars[nFile][tileY][tileX][chn][4]/4);
 					c[5][chn][nFile+1][tileY*kWidth+tileX]= Math.sqrt(a); // radius
-					c[6][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][5];
+					c[6][chn][nFile+1][tileY*kWidth+tileX]=kernelsElllipsePars[nFile][tileY][tileX][chn][5]; // area
 
 				} else {
 					c[0][chn][nFile+1][tileY*kWidth+tileX]=Double.NaN;
@@ -1997,7 +2057,8 @@ public class EyesisAberrations {
 					"",
 					debugLevel);
 					//				  ellipseCoeffs[tileY][tileX][chn]=findEllipseOnPSF(kernel,  selection,   "");
-					ec=findEllipseOnPSF(kernel,  selection,   "", debugLevel);
+					ec=findEllipseOnPSF(kernel,  selection,   "", debugLevel); // x0,y0,a,b,c (r2= a* x^2*+b*y^2+c*x*y)
+
 					l=ec.length;
 					ellipseCoeffs[tileY][tileX][chn]=new double[l+1];
 					for (i=0;i<ec.length;i++) ellipseCoeffs[tileY][tileX][chn][i]=ec[i];
@@ -2045,14 +2106,17 @@ public class EyesisAberrations {
 			PSFParameters psfParameters,
 			boolean [] correlationSizesUsed
 	){
-		int numDifferentFFT=0;
-		for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
-			numDifferentFFT++;
-		}
-		int [] corrSizes=new int [numDifferentFFT];
-		int index=0;
-		for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
-			corrSizes[index++]=1<<i;
+		int [] corrSizes={};
+		if (correlationSizesUsed!=null) {
+			int numDifferentFFT=0;
+			for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
+				numDifferentFFT++;
+			}
+			corrSizes=new int [numDifferentFFT];
+			int index=0;
+			for (int i=0;i<correlationSizesUsed.length;i++) if (correlationSizesUsed[i]) {
+				corrSizes[index++]=1<<i;
+			}
 		}
 		ImagePlus impPsf = new ImagePlus(path, stack);
 
@@ -2530,6 +2594,8 @@ public class EyesisAberrations {
 		
 		double [][] dbgSimPix=null;
 		
+		double [] localBarray;
+		
 		if ((simArray==null) || (psfParameters.approximateGrid)){ // just for testing
 			/* Calculate pattern parameters, including distortion */
 			if (matchSimulatedPattern.PATTERN_GRID==null) {
@@ -2549,7 +2615,8 @@ public class EyesisAberrations {
 							" W1_phase="+IJ.d2s(distortedPattern[1][2],2));
 
 				}
-				simulationPattern.simulatePatternFullPattern(
+//				simulationPattern.simulatePatternFullPattern( // Not thread safe!
+						localBarray=simulationPattern.simulatePatternFullPatternSafe(
 						distortedPattern[0][0],
 						distortedPattern[0][1],
 						distortedPattern[0][2],
@@ -2591,7 +2658,8 @@ public class EyesisAberrations {
 				wVectors[0][1]=distPatPars[0][1];
 				wVectors[1][0]=distPatPars[1][0];
 				wVectors[1][1]=distPatPars[1][1];
-				simulationPattern.simulatePatternFullPattern(
+//		    	simulationPattern.simulatePatternFullPattern( // Not thread safe!
+				localBarray=simulationPattern.simulatePatternFullPatternSafe(
 						wVectors[0][0],
 						wVectors[0][1],
 						phases[0],
@@ -2603,7 +2671,9 @@ public class EyesisAberrations {
 						fft_size,
 						simulParameters.center_for_g2);
 			}
+//			simul_pixels= simulationPattern.extractSimulPatterns (
 			simul_pixels= simulationPattern.extractSimulPatterns (
+					localBarray,		// this version is thread safe
 					simulParameters,
 					subpixel, // subdivide pixels
 					fft_size*subpixel, // number of Bayer cells in width of the square selection (half number of pixels)
@@ -2713,6 +2783,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					globalDebugLevel,
 					title+"-"+i);
 		}
+		int debugThreshold=1;
 		if (debugThis) SDFA_INSTANCE.showArrays(inverted, fft_size*subpixel, fft_size*subpixel, title+"_Combined-PSF");
 /* correct composite greens */
 /* Here we divide wave vectors by subpixel as the pixels are already added */
@@ -2748,7 +2819,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		//int [][]  clusterMask;
 /* Start with referenceComp */
 		i= referenceComp;
-		if (globalDebugLevel>2) {
+		if (globalDebugLevel>debugThreshold) {
 			System.out.println(x0+":"+y0+"1-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
 			System.out.println("Before: color Component "+i+" PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts[i][0],3)+
 					" PSF_shifts["+i+"][1]="+IJ.d2s(PSF_shifts[i][1],3));
@@ -2756,7 +2827,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 
 
 		kernels[i]=combinePSF (inverted[i], // Square array of pixels with multiple repeated PSF (alternating sign)
-				true, // master, force ignoreChromatic
+				!psfParameters.absoluteCenter, //true, // master, force ignoreChromatic
 				PSF_shifts[i],  // centerXY[] - will be modified inside combinePSF() if PSF_PARS.ignoreChromatic is true
 				PSF_centroids[i], // will return array of XY coordinates of the result centroid
 				(i==4)?wVectors4:wVectors, // two wave vectors, lengths in cycles/pixel (pixels match pixel array)
@@ -2766,13 +2837,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 						(globalDebugLevel>4),
 						globalDebugLevel
 						);
-		if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
-		if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
+		if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
+		if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
 
-		if (!psfParameters.ignoreChromatic) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
+		if (!psfParameters.ignoreChromatic && !psfParameters.absoluteCenter) { /* Recalculate center to pixels from greens (diagonal)) and supply it to other colors (lateral chromatic aberration correction) */
 			for (j=0;j<input_bayer.length;j++) if ((colorComponents.colorsToCorrect[j]) && (j!=referenceComp)) {
 				PSF_shifts[j]=shiftSensorToBayer (shiftBayerToSensor(PSF_shifts[referenceComp],referenceComp,subpixel),j,subpixel);
-				if (globalDebugLevel>2)       System.out.println(x0+":"+y0+"After-2 (recalc): color Component "+j+" PSF_shifts["+j+"][0]="+IJ.d2s(PSF_shifts[j][0],3)+" PSF_shifts["+j+"][1]="+IJ.d2s(PSF_shifts[j][1],3));
+				if (globalDebugLevel>debugThreshold)       System.out.println(x0+":"+y0+"After-2 (recalc): color Component "+j+" PSF_shifts["+j+"][0]="+IJ.d2s(PSF_shifts[j][0],3)+" PSF_shifts["+j+"][1]="+IJ.d2s(PSF_shifts[j][1],3));
 			}
 		}
 
@@ -2783,7 +2854,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		lateralChromaticAbs[i]=Math.sqrt(lateralChromatic[i][0]*lateralChromatic[i][0]+lateralChromatic[i][1]*lateralChromatic[i][1]);
 /* Now process all the other components */
 		for (i=0; i<input_bayer.length;i++) if ((i!=referenceComp) && (colorComponents.colorsToCorrect[i])) {
-			if (globalDebugLevel>2) {
+			if (globalDebugLevel>debugThreshold) {
 				System.out.println(x0+":"+y0+"2-PSF_shifts.length= "+PSF_shifts.length+" i="+i+" input_bayer.length="+input_bayer.length);
 
 				System.out.println(x0+":"+y0+"Before: color Component "+i+" PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts[i][0],3)+
@@ -2799,8 +2870,8 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 							title+"_"+i,    // reduce the PSF cell size to this part of the area connecting first negative clones
 							(globalDebugLevel>4),
 							globalDebugLevel);
-			if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
-			if (globalDebugLevel>2)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
+			if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+"    PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts   [i][0],3)+"    PSF_shifts["+i+"][1]="+IJ.d2s(   PSF_shifts[i][1],3));
+			if (globalDebugLevel>debugThreshold)     System.out.println(x0+":"+y0+"After-1: color Component "+i+" PSF_centroids["+i+"][0]="+IJ.d2s(PSF_centroids[i][0],3)+" PSF_centroids["+i+"][1]="+IJ.d2s(PSF_centroids[i][1],3));
 			lateralChromatic[i]=shiftBayerToSensor ( PSF_shifts[i][0]+PSF_centroids[i][0],
 					PSF_shifts[i][1]+PSF_centroids[i][1],
 					i,
@@ -2810,9 +2881,10 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		}
 		if (globalDebugLevel>1) { //1
 			for (i=0;i<PSF_shifts.length;i++) if (colorComponents.colorsToCorrect[i]){
-				if (globalDebugLevel>2) { //2
+				if (globalDebugLevel>debugThreshold) { //2
 					System.out.println(x0+":"+y0+" Color Component "+i+" subpixel="+subpixel+
 							" psfParameters.ignoreChromatic="+psfParameters.ignoreChromatic+
+							" psfParameters.absoluteCenter="+psfParameters.absoluteCenter+
 							" psfParameters.symm180="+psfParameters.symm180);
 					System.out.println(x0+":"+y0+                     " PSF_shifts["+i+"][0]="+IJ.d2s(PSF_shifts[i][0],3)+
 							" PSF_shifts["+i+"][1]="+IJ.d2s(PSF_shifts[i][1],3)+
@@ -3276,7 +3348,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 					debugLevel);
 			//                   true);
 			
-			if (!master && !psfParameters.ignoreChromatic && psfParameters.centerPSF && (centerXY!=null)){
+			if (!master && !psfParameters.ignoreChromatic && !psfParameters.absoluteCenter && psfParameters.centerPSF && (centerXY!=null)){
 //				System.out.println("1:pixelsPSF.length="+pixelsPSF.length+" outSize+"+outSize);
 
 				// TODO: Shift +/- 0.5 Pix here {centerXY[0]-Math.round(centerXY[0]),centerXY[1]-Math.round(centerXY[1])}	
@@ -3334,7 +3406,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (debugLevel>2) System.out.println("Centroid after first binPSF: x="+IJ.d2s(centroidXY[0],3)+" y="+IJ.d2s(centroidXY[1],3)+" center was at x="+IJ.d2s(centerXY[0],3)+" y="+IJ.d2s(centerXY[1],3));
 
 	/* Re-bin results with the new center if ignoreChromatic is true, update centerXY[](shift of the result PSF array) and centroidXY[] (center of the optionally shifted PDF array) */
-			if (master || psfParameters.ignoreChromatic) {
+			if (!psfParameters.absoluteCenter && (master || psfParameters.ignoreChromatic)) {
 				if (centerXY!=null) {
 					centerXY[0]+=centroidXY[0];
 					centerXY[1]+=centroidXY[1];
@@ -4398,8 +4470,11 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     	public boolean autoRestoreSensorOverwriteOrientation=true; // overwrite camera parameters from sensor calibration files
 		public boolean autoReCalibrate=true; // Re-calibrate grids on autoload
 		public boolean autoReCalibrateIgnoreLaser=false; // "Ignore laser pointers on recalibrate"
+    	public boolean autoFilter=true;
     	public boolean noMessageBoxes=true;
     	public boolean overwriteResultFiles=false;
+    	public boolean partialToReprojected=true; // Use reprojected grid for partial kernel calculation (false - use extracted)
+    	public boolean partialCorrectSensor=true; // Apply sensor correction to the projected grid
     	public int     seriesNumber=0;
     	public boolean allImages;
     	public String sourcePrefix="";
@@ -4430,8 +4505,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			properties.setProperty(prefix+"autoRestoreSensorOverwriteOrientation",this.autoRestoreSensorOverwriteOrientation+"");
 			properties.setProperty(prefix+"autoReCalibrate",this.autoReCalibrate+"");
 			properties.setProperty(prefix+"autoReCalibrateIgnoreLaser",this.autoReCalibrateIgnoreLaser+"");
+			properties.setProperty(prefix+"autoFilter",this.autoFilter+"");
 			properties.setProperty(prefix+"noMessageBoxes",this.noMessageBoxes+"");
 			properties.setProperty(prefix+"overwriteResultFiles",this.overwriteResultFiles+"");
+			properties.setProperty(prefix+"partialToReprojected",this.partialToReprojected+"");
+			properties.setProperty(prefix+"partialCorrectSensor",this.partialCorrectSensor+"");
+			
+			
 			properties.setProperty(prefix+"seriesNumber",this.seriesNumber+"");
 			properties.setProperty(prefix+"allImages",this.allImages+"");
 
@@ -4468,8 +4548,15 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				this.autoRestoreSensorOverwriteOrientation=Boolean.parseBoolean(properties.getProperty(prefix+"autoRestoreSensorOverwriteOrientation"));
 			if (properties.getProperty(prefix+"autoReCalibrate")!=null)            this.autoReCalibrate=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrate"));
 			if (properties.getProperty(prefix+"autoReCalibrateIgnoreLaser")!=null) this.autoReCalibrateIgnoreLaser=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrateIgnoreLaser"));
+			if (properties.getProperty(prefix+"autoFilter")!=null)                 this.autoFilter=Boolean.parseBoolean(properties.getProperty(prefix+"autoFilter"));
+			
+			
 			if (properties.getProperty(prefix+"noMessageBoxes")!=null)             this.noMessageBoxes=Boolean.parseBoolean(properties.getProperty(prefix+"noMessageBoxes"));
 			if (properties.getProperty(prefix+"overwriteResultFiles")!=null)       this.overwriteResultFiles=Boolean.parseBoolean(properties.getProperty(prefix+"overwriteResultFiles"));
+			if (properties.getProperty(prefix+"partialToReprojected")!=null)       this.partialToReprojected=Boolean.parseBoolean(properties.getProperty(prefix+"partialToReprojected"));
+			if (properties.getProperty(prefix+"partialCorrectSensor")!=null)       this.partialCorrectSensor=Boolean.parseBoolean(properties.getProperty(prefix+"partialCorrectSensor"));
+			
+			
 			if (properties.getProperty(prefix+"seriesNumber")!=null)               this.seriesNumber=Integer.parseInt(properties.getProperty(prefix+"seriesNumber"));
 			if (properties.getProperty(prefix+"allImages")!=null)                  this.allImages=Boolean.parseBoolean(properties.getProperty(prefix+"allImages"));
 			if (properties.getProperty(prefix+"sourcePrefix")!=null)	      this.sourcePrefix=properties.getProperty(prefix+"sourcePrefix");
@@ -4601,6 +4688,9 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		gd.addCheckbox("Select aberrations kernels directory", false);
     		gd.addCheckbox("Supress non-essential message boxes", this.noMessageBoxes);
     		gd.addCheckbox("Overwrite result files if they exist", this.overwriteResultFiles);
+    		gd.addCheckbox("Use reprojected grids for partial kernel calculation (false - extracted grids)", this.partialToReprojected);
+    		gd.addCheckbox("Apply sensor correction during for partial kernel calculation", this.partialCorrectSensor);
+    		    		
     		gd.addNumericField("Fitting series number to use for image selection", this.seriesNumber,0);
     		gd.addCheckbox("Process all enabled image files (false - use selected fitting series)", this.allImages);
     		gd.addMessage("===== Autoload options (when restoring configuration) =====");
@@ -4608,6 +4698,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		gd.addCheckbox("Overwrite SFE parameters from the sensor calibration files (at auto-load)", this.autoRestoreSensorOverwriteOrientation);
     		gd.addCheckbox("Re-calibrate grids on autoload", this.autoReCalibrate);
     		gd.addCheckbox("Ignore laser pointers on recalibrate", this.autoReCalibrateIgnoreLaser);
+    		gd.addCheckbox("Filter grids after restore", this.autoFilter);
    		
     		gd.addMessage("Calibration: "+(((this.calibrationPath==null) || (this.calibrationPath.length()==0))?"not configured ":(this.calibrationPath+" "))+
     				((currentConfigs[0]!=null)?("(current: "+currentConfigs[0]+")"):("") ));
@@ -4645,12 +4736,15 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		if (gd.getNextBoolean()) selectAberrationsKernelDirectory(false, this.aberrationsKernelDirectory, false);
     		this.noMessageBoxes=        gd.getNextBoolean();
     		this.overwriteResultFiles=  gd.getNextBoolean();
+    		this.partialToReprojected=  gd.getNextBoolean();
+    		this.partialCorrectSensor=  gd.getNextBoolean();
     		this.seriesNumber=    (int) gd.getNextNumber();
     		this.allImages=             gd.getNextBoolean();
     		this.autoRestore=           gd.getNextBoolean();
     		this.autoRestoreSensorOverwriteOrientation= gd.getNextBoolean();
     		this.autoReCalibrate=           gd.getNextBoolean();
     		this.autoReCalibrateIgnoreLaser=gd.getNextBoolean();
+    		this.autoFilter=            gd.getNextBoolean();
 
     		if (gd.getNextBoolean()) {
     			if (currentConfigs[0]!=null) this.calibrationPath=currentConfigs[0];
@@ -4823,6 +4917,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 		public boolean useWindow;
 		public boolean symm180;
 		public boolean ignoreChromatic;
+		public boolean absoluteCenter;
 		public double smoothSeparate;
 		public double topCenter;
 		public double sigmaToRadius;
@@ -4842,6 +4937,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 				boolean useWindow,
 				boolean symm180,
 				boolean ignoreChromatic,
+				boolean absoluteCenter,
 				double smoothSeparate,
 				double topCenter,
 				double sigmaToRadius,
@@ -4861,6 +4957,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			this.useWindow = useWindow;
 			this.symm180 = symm180;
 			this.ignoreChromatic = ignoreChromatic;
+			this.absoluteCenter=absoluteCenter;
 			this.smoothSeparate = smoothSeparate;
 			this.topCenter = topCenter;
 			this.sigmaToRadius = sigmaToRadius;
@@ -4883,6 +4980,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
         			this.useWindow,
         			this.symm180,
         			this.ignoreChromatic,
+        			this.absoluteCenter,
         			this.smoothSeparate,
         			this.topCenter,
         			this.sigmaToRadius,
@@ -4903,6 +5001,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
         	properties.setProperty(prefix+"useWindow",this.useWindow+"");
         	properties.setProperty(prefix+"symm180",this.symm180+"");
         	properties.setProperty(prefix+"ignoreChromatic",this.ignoreChromatic+"");
+        	properties.setProperty(prefix+"absoluteCenter",this.absoluteCenter+"");
         	properties.setProperty(prefix+"smoothSeparate",this.smoothSeparate+"");
         	properties.setProperty(prefix+"topCenter",this.topCenter+"");
         	properties.setProperty(prefix+"sigmaToRadius",this.sigmaToRadius+"");
@@ -4922,6 +5021,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
         	properties.setProperty(prefix+"useWindow",this.useWindow+"");
         	properties.setProperty(prefix+"symm180",this.symm180+"");
         	properties.setProperty(prefix+"ignoreChromatic",this.ignoreChromatic+"");
+        	properties.setProperty(prefix+"absoluteCenter",this.absoluteCenter+"");
         	properties.setProperty(prefix+"smoothSeparate",this.smoothSeparate+"");
         	properties.setProperty(prefix+"topCenter",this.topCenter+"");
         	properties.setProperty(prefix+"sigmaToRadius",this.sigmaToRadius+"");
@@ -4942,6 +5042,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (properties.getProperty(prefix+"useWindow")!=null)         this.useWindow=Boolean.parseBoolean(properties.getProperty(prefix+"useWindow"));
 			if (properties.getProperty(prefix+"symm180")!=null)           this.symm180=Boolean.parseBoolean(properties.getProperty(prefix+"symm180"));
 			if (properties.getProperty(prefix+"ignoreChromatic")!=null)   this.ignoreChromatic=Boolean.parseBoolean(properties.getProperty(prefix+"ignoreChromatic"));
+			if (properties.getProperty(prefix+"absoluteCenter")!=null)   this.absoluteCenter=Boolean.parseBoolean(properties.getProperty(prefix+"absoluteCenter"));
 			if (properties.getProperty(prefix+"smoothSeparate")!=null)    this.smoothSeparate=Double.parseDouble(properties.getProperty(prefix+"smoothSeparate"));
 			if (properties.getProperty(prefix+"topCenter")!=null)         this.topCenter=Double.parseDouble(properties.getProperty(prefix+"topCenter"));
 			if (properties.getProperty(prefix+"sigmaToRadius")!=null)     this.sigmaToRadius=Double.parseDouble(properties.getProperty(prefix+"sigmaToRadius"));

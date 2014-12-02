@@ -40,6 +40,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -53,6 +54,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
@@ -1801,12 +1809,15 @@ public class CalibrationHardwareInterface {
 	}
 	
 	public static class PowerControl{
-		public boolean [] states={false,false,false};
-		public String [] groups={"heater","fan","light"};
+		public boolean [] states={false,false,false,false,false};
+		public boolean [] useControl={true,true,false,true,true};
+//		public int [] lightsChannels={2,3,4}; // which lights to control on on/off
+		public int [] lightsChannels={3,4}; // which lights to control on on/off
+		public String [] groups={"heater","fan","light","light1","light2"};
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
     	private double lightsDelay=5.0;
-    	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s";
+    	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s&timestamp=%d";
     	private final String rootElement="Document";
     	public boolean powerConrtolEnabled=false;
     	public void setProperties(String prefix,Properties properties){
@@ -1829,57 +1840,95 @@ public class CalibrationHardwareInterface {
     			System.out.println("=== Power control is disabled ===");
     			return false;
     		}
-			System.out.println("=== Power control: "+group+":"+state+" ===");
-    			String url=String.format(urlFormat,this.powerIP,state,group);    	
-    			if (this.debugLevel>2) System.out.println("setPower: "+url); 
-    			Document dom=null;
-    			try {
-    				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    				DocumentBuilder db = dbf.newDocumentBuilder();
-    				dom = db.parse(url);
-    				if (!dom.getDocumentElement().getNodeName().equals(rootElement)) {
-    					System.out.println("Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\"");
-    					IJ.showMessage("Error","Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\""); 
-    					return false;
-    				}
-//    				boolean responceError= (dom.getDocumentElement().getElementsByTagName("error").getLength()!=0);
-//    				if (responceError) {
-//    					System.out.println("ERROR: register write ("+url+") FAILED" );
-//    					IJ.showMessage("Error","register write ("+url+") FAILED"); 
-//    					return false;  
-//    				}
-    			} catch(MalformedURLException e){
-    				System.out.println("Please check the URL:" + e.toString() );
-    				return false;
-    			} catch(IOException  e1){
-    				IJ.showStatus("");
-    				String error = e1.getMessage();
-    				if (error==null || error.equals(""))  error = ""+e1;
-    				IJ.showMessage("setPower ERROR", ""+error);
-    				return false;
-    			}catch(ParserConfigurationException pce) {
-    				pce.printStackTrace();
-    				return false;
-    			}catch(SAXException se) {
-    				se.printStackTrace(); 
+    		long thisTime=System.nanoTime();
+    		if (debugLevel>0) System.out.println("=== Power control: "+group+":"+state+" ===");
+    		String url=String.format(urlFormat,this.powerIP,state,group,thisTime);    	
+    		if (this.debugLevel>1) System.out.println("setPower: "+url); 
+    		Document dom=null;
+    		try {
+    			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+    			DocumentBuilder db = dbf.newDocumentBuilder();
+    			dom = db.parse(url);
+    			if (!dom.getDocumentElement().getNodeName().equals(rootElement)) {
+    				System.out.println("Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\"");
+    				IJ.showMessage("Error","Root element: expected \""+rootElement+"\", got \"" + dom.getDocumentElement().getNodeName()+"\""); 
     				return false;
     			}
+    			//    				boolean responceError= (dom.getDocumentElement().getElementsByTagName("error").getLength()!=0);
+    			//    				if (responceError) {
+    			//    					System.out.println("ERROR: register write ("+url+") FAILED" );
+    			//    					IJ.showMessage("Error","register write ("+url+") FAILED"); 
+    			//    					return false;  
+    			//    				}
+//				System.out.println(dom);
+//				System.out.println(dom.getDocumentElement().toString());
+//				System.out.println(dom.getDocumentElement().getNodeName());
+//				System.out.println(dom.getDocumentElement().getElementsByTagName("message"));
+//				System.out.println(dom.getDocumentElement().getElementsByTagName("state"));
+				if (dom.getDocumentElement().getElementsByTagName("state").getLength()>0){
+					if (debugLevel>0) System.out.println("state="+((Node) (((Node) dom.getDocumentElement().getElementsByTagName("state").item(0)).getChildNodes().item(0))).getNodeValue());
+				} else {
+					System.out.println("*** Empty Document from Insteon");
+					return false;
+				}
+    		} catch(MalformedURLException e){
+    			System.out.println("Please check the URL:" + e.toString() );
+    			return false;
+    		} catch(IOException  e1){
+    			IJ.showStatus("");
+    			String error = e1.getMessage();
+    			if (error==null || error.equals(""))  error = ""+e1;
+    			IJ.showMessage("setPower ERROR", ""+error);
+    			return false;
+    		}catch(ParserConfigurationException pce) {
+    			pce.printStackTrace();
+    			return false;
+    		}catch(SAXException se) {
+    			se.printStackTrace(); 
+    			return false;
+    		}
+    		if (debugLevel>1) {
+    			// debugging
+    			TransformerFactory tf = TransformerFactory.newInstance();
+    			Transformer transformer=null;
+    			try {
+    				transformer = tf.newTransformer();
+    			} catch (TransformerConfigurationException e) {
+    				// TODO Auto-generated catch block
+    				e.printStackTrace();
+    			}
+    			transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+    			StringWriter writer = new StringWriter();
+    			try {
+    				transformer.transform(new DOMSource(dom), new StreamResult(writer));
+    			} catch (TransformerException e) {
+    				// TODO Auto-generated catch block
+    				e.printStackTrace();
+    			}
+    			String output = writer.getBuffer().toString().replaceAll("\n|\r", "");
+    			System.out.println(output);
+    		}
+    		
+    		if (this.debugLevel>1) System.out.println("=== Power control: OK ===");
     		for (int i=0;i<this.groups.length;i++) if (this.groups[i].equals(group)){
     			this.states[i]=state.equals("on");
     		}
     		return true;
     	}
+    	
     	public boolean showDialog(String title, boolean control) {
     		GenericDialog gd = new GenericDialog(title);
-    		boolean heaterOn=false, fanOn=false, lightOn=false;
+    		boolean heaterOn=false, fanOn=false, lightOn=false, light1On=false, light2On=false;
 			gd.addCheckbox("Enable power control (heater, fan, lights) ", this.powerConrtolEnabled);
     		gd.addStringField("IP address of the power control",this.powerIP,15);
 			gd.addNumericField("Delay after lights on", this.lightsDelay,  1,4,"sec");
   		    		
     		if (control){
-    			gd.addCheckbox("Heater On", heaterOn);
-    			gd.addCheckbox("Fan On", fanOn);
-    			gd.addCheckbox("Lights On", lightOn);
+    			if(useControl[0]) gd.addCheckbox("Heater On", heaterOn);
+    			if(useControl[1]) gd.addCheckbox("Fan On", fanOn);
+    			if(useControl[2]) gd.addCheckbox("Lights On", lightOn);
+    			if(useControl[3]) gd.addCheckbox("Lights Top On", light1On);
+    			if(useControl[4]) gd.addCheckbox("Lights Bottom On", light2On);
     		}
     	    WindowTools.addScrollBars(gd);
 			if (control) gd.enableYesNoCancel("OK", "Control Power");
@@ -1889,21 +1938,28 @@ public class CalibrationHardwareInterface {
     	    this.powerIP=gd.getNextString();
 			this.lightsDelay=gd.getNextNumber();
     	    if (control){
-    	    	heaterOn=gd.getNextBoolean();
-    	    	fanOn=gd.getNextBoolean();
-    	    	lightOn=gd.getNextBoolean();
+    	    	if(useControl[0]) heaterOn=gd.getNextBoolean();
+    	    	if(useControl[1]) fanOn=gd.getNextBoolean();
+    	    	if(useControl[2]) lightOn=gd.getNextBoolean();
+    	    	if(useControl[3]) light1On=gd.getNextBoolean();
+    	    	if(useControl[4]) light2On=gd.getNextBoolean();
     	    	if (!gd.wasOKed()) {
-    	    		 setPower("heater",heaterOn?"on":"off");
-    	    		 setPower("fan",fanOn?"on":"off");
-    	    		 setPower("light",lightOn?"on":"off");
+    	    		if(useControl[0])setPower("heater",heaterOn?"on":"off"); // setPower("heater","state");
+    	    		if(useControl[1])setPower("fan",fanOn?"on":"off");       // setPower("fan","state");
+    	    		if(useControl[2])setPower("light",lightOn?"on":"off");   // setPower("light","state");
+    	    		if(useControl[3])setPower("light1",light1On?"on":"off"); // setPower("light1","state");
+    	    		if(useControl[4])setPower("light2",light2On?"on":"off"); //  setPower("light2","state");
     	    	}
     	    }
             return true;
     	}
     	public void lightsOnWithDelay(){
-    		if (this.states[2] || !this.powerConrtolEnabled) return; // already on
-			setPower("light","on");
-			System.out.print("Sleeping "+this.lightsDelay+" seconds to let lights stibilize on...");
+    		// turn on only new
+    		boolean allOn=true;
+    		for (int chn:this.lightsChannels) allOn&=this.states[chn];
+    		if (allOn  || !this.powerConrtolEnabled) return; // already on
+    		for (int chn:this.lightsChannels) if (!this.states[chn]) setPower(this.groups[chn],"on");
+			System.out.print("Sleeping "+this.lightsDelay+" seconds to let lights stabilize on...");
     		try {
 				TimeUnit.MILLISECONDS.sleep((long) (1000*this.lightsDelay));
 			} catch (InterruptedException e) {
@@ -1912,6 +1968,11 @@ public class CalibrationHardwareInterface {
 			}
 			System.out.println(" Done");
 
+    	}
+    	
+    	public void lightsOff(){
+    		if (!this.powerConrtolEnabled) return; // already on
+    		for (int chn:this.lightsChannels) if (this.states[chn]) setPower(this.groups[chn],"off");
     	}
     	
     	public boolean isPowerControlEnabled(){
@@ -2471,7 +2532,44 @@ public class CalibrationHardwareInterface {
         private long nanoReferenceTime; // last time the position was checked
         private int []referencePosition=null;
         private double motorsStuckTestTime=5.0; // seconds
+        private boolean motorsInitialized=false;
+        public int tiltMotor=2;  // 0-1-2
+        public int axialMotor=1; // 0-1-2
+        
 
+        /**
+         * Tries to initialize motors if needed. Assumes that non-initialized motors were not tried to be moved 
+         * @param force unconditionally try to initialize
+         * @return
+         */
+        public boolean tryInit(
+        		boolean force,
+        		boolean updateStatus){
+        	int delta=2*this.motorTolerance;
+        	if (!force) {
+        		if (motorsInitialized) return true;
+        		updateMotorsPosition();
+        		if ((Math.abs(curpos[tiltMotor])>2) || (Math.abs(curpos[axialMotor])>2)){
+        			motorsInitialized=true;
+        			return true;
+        		}
+        		System.out.println("Trying to move axial motor to see if it is initialized ...");
+        		motorsInitialized=true; // to avoid loop
+        		int newpos=curpos[axialMotor]+delta;
+        		if (moveMotorSetETA(axialMotor, newpos)) {
+            		if (waitMotor(axialMotor, null, true, updateStatus)) {// no interaction
+            			moveMotorSetETA(axialMotor, newpos-delta); // restore original
+                		if (waitMotor(axialMotor, null, true, updateStatus)) {// no interaction
+                			return true; // should be always true here 
+                		}
+            		}
+        		}
+        		motorsInitialized=false;
+        	}
+        	initMotors();
+        	motorsInitialized=true;
+        	return true;
+        }
 // TODO: Enable simultaneous motors        
         
         public boolean moveMotorSetETA(int motorNumber, int position){
@@ -2489,24 +2587,67 @@ public class CalibrationHardwareInterface {
         		return false;
         		
         	}
+        	if (!motorsInitialized) { // may be called from tryInit(), but with motorsInitialized set to true;
+        		if (!tryInit(false, true)){ // do not force, update status
+            		String msg="Motors failed to initialize";
+                    		System.out.println("Error: "+msg);
+                    		IJ.showMessage("Error",msg);
+                    		//throw new RuntimeException(msg);
+                    		return false;
+        		}
+        	}
+        	// TODO: check init is needed
+        	
         	updateMotorsPosition();
         	this.targetPosition[motorNumber]=position;
         	this.nanoReferenceTime=System.nanoTime();
         	this.referencePosition=this.curpos.clone();
-        	commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m"+(motorNumber+1)+"="+this.targetPosition[motorNumber]+"&enable");
+//        	commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m"+(motorNumber+1)+"="+this.targetPosition[motorNumber]+"&enable");
+        	// set, wait, enable (to avoid continuing "old" movement that was aborted by disable
+        	commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m"+(motorNumber+1)+"="+this.targetPosition[motorNumber]+"sleep=1");
+        	enableMotors(true); 
 			nanoETA=System.nanoTime()+((long)(1E9*(Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber])*(this.coefficientETA/this.stepsPerSecond))));
 			return true;
         }
+/*        
+        public boolean [] checkGotTarget(){
+    		updateMotorsPosition(0); // no wait here
+    		boolean [] result=new boolean [this.curpos.length];
+    		for (int motorNumber=0;motorNumber<result.length;motorNumber++){
+    			result[motorNumber]=Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber])<this.motorTolerance;
+    		}
+    		return result;
+        }
+*/
+        public boolean checkGotTarget(int motorNumber, int position){
+    		updateMotorsPosition(0); // no wait here
+    		return Math.abs(position-this.curpos[motorNumber])<this.motorTolerance;
+        }
 
-        public boolean waitMotor(int motorNumber){
+        public boolean waitMotor(
+        		int motorNumber,
+        		AtomicInteger stopRequested, // or null
+        		boolean quiet,
+        		boolean updateStatus
+        		){
         	if ((motorNumber<0) ||(motorNumber>=this.motorsRange.length) || (this.motorsRange[motorNumber]==null)){
         		String msg="Motor "+motorNumber+" is undefined";
         		IJ.showMessage("Error",msg);
         		throw new RuntimeException(msg);
         	}
         	while (true) {
-    			enableMotors(true); // just in case?
-        		updateMotorsPosition(1); // wait one second before testing to decrease re-test frequency 
+//    			enableMotors(true); // just in case? - not here, test first
+        		updateMotorsPosition(1); // wait one second before testing to decrease re-test frequency
+        		if (updateStatus) {
+        			double axialAngle=curpos[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltAngle=curpos[tiltMotor]/this.stepsPerDegreeTilt;
+        			double axialTargetAngle=targetPosition[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltTargetAngle=targetPosition[tiltMotor]/this.stepsPerDegreeTilt;
+        			IJ.showStatus("Goniometer: tilt="+IJ.d2s(tiltAngle,1)+"\u00b0 ("+IJ.d2s(tiltTargetAngle,1)+"\u00b0) "+
+        					", axial="+IJ.d2s(axialAngle,1)+"\u00b0 ("+IJ.d2s(axialTargetAngle,1)+"\u00b0) "+
+        					" Tilt steps="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
+        					", axial steps="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")");
+        		}
         		int positionError= Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber]);
         		if (positionError<this.motorTolerance){
         			updateMotorsPosition(1); // re-test
@@ -2514,14 +2655,37 @@ public class CalibrationHardwareInterface {
         			enableMotors(false);
         			return true;
         		}
+    			enableMotors(true); // does not need to be enabled before
         		long nanoNow=System.nanoTime();
+        		if ((stopRequested!=null) && (stopRequested.get()>1)){
+        			enableMotors(false);
+					if (this.debugLevel>0) System.out.println("User interrupt");
+					stopRequested.set(0);
+					updateMotorsPosition(1);
+        			double axialAngle=curpos[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltAngle=curpos[tiltMotor]/this.stepsPerDegreeTilt;
+        			double axialTargetAngle=targetPosition[axialMotor]/this.stepsPerDegreeAxial;
+        			double tiltTargetAngle=targetPosition[tiltMotor]/this.stepsPerDegreeTilt;
+        			String msg="Goniometer: tilt="+IJ.d2s(tiltAngle,1)+"\u00b0 ("+IJ.d2s(tiltTargetAngle,1)+"\u00b0) "+
+        					", axial="+IJ.d2s(axialAngle,1)+"\u00b0 ("+IJ.d2s(axialTargetAngle,1)+"\u00b0) "+
+        					" Tilt steps="+curpos[tiltMotor]+" ("+this.targetPosition[tiltMotor]+") "+
+        					", axial steps="+curpos[axialMotor]+" ("+this.targetPosition[axialMotor]+")\n"+
+        					"OK to continue, Cancel to abort movement";
+        			if (!IJ.showMessageWithCancel("Goniometer interrupted", msg)) {
+        				return false;
+        			}
+        			enableMotors(true);
+        			this.nanoETA += System.nanoTime()-nanoNow;
+        		}
         		if (nanoNow>this.nanoETA) {
         			enableMotors(false);
+        			if (quiet) return false;
         			String msg="Motor "+motorNumber+" failed to reach destination "+this.targetPosition[motorNumber]+
         			", current position is "+this.curpos[motorNumber]+
         			"\nYou may try to manually fix the problem before hitting OK";
         			System.out.println ("Error:"+msg);
         			IJ.showMessage("Error",msg);
+//        			if (IJ.showMessageWithCancel("Goniometer did not move", msg+"\n OK will try to initialize ");
 // Give chance to manually fix the problem        			
         			updateMotorsPosition();
         			positionError= Math.abs(this.targetPosition[motorNumber]-this.curpos[motorNumber]);
@@ -2535,6 +2699,7 @@ public class CalibrationHardwareInterface {
         		if ((nanoNow-this.nanoReferenceTime)> ((long) (this.motorsStuckTestTime*1E9))){
         			if(Math.abs(this.referencePosition[motorNumber]-this.curpos[motorNumber]) < motorStuckTolerance){
             			enableMotors(false);
+            			if (quiet) return false;
             			String msg="Motor "+motorNumber+" is stuck at "+this.curpos[motorNumber]+". "+
             			this.motorsStuckTestTime+" seconds ago it was at "+this.referencePosition[motorNumber]+
             			", target position is "+this.targetPosition[motorNumber]+
@@ -2558,12 +2723,22 @@ public class CalibrationHardwareInterface {
         }
 
 // first check tolerance, then - if motor is stuck        
-        
+        public int [] getCurrentPositions(){
+        	updateMotorsPosition();
+        	return this.curpos;
+        }
+
         public int [] getTargetPositions(){
         	return this.targetPosition;
         }
         public int[] enableMotors(boolean enable)  {
         	return commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?"+(enable?"enable":"disable"));
+        }
+        public int[] initMotors()  {
+        	return commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?init");
+        }
+        public int[] setHome()  {
+        	return commandElphel10364Motors("http://"+this.ipAddress+"/10364.php?m1=0&m2=0&m3=0&reset");
         }
         
         public int[] updateMotorsPosition()  {

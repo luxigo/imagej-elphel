@@ -333,7 +333,7 @@ public class FocusingField {
     	weightMode=2; // 1; // 0 - same weight, 1 - linear threshold difference, >1 - power of PSF radius
     	weightRadius=0.0; //2.0; // Gaussian sigma in mm
     	k_red=0.7;
-    	k_blue=0.4;
+    	k_blue=0.3;
     	k_sag=1.0;
     	k_tan=1.0;
     	k_qualBFractionPeripheral=0.5; // relative weight of peripheral areas when optimizing qualB

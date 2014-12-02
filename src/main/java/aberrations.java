@@ -141,6 +141,8 @@ Panel panel1,panel2;
  public static double  OTF_deconvInvert =  0.007; // 0.015; // 0.01; // when FFT component is less than this fraction of the maximal value, replace 1/z with Z
 /* TODO: check why combined greens result in center at x=-0.532/2 , y= -.0272/2 */
  public static boolean PSF_ignoreChromatic= false; // ignore lateral chromatic aberration (center OTF to 0,0)
+ 
+ 
  public static boolean OTF_fold =          false; // fold high frequency to lower when downsampling pixels (before inverse FFT)
 
  public static double  PSF_cutoff_energy=0.9;  // Limit result kernel to proportional of the PSF, calculate initial cluster shape by this cutoff energy
@@ -627,7 +629,7 @@ Panel panel1,panel2;
 
       double [][] PSF_shifts=         new double [input_bayer.length][];    // X/Y shift of the PSF array, in Bayer component pioxel coordinates (same as PSF arrays)
       double [][] PSF_centroids=      new double [input_bayer.length][];    // X/Y coordinates of the centroids of PSF in Bayer component pioxel coordinates (same as PSF arrays) (after they were optionally shifted)
-      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sesnor pixel coordinates
+      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sensor pixel coordinates
       double [][]kernelsForFFT=       new double [input_bayer.length][];
       double [][] psf_inverted=       new double [input_bayer.length][];
       double [][] psf_inverted_masked=new double [input_bayer.length][];
@@ -5484,7 +5486,7 @@ public double [][][][] reversePSFKernels(double [][][][] PSFKernels, // 2-d arra
       }
       double [][] PSF_shifts=         new double [input_bayer.length][];    // X/Y shift of the PSF array, in Bayer component pioxel coordinates (same as PSF arrays)
       double [][] PSF_centroids=      new double [input_bayer.length][];    // X/Y coordinates of the centroids of PSF in Bayer component pioxel coordinates (same as PSF arrays) (after they were optionally shifted)
-      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sesnor pixel coordinates
+      double [][] lateralChromatic=   new double [input_bayer.length][]; // X/Y coordinates of the centroids of Bayer component PSF in sensor pixel coordinates
       double [][] kernelsForFFT=      new double [input_bayer.length][];
       double [][] psf_inverted=       new double [input_bayer.length][];
       double [][] psf_inverted_masked=new double [input_bayer.length][];
@@ -6029,7 +6031,7 @@ public double [] extractCentroidFromReverseKernel(double [] smoothReverseKernel,
     return xy;
 }
 
-/* shift (like lateral chromatic aberration) in Bayer component to sesnor pixels */
+/* shift (like lateral chromatic aberration) in Bayer component to sensor pixels */
 
  public double [] shiftBayerToSensor ( double [] dxy,
                                            int color,

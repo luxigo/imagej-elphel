@@ -27,6 +27,8 @@ import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -34,7 +36,6 @@ import javax.swing.SwingUtilities;
 
 import Jama.LUDecomposition;
 import Jama.Matrix;  // Download here: http://math.nist.gov/javanumerics/jama/
-
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -960,12 +961,48 @@ public class MatchSimulatedPattern {
 		return result;
 	}
 /* ======================================================================== */
-	public  double correlationContrast ( double [] pixels,       // square pixel array
+	public  double [] correlationContrast (
+			double [] pixels,       // square pixel array
+			double [] widowedGreens, // array to normailze correlation result
+			double [][] wVectors,   // wave vectors (same units as the pixels array)
+//			double ringWidth,       // ring (around r=0.5 dist to opposite corr) width
+			double  contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+			double  contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
+			
+			double x0,              // center coordinates
+			double y0,
+			String title){
+		// for now - just comparison, later - switch to
+		return correlationContrast (
+				pixels,       // square pixel array
+				wVectors,   // wave vectors (same units as the pixels array)
+				contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+				x0,              // center coordinates
+				y0,
+				title, // title base for optional plots names
+				this.debugLevel);		
+/*		
+		
+		return correlationContrast (
+				pixels,       // square pixel array
+				widowedGreens,
+				wVectors,   // wave vectors (same units as the pixels array)
+//				ringWidth,       // ring (around r=0.5 dist to opposite corr) width
+				contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+				contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
+				x0,              // center coordinates
+				y0,
+				title, // title base for optional plots names
+				this.debugLevel);
+*/				
+	}
+	public  double correlationContrastOld ( double [] pixels,       // square pixel array
 			double [][] wVectors,   // wave vectors (same units as the pixels array)
 			double ringWidth,       // ring (around r=0.5 dist to opposite corr) width
 			double x0,              // center coordinates
 			double y0,
-			String title) { // title base for optional plots names
+			String title, // title base for optional plots names
+			int debugLevel){
 		int size=(int) Math.sqrt(pixels.length);
 		double [] xy= new double [2];
 		double [] uv; 
@@ -977,7 +1014,7 @@ public class MatchSimulatedPattern {
 		double r2WingsOuter= 0.0625*(1.0+ringWidth)*(1.0+ringWidth);
 		double r2WingsInner= 0.0625*(1.0-ringWidth)*(1.0-ringWidth);
 		double r2Center=0.0625*(ringWidth)*(ringWidth);
-		if (this.debugLevel>2) System.out.println("rWingsOuter="+Math.sqrt(r2WingsOuter)+" rWingsInner="+Math.sqrt(r2WingsInner)+" rCenter="+Math.sqrt(r2Center));
+		if (debugLevel>2) System.out.println("rWingsOuter="+Math.sqrt(r2WingsOuter)+" rWingsInner="+Math.sqrt(r2WingsInner)+" rCenter="+Math.sqrt(r2Center));
 
 		double valCenter=0.0;
 		double valWings=0.0;
@@ -1002,14 +1039,16 @@ public class MatchSimulatedPattern {
 			}
 		}
 		if ((numWings==0.0) || (numCenter==0.0)) {
-			if (this.debugLevel>1) System.out.println("Not enough data for correlation contrast: numCenter="+numCenter+" numWings="+numWings+
+			if (debugLevel>1) System.out.println("Not enough data for correlation contrast: numCenter="+numCenter+" numWings="+numWings+
 					" valCenter="+IJ.d2s(valCenter,2)+" valWings="+IJ.d2s(valWings,2));
 			return -1.0;
 		}
 		double contrast=Math.sqrt((valCenter/numCenter)/(valWings/numWings));
-		if (this.debugLevel>2) {
+		if (debugLevel>2) {
 			System.out.println("Correlation contrast is "+contrast);
-			float [] floatPixels=new float[size*size];
+			double [] maskedPixels=new double[size*size];
+			double [] u_value=new double[size*size];
+			double [] v_value=new double[size*size];
 			int index;
 			for (i=0;i<size;i++) {
 				xy[1]=i-size/2-y0;
@@ -1018,25 +1057,204 @@ public class MatchSimulatedPattern {
 					uv=matrix2x2_mul(wVectors,xy);
 					r2=uv[0]*uv[0]+uv[1]*uv[1];
 					index=i*size+j;
+					u_value[index]=uv[0];
+					v_value[index]=uv[1];
 					/*          r=Math.sqrt(r2);
           r-=Math.floor(r);
           floatPixels[index]=(float) r;*/
-
 					if (((r2<=r2WingsOuter) && (r2>r2WingsInner)) || (r2<=r2Center)){
-						floatPixels[index]=(float) pixels[index];
+						maskedPixels[index]= pixels[index];
 					} else {
-						floatPixels[index]=0.0F;
+						maskedPixels[index]=0.0;
 					}
 				}
 			}
-			ImageProcessor ip = new FloatProcessor(size,size);
-			ip.setPixels(floatPixels);
-			ip.resetMinAndMax();
-			ImagePlus imp= new ImagePlus(title+"_CORR_MASK", ip);
-			imp.show();
+			double [][] dbgPixels={pixels,maskedPixels,u_value,v_value};
+			String [] titles={"all","masked","u","v"};
+			(new showDoubleFloatArrays()).showArrays(
+					dbgPixels,
+					size,
+					size,
+					true,
+					title+"_CORR_MASK",
+					titles);
 		}
 		return contrast;
 	}
+
+	public double [] correlationContrast (
+			double [] pixels,       // square pixel array
+//			double [] widowedGreens, // array to normailze correlation result
+			double [][] wVectors,   // wave vectors (same units as the pixels array)
+			double sigma,
+			double x0,              // center coordinates
+			double y0,
+			String title, // title base for optional plots names
+			int debugLevel){
+		double [] badContrasts={-1.0,-1.0};
+		double sigma32=9*sigma*sigma;
+		double k=-0.5/(sigma*sigma);
+		double [][] sampleCentersXY={{0.0,0.0},{0.25,0.25},{0.25,-0.20},{-0.25,0.25},{-0.25,-0.25}};
+		int [] sampleTypes = {0,1,1,1,1}; 
+		int size=(int) Math.sqrt(pixels.length);
+		double [] xy= new double [2];
+		double [] uv; 
+		double r2;
+		int i,j;
+	
+		double [] dbgMask= new double[size*size];
+		for (int n=0;n<dbgMask.length;n++) dbgMask[n]=0.0;
+		double [] s={0.0,0.0};
+		double [] w={0.0,0.0};
+
+		for (i=0;i<size;i++) {
+			xy[1]=i-size/2-y0;
+			for (j=0;j<size;j++) {
+				int index=i*size+j;
+				xy[0]=j-size/2-x0;
+				uv=matrix2x2_mul(wVectors,xy);
+				for (int np=0;np<sampleCentersXY.length;np++){
+					double dx=uv[0]-sampleCentersXY[np][0];
+					double dy=uv[1]-sampleCentersXY[np][1];
+					r2=dx*dx+dy*dy;
+					if (r2<sigma32){
+						double m=Math.exp(k*r2);
+						dbgMask[index]+=m;
+						w[sampleTypes[np]]+=m;
+						double d=m*pixels[index];
+						if (sampleTypes[np]>0)d*=pixels[index]; // squared
+						s[sampleTypes[np]]+=d;
+					}
+				}
+			}
+		}
+		if ((w[0]==0.0) || (w[1]==0.0)) {
+			if (debugLevel>1) System.out.println("Not enough data for correlation contrast: center - w[0]="+w[0]+" opposite - w[1]="+w[1]);
+			return badContrasts;
+		}
+		double aCenter= s[0]/w[0];
+		double aQuiet=Math.sqrt(s[1]/w[1]);
+		double rContrast=aCenter/aQuiet;
+		double aContrast=aCenter/size/size;
+		
+		double [] contrasts={rContrast,aContrast};
+		if (debugLevel>2){
+			System.out.println("correlationContrast() rContrast="+rContrast+" aContrast="+ aContrast+" aCenter="+aCenter+" aQuiet="+aQuiet+" w[0]="+w[0]+" w[1]="+w[1]+" s[0]="+s[0]+" s[1]="+s[1]);
+		}
+		if (debugLevel>2) {
+			System.out.println("Correlation contrast is: relative="+rContrast+" absolute="+aContrast);
+			double [][] dbgPixels={pixels,dbgMask};
+			String [] titles={"all","mask"};
+			(new showDoubleFloatArrays()).showArrays(
+					dbgPixels,
+					size,
+					size,
+					true,
+					title+"_MASK",
+					titles);
+		}
+		return contrasts;
+	}
+	public  double correlationContrastOld2 (
+			double [] pixels,       // square pixel array
+			double [] widowedGreens, // array to normailze correlation result
+			double [][] wVectors,   // wave vectors (same units as the pixels array)
+			double sigma,
+			double sigmaNorm,       // to measure variations for normalization of the contrast
+			double x0,              // center coordinates
+			double y0,
+			String title, // title base for optional plots names
+			int debugLevel){
+// TODO: make configurable parameters
+//		double sigma=0.1;
+//		double sigmaNorm=0.5; // to measure variations for normalization of the contrast
+
+		double sigma32=9*sigma*sigma;
+		double k=-0.5/(sigma*sigma);
+		
+		double sigmaNorm32=9*sigmaNorm*sigmaNorm;
+		double kNorm=-0.5/(sigmaNorm*sigmaNorm);
+		
+		double [][] sampleCentersXY={{0.0,0.0},{0.0,0.5},{0.5,0.0},{0.0,-0.5},{-0.5,0.0}};
+		int [] sampleTypes = {0,1,1,1,1}; 
+		int size=(int) Math.sqrt(pixels.length);
+		double [] xy= new double [2];
+		double [] uv; 
+		double r2;
+		int i,j;
+	
+/* opposite sign correlation points in uv are at uv=(0,-0.5),(0,0.5), (-0.5,0) and (0.5,0), with radius of (1/2)
+    selecting center circle and a ring from 0.25 to 0.75 of the distance to opposite sign correlations */
+		double [] dbgMask= new double[size*size];
+		for (int n=0;n<dbgMask.length;n++) dbgMask[n]=0.0;
+		double [] s={0.0,0.0};
+		double [] w={0.0,0.0};
+		double S0=0.0,S1=0.0,S2=0.0;
+		double SG1=0.0,SG2=0.0;
+		// Find measured pixels variations in the window
+		for (i=0;i<size;i++) {
+			xy[1]=i-size/2-y0;
+			for (j=0;j<size;j++) {
+				int index=i*size+j;
+				xy[0]=j-size/2-x0;
+				uv=matrix2x2_mul(wVectors,xy);
+				for (int np=0;np<sampleCentersXY.length;np++){
+					double dx=uv[0]-sampleCentersXY[np][0];
+					double dy=uv[1]-sampleCentersXY[np][1];
+					r2=dx*dx+dy*dy;
+					if (r2<sigma32){
+						double m=Math.exp(k*r2);
+						dbgMask[index]+=m;
+						w[sampleTypes[np]]+=m;
+						s[sampleTypes[np]]+=m*pixels[index];
+					}
+				}
+				r2=uv[0]*uv[0]+uv[1]*uv[1];
+				if (r2<sigmaNorm32){
+					double m=Math.exp(kNorm*r2);
+					S0+=m;
+					S1+=m*pixels[index];
+					S2+=m*pixels[index]*pixels[index];
+					SG1=m*widowedGreens[index];
+					SG2=m*widowedGreens[index]*widowedGreens[index];
+				}
+			}
+		}
+		if ((w[0]==0.0) || (w[1]==0.0)) {
+			if (debugLevel>1) System.out.println("Not enough data for correlation contrast: center - w[0]="+w[0]+" opposite - w[1]="+w[1]);
+			return -1.0;
+		}
+		double ref=Math.sqrt(S2*S0-S1*S1)/S0;
+		double refG=Math.sqrt(SG2*S0-SG1*SG1)/S0;
+		double contrast=((s[0]/w[0]) -(s[1]/w[1]))/ref;
+		double contrastG=((s[0]/w[0]) -(s[1]/w[1]))/refG; ///size;
+		if (debugLevel>2){
+			System.out.println("correlationContrast() corr_diff="+(((s[0]/w[0]) -(s[1]/w[1])))+" contrast="+contrast+" w[0]="+w[0]+" w[1]="+w[1]+" s[0]="+s[0]+" s[1]="+s[1]);
+			System.out.println("correlationContrast() S0="+S0+" S1="+S1+" S2="+S2+" ref="+ref);
+			System.out.println("correlationContrast() contrastG="+contrastG+" S0="+S0+" SG1="+SG1+" SG2="+SG2+" refG="+refG);
+		}
+//		if (contrast>3.0){
+//			System.out.println("correlationContrast() contrast="+contrast+" w[0]="+w[0]+" w[1]="+w[1]+" s[0]="+s[0]+" s[1]="+s[1]+" S0="+S0+" S1="+S1+" S2="+S2+" ref="+ref);
+//		}
+//		double contrast=Math.sqrt((s[0]/w[0]) /(s[1]/w[1]));
+//		double contrast=((s[0]/w[0]) -(s[1]/w[1]))/(size*size);
+		if (debugLevel>2) {
+			System.out.println("Correlation contrast is "+contrast);
+			double [][] dbgPixels={pixels,dbgMask};
+			String [] titles={"all","mask"};
+			(new showDoubleFloatArrays()).showArrays(
+					dbgPixels,
+					size,
+					size,
+					true,
+					title+"_CORR_MASK",
+					titles);
+		}
+		return contrast;
+	}
+	
+	
+	
 /* ======================================================================== */
 	public  double[] correlateWithModel (double [] imagePixels,  // measured pixel array
 			double [] modelPixels,  // simulated (model) pixel array)
@@ -2636,10 +2854,14 @@ public class MatchSimulatedPattern {
 			   double [] windowFunctionCorr,
 			   double [] windowFunctionCorr2,
 			   double [] windowFunctionCorr4,
-			   double[][] locsNeib // which neibors to try (here - just the center)
+			   double[][] locsNeib, // which neibors to try (here - just the center)
+			   String dbgStr
 			   ){
 
-		   if (imp==null) return null;
+		   if (imp==null) {
+			   if (dbgStr!=null) System.out.println(dbgStr+" imp==null");
+			   return null;
+		   }
 		   int xc= (int)(2*Math.round(0.5*point[0]));
 		   int yc= (int)(2*Math.round(0.5*point[1]));
 			Roi roi= imp.getRoi();
@@ -2652,82 +2874,93 @@ public class MatchSimulatedPattern {
 		   Rectangle initialPatternCell=new Rectangle(xc-distortionParameters.FFTSize,
 					                                    yc-distortionParameters.FFTSize,
 					                                    2*distortionParameters.FFTSize,2*distortionParameters.FFTSize); 
-		   if (!selection.contains(initialPatternCell)) return null; // area for FFT is not inside the initial selection
-	//create diagonal green selection around xc,yc
-			 double [][] input_bayer=splitBayer (imp,initialPatternCell,equalizeGreens);
-			 if (debugLevel>2) SDFA_INSTANCE.showArrays(input_bayer,  true, "selection--bayer");
+		   if (!selection.contains(initialPatternCell)) {
+			   if (dbgStr!=null) System.out.println(dbgStr+" selection ("+
+		   selection.x+","+selection.y+","+selection.width+","+selection.height+ ") does not contain cell ("+
+		   initialPatternCell.x+","+initialPatternCell.y+","+initialPatternCell.width+","+initialPatternCell.height+ ")");
+			   return null; // area for FFT is not inside the initial selection
+		   }
+		   //create diagonal green selection around xc,yc
+		   double [][] input_bayer=splitBayer (imp,initialPatternCell,equalizeGreens);
+		   if (debugLevel>2) SDFA_INSTANCE.showArrays(input_bayer,  true, "selection--bayer");
 
 
-			 double [] greens=normalizeAndWindow (input_bayer[4], windowFunction);
+		   double [] greens=normalizeAndWindow (input_bayer[4], windowFunction);
 
-			 double [][] pattern=matchSimulatedPattern.findPattern(
-	              greens,
-					 distortionParameters.FFTSize,
-					 patternDetectParameters,
-					 true, // this is a pattern for combined greens (diagonal), adjust results accordingly
-					 "Pattern"); // title - will not be used
-			if (pattern==null) {
-//				System.out.println("Error - pattern not found");
-//			  	IJ.showMessage("Error","Failed to find pattern");
-			  	return null;
-			}
-			if (debugLevel>2) System.out.println("FX1="+pattern[0][0]+"  FY1="+pattern[0][1]+"  phase1="+pattern[0][2]);
-			if (debugLevel>2) System.out.println("FX2="+pattern[1][0]+"  FY2="+pattern[1][1]+"  phase2="+pattern[1][2]);
-			double [] ll2=new double[2];
-			double [][] dxy=new double[2][2];
-			double [][] phases=new double[2][2];
-			int i,j,k;
-			for (i=0;i<2;i++) {
-				ll2[i]=(pattern[i][0]*pattern[i][0]+pattern[i][1]*pattern[i][1])*2*Math.PI;
-			}
+		   double [][] pattern=matchSimulatedPattern.findPattern(
+				   greens,
+				   distortionParameters.FFTSize,
+				   patternDetectParameters,
+				   true, // this is a pattern for combined greens (diagonal), adjust results accordingly
+				   "Pattern"); // title - will not be used
+		   if (pattern==null) {
+			   //				System.out.println("Error - pattern not found");
+			   //			  	IJ.showMessage("Error","Failed to find pattern");
+			   if (dbgStr!=null) System.out.println(dbgStr+" matchSimulatedPattern.findPattern->null");
+			   return null;
+		   }
+		   if (debugLevel>2) System.out.println("FX1="+pattern[0][0]+"  FY1="+pattern[0][1]+"  phase1="+pattern[0][2]);
+		   if (debugLevel>2) System.out.println("FX2="+pattern[1][0]+"  FY2="+pattern[1][1]+"  phase2="+pattern[1][2]);
+		   double [] ll2=new double[2];
+		   double [][] dxy=new double[2][2];
+		   double [][] phases=new double[2][2];
+		   int i,j,k;
+		   for (i=0;i<2;i++) {
+			   ll2[i]=(pattern[i][0]*pattern[i][0]+pattern[i][1]*pattern[i][1])*2*Math.PI;
+		   }
 
-			if (debugLevel>2) System.out.println("phase1/2pi="+(pattern[0][2]/2/Math.PI)+"  phase2/2pi="+(pattern[1][2]/2/Math.PI));
-			for (k=0;k<2;k++) {
-			  for (j=0;j<2;j++) {
-				phases[k][j]= pattern[j][2]-Math.PI/2+((k>0)? Math.PI:0.0);
-				while (phases[k][j]<-Math.PI) phases[k][j]+=2*Math.PI;
-				while (phases[k][j]>Math.PI)  phases[k][j]-=2*Math.PI; 
-			  }	
-	 		  if (debugLevel>2) System.out.println("phase1/2pi="+(phases[k][0]/2/Math.PI)+"  phase2/2pi="+(phases[k][1]/2/Math.PI));
-	 			for (i=0;i<2;i++) {
-	 				dxy[k][i]=0;
-	 				for (j=0;j<2;j++) {
-	 					dxy[k][i]+=(phases[k][j])*pattern[j][i]/ll2[j];
-	 				}
-	 			}
-	 			if (debugLevel>2) System.out.println("dX["+k+"]="+dxy[k][0]+" dY["+k+"]="+dxy[k][1]);
-			}
-			int phaseSel=((dxy[0][0]*dxy[0][0]+dxy[0][1]*dxy[0][1])<(dxy[1][0]*dxy[1][0]+dxy[1][1]*dxy[1][1]))?0:1;
-			if (debugLevel>2) System.out.println("xc="+xc+" yc="+yc);
-			if (debugLevel>2) System.out.println("dX="+dxy[phaseSel][0]+" dY="+dxy[phaseSel][1]);
-			double [] centerXY0={xc-dxy[phaseSel][0],yc-dxy[phaseSel][1]};
-			if (debugLevel>1) System.out.println("+++ Initial center x="+IJ.d2s(centerXY0[0],3)+" y="+ 	IJ.d2s(centerXY0[1],3));
-			double [] centerXY=correctedPatternCrossLocation(
-					centerXY0, // initial coordinates of the pattern cross point
-					pattern[0][0],
-					pattern[0][1],
-					pattern[1][0],
-					pattern[1][1],
-					null, // correction
-					imp,      // image data (Bayer mosaic)
-					distortionParameters, //
-					patternDetectParameters,
-					matchSimulatedPatternCorr, // correlationSize
-					thisSimulParameters,
-					equalizeGreens,			
-					windowFunctionCorr,   // window function
-					windowFunctionCorr2,   // window function
-					windowFunctionCorr4,   // window function
-					simulationPattern,
-					false, // if true - invert pattern
-					null, // will create new instance of DoubleFHT class
-					distortionParameters.fastCorrelationOnFirstPass,
-					locsNeib,
-					debugLevel);
-			if (debugLevel>1) System.out.println("--- Initial center x="+IJ.d2s(centerXY0[0],3)+" y="+ 	IJ.d2s(centerXY0[1],3)+
-					" -> "+((centerXY==null)?" NULL ":(IJ.d2s(centerXY[0],3)+" : "+ 	IJ.d2s(centerXY[1],3))));
-			double [][] node = {centerXY,pattern[0],pattern[1]};	 
-			return node;
+		   if (debugLevel>2) System.out.println("phase1/2pi="+(pattern[0][2]/2/Math.PI)+"  phase2/2pi="+(pattern[1][2]/2/Math.PI));
+		   for (k=0;k<2;k++) {
+			   for (j=0;j<2;j++) {
+				   phases[k][j]= pattern[j][2]-Math.PI/2+((k>0)? Math.PI:0.0);
+				   while (phases[k][j]<-Math.PI) phases[k][j]+=2*Math.PI;
+				   while (phases[k][j]>Math.PI)  phases[k][j]-=2*Math.PI; 
+			   }	
+			   if (debugLevel>2) System.out.println("phase1/2pi="+(phases[k][0]/2/Math.PI)+"  phase2/2pi="+(phases[k][1]/2/Math.PI));
+			   for (i=0;i<2;i++) {
+				   dxy[k][i]=0;
+				   for (j=0;j<2;j++) {
+					   dxy[k][i]+=(phases[k][j])*pattern[j][i]/ll2[j];
+				   }
+			   }
+			   if (debugLevel>2) System.out.println("dX["+k+"]="+dxy[k][0]+" dY["+k+"]="+dxy[k][1]);
+		   }
+		   int phaseSel=((dxy[0][0]*dxy[0][0]+dxy[0][1]*dxy[0][1])<(dxy[1][0]*dxy[1][0]+dxy[1][1]*dxy[1][1]))?0:1;
+		   if (debugLevel>2) System.out.println("xc="+xc+" yc="+yc);
+		   if (debugLevel>2) System.out.println("dX="+dxy[phaseSel][0]+" dY="+dxy[phaseSel][1]);
+		   double [] centerXY0={xc-dxy[phaseSel][0],yc-dxy[phaseSel][1]};
+		   if (debugLevel>1) System.out.println("+++ Initial center x="+IJ.d2s(centerXY0[0],3)+" y="+ 	IJ.d2s(centerXY0[1],3));
+		   double [] centerXY=correctedPatternCrossLocation(
+				   centerXY0, // initial coordinates of the pattern cross point
+				   pattern[0][0],
+				   pattern[0][1],
+				   pattern[1][0],
+				   pattern[1][1],
+				   null, // correction
+				   imp,      // image data (Bayer mosaic)
+				   distortionParameters, //
+				   patternDetectParameters,
+				   matchSimulatedPatternCorr, // correlationSize
+				   thisSimulParameters,
+				   equalizeGreens,			
+				   windowFunctionCorr,   // window function
+				   windowFunctionCorr2,   // window function
+				   windowFunctionCorr4,   // window function
+				   simulationPattern,
+				   false, // if true - invert pattern
+				   null, // will create new instance of DoubleFHT class
+				   distortionParameters.fastCorrelationOnFirstPass,
+				   locsNeib,
+				   debugLevel,
+				   dbgStr);
+		   if (debugLevel>1) System.out.println("--- Initial center x="+IJ.d2s(centerXY0[0],3)+" y="+ 	IJ.d2s(centerXY0[1],3)+
+				   " -> "+((centerXY==null)?" NULL ":(IJ.d2s(centerXY[0],3)+" : "+ 	IJ.d2s(centerXY[1],3))));
+		   double [][] node = {centerXY,pattern[0],pattern[1]};
+		   if (dbgStr!=null) {
+			   if (centerXY==null) System.out.println(dbgStr+" correctedPatternCrossLocation->null");
+			   else System.out.println(dbgStr+" matchSimulatedPattern.findPattern->{{"+centerXY[0]+","+centerXY[1]+","+centerXY[2]+"}..}");
+		   }
+		   return node;
 	   }
 /* ================================================================*/
 // Optionally remove the outer (possibly corrupted) layer of the detected pattern nodes, extrapolate new layers of the nodes
@@ -2810,10 +3043,23 @@ public class MatchSimulatedPattern {
 							 this.PATTERN_GRID,
 							 getWaveList (waveFrontList,i),
 							 extrapolationWeights, // quadrant of sample weights
+							 true, // useContrast
 							 !distortionParameters.useQuadratic,  // use linear approximation (instead of quadratic)
 							 1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
 							 1.0E-20  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
 					 );
+		    		if (wave[i]==null) { // try w/o contrast, just x,y
+			    		wave[i]=estimateCell(
+								 this.PATTERN_GRID,
+								 getWaveList (waveFrontList,i),
+								 extrapolationWeights, // quadrant of sample weights
+								 false, // do not use Contrast, keep old contrast (even if it is NaN)
+								 !distortionParameters.useQuadratic,  // use linear approximation (instead of quadratic)
+								 1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
+								 1.0E-20  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
+						 );
+		    			
+		    		}
 		    	}
 // set new values, removed failed cells (normally should not be any)
 		    	for (int i=wave.length-1;i>=0;i--) {
@@ -2845,7 +3091,8 @@ public class MatchSimulatedPattern {
 			   final ImagePlus imp, // image to process
 			   final int threadsMax,
 			   final boolean updateStatus,
-			   final int debug_level){// debug level used inside loops
+			   final int debug_level, // debug level used inside loops
+			   final int global_debug_level){
 		   // moved to caller
 		   //			this.PATTERN_GRID=null;
 		   //	    	invalidateCalibration();
@@ -2914,11 +3161,18 @@ public class MatchSimulatedPattern {
 		   DistortionParameters thisDistortionParameters=distortionParameters.clone();
 		   thisDistortionParameters.correlationMaxOffset=0; // no verification of the offset here
 		   thisDistortionParameters.correlationMinContrast=  distortionParameters.correlationMinInitialContrast; // different contrast minimum here
-
+		   thisDistortionParameters.correlationMinAbsoluteContrast=  distortionParameters.correlationMinAbsoluteInitialContrast; // different contrast minimum here
 		   int was_debug_level=debugLevel;
 		   int [] iUV=  new int [2];
 		   final boolean updating=(PATTERN_GRID!=null);
            final boolean useFocusMask=updating && (focusMask!=null); // do not expand wave beyound 1 grid step from needed image regions 
+//		   double [][][] nodes=null;
+		   Queue<GridNode> nodeQueue = new ConcurrentLinkedQueue<GridNode>();		   
+		   boolean fromVeryBeginning=true;
+		   for (int i=3;i<triedIndices.length;i++) if (triedIndices[i]){ // do not count first three
+			   fromVeryBeginning=false;
+			   break;
+		   }
 		   if (!updating) {
 			   double [] point = new double[2];
 			   int tryHor=0,tryVert=0;
@@ -2936,7 +3190,8 @@ public class MatchSimulatedPattern {
 			   int nbv,nbh,nh,nv,nb;
 			   if (debugLevel>1) System.out.println("selection.x="+selection.x+" selection.y="+selection.y+" selection.width="+selection.width+" selection.height="+selection.height);
 			   if (debugLevel>1) System.out.println("numTries="+numTries+" tryHor="+tryHor+" tryVert="+tryVert);
-			   double [][] node=null;
+//			   double [][] node=null;
+//			   double [][][] nodes=null;
 			   boolean oldMode=false; //true; // false;
 /*			   
 			   if (startScanIndex[0]==0) startScanIndex[0]=3;
@@ -2949,6 +3204,8 @@ public class MatchSimulatedPattern {
 			   if (oldMode) { // old (single-threaded) mode
 //				   for (int n=startScanIndex[0];n<numTries;n++) {
 				   //			   final boolean [] triedIndices,
+//				   nodes = new double [1][][];
+//				   nodes[0]=null;
 
 				   for (int startScanIndex=3;startScanIndex<=numTries;startScanIndex++) if (!triedIndices[startScanIndex]){
 					   if (startScanIndex==numTries){
@@ -2977,8 +3234,9 @@ public class MatchSimulatedPattern {
 						   point[0]=(selection.x+nh*selection.width/(1<<tryHor)) & ~1;
 						   point[1]=(selection.y+nv*selection.height/(1<<tryVert)) & ~1;
 						   if (debugLevel>2) System.out.println("trying xc="+point[0]+", yc="+point[1]+"(nv="+nv+", nh="+nh+")");
+//						   System.out.println("### trying xc="+point[0]+", yc="+point[1]+"(nv="+nv+", nh="+nh+")");
 						   if ((debugLevel>2) && (startScanIndex==3)) debugLevel=3; // show debug images for the first point only
-						   node=tryPattern (
+						   double [][] node=tryPattern (
 								   point, // xy to try
 								   thisDistortionParameters, //no control of the displacement
 								   patternDetectParameters,
@@ -2993,10 +3251,12 @@ public class MatchSimulatedPattern {
 								   windowFunctionCorr,
 								   windowFunctionCorr2,
 								   windowFunctionCorr4,
-								   locsNeib // which neibors to try (here - just the center)
+								   locsNeib, // which neibors to try (here - just the center)
+								   null // dbgStr
 						   );
 						   debugLevel=was_debug_level;
 						   if ((node!=null) && (node[0]!=null)) {
+							   nodeQueue.add(new GridNode(node));
 							   break;
 						   }
 					   }
@@ -3005,10 +3265,10 @@ public class MatchSimulatedPattern {
 			   } else { // new multithreaded mode
 				   int startScanIndex=3;
 				   for (;(startScanIndex<numTries) && triedIndices[startScanIndex];startScanIndex++); // skip already tried indices
-				   if (debugLevel>1) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
+				   if ((global_debug_level>0) && (startScanIndex>3)) System.out.println("distortions(): startScanIndex="+startScanIndex+" > 3 ####");				   
 				   
 				   if (startScanIndex<numTries) {
-					   node =  findPatternCandidate(
+					   nodeQueue =  findPatternCandidates(
 							   triedIndices,
 							   startScanIndex, // [0] will be updated 
 							   tryHor,
@@ -3033,35 +3293,43 @@ public class MatchSimulatedPattern {
 							   updateStatus,
 							   this.debugLevel
 					   );
-					   if (node==null){ 
-						   if (debugLevel>1) System.out.println("All start points tried");
+					   if (nodeQueue.isEmpty()) { // nodes==null){ 
+//						   if (debugLevel>1) System.out.println("All start points tried");
+						   if (global_debug_level>1) {
+							   System.out.println("All start points tried");
+							   int numLeft=0;
+							   for (boolean b:triedIndices) if (!b) numLeft++;
+							   System.out.println("nodeQueue.isEmpty(), startScanIndex="+startScanIndex+" numTries="+numTries+" numLeft="+numLeft);
+						   }
 						   triedIndices[numTries]=true; // all tried
+					   } else {
+//						   if (debugLevel>1) System.out.println("Found "+nodes.length+" candidates");
+//						   if (debugLevel>1) System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
+						   if (global_debug_level>0){
+							   System.out.println("distortions: Found "+nodeQueue.size()+" candidates");
+						   }
 					   }
 				   } else {
-					   if (debugLevel>1) System.out.println("All start points tried before - should not get here");
+					   System.out.println("All start points tried before - should not get here");
 					   triedIndices[numTries]=true; // all tried
 				   }
 			   }
+//				   if (global_debug_level>0) System.out.println("distortions(): startScanIndex="+startScanIndex);				   
+			   
 //			   if (startScanIndex[0]>=numTries) startScanIndex[0]=-1; // all indices used
-			   if ((node==null) || (node[0]==null)) {
+//			   if ((nodes==null) || (nodes[0]==null) || (nodes[0][0]==null)) {
+			   if ((nodeQueue.isEmpty()) || (nodeQueue.peek().getNode()[0]==null)) {
 				   if (debugLevel>1) System.out.println("*** Pattern not found");
 				   this.PATTERN_GRID=null;   
 				   return 0;
 			   }
-			   double [] centerXY=node[0];
-			   /* TODO null pointrer in next line  - DONE?*/		 
-			   if (debugLevel>1) System.out.println("*** distortions: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
+			   if (global_debug_level>1) {
+				   System.out.println("distortions(): found "+nodeQueue.size()+" grid candidates");
+//				   System.out.println("*** distortions: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
+			   }
 
-			   debugLevel=debug_level;
-			   // Reset pattern grid		
-			   this.PATTERN_GRID=setPatternGridArray(distortionParameters.gridSize); // global to be used with threads?
-			   setPatternGridCell(
-					   this.PATTERN_GRID,
-					   centerUV,
-					   centerXY,
-					   node[1],
-					   node[2]);
-			   putInWaveList(waveFrontList, centerUV, 0);
+			   debugLevel=debug_level; // ????
+			   
 		   } else { // create initial wave from the border nodes of existent grid
 			   // start with clearing all invalid nodes 
 			   for (iUV[1]=0;iUV[1]<this.PATTERN_GRID.length;iUV[1]++) for (iUV[0]=0;iUV[0]<this.PATTERN_GRID[0].length;iUV[0]++)
@@ -3085,395 +3353,543 @@ public class MatchSimulatedPattern {
 						   putInWaveList(waveFrontList, iUV, 0);
 					   }
 				   }
-
+			   double [][] node={null};
+			   nodeQueue.add(new GridNode(node)); // will not be used, any element
 		   }
-
-		   // Each layer processing may be multi-threaded, they join before going to the next layer
-		   // When looking for the next cells, the position is estimated knowing the neighbor that has wave vectors defined
-		   // after the layer pass is over, the wave vectors are calculated from the distances to neighbors (one or both vectors may have
-		   // to use those from the neighbor?
-		   if (debugLevel>1) System.out.println("-->centerUV= "+centerUV[0]+",  "+centerUV[1]+",  0");
-		   int [] uvdir; // (u,v,direction}
-		   int layer=0;
-		   int dir;
-		   //			int [] iUV0= new int [2];
-		   //			double [][] uv12t=new double[2][2];
-		   //			double [][] xy12t=new double[2][2];
-		   //			double [][][] cells =new double [3][][]; //0 - this cell, 1 - parent, 2 - other non co-linear
-		   double [][][] neibors=new double [8][][]; // uv and xy vectors to 8 neibors (some may be null
-		   double [][] thisCell;
-		   double [][] otherCell;
-		   final int debugThreshold=2;
-		   final double [][] extrapolationWeights=generateWeights (
-				   distortionParameters.correlationWeightSigma,
-				   distortionParameters.correlationRadiusScale); //  if 0 - use sigma as radius, inside - 1.0, outside 0.0. If >0 - size of array n*sigma
-
-		   int umax,vmax,vmin,umin;
-		   final AtomicInteger addedCells = new AtomicInteger(0); // cells added at cleanup stage
-		   final AtomicBoolean cleanup=new AtomicBoolean(false); // after the wave dies, it will be restored for all cells with defined neigbors to try again. maybe - try w/o therads?
-
-		   final AtomicInteger debugCellSet= new AtomicInteger(0); // cells added at cleanup stage
-
-		   while (waveFrontList.size()>0) {
-			   // process current list, add new wave layer (moving in one of the 4 directions)
-			   // proceed until the entry is undefined on the grid (or list is empty
-			   while (waveFrontList.size()>0) { // will normally break out of the cycle
-				   uvdir= getWaveList (waveFrontList,0);
-				   if (this.debugLevel>1) System.out.println("<--uvdir= "+uvdir[0]+",  "+uvdir[1]+",  "+uvdir[2]);
-				   if (this.PATTERN_GRID[uvdir[1]][uvdir[0]]==null) break; // finished adding new layer
-				   if (!isCellDefined(this.PATTERN_GRID,uvdir)) break; // finished adding new layer, hit one of the newely added
-				   boolean hasNeededNeighbor=true;
-				   if (useFocusMask) {
-					   int ix=(int) Math.round(this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][0]);
-					   int iy=(int) Math.round(this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][1]);
-					   int indx=iy*getImageWidth()+ix;
-					   if ((indx<0) || (indx>focusMask.length)){
-						   System.out.println("distortions(): this.PATTERN_GRID["+uvdir[1]+"]["+uvdir[0]+"][0][0]="+this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][0]);
-						   System.out.println("distortions(): this.PATTERN_GRID["+uvdir[1]+"]["+uvdir[0]+"][0][1]="+this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][1]);
-						   System.out.println("distortions(): ix="+ix);
-						   System.out.println("distortions(): iy="+iy);
-						   System.out.println("distortions(): focusMask.length="+focusMask.length);
-					   }
-					// TODO: find how it could get negative coordinates
-					   if ((ix<0) || (iy<0) || (ix>=distortionParameters.gridSize) || (iy>=distortionParameters.gridSize)) hasNeededNeighbor=false; //???
-					   else hasNeededNeighbor=focusMask[iy*getImageWidth()+ix]; //* OOB -1624 java.lang.ArrayIndexOutOfBoundsException: -1624,  at MatchSimulatedPattern.distortions(MatchSimulatedPattern.java:3063),  at LensAdjustment.updateFocusGrid(LensAdjustment.java:121),  at Aberration_Calibration.measurePSFMetrics(Aberration_Calibration.java:5994)
-/*
-Image timestamp=1330935278.115151
-distortions(): this.PATTERN_GRID[0][45][0][0]=1617.777509046684
-distortions(): this.PATTERN_GRID[0][45][0][1]=-1.8391484099869946
-distortions(): ix=1618
-distortions(): iy=-2
-distortions(): focusMask.length=5018112
-java.lang.ArrayIndexOutOfBoundsException: -3566
-					   
- */
-				   }
-				   for (dir=0;dir<directionsUV.length;dir++) {
-					   iUV[0]=uvdir[0]+directionsUV[dir][0];
-					   iUV[1]=uvdir[1]+directionsUV[dir][1];
-
-					   if ((iUV[0]<0) || (iUV[1]<0) ||
-							   (iUV[0]>=distortionParameters.gridSize) || (iUV[1]>=distortionParameters.gridSize)) continue; // don't fit into UV grid
-					   if (!isCellNew(PATTERN_GRID,iUV)) continue; // already processed
-					   // add uv and dir to the list
-// 	public boolean [] focusMask=null; // array matching image pixels, used with focusing (false outside sample areas)
-// New: if it is updating the grid and focusMask is defined - do not go more than 1 step away from the needed image area
-					   if (hasNeededNeighbor) {
-						   putInWaveList (waveFrontList, iUV, (dir+(directionsUV.length/2))%directionsUV.length); // opposite direction
-						   initPatternGridCell(PATTERN_GRID, iUV);					
-						   if (debugLevel>1) System.out.println("-->iUV= "+iUV[0]+",  "+iUV[1]+",  "+((dir+(directionsUV.length/2))%directionsUV.length));
-					   }
-				   }
-				   waveFrontList.remove(0);  // remove first element from the list
-				   if (debugLevel>1) System.out.println("xx> remove(0), (waveFrontList.size()="+(waveFrontList.size()));
+		   int numDefinedCells=0;
+		   int debug_left=nodeQueue.size();
+		   for (GridNode gn:nodeQueue){ // trying candidates as grid seeds - until found or nothing left
+			   debug_left--;
+			   if (global_debug_level>1) {
+				   System.out.println("distortions: nodeQueue has "+(debug_left)+" candidates left (excluding this one)");
 			   }
-			   if (waveFrontList.size()==0) break; // not really needed?
-			   layer++;
-			   if (updateStatus) IJ.showStatus("Correlating patterns, layer "+layer+(cleanup.get()?"(cleanup)":"")+", length "+waveFrontList.size());
-			   if (debugLevel>1) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
-			   // starting layer
-			   cellNum.set(0);
-			   for (int ithread = 0; ithread < threads.length; ithread++) {
-				   threads[ithread] = new Thread() {
-					   public void run() {
-						   SimulationPattern simulationPattern= new SimulationPattern(bPattern);
-						   MatchSimulatedPattern matchSimulatedPatternCorr=new MatchSimulatedPattern(distortionParameters.correlationSize);
-						   DoubleFHT fht_instance =new DoubleFHT(); // provide DoubleFHT instance to save on initializations (or null)
-						   String dbgStr="";
-						   for (int ncell=cellNum.getAndIncrement(); ncell<waveFrontList.size();ncell=cellNum.getAndIncrement()){
-							   int [] iUVdir=getWaveList (waveFrontList,ncell);
-							   if (debugLevel>debugThreshold) {
-								   dbgStr="";
-								   dbgStr+="<--iUVdir= "+iUVdir[0]+",  "+iUVdir[1]+",  "+iUVdir[2];
-							   }
-							   int [] iUVRef=new int[2];
-							   iUVRef[0]=iUVdir[0]+directionsUV[iUVdir[2]][0];
-							   iUVRef[1]=iUVdir[1]+directionsUV[iUVdir[2]][1];
+			   if (!updating){
+				   double [][] node=gn.getNode();
+				   double [] centerXY=node[0];
+				   if (global_debug_level>0) {
+//					   System.out.println("distortions: node X/Y are "+centerXY[0]+"/"+centerXY[1]);
+					   System.out.println("distortions: nodeQueue has "+(debug_left)+" candidates left (excluding this one) :node X/Y are "+centerXY[0]+"/"+centerXY[1]);
+					   
+				   }
+				   //				   if (debugLevel>1) {
+				   if (global_debug_level>1) {
+					   System.out.println("*** distortions: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
+					   System.out.println("*** distortions: setting debugX="+IJ.d2s(centerXY[0],3)+" debugY="+ 	IJ.d2s(centerXY[1],3));
+					   patternDetectParameters.debugX=centerXY[0]; // Change debug coordinates to the initial node
+					   patternDetectParameters.debugY=centerXY[1]; //patternDetectParameters.debugRadius);
+				   }
+				   debugLevel=debug_level;
+				   // Reset pattern grid		
+				   this.PATTERN_GRID=setPatternGridArray(distortionParameters.gridSize); // global to be used with threads?
+				   setPatternGridCell(
+						   this.PATTERN_GRID,
+						   centerUV,
+						   centerXY, // contrast OK?
+						   node[1],
+						   node[2]);
+				   waveFrontList.clear();
+				   putInWaveList(waveFrontList, centerUV, 0);
+				   if (global_debug_level>1) {
+					   System.out.println("putInWaveList(waveFrontList, {"+centerUV[0]+","+centerUV[1]+"}, 0);");
+				   }
+			   }
 
-							   double [][] refCell=PATTERN_GRID[iUVRef[1]][iUVRef[0]]; // should never be null as it is an old one
-							   //found reference cell, calculate x/y, make sure it is inside the selection w/o borders
-							   double [][] wv=new double [2][];
-							   wv[0]=refCell[1];
-							   wv[1]=refCell[2];
-							   double [][]uv2xy=matrix2x2_invert(wv);
+			   // Each layer processing may be multi-threaded, they join before going to the next layer
+			   // When looking for the next cells, the position is estimated knowing the neighbor that has wave vectors defined
+			   // after the layer pass is over, the wave vectors are calculated from the distances to neighbors (one or both vectors may have
+			   // to use those from the neighbor?
+			   if (debugLevel>1) System.out.println("-->centerUV= "+centerUV[0]+",  "+centerUV[1]+",  0");
+			   int [] uvdir; // (u,v,direction}
+			   int layer=0;
+			   int dir;
+			   //			int [] iUV0= new int [2];
+			   //			double [][] uv12t=new double[2][2];
+			   //			double [][] xy12t=new double[2][2];
+			   //			double [][][] cells =new double [3][][]; //0 - this cell, 1 - parent, 2 - other non co-linear
+			   double [][][] neibors=new double [8][][]; // uv and xy vectors to 8 neibors (some may be null
+			   double [][] thisCell;
+			   double [][] otherCell;
+			   final int debugThreshold=2;
+			   final double [][] extrapolationWeights=generateWeights (
+					   distortionParameters.correlationWeightSigma,
+					   distortionParameters.correlationRadiusScale); //  if 0 - use sigma as radius, inside - 1.0, outside 0.0. If >0 - size of array n*sigma
 
-							   double [] dUV = new double [2];
-							   dUV[0]=0.5*(iUVdir[0]-iUVRef[0]);
-							   dUV[1]=0.5*(iUVdir[1]-iUVRef[1]);
-							   double []dXY=matrix2x2_mul(uv2xy,dUV);
-							   double [] expectedXY=matrix2x2_add(refCell[0],dXY);
+			   int umax,vmax,vmin,umin;
+			   final AtomicInteger addedCells = new AtomicInteger(0); // cells added at cleanup stage
+			   final AtomicBoolean cleanup=new AtomicBoolean(false); // after the wave dies, it will be restored for all cells with defined neigbors to try again. maybe - try w/o threads?
 
-							   // Try new extrapolation, debug print both	    						 
-							   //extrapolationWeights
-							   double [][] estimatedCell=estimateCell(
-									   PATTERN_GRID,
-									   iUVdir,
-									   extrapolationWeights, // quadrant of sample weights
-									   !distortionParameters.useQuadratic,  // use linear approximation (instead of quadratic)
-									   1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
-									   1.0E-20  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
-							   );
-							   double [][] simulPars=null;
-							   if (debugLevel>debugThreshold) {
-								   dbgStr+=" ExpectedXY(old)= "+IJ.d2s(expectedXY[0],3)+" / "+IJ.d2s(expectedXY[1],3)+",  "+
-								   " vw00="+IJ.d2s(wv[0][0],5)+" vw01="+IJ.d2s(wv[0][1],5)+
-								   " vw10="+IJ.d2s(wv[1][0],5)+" vw11="+IJ.d2s(wv[1][1],5);
-								   if (estimatedCell==null) {
-									   dbgStr+=" -- ExpectedXY(new)= ***** NULL **** ";
-								   } else {
-									   dbgStr+=" -- ExpectedXY(new)= "+IJ.d2s(estimatedCell[0][0],3)+" / "+IJ.d2s(estimatedCell[0][1],3)+",  "+
-									   " vw00="+IJ.d2s(estimatedCell[1][0],5)+" vw01="+IJ.d2s(estimatedCell[1][1],5)+
-									   " vw10="+IJ.d2s(estimatedCell[2][0],5)+" vw11="+IJ.d2s(estimatedCell[2][1],5);
+			   final AtomicInteger debugCellSet= new AtomicInteger(0); // cells added at cleanup stage
+			   // special case (most common, actually) when initial wave has 1  node. Remove it after processing
+			   //first cell(s) will need large correction and so may fail during "refine", so trying to recalculate it right after the first layer)
+			   ArrayList<Integer> initialWave=new ArrayList<Integer>();
+			   for (Integer I:waveFrontList) initialWave.add(I); 
+			   while (waveFrontList.size()>0) {
+				   // process current list, add new wave layer (moving in one of the 4 directions)
+				   // proceed until the entry is undefined on the grid (or list is empty
+				   while (waveFrontList.size()>0) { // will normally break out of the cycle
+					   uvdir= getWaveList (waveFrontList,0);
+					   if (this.debugLevel>1) System.out.println("<--uvdir= "+uvdir[0]+",  "+uvdir[1]+",  "+uvdir[2]);
+					   if (this.PATTERN_GRID[uvdir[1]][uvdir[0]]==null) break; // finished adding new layer
+					   if (!isCellDefined(this.PATTERN_GRID,uvdir)) break; // finished adding new layer, hit one of the newely added
+					   boolean hasNeededNeighbor=true;
+					   if (useFocusMask) {
+						   int ix=(int) Math.round(this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][0]);
+						   int iy=(int) Math.round(this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][1]);
+						   int indx=iy*getImageWidth()+ix;
+						   if ((indx<0) || (indx>focusMask.length)){
+							   System.out.println("distortions(): this.PATTERN_GRID["+uvdir[1]+"]["+uvdir[0]+"][0][0]="+this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][0]);
+							   System.out.println("distortions(): this.PATTERN_GRID["+uvdir[1]+"]["+uvdir[0]+"][0][1]="+this.PATTERN_GRID[uvdir[1]][uvdir[0]][0][1]);
+							   System.out.println("distortions(): ix="+ix);
+							   System.out.println("distortions(): iy="+iy);
+							   System.out.println("distortions(): focusMask.length="+focusMask.length);
+						   }
+						   // TODO: find how it could get negative coordinates
+						   if ((ix<0) || (iy<0) || (ix>=distortionParameters.gridSize) || (iy>=distortionParameters.gridSize)) hasNeededNeighbor=false; //???
+						   else hasNeededNeighbor=focusMask[iy*getImageWidth()+ix]; //* OOB -1624 java.lang.ArrayIndexOutOfBoundsException: -1624,  at MatchSimulatedPattern.distortions(MatchSimulatedPattern.java:3063),  at LensAdjustment.updateFocusGrid(LensAdjustment.java:121),  at Aberration_Calibration.measurePSFMetrics(Aberration_Calibration.java:5994)
+					   }
+					   for (dir=0;dir<directionsUV.length;dir++) {
+						   iUV[0]=uvdir[0]+directionsUV[dir][0];
+						   iUV[1]=uvdir[1]+directionsUV[dir][1];
+
+						   if ((iUV[0]<0) || (iUV[1]<0) ||
+								   (iUV[0]>=distortionParameters.gridSize) || (iUV[1]>=distortionParameters.gridSize)) continue; // don't fit into UV grid
+						   if (!isCellNew(PATTERN_GRID,iUV)) continue; // already processed (or deleted!)
+						   // add uv and dir to the list
+						   // 	public boolean [] focusMask=null; // array matching image pixels, used with focusing (false outside sample areas)
+						   // New: if it is updating the grid and focusMask is defined - do not go more than 1 step away from the needed image area
+						   if (hasNeededNeighbor) {
+							   putInWaveList (waveFrontList, iUV, (dir+(directionsUV.length/2))%directionsUV.length); // opposite direction
+							   initPatternGridCell(PATTERN_GRID, iUV);					
+							   if (debugLevel>1) System.out.println("-->iUV= "+iUV[0]+",  "+iUV[1]+",  "+((dir+(directionsUV.length/2))%directionsUV.length));
+						   }
+					   }
+					   waveFrontList.remove(0);  // remove first element from the list
+					   if (debugLevel>1) System.out.println("xx> remove(0), (waveFrontList.size()="+(waveFrontList.size()));
+				   }
+				   if (waveFrontList.size()==0) break; // not really needed?
+				   layer++;
+				   if (updateStatus) IJ.showStatus("Correlating patterns, layer "+layer+(cleanup.get()?"(cleanup)":"")+", length "+waveFrontList.size());
+//				   if (debugLevel>1) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
+				   if (global_debug_level>2) System.out.println("Correlating patterns, layer "+layer+", length "+waveFrontList.size());
+				   // starting layer
+				   cellNum.set(0);
+				   for (int ithread = 0; ithread < threads.length; ithread++) {
+					   threads[ithread] = new Thread() {
+						   public void run() {
+							   SimulationPattern simulationPattern= new SimulationPattern(bPattern);
+							   MatchSimulatedPattern matchSimulatedPatternCorr=new MatchSimulatedPattern(distortionParameters.correlationSize);
+							   DoubleFHT fht_instance =new DoubleFHT(); // provide DoubleFHT instance to save on initializations (or null)
+							   String dbgStr="";
+							   for (int ncell=cellNum.getAndIncrement(); ncell<waveFrontList.size();ncell=cellNum.getAndIncrement()){
+								   int [] iUVdir=getWaveList (waveFrontList,ncell);
+								   if (debugLevel>debugThreshold) {
+									   dbgStr="";
+									   dbgStr+="<--iUVdir= "+iUVdir[0]+",  "+iUVdir[1]+",  "+iUVdir[2];
 								   }
+								   int [] iUVRef=new int[2];
+								   iUVRef[0]=iUVdir[0]+directionsUV[iUVdir[2]][0];
+								   iUVRef[1]=iUVdir[1]+directionsUV[iUVdir[2]][1];
+								   // refCell - is where it came from, but if the initials are disabled, it is null 
 
+								   double [][] refCell=PATTERN_GRID[iUVRef[1]][iUVRef[0]]; // should never be null as it is an old one
+								   if (refCell==null){ 
+									   System.out.println("**** refCell==null - what does it mean?**** u="+iUVRef[0]+" v="+iUVRef[1]+
+											   " current="+iUVdir[0]+"/"+iUVdir[1]+" len="+iUVdir.length);
+									   continue;
+								   } else if ((refCell[0]!=null) && (refCell[0].length>3)){
+									   double dbg_contrast=(refCell[0].length>2)?refCell[0][2]:Double.NaN;
+									   System.out.println("**** refCell was deleted **** u="+iUVRef[0]+" v="+iUVRef[1]+
+											   " current="+iUVdir[0]+"/"+iUVdir[1]+
+											   " ncell="+ncell+" waveFrontList.size()="+waveFrontList.size()+
+											   " ref_x="+IJ.d2s(refCell[0][0],3)+" ref_y="+IJ.d2s(refCell[0][1],3)+
+											   " contrast="+IJ.d2s(dbg_contrast,3));
+								   }
+								   //found reference cell, calculate x/y, make sure it is inside the selection w/o borders
+								   double [][] wv=new double [2][];
+								   wv[0]=refCell[1];
+								   wv[1]=refCell[2];
+								   double [][]uv2xy=matrix2x2_invert(wv);
 
-							   }
-							   if (estimatedCell!=null) {
-								   expectedXY=estimatedCell[0];
-								   wv[0]=estimatedCell[1];
-								   wv[1]=estimatedCell[2];
+								   double [] dUV = new double [2];
+								   dUV[0]=0.5*(iUVdir[0]-iUVRef[0]);
+								   dUV[1]=0.5*(iUVdir[1]-iUVRef[1]);
+								   double []dXY=matrix2x2_mul(uv2xy,dUV);
+								   double [] expectedXY=matrix2x2_add(refCell[0],dXY);
 
-								   simulPars=getSimulationParametersFromGrid(
+								   // Try new extrapolation, debug print both	    						 
+								   //extrapolationWeights
+								   double [][] estimatedCell=estimateCell(
 										   PATTERN_GRID,
-										   iUVdir,          // U,V of the center point (for which the simulation pattern should be built
-										   expectedXY,          // x,y of the center point (or null to use grid)
+										   iUVdir,
 										   extrapolationWeights, // quadrant of sample weights
+										   true, // useContrast
 										   !distortionParameters.useQuadratic,  // use linear approximation (instead of quadratic)
 										   1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
 										   1.0E-20  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
-								   );
+										   );
+								   double [][] simulPars=null;
 								   if (debugLevel>debugThreshold) {
-									   dbgStr+=" {"+IJ.d2s(simulPars[0][0],5)+"/"+IJ.d2s(simulPars[0][1],5)+"/"+IJ.d2s(simulPars[0][2],5);
-									   if (simulPars[0].length>3) dbgStr+="/"+IJ.d2s(simulPars[0][3],7)+"/"+IJ.d2s(simulPars[0][4],7)+"/"+IJ.d2s(simulPars[0][5],7)+"}";
-									   dbgStr+=" {"+IJ.d2s(simulPars[1][0],5)+"/"+IJ.d2s(simulPars[1][1],5)+"/"+IJ.d2s(simulPars[1][2],5);
-									   if (simulPars[1].length>3) dbgStr+="/"+IJ.d2s(simulPars[1][3],7)+"/"+IJ.d2s(simulPars[1][4],7)+"/"+IJ.d2s(simulPars[1][5],7)+"}";
-								   }                                   
-							   }
-							   if (!selection.contains((int) Math.round(expectedXY[0]),(int) Math.round(expectedXY[1]))) { // just the center point
-								   invalidatePatternGridCell(
+									   dbgStr+=" ExpectedXY(old)= "+IJ.d2s(expectedXY[0],3)+" / "+IJ.d2s(expectedXY[1],3)+",  "+
+											   " vw00="+IJ.d2s(wv[0][0],5)+" vw01="+IJ.d2s(wv[0][1],5)+
+											   " vw10="+IJ.d2s(wv[1][0],5)+" vw11="+IJ.d2s(wv[1][1],5);
+									   if (estimatedCell==null) {
+										   dbgStr+=" -- ExpectedXY(new)= ***** NULL **** ";
+									   } else {
+										   dbgStr+=" -- ExpectedXY(new)= "+IJ.d2s(estimatedCell[0][0],3)+" / "+IJ.d2s(estimatedCell[0][1],3)+",  "+
+												   " vw00="+IJ.d2s(estimatedCell[1][0],5)+" vw01="+IJ.d2s(estimatedCell[1][1],5)+
+												   " vw10="+IJ.d2s(estimatedCell[2][0],5)+" vw11="+IJ.d2s(estimatedCell[2][1],5);
+									   }
+
+
+								   }
+								   if (estimatedCell!=null) {
+									   expectedXY=estimatedCell[0];
+									   wv[0]=estimatedCell[1];
+									   wv[1]=estimatedCell[2];
+
+									   simulPars=getSimulationParametersFromGrid(
+											   PATTERN_GRID,
+											   iUVdir,          // U,V of the center point (for which the simulation pattern should be built
+											   expectedXY,          // x,y of the center point (or null to use grid)
+											   extrapolationWeights, // quadrant of sample weights
+											   !distortionParameters.useQuadratic,  // use linear approximation (instead of quadratic)
+											   1.0E-10,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
+											   1.0E-20  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
+											   );
+									   if (debugLevel>debugThreshold) {
+										   dbgStr+=" {"+IJ.d2s(simulPars[0][0],5)+"/"+IJ.d2s(simulPars[0][1],5)+"/"+IJ.d2s(simulPars[0][2],5);
+										   if (simulPars[0].length>3) dbgStr+="/"+IJ.d2s(simulPars[0][3],7)+"/"+IJ.d2s(simulPars[0][4],7)+"/"+IJ.d2s(simulPars[0][5],7)+"}";
+										   dbgStr+=" {"+IJ.d2s(simulPars[1][0],5)+"/"+IJ.d2s(simulPars[1][1],5)+"/"+IJ.d2s(simulPars[1][2],5);
+										   if (simulPars[1].length>3) dbgStr+="/"+IJ.d2s(simulPars[1][3],7)+"/"+IJ.d2s(simulPars[1][4],7)+"/"+IJ.d2s(simulPars[1][5],7)+"}";
+									   }                                   
+								   }
+								   if (!selection.contains((int) Math.round(expectedXY[0]),(int) Math.round(expectedXY[1]))) { // just the center point
+									   invalidatePatternGridCell(
+											   PATTERN_GRID,
+											   iUVdir);
+									   if (debugLevel>debugThreshold) {
+										   dbgStr+=" -- not in selection ";
+										   System.out.println(dbgStr);
+									   }
+									   continue; // the correlation selection does not fit into WOI selection
+								   }
+								   //Proceed with correlation	
+								   //TODO: add contrast verification ? Maximal distance from expected? (return null if failed)		    						 
+								   double [] centerXY=correctedPatternCrossLocation(
+										   expectedXY, // initial coordinates of the pattern cross point
+										   wv[0][0],
+										   wv[0][1],
+										   wv[1][0],
+										   wv[1][1],
+										   simulPars,
+										   imp,      // image data (Bayer mosaic)
+										   distortionParameters, //
+										   patternDetectParameters,
+										   matchSimulatedPatternCorr, // correlationSize
+										   thisSimulParameters,
+										   equalizeGreens,			
+										   windowFunctionCorr,
+										   windowFunctionCorr2,
+										   windowFunctionCorr4,
+										   simulationPattern,
+										   ((iUVdir[0]^iUVdir[1])&1)!=0, // if true - invert pattern
+										   fht_instance,
+										   distortionParameters.fastCorrelationOnFirstPass,
+										   locsNeib,
+										   debugLevel,
+										   null);
+								   //	    						 System.out.println("*+*debugLevel="+debugLevel);
+								   if (centerXY==null){
+									   invalidatePatternGridCell(
+											   PATTERN_GRID,
+											   iUVdir);
+									   if (debugLevel>debugThreshold) {
+										   dbgStr+=" -- FAILED";
+										   System.out.println(dbgStr);
+									   }
+									   continue; // failed to find pattern in the cell TODO: implement
+								   }
+								   if (debugCellSet.getAndIncrement()==0){ // First cell
+									   if (passNumber==1) {
+										   debugUV[0]=iUVdir[0];
+										   debugUV[1]=iUVdir[1];
+										   if (debugLevel>debugThreshold) System.out.println("debugUV[] set to {"+debugUV[0]+","+debugUV[1]+"}");
+										   passNumber=2; // global passNumber
+									   }
+								   }
+								   //Found new cell, save info and increment counter		    						 
+								   setPatternGridCell(
 										   PATTERN_GRID,
-										   iUVdir);
+										   iUVdir,
+										   centerXY,
+										   // specify wave vectors from the parent cell, will recalculate (if possible)
+										   wv[0], //null, //  double [] wv1,
+										   wv[1]); //null); //  double [] wv2);
+								   if (cleanup.get()) addedCells.getAndIncrement();
 								   if (debugLevel>debugThreshold) {
-									   dbgStr+=" -- not in selection ";
+									   dbgStr+="==>added"+iUVdir[0]+"/"+iUVdir[1]+", dir"+iUVdir[2];
 									   System.out.println(dbgStr);
 								   }
-								   continue; // the correlation selection does not fit into WOI selection
+
 							   }
-							   //Proceed with correlation	
-							   //TODO: add contrast verification ? Maximal distance from expected? (return null if failed)		    						 
-							   double [] centerXY=correctedPatternCrossLocation(
-									   expectedXY, // initial coordinates of the pattern cross point
-									   wv[0][0],
-									   wv[0][1],
-									   wv[1][0],
-									   wv[1][1],
-									   simulPars,
-									   imp,      // image data (Bayer mosaic)
-									   distortionParameters, //
-									   patternDetectParameters,
-									   matchSimulatedPatternCorr, // correlationSize
-									   thisSimulParameters,
-									   equalizeGreens,			
-									   windowFunctionCorr,
-									   windowFunctionCorr2,
-									   windowFunctionCorr4,
-									   simulationPattern,
-									   ((iUVdir[0]^iUVdir[1])&1)!=0, // if true - invert pattern
-									   fht_instance,
-									   distortionParameters.fastCorrelationOnFirstPass,
-									   locsNeib,
-									   debugLevel);
-							   //	    						 System.out.println("*+*debugLevel="+debugLevel);
-							   if (centerXY==null){
-								   invalidatePatternGridCell(
-										   PATTERN_GRID,
-										   iUVdir);
-								   if (debugLevel>debugThreshold) {
-									   dbgStr+=" -- FAILED";
-									   System.out.println(dbgStr);
-								   }
-								   continue; // failed to find pattern in the cell TODO: implement
+						   }
+					   };
+				   }
+				   startAndJoin(threads);
+				   // remove invalid cells from the list
+				   for (int i=waveFrontList.size()-1;i>=0;i--) {
+					   if (!isCellValid(PATTERN_GRID,getWaveList (waveFrontList,i))) {
+						   // Make that cell "new", so it will be tried again, until wave will not touch it. So when more neigbors will be defined, previously failed
+						   // cell will be retried			    		
+						   clearPatternGridCell(PATTERN_GRID,getWaveList (waveFrontList,i));
+						   waveFrontList.remove(i);
+						   if (debugLevel>1) System.out.println("XXX->clear invalid ("+i+")");
+					   }
+				   }
+				   //If anything was added during the layer - calculate and fill in wave vectors here (they are set to the same as in the parent cell)
+				   // this code is not needed now, the wave vectors are recalculated from x/y locations, the stored ones are not used    			
+				   if (waveFrontList.size()>0) {
+					   for (int listIndex=0;listIndex<waveFrontList.size();listIndex++) {
+						   uvdir= getWaveList (waveFrontList,listIndex);
+						   if (debugLevel>1) System.out.println("<---= uvdir= "+uvdir[0]+",  "+uvdir[1]+",  "+uvdir[2]);
+						   thisCell=PATTERN_GRID[uvdir[1]][uvdir[0]];
+						   neibBits=0;
+						   for (dir=0;dir<directionsUV8.length;dir++) {
+							   neibors[dir]=null;
+							   iUV[0]=uvdir[0]+directionsUV8[dir][0];
+							   iUV[1]=uvdir[1]+directionsUV8[dir][1];
+							   if ((iUV[0]<0) || (iUV[1]<0) ||
+									   (iUV[0]>=distortionParameters.gridSize) || (iUV[1]>=distortionParameters.gridSize)) continue; // don't fit into UV grid
+							   if (isCellValid(PATTERN_GRID,iUV)) {
+								   neibors[dir]= new double [2][2];
+								   otherCell=PATTERN_GRID[iUV[1]][iUV[0]];
+								   neibors[dir][0][0]=0.5*directionsUV8[dir][0];  // u
+								   neibors[dir][0][1]=0.5*directionsUV8[dir][1];  // v
+								   neibors[dir][1][0]=otherCell[0][0]-thisCell[0][0];  // x
+								   neibors[dir][1][1]=otherCell[0][1]-thisCell[0][1];  // y
+								   neibBits |= directionsBits8[dir];
 							   }
-							   if (debugCellSet.getAndIncrement()==0){ // First cell
-								   if (passNumber==1) {
-									   debugUV[0]=iUVdir[0];
-									   debugUV[1]=iUVdir[1];
-									   if (debugLevel>debugThreshold) System.out.println("debugUV[] set to {"+debugUV[0]+","+debugUV[1]+"}");
-									   passNumber=2; // global passNumber
-								   }
-							   }
-							   //Found new cell, save info and increment counter		    						 
+						   }
+						   int i=Integer.bitCount(neibBits); 
+						   if (debugLevel>1) System.out.println("neibBits="+neibBits+", number of bits= "+i);
+						   if (i>1) {
+							   double[][] wv= waveVectorsFromNeib(neibors);
 							   setPatternGridCell(
 									   PATTERN_GRID,
-									   iUVdir,
-									   centerXY,
-									   // specify wave vectors from the parent cell, will recalculate (if possible)
-									   wv[0], //null, //  double [] wv1,
-									   wv[1]); //null); //  double [] wv2);
-							   if (cleanup.get()) addedCells.getAndIncrement();
-							   if (debugLevel>debugThreshold) {
-								   dbgStr+="==>added"+iUVdir[0]+"/"+iUVdir[1]+", dir"+iUVdir[2];
-								   System.out.println(dbgStr);
+									   uvdir,
+									   null, // XY already set
+									   wv[0], 
+									   wv[1]);
+
+							   if (debugLevel>1) System.out.println("==+> number of bits:"+i+
+									   " vw00="+IJ.d2s(wv[0][0],5)+" vw01="+IJ.d2s(wv[0][1],5)+
+									   " vw10="+IJ.d2s(wv[1][0],5)+" vw11="+IJ.d2s(wv[1][1],5));
+							   //				    	wv= WaveVectorsFromNeib(neibors);
+							   //
+							   // 		   vectors: [num_vector][0][0] - U
+							   //                  [num_vector][0][1] - V
+							   //                  [num_vector][1][0] - X
+							   //                  [num_vector][1][1] - Y
+							   //                  [num_vector] == null - skip
+							   //
+						   }
+
+					   }
+				   } else if (initialWave!=null){
+					   if ((global_debug_level>0) && (initialWave!=null)) {
+						   System.out.println("No sense to initiate clenaup during first layer"); // problems heer?
+					   }
+				   } else if (!cleanup.get() || (addedCells.get()>0)) { // create list of the defined cells on the border (if wave died)
+					   cleanup.set(true);
+					  // debug
+//					   if ((global_debug_level>0) && (initialWave!=null)) {
+//						   System.out.println("clenaup during first layer"); // problems heer?
+//						   System.out.println("Added "+addedCells.get()+" during border cleanup on first layer");
+//					   }
+					   if ((debugLevel>1) && !cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup"); // can not get here
+					   addedCells.set(0);
+					   umax=0;
+					   vmax=0;
+					   vmin=PATTERN_GRID.length;
+					   umin=PATTERN_GRID[0].length;
+					   for (int i=0;i<PATTERN_GRID.length;i++) for (int j=0;j<PATTERN_GRID[i].length;j++) {
+						   if ((PATTERN_GRID[i][j]!=null) && (PATTERN_GRID[i][j][0]!=null)) {
+							   if (vmin > i) vmin = i;
+							   if (vmax < i) vmax = i;
+							   if (umin > j) umin = j;
+							   if (umax < j) umax = j;
+						   }
+					   }
+					   int [] uvNew=new int [2];
+					   for (uvNew[1]=vmin;uvNew[1]<=vmax;uvNew[1]++) for (uvNew[0]=umin;uvNew[0]<=umax;uvNew[0]++) if (isCellDefined(PATTERN_GRID,uvNew)){
+						   for (dir=0;dir<directionsUV.length;dir++) {
+							   iUV[0]=uvNew[0]+directionsUV[dir][0];
+							   iUV[1]=uvNew[1]+directionsUV[dir][1];
+							   if (!isCellDefined(PATTERN_GRID,iUV) && !isCellDeleted(PATTERN_GRID,iUV)){
+								   putInWaveList (waveFrontList, uvNew, dir); // direction does not matter here
+								   break;
 							   }
-
 						   }
 					   }
-				   };
-			   }
-			   startAndJoin(threads);
-			   // remove invalid cells from the list
-			   for (int i=waveFrontList.size()-1;i>=0;i--) {
-				   if (!isCellValid(PATTERN_GRID,getWaveList (waveFrontList,i))) {
-					   // Make that cell "new", so it will be tried again, until wave will not touch it. So when more neigbors will be defined, previously failed
-					   // cell will be retried			    		
-					   clearPatternGridCell(PATTERN_GRID,getWaveList (waveFrontList,i));
-					   waveFrontList.remove(i);
-					   if (debugLevel>1) System.out.println("XXX->clear invalid ("+i+")");
+					   if (global_debug_level>1) System.out.println("***** Starting cleanup, wave length="+waveFrontList.size()); //????
 				   }
-			   }
-			   //If anything was added during the layer - calculate and fill in wave vectors here (they are set to the same as in the parent cell)
-			   // this code is not needed now, the wave vectors are recalculated from x/y locations, the stored ones are not used    			
-			   if (waveFrontList.size()>0) {
-				   for (int listIndex=0;listIndex<waveFrontList.size();listIndex++) {
-					   uvdir= getWaveList (waveFrontList,listIndex);
-					   if (debugLevel>1) System.out.println("<---= uvdir= "+uvdir[0]+",  "+uvdir[1]+",  "+uvdir[2]);
-					   thisCell=PATTERN_GRID[uvdir[1]][uvdir[0]];
-					   neibBits=0;
-					   for (dir=0;dir<directionsUV8.length;dir++) {
-						   neibors[dir]=null;
-						   iUV[0]=uvdir[0]+directionsUV8[dir][0];
-						   iUV[1]=uvdir[1]+directionsUV8[dir][1];
-						   if ((iUV[0]<0) || (iUV[1]<0) ||
-								   (iUV[0]>=distortionParameters.gridSize) || (iUV[1]>=distortionParameters.gridSize)) continue; // don't fit into UV grid
-						   if (isCellValid(PATTERN_GRID,iUV)) {
-							   neibors[dir]= new double [2][2];
-							   otherCell=PATTERN_GRID[iUV[1]][iUV[0]];
-							   neibors[dir][0][0]=0.5*directionsUV8[dir][0];  // u
-							   neibors[dir][0][1]=0.5*directionsUV8[dir][1];  // v
-							   neibors[dir][1][0]=otherCell[0][0]-thisCell[0][0];  // x
-							   neibors[dir][1][1]=otherCell[0][1]-thisCell[0][1];  // y
-							   neibBits |= directionsBits8[dir];
+				   // end of layer - it is a hack below, marking initial wave to recalculate it from neighbors	
+				   if (initialWave!=null){ // just after the first layer (usually one cell) - delete it and add next time - otherwise first one needs large correction
+					   if (global_debug_level>1) {
+						   System.out.println("Removing "+initialWave.size()+" initial wave cells, waveFrontList.size()="+waveFrontList.size());
+						   for (int listIndex=0;listIndex<waveFrontList.size();listIndex++) {
+							   int [] dbg_uvdir= getWaveList (waveFrontList,listIndex);
+							   System.out.println("waveFrontList["+listIndex+"]: "+dbg_uvdir[0]+"/"+dbg_uvdir[1]+" dir="+dbg_uvdir[2]);
 						   }
 					   }
-					   int i=Integer.bitCount(neibBits); 
-					   if (debugLevel>1) System.out.println("neibBits="+neibBits+", number of bits= "+i);
-					   if (i>1) {
-						   double[][] wv= waveVectorsFromNeib(neibors);
-						   setPatternGridCell(
-								   PATTERN_GRID,
-								   uvdir,
-								   null, // XY already set
-								   wv[0], 
-								   wv[1]);
-
-						   if (debugLevel>1) System.out.println("==+> number of bits:"+i+
-								   " vw00="+IJ.d2s(wv[0][0],5)+" vw01="+IJ.d2s(wv[0][1],5)+
-								   " vw10="+IJ.d2s(wv[1][0],5)+" vw11="+IJ.d2s(wv[1][1],5));
-						   //				    	wv= WaveVectorsFromNeib(neibors);
-						   //
-						   // 		   vectors: [num_vector][0][0] - U
-						   //                  [num_vector][0][1] - V
-						   //                  [num_vector][1][0] - X
-						   //                  [num_vector][1][1] - Y
-						   //                  [num_vector] == null - skip
-						   //
+					   
+					   while (initialWave.size()>0){
+						   uvdir= getWaveList (initialWave,0);
+//						   clearPatternGridCell(PATTERN_GRID, uvdir);
+						   if (global_debug_level>1)
+							   System.out.println("Removing x="+uvdir[0]+" y="+uvdir[1]+" dir="+uvdir[2]);
+						   markDeletedPatternGridCell(PATTERN_GRID, uvdir);
+						   initialWave.remove(0);
 					   }
-
+					   initialWave=null;
 				   }
-			   } else if (!cleanup.get() || (addedCells.get()>0)) { // create list of the defined cells on the border
-				   cleanup.set(true);
-				   if ((debugLevel>1) && !cleanup.get())  System.out.println("Added "+addedCells.get()+" during border cleanup");
-				   addedCells.set(0);
-				   umax=0;
-				   vmax=0;
-				   vmin=PATTERN_GRID.length;
-				   umin=PATTERN_GRID[0].length;
-				   for (int i=0;i<PATTERN_GRID.length;i++) for (int j=0;j<PATTERN_GRID[i].length;j++) {
-					   if ((PATTERN_GRID[i][j]!=null) && (PATTERN_GRID[i][j][0]!=null)) {
-						   if (vmin > i) vmin = i;
-						   if (vmax < i) vmax = i;
-						   if (umin > j) umin = j;
-						   if (umax < j) umax = j;
-					   }
-				   }
-				   int [] uvNew=new int [2];
-				   for (uvNew[1]=vmin;uvNew[1]<=vmax;uvNew[1]++) for (uvNew[0]=umin;uvNew[0]<=umax;uvNew[0]++) if (isCellDefined(PATTERN_GRID,uvNew)){
-					   for (dir=0;dir<directionsUV.length;dir++) {
-						   iUV[0]=uvNew[0]+directionsUV[dir][0];
-						   iUV[1]=uvNew[1]+directionsUV[dir][1];
-						   if (!isCellDefined(PATTERN_GRID,iUV)){
-							   putInWaveList (waveFrontList, uvNew, dir); // direction does not matter here
-							   break;
-						   }
-					   }
-
-				   }
-				   if (debugLevel>1) System.out.println("***** Starting cleanup, wave length="+waveFrontList.size());
-			   }
-		   }//while (waveFrontList.size()>0)
-		   debugLevel=was_debug_level;
-/*		   
+			   }//while (waveFrontList.size()>0)
+			   debugLevel=was_debug_level;
+			   /*		   
 		   if (updating){
 			   return PATTERN_GRID; // no need to crop the array, it should not change
 		   }
-*/		   
-		   umax=0;
-		   vmax=0;
-		   vmin=PATTERN_GRID.length;
-		   umin=PATTERN_GRID[0].length;
-		   int numDefinedCells=0;
-		   for (int i=0;i<PATTERN_GRID.length;i++) for (int j=0;j<PATTERN_GRID[i].length;j++) {
-			   if ((PATTERN_GRID[i][j]!=null) && (PATTERN_GRID[i][j][0]!=null)) {
-				   if (vmin > i) vmin = i;
-				   if (vmax < i) vmax = i;
-				   if (umin > j) umin = j;
-				   if (umax < j) umax = j;
-				   numDefinedCells++;
+			    */		   
+			   umax=0;
+			   vmax=0;
+			   vmin=PATTERN_GRID.length;
+			   umin=PATTERN_GRID[0].length;
+			   numDefinedCells=0;
+			   for (int i=0;i<PATTERN_GRID.length;i++) for (int j=0;j<PATTERN_GRID[i].length;j++) {
+				   if ((PATTERN_GRID[i][j]!=null) && (PATTERN_GRID[i][j][0]!=null)) {
+					   if (vmin > i) vmin = i;
+					   if (vmax < i) vmax = i;
+					   if (umin > j) umin = j;
+					   if (umax < j) umax = j;
+					   numDefinedCells++;
+				   }
 			   }
+
+//			   if (updating){
+//				   return numDefinedCells; // no need to crop the array, it should not change
+//			   }
+			   if (!updating){
+				   if (vmin>vmax){
+					   this.PATTERN_GRID=null;
+					   continue; // try next in queue if available
+//					   return 0; // null; // nothing found
+				   }
+				   // Add extra margins for future extrapolation
+				   int extra=distortionParameters.numberExtrapolated -((distortionParameters.removeLast)?1:0);
+				   vmin-=extra;
+				   if (vmin<0) vmin=0;
+				   umin-=extra;
+				   if (umin<0) umin=0;
+				   vmax+=extra;
+				   if (vmax>=PATTERN_GRID.length) vmax=PATTERN_GRID.length-1;
+				   umax+=extra;
+				   if (umax>=PATTERN_GRID[0].length) umax=PATTERN_GRID[0].length-1;
+
+				   // make sure the odd/even uv does not change (and so the cross phases defined by U & V)
+				   vmin &= ~1;
+				   umin &= ~1;
+				   // make width/height even (not needed)
+				   umax |=1;
+				   vmax |=1;
+				   // remove  margins 		 
+				   double [][][][] result = new double [vmax-vmin+1][umax-umin+1][][];
+				   for (int i=vmin;i<=vmax;i++) for (int j=umin;j<=umax;j++) {
+					   if ((PATTERN_GRID[i][j]!=null) && (PATTERN_GRID[i][j][0]!=null)) {
+						   result[i-vmin][j-umin]=PATTERN_GRID[i][j];
+					   } else result[i-vmin][j-umin]=null;
+				   }
+				   this.debugUV[0]-=umin;
+				   this.debugUV[1]-=umin;
+				   if (debugLevel>2) System.out.println("debugUV[] updated to {"+this.debugUV[0]+","+this.debugUV[1]+"}");
+
+				   if (debugLevel>1) System.out.println("Total number of defined cells="+numDefinedCells);
+				   this.PATTERN_GRID=result;
+			   }
+			   // more tests here (moved from the caller) that result is good
+			   double averageGridPeriod=Double.NaN;
+			   double [] gridPeriods={Double.NaN,Double.NaN};
+			   if (this.PATTERN_GRID!=null) {
+				   averageGridPeriod=averageGridPeriod(this.PATTERN_GRID);
+				   gridPeriods=averageGridPeriods(this.PATTERN_GRID); // {min,max}
+			   }
+			   if (debugLevel>0){
+				   System.out.println("Pattern period="+averageGridPeriod+" {"+gridPeriods[0]+","+gridPeriods[1]+"}"+
+			   						   " limits are set to :"+patternDetectParameters.minGridPeriod+","+patternDetectParameters.maxGridPeriod);
+			   }
+			   if (!Double.isNaN(averageGridPeriod)) {
+				   if (!Double.isNaN(patternDetectParameters.minGridPeriod) &&
+						   (patternDetectParameters.minGridPeriod>0.0) &&
+						   (averageGridPeriod<patternDetectParameters.minGridPeriod)){
+					   if (debugLevel>0){
+						   System.out.println("Pattern is too small, period="+averageGridPeriod+
+							   	   " minimal="+patternDetectParameters.minGridPeriod);
+					   }
+					   continue; // bad grid
+				   }
+				   if (!Double.isNaN(patternDetectParameters.maxGridPeriod) &&
+						   (patternDetectParameters.maxGridPeriod>0.0) &&
+						   (averageGridPeriod>patternDetectParameters.maxGridPeriod)){
+					   if (debugLevel>0){
+						   System.out.println("Pattern is too large, period="+averageGridPeriod+
+							   	   " maximal="+patternDetectParameters.maxGridPeriod);
+					   }
+					   continue; // bad grid
+				   }
+			   }
+			   if (    
+					   (distortionParameters.minimalPatternCluster<=0) || // minimal cluster size is disabled
+					   (distortionParameters.scaleMinimalInitialContrast<=0) || // minimal cluster size is disabled
+					   ((numDefinedCells==0) && fromVeryBeginning)|| // no cells detected at all, starting from the very beginning
+					   (numDefinedCells>=distortionParameters.minimalPatternCluster)  // detected enough cells
+					   )  {
+				   return numDefinedCells;
+			   }
+			   if (roi!=null){ // don't use this feature with ROI as it can be small
+				   if (global_debug_level>0) System.out.println("Initial pattern cluster is small ("+numDefinedCells+"), but ROI is set - no retries");
+				   {
+					   return numDefinedCells;
+				   }
+			   }
+		   } // next node in queue
+// failed to find - deal in the caller
+		   
+		   /*
+		   boolean someLeft=false;
+		   int startScanIndex=0;
+		   for (startScanIndex=3;startScanIndex<triedIndices.length;startScanIndex++) if (!triedIndices[startScanIndex]){
+			   someLeft=true;
+			   break;
 		   }
 		   
-		   if (updating){
-			   return numDefinedCells; // no need to crop the array, it should not change
+		   if (someLeft) {
+			   if (global_debug_level>0){
+				   System.out.println("Initial pattern cluster is too small ("+numDefinedCells+
+						   "), continuing scanning from index "+startScanIndex);
+			   }
+		   } else {
+			   //							   startScanIndex[0]=0;
+			   System.out.println("Last pattern cluster was too small, adjusting the minimal contrast from "+
+					   IJ.d2s(distortionParameters.correlationMinInitialContrast,3)+
+					   " to "+IJ.d2s(distortionParameters.correlationMinInitialContrast*distortionParameters.scaleMinimalInitialContrast,3));
+			   distortionParameters.correlationMinInitialContrast*=distortionParameters.scaleMinimalInitialContrast;
+			   for (int i=0;i<triedIndices.length;i++) triedIndices[i]=(i<3); // mark first 3 as if they are already used
+			   fromVeryBeginning=true;
 		   }
-		   
-		   if (vmin>vmax){
-			   this.PATTERN_GRID=null;   
-			   return 0; // null; // nothing found
-		   }
-		   // Add extra margins for future extrapolation
-		   int extra=distortionParameters.numberExtrapolated -((distortionParameters.removeLast)?1:0);
-		   vmin-=extra;
-		   if (vmin<0) vmin=0;
-		   umin-=extra;
-		   if (umin<0) umin=0;
-		   vmax+=extra;
-		   if (vmax>=PATTERN_GRID.length) vmax=PATTERN_GRID.length-1;
-		   umax+=extra;
-		   if (umax>=PATTERN_GRID[0].length) umax=PATTERN_GRID[0].length-1;
-
-		   // make sure the odd/even uv does not change (and so the cross phases defined by U & V)
-		   vmin &= ~1;
-		   umin &= ~1;
-		   // make width/height even (not needed)
-		   umax |=1;
-		   vmax |=1;
-		   // remove  margins 		 
-		   double [][][][] result = new double [vmax-vmin+1][umax-umin+1][][];
-		   for (int i=vmin;i<=vmax;i++) for (int j=umin;j<=umax;j++) {
-			   if ((PATTERN_GRID[i][j]!=null) && (PATTERN_GRID[i][j][0]!=null)) {
-				   result[i-vmin][j-umin]=PATTERN_GRID[i][j];
-			   } else result[i-vmin][j-umin]=null;
-		   }
-		   this.debugUV[0]-=umin;
-		   this.debugUV[1]-=umin;
-		   if (debugLevel>2) System.out.println("debugUV[] updated to {"+this.debugUV[0]+","+this.debugUV[1]+"}");
-
-		   if (debugLevel>1) System.out.println("Total number of defined cells="+numDefinedCells);
-		   this.PATTERN_GRID=result;   
-		   return numDefinedCells; //result;
+		   */
+		   return 0; // none
 	   }
 	   
-	   private double [][] findPatternCandidate(
+	   public double [][] findPatternCandidate_old(
 //			   final int [] startScanIndex, // [0] will be updated
 			   final boolean [] triedIndices, // which indices are already tried
 			   final int startScanIndex,
@@ -3535,7 +3951,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 								   nb++;
 							   }
 						   }
-						   if (debugLevel>2) System.out.println("Searching, n="+n+", nv="+nv+", nh="+nh+", nb="+nb );
+						   if (debugLevel>2) System.out.println("Searching, n="+n+", nv="+nv+", nh="+nh+", nb="+nb);
 						   if ((nv>0) && (nh>0)) {
 							   point[0]=(selection.x+nh*selection.width/(1<<tryHor)) & ~1;
 							   point[1]=(selection.y+nv*selection.height/(1<<tryVert)) & ~1;
@@ -3556,7 +3972,8 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 									   windowFunctionCorr,
 									   windowFunctionCorr2,
 									   windowFunctionCorr4,
-									   locsNeib // which neibors to try (here - just the center)
+									   locsNeib, // which neibors to try (here - just the center)
+									   null // dbgStr
 							   );
 							   if ((node!=null) && (node[0]!=null)) {
 								   if (nodeSet.compareAndSet(false,true)) {
@@ -3584,8 +4001,149 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 //		   if (nodeRef[0]==null) startScanIndex[0]=numTries; // all used
 		   return nodeRef[0];
 	   }
+
+	   class GridNode {
+		   double [][] node;
+		   public GridNode(double [][] node){
+			   this.node=node;
+		   }
+		   public double [][] getNode(){
+			   return this.node;
+		   }
+	   }
+
+//	   private double [][][] findPatternCandidates(
+	   private  Queue<GridNode> findPatternCandidates(
+			  			   
+//			   final int [] startScanIndex, // [0] will be updated
+			   final boolean [] triedIndices, // which indices are already tried
+			   final int startScanIndex,
+			   final int tryHor,
+			   final int tryVert,
+//			   final int numTries,
+			   final Rectangle selection,
+			   final DistortionParameters distortionParameters, //
+			   final MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
+			   final SimulationPattern.SimulParameters  thisSimulParameters,
+			   final MatchSimulatedPattern matchSimulatedPattern,
+			   final MatchSimulatedPattern matchSimulatedPatternCorr,
+			   final SimulationPattern simulationPattern,
+			   final boolean equalizeGreens,
+			   final ImagePlus imp, // image to process
+			   final double [] bPattern,
+			   final double [] windowFunction,
+			   final double [] windowFunctionCorr,
+			   final double [] windowFunctionCorr2,
+			   final double [] windowFunctionCorr4,
+			   final double[][] locsNeib, // which neibors to try (here - just the center)
+			   final int threadsMax,
+			   final boolean updateStatus,
+			   final int debugLevel
+			   ){
+		   final int debugThreshold=1;
+		   if ((debugLevel>debugThreshold) && ((debugLevel>1) || (startScanIndex>3))) {
+			   int debugNumLeft=0;
+			   for (boolean b:triedIndices) if (!b) debugNumLeft++;
+			   System.out.println("findPatternCandidates(), startScanIndex= "+startScanIndex+",triedIndices.length="+triedIndices.length+" debugNumLeft="+debugNumLeft);
+		   }
+
+		   final Thread[] threads = newThreadArray(threadsMax);
+		   final AtomicInteger seqNumber = new AtomicInteger(startScanIndex);
+//		   final AtomicBoolean nodeSet=new AtomicBoolean(false);
+//		   final double [][][] nodeRef= new double[1][][];
+//		   nodeRef[0]=null;
+		   
+		   final AtomicInteger debugNumThreadAtomic= new AtomicInteger(0);
+
+		   final Queue<GridNode> nodeQueue = new ConcurrentLinkedQueue<GridNode>();		   
+		   for (int ithread = 0; ithread < threads.length; ithread++) {
+			   threads[ithread] = new Thread() {
+				   public void run() {
+					   int nbh, nbv, nh, nv, nb;
+					   double [] point = new double[2];
+//					   SimulationPattern simulationPatternClone=simulationPattern.clone();
+					   int debugNumThread=debugNumThreadAtomic.getAndIncrement();
+					   for (int n=seqNumber.getAndIncrement(); n<(triedIndices.length-1); n=seqNumber.getAndIncrement()) if (!triedIndices[n]){
+						   if (!nodeQueue.isEmpty()) break; // already set at least one element - does it work?
+						   nbh=tryHor-1;
+						   nbv=tryVert-1;
+						   nh=0;
+						   nv=0;
+						   nb=0;
+						   while (nb<(tryHor+tryVert)) {
+							   if (nbh>=0) {
+								   if ((n & (1<<nb))!=0) nh |= 1<<nbh;
+								   nbh--;
+								   nb++;
+							   }
+							   if (nbv>=0) {
+								   if ((n & (1<<nb))!=0) nv |= 1<<nbv;
+								   nbv--;
+								   nb++;
+							   }
+						   }
+						   if (debugLevel>2) System.out.println("Searching, n="+n+", nv="+nv+", nh="+nh+", nb="+nb );
+						   if ((nv>0) && (nh>0)) {
+							   point[0]=(selection.x+nh*selection.width/(1<<tryHor)) & ~1;
+							   point[1]=(selection.y+nv*selection.height/(1<<tryVert)) & ~1;
+							   if (debugLevel>2) System.out.println("trying xc="+point[0]+", yc="+point[1]+"(nv="+nv+", nh="+nh+")");
+//							   if ((debugLevel>2) && (n==3)) debugLevel=3; // show debug images for the first point
+							   if (debugLevel>2) System.out.println(debugNumThread+":"+n+" >> ");
+							   double [][] node=tryPattern (
+									   point, // xy to try
+									   distortionParameters, //no control of the displacement
+									   patternDetectParameters,
+									   thisSimulParameters,
+									   matchSimulatedPattern,
+									   matchSimulatedPatternCorr,
+									   simulationPattern,
+									   equalizeGreens,
+									   imp, // image to process
+									   bPattern,
+									   windowFunction,
+									   windowFunctionCorr,
+									   windowFunctionCorr2,
+									   windowFunctionCorr4,
+									   locsNeib, // which neibors to try (here - just the center)
+									   (debugLevel>debugThreshold)?(""+debugNumThread+":"+n+", nv="+nv+", nh="+nh+", nb="+nb+" "+point[0]+"/"+point[1]):null
+							   );
+//							   if (debugLevel>0) System.out.println(debugNumThread+":"+n+", nv="+nv+", nh="+nh+", nb="+nb+" "+point[0]+"/"+point[1]+" "+(node!=null));
+							   if ((node!=null) && (node[0]!=null)) {
+								   nodeQueue.add(new GridNode(node));
+//								   if (debugLevel>1)  System.out.println("adding candidate "+n+" x0="+point[0]+" y0="+point[1]+" -> "+ node[0][0]+"/"+node[0][1]);
+								   if (debugLevel>debugThreshold)  System.out.println("adding candidate "+n+" x0="+point[0]+" y0="+point[1]+" -> "+ node[0][0]+"/"+node[0][1]+" seqNumber.get()="+seqNumber.get()+" n="+n);
+							   }
+						   } else {
+							   if (debugLevel>debugThreshold) System.out.println("-----"+debugNumThread+":"+n+", nv="+nv+", nh="+nh);
+						   }
+						   triedIndices[n]=true; // regardless - good or bad
+					   }
+				   }
+			   };
+		   }
+		   startAndJoin(threads);
+//		   if (nodeQueue.isEmpty()) return null;
+		   if (debugLevel>debugThreshold){
+			   System.out.println("seqNumber after join is "+seqNumber.get());
+		   }
+		   if (seqNumber.get()>=(triedIndices.length-1) ) triedIndices[triedIndices.length-1]=true; // all tried
+		   return nodeQueue; // never null, may be empty
+//		   double [][][] nodes = new double [nodeQueue.size()][][];
+//		   for (int i=0;i<nodes.length;i++) nodes[i]=nodeQueue.poll().getNode();
+//		   return nodes;
+	   }
 	   
 /* ================================================================*/
+	   public void scaleContrast(double scale){
+		   for (double [][][] patternRow:this.PATTERN_GRID){
+			   if (patternRow!=null) for (double [][] node:patternRow){
+				   if ((node!=null) && (node.length>0) && (node[0]!=null) && (node[0].length>2)) {
+					   node[0][2]*=scale; 
+				   }
+			   }
+		   }
+	   }
+ /* ================================================================*/
 	   public double refineDistortionCorrelation (
 			   final DistortionParameters distortionParameters, //
 			   final MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
@@ -3596,6 +4154,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 			   final int threadsMax,
 			   final boolean updateStatus,
 			   final int debug_level){// debug level used inside loops
+		    scaleContrast(distortionParameters.scaleFirstPassContrast);
 		    final double [][][][] patternGrid=this.PATTERN_GRID;
 			final int debugThreshold=1;
 			final Rectangle selection=new Rectangle(0, 0, imp.getWidth(), imp.getHeight());
@@ -3778,7 +4337,8 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
         						   fht_instance,
         						   distortionParameters.fastCorrelationOnFinalPass, //
         						   locsNeib,
-        						   thisDebug); //thisDebug
+        						   thisDebug, //thisDebug
+        						   null);
 
 
         				   if (centerXY!=null){
@@ -4104,12 +4664,21 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 							   }
 							   gridIntensity[iUV[1]][iUV[0]]=sum/sumW;
 						   } else {
+							   // trying alternative
+//							   double [][][][] patternGrid_same=patternGrid;
+							   gridIntensity[iUV[1]][iUV[0]]=Double.NaN;
+							   if (isCellDefined(patternGrid,iUV[0],iUV[1])) {
+								   double [][] patternCell=patternGrid[iUV[1]][iUV[0]];
+								   if (patternCell[0].length>2) gridIntensity[iUV[1]][iUV[0]]=patternCell[0][2];
+							   }
+/*							   
 							   gridIntensity[iUV[1]][iUV[0]]=localGridContrast(
 									   imp,
 									   equalizeGreens,
 									   patternGrid,
 									   iUV[0],
 									   iUV[1]);
+									   */
 						   }
 					   }
 				   }
@@ -4211,8 +4780,10 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   iUV1[0]=iUV[0]+dirs[dir][0];
 				   iUV1[1]=iUV[1]+dirs[dir][1];
 				   if (isCellDefined(patternGrid,iUV1)){
-					   dx=patternGrid[iUV1[1]][iUV1[0]][0][0]-patternGrid[iUV1[1]][iUV[0]][0][0];
-					   dy=patternGrid[iUV1[1]][iUV1[0]][0][1]-patternGrid[iUV1[1]][iUV[0]][0][1];
+//					   dx=patternGrid[iUV1[1]][iUV1[0]][0][0]-patternGrid[iUV1[1]][iUV[0]][0][0]; // old bug, skewed period!
+//					   dy=patternGrid[iUV1[1]][iUV1[0]][0][1]-patternGrid[iUV1[1]][iUV[0]][0][1]; // old bug, skewed period!
+					   dx=patternGrid[iUV1[1]][iUV1[0]][0][0]-patternGrid[iUV[1]][iUV[0]][0][0];
+					   dy=patternGrid[iUV1[1]][iUV1[0]][0][1]-patternGrid[iUV[1]][iUV[0]][0][1];
 					   sum+=dx*dx+dy*dy;
 					   n++;
 				   }
@@ -4220,6 +4791,39 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   }
 		   if (n>0) sum/=n;
 		   return Math.sqrt (sum);
+	   }
+/* ======================================================================== */
+	   public double [] averageGridPeriods( // min,max for u,v
+			   double [][][][] patternGrid){
+		   double [] result={Double.NaN,Double.NaN};
+//		   int n=0;
+		   double [] sum={0.0,0.0};
+		   int [] numSamples={0,0};
+		   int [] iUV=new int[2];
+		   int [] iUV1=new int[2];
+		   int [][]dirs={{0,1},{1,0}};
+		   double dx,dy;
+		   for (iUV[1]=0;iUV[1]<patternGrid.length-1;iUV[1]++) for (iUV[0]=0;iUV[0]<patternGrid[0].length-1;iUV[0]++) if (isCellDefined(patternGrid,iUV)){
+			   for (int dir=0;dir<dirs.length;dir++){
+				   iUV1[0]=iUV[0]+dirs[dir][0];
+				   iUV1[1]=iUV[1]+dirs[dir][1];
+				   if (isCellDefined(patternGrid,iUV1)){
+					   dx=patternGrid[iUV1[1]][iUV1[0]][0][0]-patternGrid[iUV[1]][iUV[0]][0][0];
+					   dy=patternGrid[iUV1[1]][iUV1[0]][0][1]-patternGrid[iUV[1]][iUV[0]][0][1];
+					   sum[dir]+=dx*dx+dy*dy;
+					   numSamples[dir]++;
+				   }
+			   }
+		   }
+		   for (int dir=0;dir<dirs.length;dir++){
+			   if (numSamples[dir]>0) result[dir]=Math.sqrt (sum[dir]/numSamples[dir]);
+		   }
+		   if (result[0]>result[1]){
+			   double tmp=result[0];
+			   result[0]=result[1];
+			   result[1]=tmp;
+		   }
+		   return result;
 	   }
 
 /* ======================================================================== */
@@ -4663,7 +5267,17 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		    return locsNeib;
 	   }
 /* ======================================================================== */
-
+	   public void zeroNaNContrast(){
+		   for (double [][][]  row:this.PATTERN_GRID){
+			   for (double [][] node:row){
+				   if ((node!=null) && (node.length>0) && (node[0]!=null) && (node[0].length>2)){
+					   if (Double.isNaN(node[0][2])) node[0][2]=0.0;
+				   }
+			   }
+		   }
+	   }
+	   
+	   
 	   public double[][][][] recalculateWaveVectors (
 //			   double[][][][] patternGrid,
 			   final boolean updateStatus,
@@ -4839,15 +5453,15 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   private void setPatternGridCell(
 				   double [][][][] grid,
 				   int [] uv,
-				   double [] xy,
+				   double [] xy, // may be a 3-element, with contrast
 				   double [] wv1,
 				   double [] wv2){
 			   int i;
 			   initPatternGridCell(grid,uv);
 			   if (xy!=null) {
-				  double [] grid_xy= new double[2];
-				  for (i=0;i<2;i++) grid_xy[i]=xy[i];
-				  grid[uv[1]][uv[0]][0]= grid_xy;
+//				  double [] grid_xy= new double[2];
+//				  for (i=0;i<2;i++) grid_xy[i]=xy[i];
+				  grid[uv[1]][uv[0]][0]= xy.clone(); // grid_xy;
 			   }
 			   if (wv1!=null) {
 				  double [] grid_wv1= new double[2];
@@ -4884,10 +5498,36 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   int [] uv){
 			   grid[uv[1]][uv[0]]=null;
 		   }
+
+		   private void markDeletedPatternGridCell(
+				   double [][][][] grid,
+				   int [] uv){
+			   if ((grid[uv[1]][uv[0]]!=null) && (grid[uv[1]][uv[0]][0]!=null)) {
+				   double [] newXYC=new double[4];
+				   for (int i=0;i<newXYC.length;i++){
+					   if (i<grid[uv[1]][uv[0]][0].length)
+						   newXYC[i]=grid[uv[1]][uv[0]][0][i];
+					   else
+						   newXYC[i]=Double.NaN;
+				   }
+				   grid[uv[1]][uv[0]][0]=newXYC;
+			   }
+//			   grid[uv[1]][uv[0]]=null;
+
+		   }
+		   
+		   private boolean isCellDeleted(
+	    		   double [][][][] grid,
+	    		   int [] uv){
+	    	   return ((uv[1]>=0) && (uv[0]>=0) && (uv[1]<grid.length) && (uv[0]<grid[uv[1]].length) &&
+	    			   (grid[uv[1]][uv[0]]!=null) && (grid[uv[1]][uv[0]][0]!=null) && (grid[uv[1]][uv[0]][0].length>3));    	   
+	       }
 		   private boolean isCellNew( //modified, for invalid uv will return "not new"
 				   double [][][][] grid,
 				   int [] uv){
-	           return (uv[1]>=0) && (uv[0]>=0) && (uv[1]<grid.length) && (uv[0]<grid[uv[1]].length) && (grid[uv[1]][uv[0]]==null);    	   
+//	           return (uv[1]>=0) && (uv[0]>=0) && (uv[1]<grid.length) && (uv[0]<grid[uv[1]].length) && (grid[uv[1]][uv[0]]==null);
+			   // 4-th element is added to mark that the cell is dleted, but keep coordinates
+	           return (uv[1]>=0) && (uv[0]>=0) && (uv[1]<grid.length) && (uv[0]<grid[uv[1]].length) && ((grid[uv[1]][uv[0]]==null) || (grid[uv[1]][uv[0]].length>3));    	   
 	       }
 		   private boolean isCellValid(
 	    		   double [][][][] grid,
@@ -4920,7 +5560,59 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 	    		   int [] uv){
 	    	   return isCellDefined(this.PATTERN_GRID,uv);    	   
 	       }
-/*
+
+// with contrast
+		   private double getCellContrast(double [][][][] grid,
+	    		   int [] uv){
+			   if  ((uv[1]>=0) && (uv[0]>=0) && (uv[1]<grid.length) && (uv[0]<grid[uv[1]].length) &&
+	    			   (grid[uv[1]][uv[0]]!=null) && (grid[uv[1]][uv[0]][0]!=null) && (grid[uv[1]][uv[0]][0].length>2)) {
+				   return grid[uv[1]][uv[0]][0][2];
+			   } else {
+				   return Double.NaN;
+			   }
+		   }
+		   private double getCellContrast(double [][][][] grid,
+	    		   int u,
+	    		   int v){
+			   if  ((v>=0) && (u>=0) && (v<grid.length) && (u<grid[v].length) &&
+	    			   (grid[v][u]!=null) && (grid[v][u][0]!=null) && (grid[v][u][0].length>2)) {
+				   return grid[v][u][0][2];
+			   } else {
+				   return Double.NaN;
+			   }
+		   }
+		   public double getCellContrast(int [] uv){
+			   return getCellContrast(this.PATTERN_GRID,uv);
+		   }
+		   public double getCellContrast(int u, int v){
+			   return getCellContrast(this.PATTERN_GRID,u,v);
+		   }
+		   private boolean isCellDefinedC(
+	    		   double [][][][] grid,
+	    		   int [] uv){
+	    	   return ((uv[1]>=0) && (uv[0]>=0) && (uv[1]<grid.length) && (uv[0]<grid[uv[1]].length) &&
+	    			   (grid[uv[1]][uv[0]]!=null) && (grid[uv[1]][uv[0]][0]!=null) && (grid[uv[1]][uv[0]][0].length>2) && !Double.isNaN(grid[uv[1]][uv[0]][0][2]));    	   
+	       }
+		   private boolean isCellDefinedC(
+	    		   double [][][][] grid,
+	    		   int u,
+	    		   int v){
+	    	   return ((v>=0) && (u>=0) && (v<grid.length) && (u<grid[v].length) &&
+	    			   (grid[v][u]!=null) && (grid[v][u][0]!=null) && (grid[v][u][0].length>2) && !Double.isNaN(grid[v][u][0][2]));    	   
+	       }
+		   public boolean isCellDefinedC(
+	    		   int u,
+	    		   int v){
+	    	   return isCellDefinedC(this.PATTERN_GRID,u,v);    	   
+	       }
+		   public boolean isCellDefinedC(
+	    		   int [] uv){
+	    	   return isCellDefinedC(this.PATTERN_GRID,uv);    	   
+	       }
+		   
+		   
+		   
+		   /*
 		   private double [] cellXY(int u, int v){
 			   if (!isCellDefined(u,v)) return null;
 			   return this.PATTERN_GRID[v][u][0];
@@ -4966,7 +5658,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 		   public int gridUVHeight(){return ((this.PATTERN_GRID==null) || (this.PATTERN_GRID.length==0l) ||(this.PATTERN_GRID[0]==null))?0:this.PATTERN_GRID.length;}		   
 /* ======================================================================== */
 		   /**
-		    * returns number of laser pointers matched
+		    * returns number of laser pointers matched (or negative error)
 		    * if (this.flatFieldForGrid!=null) it should already be applied !!
 		    */
 		   public int calculateDistortions(
@@ -5007,7 +5699,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 			   int patternCells=0;
 			   // save initial distortionParameters.correlationMinInitialContrast
 			   double savedCorrelationMinInitialContrast=distortionParameters.correlationMinInitialContrast;
-			   int reTries=6; // 10; // bail out after these attempts
+			   int reTries= 10; // bail out after these attempts
 //			   int [] startScanIndex={0}; // scan for pattern will update this index to continue next time (<0 - nothing left)
 			   boolean foundGoodCluster=false;
 			   
@@ -5024,7 +5716,8 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 			   int numTries=1<<(tryHor+tryVert);
 			   boolean [] triedIndices=new boolean[numTries+1]; // last set - all used
 			   for (int i=0;i<triedIndices.length;i++) triedIndices[i]=(i<3); // mark first 3 as if they are already used
-			   boolean fromVeryBeginning=true;
+			   // =========  Removing adjustment of contrast ==============
+//			   boolean fromVeryBeginning=true;
 
 			   
 			   
@@ -5042,8 +5735,21 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 						   imp,
 						   threadsMax,
 						   updateStatus,
-						   debug_level); // debug level
-				   if (global_debug_level>1) System.out.println("Pattern correlation done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+						   debug_level,
+						   global_debug_level); // debug level
+				   if (global_debug_level>0) System.out.println("Pattern correlation done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3)+
+						   " found "+patternCells+" cells, reTries left: "+reTries);
+				   if (patternCells>0) {
+					   foundGoodCluster=true;
+					   break; // new distortions() code - returns non-zero only if passed other tests
+				   }
+				   
+				   // =========  Removing adjustment of contrast ==============
+//				   if (fromVeryBeginning){ 
+//					  if (global_debug_level>0) System.out.println("--- Nothing found at all --- at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+//					  break; // or maybe - still try to adjust threshold?
+//				   }
+/*
 				   double averageGridPeriod=Double.NaN;
 				   if (this.PATTERN_GRID!=null) averageGridPeriod=averageGridPeriod(this.PATTERN_GRID);
 				   if (global_debug_level>0){
@@ -5109,12 +5815,46 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   }
 //				   distortionParameters.correlationMinInitialContrast*=distortionParameters.scaleMinimalInitialContrast;
 				   //				   }
+				   
+*/				   
+				   boolean someLeft=false;
+				   int startScanIndex=0;
+				   for (startScanIndex=3;startScanIndex<triedIndices.length;startScanIndex++) if (!triedIndices[startScanIndex]){
+					   someLeft=true;
+					   break;
+				   }
+				   
+				   if (someLeft) {
+//				   if (!triedIndices[triedIndices.length-1]) {
+					   if (global_debug_level>0){
+//						   int startScanIndex=3;
+//						   for (;(startScanIndex<triedIndices.length) && triedIndices[startScanIndex];startScanIndex++); // skip tried indices 
+						   System.out.println("Initial pattern cluster is too small ("+patternCells+
+								   "), continuing scanning from index "+startScanIndex);
+					   }
+				   } else {
+					  if (global_debug_level>0) System.out.println("--- Tried all - nothing found --- at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					  break;
+					   // =========  Removing adjustment of contrast ==============
+/*					   
+					   //							   startScanIndex[0]=0;
+					   System.out.println("Last pattern cluster was too small, adjusting the minimal contrast from "+
+							   IJ.d2s(distortionParameters.correlationMinInitialContrast,3)+
+							   " to "+IJ.d2s(distortionParameters.correlationMinInitialContrast*distortionParameters.scaleMinimalInitialContrast,3));
+					   distortionParameters.correlationMinInitialContrast*=distortionParameters.scaleMinimalInitialContrast;
+					   for (int i=0;i<triedIndices.length;i++) triedIndices[i]=(i<3); // mark first 3 as if they are already used
+					   fromVeryBeginning=true;
+*/					   
+				   }
 			   }
+			   
+			   
+			   
 			   // restore initial distortionParameters.correlationMinInitialContrast
 			   distortionParameters.correlationMinInitialContrast=savedCorrelationMinInitialContrast;
 			   if (!foundGoodCluster){
-				   System.out.println("calculateDistortions(): Pattern too small");
-				   if (global_debug_level>2) IJ.showMessage("Error","Pattern too small");
+				   System.out.println("calculateDistortions(): Pattern too small, initial cluster had "+patternCells+" cells");
+				   if (global_debug_level>2) IJ.showMessage("Error","Pattern too small: "+patternCells);
 				   return distortionParameters.errPatternNotFound;
 			   }
 			   if (!patternOK()) {
@@ -5219,7 +5959,7 @@ java.lang.ArrayIndexOutOfBoundsException: -3566
 				   String msg="Single correlation FFT size used: "+(1<<maxLn2);
 				   if (global_debug_level>0) System.out.println(msg);
 			   }
-			   
+			   zeroNaNContrast(); // replace grid NaN with 0
 			   
 			   int numPointers=(laserPointer!=null)?laserPointer.laserUVMap.length:0;
 			   double [][] pointersXY=(numPointers>0)?getPointersXY(imp, numPointers):null;
@@ -6283,6 +7023,61 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   
            }
            
+           public int replaceGridXYWithProjected(double [][][] projectedGrid){
+        	   int minU=0,minV=0,maxU=0,maxV=0;
+        	   boolean notYetSet=true;
+        	   for (double [][]row:projectedGrid) for (double [] cell:row) if (cell!=null){
+        		   int u = (int) cell[2];
+        		   int v = (int) cell[3];
+        		   if (notYetSet){
+        			   minU=u;
+        			   maxU=u;
+        			   minV=v;
+        			   maxV=v;
+        			   notYetSet=false;
+        		   } else {
+        			   if (minU>u) minU=u;
+        			   if (maxU<u) maxU=u;
+        			   if (minV>v) minV=v;
+        			   if (maxV<v) maxV=v;
+        		   }
+        	   }
+        	   double [][][] grid=new double [maxV-minV+1][maxU-minU+1][];
+//        	   for (double [][]row:grid) for (double [] cell:row) cell=null; // See if this works with "enhanced for loop"
+        	   for (double [][]row:grid) for (int u=0;u<row.length;u++) row[u]=null; // See if this works with "enhanced for loop"
+        	   
+        	   for (double [][] row:projectedGrid) for (double [] cell:row) if (cell!=null){
+        		   int u = (int) cell[2];
+        		   int v = (int) cell[3];
+        		   double [] xy={cell[0],cell[1]};
+        		   grid[v-minV][u-minU]=xy;
+        	   }
+        	   int numNewDefined=0;
+//        	   System.out.println("this.PATTERN_GRID.length="+this.PATTERN_GRID.length+"this.PATTERN_GRID[0.length="+this.PATTERN_GRID[0].length);
+//        	   System.out.println("this.targetUV.length="+this.targetUV.length+"this.targetUV[0.length="+this.targetUV[0].length);
+        	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++) {
+        		   double [][] cell=this.PATTERN_GRID[v][u];
+        		   if ((cell !=null) && (cell.length>0) &&(cell[0] !=null) && (cell[0].length>1)){
+//                	   System.out.print("v="+v+" u="+u);
+        			   int tu=this.targetUV[v][u][0]-minU;
+        			   int tv=this.targetUV[v][u][1]-minV;
+//                	   System.out.println("  tv="+tv+" tu="+tu);
+        			   if ((tu>=0) && (tv>=0) && (tv<grid.length) && (tu<grid[tv].length) && (grid[tv][tu]!=null)) {
+        				   cell[0][0]=grid[tv][tu][0]; // -81 -.-1
+        				   cell[0][1]=grid[tv][tu][1];
+        				   if (Double.isNaN(cell[0][0]) || Double.isNaN(cell[0][1])){
+        					   this.PATTERN_GRID[v][u]=null; // make it undefined
+        				   } else {
+        					   numNewDefined++;
+        				   }
+        			   } else {
+        				   this.PATTERN_GRID[v][u]=null; // make it undefined
+        			   }
+        		   }
+        	   }
+        	   return numNewDefined;
+           }
+           
            /* Get calibrated pattern as a 8-slice image (can be saved as TIFF)
             * first   slice - pixel X or -1 for undefined
             * second  slice - pixel Y or -1 for undefined
@@ -6468,8 +7263,11 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   ImagePlus imp = new ImagePlus(title, stack);
         	   return imp;
            }
-           public ImagePlus getCalibratedPatternAsImage(ImagePlus imp_src, int numUsedPointers){
-        	   ImagePlus imp_result=getCalibratedPatternAsImage("grid-"+imp_src.getTitle(), numUsedPointers);
+           public ImagePlus getCalibratedPatternAsImage(
+        		   ImagePlus imp_src,
+        		   String prefix, int numUsedPointers){
+//        	   ImagePlus imp_result=getCalibratedPatternAsImage("grid-"+imp_src.getTitle(), numUsedPointers);
+        	   ImagePlus imp_result=getCalibratedPatternAsImage(prefix+imp_src.getTitle(), numUsedPointers);
 // copy all the properties to the new image
     		JP46_Reader_camera jp4_instance= new JP46_Reader_camera(false);
     		jp4_instance.copyProperties (imp_src,imp_result);
@@ -6546,7 +7344,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   }
 // Now remove pointers that are not on white cells        	   
         	   
-        	   if (laserPointer.whiteOnly){
+        	   if ((laserPointer!=null) && laserPointer.whiteOnly){
         		   int numBad=0;
         		   for (int i=0;i<uv.length;i++) if (uv[i]!=null) {
         			   // Verify that laser spots are on the white cells (sum of uv is even)
@@ -6616,7 +7414,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         		   for (int i=0;i<uv.length;i++) if (uv[i]!=null) for (int j=i+1;j<uv.length;j++) if (uv[j]!=null) {
         			   pairMatch=false;
         			   allMatch=false;
-        			   diffUVTable[0]=(int) Math.round(laserPointer.laserUVMap[j][0]-laserPointer.laserUVMap[i][0]);
+        			   diffUVTable[0]=(int) Math.round(laserPointer.laserUVMap[j][0]-laserPointer.laserUVMap[i][0]); // should not get here if uv is {}
         			   diffUVTable[1]=(int) Math.round(laserPointer.laserUVMap[j][1]-laserPointer.laserUVMap[i][1]);
         			   diffUVMeas[0]= (int) Math.round(uv[j][0]-uv[i][0]);
         			   diffUVMeas[1]= (int) Math.round(uv[j][1]-uv[i][1]);
@@ -6702,7 +7500,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         		   }
         	   }
 //TODO: here at least some rotations match all points. If there ere more than two - try to use closest to the default/previous
-        	   int rotation=flipsToRot(laserPointer.swapUV,laserPointer.flipU,laserPointer.flipV);
+        	   int rotation=(laserPointer!=null)?(flipsToRot(laserPointer.swapUV,laserPointer.flipU,laserPointer.flipV)):0;
         	   if (!possibleRotations[rotation]) { // current rotation value defined by laserPointer.{swapUV,flipU,flipV} does not match
         		   // find a new one (first - without mirroring)
         		   for (int i=0; i<8;i++) if (possibleRotations[(((rotation ^ i) & 4)) | ((rotation+i) & 3)]) {
@@ -6718,12 +7516,14 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
             	   }
         	   }
 // now rotation is the correct one, update laserPointer.{swapUV,flipU,flipV};
-        	   laserPointer.swapUV=rotToFlips(rotation)[0];
-        	   laserPointer.flipU =rotToFlips(rotation)[1];
-        	   laserPointer.flipV =rotToFlips(rotation)[2];
+        	   if (laserPointer!=null){
+        		   laserPointer.swapUV=rotToFlips(rotation)[0];
+        		   laserPointer.flipU =rotToFlips(rotation)[1];
+        		   laserPointer.flipV =rotToFlips(rotation)[2];
+        	   }
 //calculate shift
         	   int [] uvShift=dfltShifts[rotation].clone(); //{0,0};
-        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) {
+        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) { // laserPointer -> uv=={}
         		   uvShift[0]=(int) Math.round(uv[i][0]-
         				   (rotations[rotation][0][0]*laserPointer.laserUVMap[i][0]+
         				    rotations[rotation][0][1]*laserPointer.laserUVMap[i][1]));
@@ -6732,6 +7532,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         				    rotations[rotation][1][1]*laserPointer.laserUVMap[i][1]));
         		   break;
         	   }
+        	   
 // Hinted shift will only be used if no laser pointers are available, otherwise - only verify/warn
         	   if (hintTranslateUV!=null) {
 //        		   if ((uv.length==0) || (numPointesLeft==0)){
@@ -6801,7 +7602,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   int numBad=0;
         	   double [] distUV=new double[2];
         	   double dist;
-        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) {
+        	   for (int i=0;i<uv.length;i++) if (uv[i]!=null) { //laserPointer == null > uv={}
         		// Verify that laser spots are inside specified distance from the cell centers        	   
         		   distUV[0]=reReMap[0][0]*uv[i][0]+reReMap[0][1]*uv[i][1]+reReMap[0][2]-laserPointer.laserUVMap[i][0];
         		   distUV[1]=reReMap[1][0]*uv[i][0]+reReMap[1][1]*uv[i][1]+reReMap[1][2]-laserPointer.laserUVMap[i][1];
@@ -7016,7 +7817,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 					DoubleFHT fht_instance,
 					boolean fast, // use fast measuring of the maximum on the correlation
 					double [][] locsNeib, // locations and weights of neighbors to average
-					int debug_level){
+					int debug_level,
+					String dbgStr){
 			   if (distortionParameters.legacyMode)
 				   return correctedPatternCrossLocationOld(
 						beforeXY, // initial coordinates of the pattern cross point
@@ -7062,7 +7864,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 							fht_instance,
 							fast, // use fast measuring of the maximum on the correlation
 							locsNeib, // locations and weights of neighbors to average
-							debug_level);
+							debug_level,
+							dbgStr);
 		   }
 		   private  double [] correctedPatternCrossLocationOld(
 				double [] beforeXY, // initial coordinates of the pattern cross point
@@ -7150,11 +7953,17 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 		     double [] thisWindow=window;
 		     double uv_threshold=distortionParameters.minUVSpan*0.25*Math.sqrt(2.0); 
 
-		     if ((min_span<uv_threshold) && (window2!=null)) { // trying to increase only twice
+		     if (
+		    		 (min_span<uv_threshold) &&
+		    		 (window2!=null) &&
+		    		 (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) { // trying to increase only twice
 		    	 thisCorrelationSize*=2;
 		    	 min_span*=2;
 		    	 thisWindow=window2;
-		    	 if ((min_span<uv_threshold) && (window4!=null)) {
+		    	 if (
+		    			 (min_span<uv_threshold) &&
+		    			 (window4!=null) &&
+		    			 (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) {
 		    		 thisCorrelationSize*=2;
 			    	 min_span*=2;
 			    	 thisWindow=window4;
@@ -7193,7 +8002,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 //			 dUV=matrix2x2_scale(matrix2x2_mul(wv,diffBeforeXY),-2*Math.PI);
 
 				 dUV=matrix2x2_scale(matrix2x2_mul(wv,neibCenter),-2*Math.PI);
-				 simulationPattern.simulatePatternFullPattern(
+				 simulationPattern.simulatePatternFullPattern( // not thread safe
 						 wv0x,
 						 wv0y,
 						 dUV[0]+(negative?(-Math.PI/2):Math.PI/2), // negative?(-Math.PI/2):Math.PI/2,
@@ -7222,6 +8031,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 					 System.out.println("==========Showing simGreensCentered"+ixc+":"+iyc);					 
 
 					 SDFA_INSTANCE.showArrays(simGreensCentered.clone(),  "simGreensCentered"+ixc+":"+iyc);
+					 SDFA_INSTANCE.showArrays(greens.clone(),  "greensWidowed"+ixc+":"+iyc);
 //					 System.out.println("debug_level="+debug_level+" *** Remove next line ***");
 //					 sim_pix[14]=null; // make it crash here
 				 }
@@ -7262,23 +8072,43 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 		   	   	}
 	// Verify contrast (if specified) - only for the center sample (numNeib==0) 
 		   	   	if (numNeib==0) {
-					 contrast= correlationContrast (modelCorr,
+		   	   		double [] contrasts= correlationContrast(
+							modelCorr,
+							greens,							
 							WVgreens,    // wave vectors (same units as the pixels array)
-							distortionParameters.correlationRingWidth,   // ring (around r=0.5 dist to opposite corr) width
+//							distortionParameters.correlationRingWidth,   // ring (around r=0.5 dist to opposite corr) width
+							distortionParameters.contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+							distortionParameters.contrastAverageSigma,
 	//TODO: verify that displacement is correct here (sign, direction)						
 							centerXY[0],    //  x0,              // center coordinates
 							centerXY[1],    //y0,
 							"test-contrast");   // title base for optional plots names
+		   	   		contrast=contrasts[0];
 
 					 result[2]=contrast;
 
-					 if ((distortionParameters.correlationMinContrast>0) && (contrast<distortionParameters.correlationMinContrast)) {
-							if (debug_level>1) System.out.println("Contrast too low - "+contrast+"<"+distortionParameters.correlationMinContrast);
-							if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrast,3)+" ("+distortionParameters.correlationMinContrast+")"+
-									" is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
-									IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
-			   	   			return null;
+					 if (Double.isNaN(contrasts[0]) || ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast))) {
+						 if (debug_level>1) System.out.println("Center contrast too low - "+contrasts[0]+"<"+distortionParameters.correlationMinContrast);
+						 if (debug_level>1) System.out.println("Center contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+								 " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+								 IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+						 return null;
+					 } else {
+						 if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+								 " is good ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+								 IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
 					 }
+
+
+					 if (Double.isNaN(contrasts[1]) || ((distortionParameters.correlationMinAbsoluteContrast>0) && (contrasts[1]<distortionParameters.correlationMinAbsoluteContrast))) {
+						 if (debug_level>1) System.out.println("Absolute contrast too low - "+contrasts[1]+"<"+distortionParameters.correlationMinAbsoluteContrast);
+						 if (debug_level>1) System.out.println("Absolute contrast "+IJ.d2s(contrasts[1],3)+" ("+distortionParameters.correlationMinAbsoluteContrast+")"+
+								 " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+								 IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+						 return null;
+					 }
+
+
 					 if (debug_level>2) System.out.println("Contarst="+contrast+" (legacy)");
 		   	   	}
 				 if (debug_level>2) System.out.println("correctedPatternCrossLocation: Center x="+IJ.d2s(centerXY[0],3)+" y="+ 	IJ.d2s(centerXY[1],3));
@@ -7310,91 +8140,122 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 		  return result;		
 		}
 		   private  double [] correctedPatternCrossLocationAverage4(
-					double [] beforeXY, // initial coordinates of the pattern cross point
-					double wv0x,
-					double wv0y,
-					double wv1x,
-					double wv1y,
-					double [][] correction,
-					ImagePlus imp,      // image data (Bayer mosaic)
-					DistortionParameters distortionParameters, //distortionParameters.refineCorrelations
-					MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
-					MatchSimulatedPattern matchSimulatedPattern, // correlationSize
-					SimulationPattern.SimulParameters  thisSimulParameters,
-					boolean equalizeGreens,			
-					double [] window,   // window function
-					double [] window2,   // window function - twice FFT size (or null)
-					double [] window4,   // window function - 4x FFT size (or null)
-					SimulationPattern simulationPattern,
-					boolean negative, // invert cross phase
-					DoubleFHT fht_instance,
-					boolean fast, // use fast measuring of the maximum on the correlation
-					double [][] locsNeib, // locations and weights of neighbors to average
-					int debug_level
-					){
+				   double [] beforeXY, // initial coordinates of the pattern cross point
+				   double wv0x,
+				   double wv0y,
+				   double wv1x,
+				   double wv1y,
+				   double [][] correction,
+				   ImagePlus imp,      // image data (Bayer mosaic)
+				   DistortionParameters distortionParameters, //distortionParameters.refineCorrelations
+				   MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
+				   MatchSimulatedPattern matchSimulatedPattern, // correlationSize
+				   SimulationPattern.SimulParameters  thisSimulParameters,
+				   boolean equalizeGreens,			
+				   double [] window,   // window function
+				   double [] window2,   // window function - twice FFT size (or null)
+				   double [] window4,   // window function - 4x FFT size (or null)
+				   SimulationPattern simulationPattern,
+				   boolean negative, // invert cross phase
+				   DoubleFHT fht_instance,
+				   boolean fast, // use fast measuring of the maximum on the correlation
+				   double [][] locsNeib, // locations and weights of neighbors to average
+				   int debug_level,
+				   String dbgStr
+				   ){
+// next print - same for good and bad, correction==null
+			   if (dbgStr!=null) System.out.println(dbgStr+ ": wv0x="+wv0x+" wv0y="+wv0y+ " wv1x="+wv1x+" wv1y="+wv1y+
+					   " beforeXY[0]="+beforeXY[0]+", beforeXY[1]="+beforeXY[1]+" correction is "+((correction==null)?"null":"not null"));
 			   
-	// Just for testing
+			   
+			   boolean dbgThis=
+					   (Math.abs(beforeXY[0]-patternDetectParameters.debugX)<patternDetectParameters.debugRadius) &&
+					   (Math.abs(beforeXY[1]-patternDetectParameters.debugY)<patternDetectParameters.debugRadius);
+			   if (dbgThis) {
+				   System.out.println("correctedPatternCrossLocationAverage4(), beforeXY[0]="+beforeXY[0]+", beforeXY[1]="+beforeXY[1]);
+				   debug_level+=3;
+			   }
+			   //	System.out.println("correctedPatternCrossLocationAverage4(): beforeXY[0]="+beforeXY[0]+". beforeXY[1]="+beforeXY[1]);		   
+			   // Just for testing
 			   beforeXY[0]+=distortionParameters.correlationDx;  // offset, X (in pixels)
 			   beforeXY[1]+=distortionParameters.correlationDy; // offset y (in pixels)
+
+
+			   double [][] convMatrix= {{1.0,-1.0},{1.0,1.0}}; // from greens2 to pixel WV
+			   double [][] invConvMatrix= matrix2x2_scale(matrix2x2_invert(convMatrix),2.0);
+
+			   double [] result=new double [3];
+			   result[0]=beforeXY[0];
+			   result[1]=beforeXY[1];
+			   result[2]=0.0; // contrast
+
+
+			   if (fht_instance==null) fht_instance=new DoubleFHT(); // move upstream to reduce number of initializations
+
+
+			   //create diagonal green selection around ixc,iyc
+
+			   double [][]wv={{wv0x, wv0y},
+					   {wv1x, wv1y}};
+			   double [][] WVgreens=matrix2x2_mul(wv,invConvMatrix);
+			   if (debug_level>2) System.out.println("WVgreens[0][0]="+IJ.d2s(WVgreens[0][0],3)+
+					   " WVgreens[0][1]="+IJ.d2s(WVgreens[0][1],3)+
+					   " WVgreens[1][0]="+IJ.d2s(WVgreens[1][0],3)+
+					   " WVgreens[1][1]="+IJ.d2s(WVgreens[1][1],3));
+			   double [] dUV;
+			   double[][] sim_pix;
+			   double [] simGreensCentered;
+			   //				 double [] modelCorr;
+
+			   double [] centerXY;
+			   double 	contrast;
+			   int numNeib;
+			   double []corr=null;
+			   double [] neibCenter=new double[2];	
+			   if (correction!=null) { // overwrite wave vectors
+				   wv[0][0]=correction[0][0];
+				   wv[0][1]=correction[0][1];
+				   wv[1][0]=correction[1][0];
+				   wv[1][1]=correction[1][1];
+				   if (correction[0].length>3) { // enough data for quadratic approximation
+					   corr=new double[10];
+					   corr[0]=correction[0][3]/4;
+					   corr[1]=correction[0][4]/4;
+					   corr[2]=correction[0][5]/4;
+					   corr[3]=correction[1][3]/4;
+					   corr[4]=correction[1][4]/4;
+					   corr[5]=correction[1][5]/4;
+					   corr[6]=0.0;
+					   corr[7]=0.0;
+					   corr[9]=0.0;
+					   corr[9]=0.0;
+				   }
+			   }
+			   double u_span=Math.sqrt(wv0x*wv0x+wv0y*wv0y)*distortionParameters.correlationSize;
+			   double v_span=Math.sqrt(wv1x*wv1x+wv1y*wv1y)*distortionParameters.correlationSize;
+			   double min_span=Math.min(u_span, v_span);
+			   int thisCorrelationSize=distortionParameters.correlationSize;
+			   double [] thisWindow=window;
+			   double uv_threshold=distortionParameters.minUVSpan*0.25*Math.sqrt(2.0); 
+
+			   if (
+					   (min_span<uv_threshold) &&
+					   (window2!=null) &&
+					   (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) { // trying to increase only twice
+				   thisCorrelationSize*=2;
+				   min_span*=2;
+				   thisWindow=window2;
+				   if (
+						   (min_span<uv_threshold) &&
+						   (window4!=null) &&
+						   (thisCorrelationSize<distortionParameters.maximalCorrelationSize)) {
+					   thisCorrelationSize*=2;
+					   min_span*=2;
+					   thisWindow=window4;
+				   }
+			   }
 			   
-			   
-				double [][] convMatrix= {{1.0,-1.0},{1.0,1.0}}; // from greens2 to pixel WV
-				double [][] invConvMatrix= matrix2x2_scale(matrix2x2_invert(convMatrix),2.0);
-			   
-			   	double [] result=new double [3];
-			   	result[0]=beforeXY[0];
-			   	result[1]=beforeXY[1];
-			   	result[2]=0.0; // contrast
-			   	
-			   	
-				if (fht_instance==null) fht_instance=new DoubleFHT(); // move upstream to reduce number of initializations
-			   	 
-
-			//create diagonal green selection around ixc,iyc
-
-				 double [][]wv={{wv0x, wv0y},
-						        {wv1x, wv1y}};
-				 double [][] WVgreens=matrix2x2_mul(wv,invConvMatrix);
-				 if (debug_level>2) System.out.println("WVgreens[0][0]="+IJ.d2s(WVgreens[0][0],3)+
-						 " WVgreens[0][1]="+IJ.d2s(WVgreens[0][1],3)+
-						 " WVgreens[1][0]="+IJ.d2s(WVgreens[1][0],3)+
-						 " WVgreens[1][1]="+IJ.d2s(WVgreens[1][1],3));
-				 double [] dUV;
-				 double[][] sim_pix;
-				 double [] simGreensCentered;
-//				 double [] modelCorr;
-
-				 double [] centerXY;
-				 double 	contrast;
-				 int numNeib;
-		    	 double []corr=null;
-			     double [] neibCenter=new double[2];	
-			     if (correction!=null) { // overwrite wave vectors
-					 wv[0][0]=correction[0][0];
-					 wv[0][1]=correction[0][1];
-					 wv[1][0]=correction[1][0];
-					 wv[1][1]=correction[1][1];
-			    	 if (correction[0].length>3) { // enough data for quadratic approximation
-			    		 corr=new double[10];
-				    	 corr[0]=correction[0][3]/4;
-				    	 corr[1]=correction[0][4]/4;
-				    	 corr[2]=correction[0][5]/4;
-				    	 corr[3]=correction[1][3]/4;
-				    	 corr[4]=correction[1][4]/4;
-				    	 corr[5]=correction[1][5]/4;
-				    	 corr[6]=0.0;
-				    	 corr[7]=0.0;
-				    	 corr[9]=0.0;
-				    	 corr[9]=0.0;
-			    	 }
-			     }
-			     double u_span=Math.sqrt(wv0x*wv0x+wv0y*wv0y)*distortionParameters.correlationSize;
-			     double v_span=Math.sqrt(wv1x*wv1x+wv1y*wv1y)*distortionParameters.correlationSize;
-			     double min_span=Math.min(u_span, v_span);
-			     int thisCorrelationSize=distortionParameters.correlationSize;
-			     double [] thisWindow=window;
-			     double uv_threshold=distortionParameters.minUVSpan*0.25*Math.sqrt(2.0); 
-
+			   /*			     
 			     if ((min_span<uv_threshold) && (window2!=null)) { // trying to increase only twice
 			    	 thisCorrelationSize*=2;
 			    	 min_span*=2;
@@ -7405,154 +8266,190 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 				    	 thisWindow=window4;
 			    	 }
 			     }
-			     setCorrelationSizesUsed(thisCorrelationSize);
-			     if ((debug_level>0)&&(thisCorrelationSize>distortionParameters.correlationSize)) System.out.println("**** u/v span too small, increasing FFT size to "+thisCorrelationSize);
-				   	Rectangle centerCross=correlationSelection(
-							beforeXY, // initial coordinates of the pattern cross point
-							thisCorrelationSize);
+			    */
+			   setCorrelationSizesUsed(thisCorrelationSize);
+			   if ((debug_level>0)&&(thisCorrelationSize>distortionParameters.correlationSize)) System.out.println("**** u/v span too small, increasing FFT size to "+thisCorrelationSize);
+			   Rectangle centerCross=correlationSelection(
+					   beforeXY, // initial coordinates of the pattern cross point
+					   thisCorrelationSize);
 
-				 int ixc=centerCross.x+centerCross.width/2;
-				 int iyc=centerCross.y+centerCross.height/2;
-				 double [] diffBeforeXY={beforeXY[0]-ixc, beforeXY[1]-iyc};
-				 double[][] input_bayer=splitBayer (imp,centerCross,equalizeGreens);
+			   int ixc=centerCross.x+centerCross.width/2;
+			   int iyc=centerCross.y+centerCross.height/2;
+			   double [] diffBeforeXY={beforeXY[0]-ixc, beforeXY[1]-iyc};
+			   double[][] input_bayer=splitBayer (imp,centerCross,equalizeGreens);
 
-				 if (debug_level>3) SDFA_INSTANCE.showArrays(input_bayer,  true, "centered");
-				 if (debug_level>2) SDFA_INSTANCE.showArrays(input_bayer[4], "greens");
-				 if (debug_level>2) System.out.println("ixc="+ixc+" iyc="+iyc);
-				 double [] greens=normalizeAndWindow (input_bayer[4], thisWindow);
-				 if (debug_level>2) SDFA_INSTANCE.showArrays(greens, "greensWindowed");
-// average is not zero - probably				 
+			   if (debug_level>3) SDFA_INSTANCE.showArrays(input_bayer,  true, "centered");
+			   if (debug_level>2) SDFA_INSTANCE.showArrays(input_bayer[4], "greens");
+			   if (debug_level>2) System.out.println("ixc="+ixc+" iyc="+iyc);
+			   double [] greens=normalizeAndWindow (input_bayer[4], thisWindow);
+			   if (debug_level>2) SDFA_INSTANCE.showArrays(greens, "greensWindowed");
+			   // average is not zero - probably				 
 
-			     if (debug_level>2) {
-			    	 System.out.println(" wv0x="+IJ.d2s(wv0x,5)+" wv0y="+IJ.d2s(wv0y,5));
-			    	 System.out.println(" wv1x="+IJ.d2s(wv1x,5)+" wv1y="+IJ.d2s(wv1y,5));
-			    	 System.out.println(" u-span="+IJ.d2s(u_span,3)+"  v-span="+IJ.d2s(v_span,3)+" threshold="+IJ.d2s(uv_threshold,3)+" ("+IJ.d2s(distortionParameters.minUVSpan,3)+")");
-			    	 if (corr!=null) {
-			    		 System.out.println(" Ax="+IJ.d2s(corr[0],8)+" Bx="+IJ.d2s(corr[1],8)+" Cx="+IJ.d2s(corr[2],8)+" Dx="+IJ.d2s(corr[6],8)+" Ex="+IJ.d2s(corr[7],8));
-			    		 System.out.println(" Ay="+IJ.d2s(corr[3],8)+" By="+IJ.d2s(corr[4],8)+" Cy="+IJ.d2s(corr[5],8)+" Dy="+IJ.d2s(corr[8],8)+" Ey="+IJ.d2s(corr[9],8));
-			    	 }
-			     }
-			     int [][] greenNeib={{0,0},{0,1},{1,0},{1,1}};
-			     int numOfNeib=distortionParameters.correlationAverageOnRefine?greenNeib.length:1;
-			     if (debug_level>2) {
-			    	 System.out.println(" numOfNeib="+numOfNeib+" (distortionParameters.correlationAverageOnRefine="+distortionParameters.correlationAverageOnRefine);
-			     }
-			     if (locsNeib.length==1) {
-			    	 numOfNeib=1; // on the first pass, from legacy
-				     if (debug_level>2) {
-				    	 System.out.println("Reduced numOfNeib to "+numOfNeib+" as locsNeib.length="+locsNeib.length);
-				     }
-			     }
-			     
-			     double [][] modelCorrs=new double[numOfNeib][];
-			     double [][] debugGreens=new double[numOfNeib][0];          
-			     for (numNeib=0;numNeib<numOfNeib;numNeib++) {
-			    	 neibCenter[0]=diffBeforeXY[0]+0.5*(greenNeib[numNeib][0]+greenNeib[numNeib][1]);
-			    	 neibCenter[1]=diffBeforeXY[1]+0.5*(greenNeib[numNeib][0]-greenNeib[numNeib][1]);
-			    	 dUV=matrix2x2_scale(matrix2x2_mul(wv,neibCenter),-2*Math.PI);
-			    	 simulationPattern.simulatePatternFullPattern( // Is it the most time-consuming part? should it be done once and then only extraction separate?
-			    			 wv0x,
-			    			 wv0y,
-			    			 dUV[0]+(negative?(-Math.PI/2):Math.PI/2), // negative?(-Math.PI/2):Math.PI/2,
-			    			 wv1x,
-			    			 wv1y,
-			    			 dUV[1]+Math.PI/2, //Math.PI/2,
-			    			 corr, //null, // no mesh distortion here
-			    			 thisSimulParameters.subdiv,// SIMUL.subdiv, - do not need high quality here
-			    			 thisCorrelationSize,
-			    			 true); // center for greens
-			    	 sim_pix= simulationPattern.extractSimulPatterns (
-			    			 thisSimulParameters,
-			    			 1,       // subdivide output pixels  
-			    			 thisCorrelationSize,    // number of Bayer cells in width of the square selection (half number of pixels)
-			    			 0,
-			    			 0);
+			   if (debug_level>2) {
+				   System.out.println(" wv0x="+IJ.d2s(wv0x,5)+" wv0y="+IJ.d2s(wv0y,5));
+				   System.out.println(" wv1x="+IJ.d2s(wv1x,5)+" wv1y="+IJ.d2s(wv1y,5));
+				   System.out.println(" u-span="+IJ.d2s(u_span,3)+"  v-span="+IJ.d2s(v_span,3)+" threshold="+IJ.d2s(uv_threshold,3)+" ("+IJ.d2s(distortionParameters.minUVSpan,3)+")");
+				   if (corr!=null) {
+					   System.out.println(" Ax="+IJ.d2s(corr[0],8)+" Bx="+IJ.d2s(corr[1],8)+" Cx="+IJ.d2s(corr[2],8)+" Dx="+IJ.d2s(corr[6],8)+" Ex="+IJ.d2s(corr[7],8));
+					   System.out.println(" Ay="+IJ.d2s(corr[3],8)+" By="+IJ.d2s(corr[4],8)+" Cy="+IJ.d2s(corr[5],8)+" Dy="+IJ.d2s(corr[8],8)+" Ey="+IJ.d2s(corr[9],8));
+				   }
+			   }
+			   int [][] greenNeib={{0,0},{0,1},{1,0},{1,1}};
+			   int numOfNeib=distortionParameters.correlationAverageOnRefine?greenNeib.length:1;
+			   if (debug_level>2) {
+				   System.out.println(" numOfNeib="+numOfNeib+" (distortionParameters.correlationAverageOnRefine="+distortionParameters.correlationAverageOnRefine);
+			   }
+			   if (locsNeib.length==1) {
+				   numOfNeib=1; // on the first pass, from legacy
+				   if (debug_level>2) {
+					   System.out.println("Reduced numOfNeib to "+numOfNeib+" as locsNeib.length="+locsNeib.length);
+				   }
+			   }
+			   if (dbgStr!=null) {
+				   double dbgSumWindow=0.0;
+				   for (double dbgD:thisWindow) dbgSumWindow+=dbgD; 
+				   // All he same - good/bad
+				   System.out.println(dbgStr+ ": thisCorrelationSize="+thisCorrelationSize+" min_span="+min_span+ " dbgSumWindow="+dbgSumWindow+
+						   "locsNeib.length="+locsNeib.length+" fast="+fast+
+						   " numOfNeib="+numOfNeib+" (distortionParameters.correlationAverageOnRefine="+distortionParameters.correlationAverageOnRefine);
+			   }
 
-			    	 simGreensCentered= normalizeAndWindow (sim_pix[4], thisWindow);
+			   double [][] modelCorrs=new double[numOfNeib][];
+			   double [][] debugGreens=new double[numOfNeib][0];          
+			   for (numNeib=0;numNeib<numOfNeib;numNeib++) {
+				   neibCenter[0]=diffBeforeXY[0]+0.5*(greenNeib[numNeib][0]+greenNeib[numNeib][1]);
+				   neibCenter[1]=diffBeforeXY[1]+0.5*(greenNeib[numNeib][0]-greenNeib[numNeib][1]);
+				   dUV=matrix2x2_scale(matrix2x2_mul(wv,neibCenter),-2*Math.PI);
+				   double [] barray= simulationPattern.simulatePatternFullPatternSafe( // Is it the most time-consuming part? should it be done once and then only extraction separate?
+						   wv0x,
+						   wv0y,
+						   dUV[0]+(negative?(-Math.PI/2):Math.PI/2), // negative?(-Math.PI/2):Math.PI/2,
+						   wv1x,
+						   wv1y,
+						   dUV[1]+Math.PI/2, //Math.PI/2,
+						   corr, //null, // no mesh distortion here
+						   thisSimulParameters.subdiv,// SIMUL.subdiv, - do not need high quality here
+						   thisCorrelationSize,
+						   true); // center for greens
+				   sim_pix= simulationPattern.extractSimulPatterns (
+						   barray,
+						   thisSimulParameters,
+						   1,       // subdivide output pixels  
+						   thisCorrelationSize,    // number of Bayer cells in width of the square selection (half number of pixels)
+						   0,
+						   0);
+				   if (sim_pix==null){
+					   System.out.println("***** BUG: extractSimulPatterns() FAILED *****");
+					   return null;
+				   }
+				   if (dbgStr!=null) {
+					   double dbgSumWindow=0.0;
+					   for (double[] dbgSlice:sim_pix) for (double dbgD:dbgSlice) dbgSumWindow+=dbgD; 
+					   System.out.println(dbgStr+ ": SUM of sim_pix="+dbgSumWindow); // First difference good/bad
+					   
+					   
+				   }
 
-			    	 debugGreens[numNeib]=simGreensCentered.clone();
-			    	 
-			    	 // testing if phase reversal would exactly inverse result pattern - tested, perfect
-			    	 
-			    	 modelCorrs[numNeib]=fht_instance.correlate (greens.clone(),  // measured pixel array
-			    			 //						 modelCorr=fht_instance.correlate (greens,  // measured pixel array
-			    			 simGreensCentered,  // simulated (model) pixel array)
-			    			 //	                     distortionParameters.correlationHighPassSigma);
-			    			 distortionParameters.correlationHighPassSigma,
-			    			 fast?distortionParameters.correlationLowPassSigma:0.0,// moved to decimation via FFT
-			    					 distortionParameters.phaseCorrelationFraction);				 
+				   simGreensCentered= normalizeAndWindow (sim_pix[4], thisWindow);
 
-			     }
-			     if (debug_level>2){
-			    	 System.out.println(">=========Showing simGreensCentered"+ixc+":"+iyc);					 
-			    	 SDFA_INSTANCE.showArrays(debugGreens, true, "simGreensCentered"+ixc+":"+iyc);
-			     }
+				   if (dbgStr!=null) {
+					   double dbgSumWindow=0.0;
+					   for (double dbgD:simGreensCentered) dbgSumWindow+=dbgD; 
+					   System.out.println(dbgStr+ ": SUM of simGreensCentered="+dbgSumWindow);
+				   }
 
-			     if (debug_level>2){
-			    	 System.out.println(">=========Showing modelCorrs, passNumber="+passNumber);					 
-			    	 SDFA_INSTANCE.showArrays(modelCorrs, true, "modelCorrs:"+numOfNeib);
-			     }
+				   debugGreens[numNeib]=simGreensCentered.clone();
 
-			     // combine 4 correlations into the double resolution, same output size (so half input size) array				 
-			     int halfSize=thisCorrelationSize/2;
-			     int qSize=thisCorrelationSize/4;
-			     double [] modelCorr;
-			     int thisFFTSubdiv=distortionParameters.correlationFFTSubdiv;
-			     double thisLowpass=distortionParameters.correlationLowPassSigma;
-			     if (numOfNeib>1) {
-			    	 modelCorr=new double [thisCorrelationSize*thisCorrelationSize];
-			    	 for (int i=0;i<modelCorr.length;i++) modelCorr[i]=0.0;
-			    	 for (int dy=0;dy<2;dy++) for (int dx=0;dx<2;dx++)  {
-			    		 for (int y=0;y<halfSize;y++) for (int x=0;x<halfSize;x++) {
-			    			 modelCorr[(2*y+dy)*thisCorrelationSize+(2*x+dx)]+=
-			    				 modelCorrs[2*dy+dx][(qSize+y)*thisCorrelationSize+(qSize+x)];
-			    		 }
-			    	 }
-			    	 thisLowpass/=2.0; // the lower the value, the more filtering.  Decimated twice,so low pass filtering - accordingly 
-			    	 thisFFTSubdiv=(thisFFTSubdiv>1)?(thisFFTSubdiv/2):1;
-			     } else {
-			    	 modelCorr=modelCorrs[0]; // also - different size
-			     }
-			     if (debug_level>2){
-			    	 System.out.println(">==========Showing modelCorr");					 
-			    	 SDFA_INSTANCE.showArrays(modelCorr, thisCorrelationSize,thisCorrelationSize, "modelCorr");
-			     }
-			     if (fast) centerXY= correlationMaximum( // maybe twice actual size if 
-			    		 modelCorr,
-			    		 distortionParameters.correlationMaxOffset,
-			    		 (debug_level>2) && (numNeib==0));  // low-pass filtering should already be done
-			     else      centerXY= correlationMaximum(modelCorr,
-			    		 distortionParameters.correlationRadius,
-			    		 distortionParameters.correlationThreshold,	//double threshold, // fraction of maximum (slightly less than 1.0) to limit the top part of the maximum for centroid
+				   // testing if phase reversal would exactly inverse result pattern - tested, perfect
 
-			    		 distortionParameters.correlationSubdiv,
-			    		 thisFFTSubdiv,
-			    		 fht_instance,
-			    		 distortionParameters.correlationMaxOffset,
-			    		 thisLowpass, //distortionParameters.correlationLowPassSigma
-			    		 //						 (debug_level>2) && (passNumber>1));
-			    		 (debug_level>2));
-			     if (centerXY==null) {
-			    	 if (debug_level>1) System.out.println("Too far from the center01 ("+beforeXY[0]+"/"+beforeXY[1]+")");
-			    	 return null;
-			     }
+				   modelCorrs[numNeib]=fht_instance.correlate (greens.clone(),  // measured pixel array
+						   //						 modelCorr=fht_instance.correlate (greens,  // measured pixel array
+						   simGreensCentered,  // simulated (model) pixel array)
+						   //	                     distortionParameters.correlationHighPassSigma);
+						   distortionParameters.correlationHighPassSigma,
+						   fast?distortionParameters.correlationLowPassSigma:0.0,// moved to decimation via FFT
+								   distortionParameters.phaseCorrelationFraction);
+				   if (dbgStr!=null) {
+					   double dbgSumWindow=0.0;
+					   for (double[] dbgSlice:modelCorrs) for (double dbgD:dbgSlice) dbgSumWindow+=dbgD; 
+					   System.out.println(dbgStr+ ": SUM of modelCorrs="+dbgSumWindow);
+				   }
+				   
 
-//				 debug_level=3;				 
-				 
-				 if (numNeib>1){
-					 centerXY[0]*=0.5;
-					 centerXY[1]*=0.5;
-					 
-					 for (int i=0;i<2;i++) for (int j=0;j<2;j++) WVgreens[i][j]*=0.5;
-				 }
-				 contrast= correlationContrast (modelCorr,
+			   }
+			   if (debug_level>2){
+				   System.out.println(">=========Showing simGreensCentered"+ixc+":"+iyc);					 
+				   SDFA_INSTANCE.showArrays(debugGreens, true, "simGreensCentered"+ixc+":"+iyc);
+			   }
+
+			   if (debug_level>2){
+				   System.out.println(">=========Showing modelCorrs, passNumber="+passNumber);					 
+				   SDFA_INSTANCE.showArrays(modelCorrs, true, "modelCorrs:"+numOfNeib);
+			   }
+
+			   // combine 4 correlations into the double resolution, same output size (so half input size) array				 
+			   int halfSize=thisCorrelationSize/2;
+			   int qSize=thisCorrelationSize/4;
+			   double [] modelCorr;
+			   int thisFFTSubdiv=distortionParameters.correlationFFTSubdiv;
+			   double thisLowpass=distortionParameters.correlationLowPassSigma;
+			   if (numOfNeib>1) {
+				   modelCorr=new double [thisCorrelationSize*thisCorrelationSize];
+				   for (int i=0;i<modelCorr.length;i++) modelCorr[i]=0.0;
+				   for (int dy=0;dy<2;dy++) for (int dx=0;dx<2;dx++)  {
+					   for (int y=0;y<halfSize;y++) for (int x=0;x<halfSize;x++) {
+						   modelCorr[(2*y+dy)*thisCorrelationSize+(2*x+dx)]+=
+								   modelCorrs[2*dy+dx][(qSize+y)*thisCorrelationSize+(qSize+x)];
+					   }
+				   }
+				   thisLowpass/=2.0; // the lower the value, the more filtering.  Decimated twice,so low pass filtering - accordingly 
+				   thisFFTSubdiv=(thisFFTSubdiv>1)?(thisFFTSubdiv/2):1;
+			   } else {
+				   modelCorr=modelCorrs[0]; // also - different size
+			   }
+			   if (debug_level>2){
+				   System.out.println(">==========Showing modelCorr");					 
+				   SDFA_INSTANCE.showArrays(modelCorr, thisCorrelationSize,thisCorrelationSize, "modelCorr");
+			   }
+			   if (fast) centerXY= correlationMaximum( // maybe twice actual size if 
+					   modelCorr,
+					   distortionParameters.correlationMaxOffset,
+					   (debug_level>2) && (numNeib==0));  // low-pass filtering should already be done
+			   else      centerXY= correlationMaximum(modelCorr,
+					   distortionParameters.correlationRadius,
+					   distortionParameters.correlationThreshold,	//double threshold, // fraction of maximum (slightly less than 1.0) to limit the top part of the maximum for centroid
+
+					   distortionParameters.correlationSubdiv,
+					   thisFFTSubdiv,
+					   fht_instance,
+					   distortionParameters.correlationMaxOffset,
+					   thisLowpass, //distortionParameters.correlationLowPassSigma
+					   //						 (debug_level>2) && (passNumber>1));
+					   (debug_level>2));
+			   if (centerXY==null) {
+				   if (debug_level>1) System.out.println("Too far from the center01 ("+beforeXY[0]+"/"+beforeXY[1]+")");
+				   if (dbgStr!=null) System.out.println(dbgStr+ "- Too far from the center01 ("+beforeXY[0]+"/"+beforeXY[1]+")");
+				   return null;
+			   }
+
+			   //				 debug_level=3;				 
+
+			   if (numNeib>1){
+				   centerXY[0]*=0.5;
+				   centerXY[1]*=0.5;
+
+				   for (int i=0;i<2;i++) for (int j=0;j<2;j++) WVgreens[i][j]*=0.5;
+			   }
+			   /*				 
+				 contrast= correlationContrast1(
+						 modelCorr,
 						 WVgreens,    // wave vectors (same units as the pixels array)
-						 distortionParameters.correlationRingWidth,   // ring (around r=0.5 dist to opposite corr) width
+						 distortionParameters.contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
 						 //TODO: verify that displacement is correct here (sign, direction)						
 						 centerXY[0],    //  x0,              // center coordinates
 						 centerXY[1],    //y0,
-				 "test-contrast");   // title base for optional plots names
-
+						 "test-contrast",   // title base for optional plots names
+						 debug_level);
 				 result[2]=contrast;
 
 				 if ((distortionParameters.correlationMinContrast>0) && (contrast<distortionParameters.correlationMinContrast)) {
@@ -7562,19 +8459,66 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 							 IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
 					 return null;
 				 }
-				 if (debug_level>1) System.out.println(">>>Contarst="+contrast+" ("+IJ.d2s(beforeXY[0],3)+":"+IJ.d2s(beforeXY[1],3)+")->"+IJ.d2s(result[0],3)+":"+IJ.d2s(result[1],3));
-				 result[0]=ixc-(-centerXY[0]-centerXY[1])+diffBeforeXY[0];
-				 result[1]=iyc-( centerXY[0]-centerXY[1])+diffBeforeXY[1];
-				 
-				 if (debug_level>2) System.out.println(">---correctedPatternCrossLocation: before x="+IJ.d2s(beforeXY[0],3)+" y="+IJ.d2s(beforeXY[1],3));
-				 if (debug_level>2) System.out.println(">+++correctedPatternCrossLocation: after  x="+IJ.d2s(result[0],3)+" y="+IJ.d2s(result[1],3));
-				 
-//				 if (debug_level>0) System.out.println(">---correctedPatternCrossLocation: before x="+IJ.d2s(beforeXY[0],3)+" y="+IJ.d2s(beforeXY[1],3));
-//				 if (debug_level>0) System.out.println(">+++correctedPatternCrossLocation: after  x="+IJ.d2s(result[0],3)+" y="+IJ.d2s(result[1],3));
+			    */
+			   double [] contrasts= correlationContrast(
+					   modelCorr,
+					   greens,							
+					   WVgreens,    // wave vectors (same units as the pixels array)
+					   distortionParameters.contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+					   distortionParameters.contrastAverageSigma,
+					   centerXY[0],    //  x0,              // center coordinates
+					   centerXY[1],    //y0,
+					   "test-contrast");   // title base for optional plots names
+			   contrast=contrasts[0];
+			   result[2]=contrast;
+			   if (Double.isNaN(contrasts[0]) || ((distortionParameters.correlationMinContrast>0) && (contrasts[0]<distortionParameters.correlationMinContrast))) {
+				   if (debug_level>1) System.out.println("Contrast too low - "+contrasts[0]+"<"+distortionParameters.correlationMinContrast);
+				   if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+						   " is TOO LOW ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+				   if (dbgStr!=null) System.out.println(dbgStr+ " - Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+						   " is TOO LOW ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+
+				   return null;
+			   } else {
+				   if (debug_level>1) System.out.println("Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+						   " is GOOD ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+				   if (dbgStr!=null) System.out.println(dbgStr+ " - Contrast "+IJ.d2s(contrasts[0],3)+" ("+distortionParameters.correlationMinContrast+")"+
+						   " is GOOD ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+			   }
 
 
-			  return result;		
-			}
+			   if (Double.isNaN(contrasts[1]) || ((distortionParameters.correlationMinAbsoluteContrast>0) && (contrasts[1]<distortionParameters.correlationMinAbsoluteContrast))) {
+				   if (debug_level>1) System.out.println("Absolute contrast too low - "+contrasts[1]+"<"+distortionParameters.correlationMinAbsoluteContrast);
+				   if (debug_level>1) System.out.println("Absolute contrast "+IJ.d2s(contrasts[1],3)+" ("+distortionParameters.correlationMinAbsoluteContrast+")"+
+						   " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+				   if (dbgStr!=null) System.out.println(dbgStr+ " - Absolute contrast "+IJ.d2s(contrasts[1],3)+" ("+distortionParameters.correlationMinAbsoluteContrast+")"+
+						   " is too low ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+				   return null;
+			   } else {
+				   if (dbgStr!=null) System.out.println(dbgStr+ " - Absolute contrast "+IJ.d2s(contrasts[1],3)+" ("+distortionParameters.correlationMinAbsoluteContrast+")"+
+						   " is GOOD ("+IJ.d2s(beforeXY[0],3)+"/"+IJ.d2s(beforeXY[1],3)+")->"+
+						   IJ.d2s(centerXY[0],3)+"/"+IJ.d2s(centerXY[1],3));
+			   }
+
+			   if (debug_level>1) System.out.println(">>>Contrast="+contrasts[0]+"/"+contrasts[1]+" ("+IJ.d2s(beforeXY[0],3)+":"+IJ.d2s(beforeXY[1],3)+")->"+IJ.d2s(result[0],3)+":"+IJ.d2s(result[1],3));
+			   result[0]=ixc-(-centerXY[0]-centerXY[1])+diffBeforeXY[0];
+			   result[1]=iyc-( centerXY[0]-centerXY[1])+diffBeforeXY[1];
+
+			   if (debug_level>2) System.out.println(">---correctedPatternCrossLocation: before x="+IJ.d2s(beforeXY[0],3)+" y="+IJ.d2s(beforeXY[1],3));
+			   if (debug_level>2) System.out.println(">+++correctedPatternCrossLocation: after  x="+IJ.d2s(result[0],3)+" y="+IJ.d2s(result[1],3));
+
+			   //				 if (debug_level>0) System.out.println(">---correctedPatternCrossLocation: before x="+IJ.d2s(beforeXY[0],3)+" y="+IJ.d2s(beforeXY[1],3));
+			   //				 if (debug_level>0) System.out.println(">+++correctedPatternCrossLocation: after  x="+IJ.d2s(result[0],3)+" y="+IJ.d2s(result[1],3));
+
+
+			   return result;		
+		   }
 
 /* ======= Debugging only - returns 2-d array of x,y as a function of initial estimation =================== */
 	   public  double [][][] scanPatternCrossLocation( 
@@ -8029,7 +8973,7 @@ d()/dy=C*x+2*B*y+E=0
 	   	   			for (i=1;i<size1/4;i++) hammingMod[size1-i]=preHammingMod[i];
 	   	   			for (i=size1/4;i<=(size1-size1/4);i++) hammingMod[i]=1.0;
 	   	   			
-	   	   		    if (showDebug) System.out.println("scale="+scale+ "borderAverage="+borderAverage);
+	   	   		    if (showDebug) System.out.println("scale="+scale+ " borderAverage="+borderAverage);
 	   	   			for (i=0;i<size1;i++) for (j=0;j<size1;j++) {
 	   	   				corr1[(i*size+j)*decimateFFT] = scale*(corr[index+i*size+j]-borderAverage)*hammingMod[i]*hammingMod[j]+borderAverage;
 	   	   			}
@@ -8042,20 +8986,31 @@ d()/dy=C*x+2*B*y+E=0
 	    	    	for (i=size1/2+1;i<size -(size1/2);i++) for (j=0;j<size;j++) corr1[i*size+j]=0.0;
 	    	    	for (i=size -(size1/2); i<size;i++) for (j=size1/2+1;j<size -(size1/2);j++) corr1[i*size+j]=0.0;
 	    	    	// apply window for now - just
-	    	    	double [] hamming=fht_instance.getHamming1d(size1);
+/*	    	    	
+	    	    	if (showDebug) {
+	    	    		System.out.println("Getting hamming1d ("+size1+")");
+	    	    	}
+*/	    	    	
+	    	    	double [] hamming=fht_instance.getHamming1d(size1).clone();
+/*	    	    	
+	    	    	if (showDebug) {
+	    	    		for (i=0;i<hamming.length;i++) System.out.println("hamming["+i+"]="+hamming[i]); 
+	    	    	}
+	   	   			if (showDebug) SDFA_INSTANCE.showArrays(corr1.clone(), "NO_ALIAS");
 	   	   			// Combine with low-pass Gaussian (if it is >0)
 	   	   			if (lowpass>0){
 	   	   				double [] gaussian1d=fht_instance.getGaussian1d(lowpass,size1); // no need to divide by /decimateFFT as we use size1, not size
 	   	   				for (i=0;i<hammingMod.length;i++) hamming[i]*=gaussian1d[i];
-//		    	    	if (showDebug) {
-//		    	    		System.out.println("lowpass="+lowpass);
-//		    	    		for (i=0;i<gaussian1d.length;i++) System.out.println("gaussian1d["+i+"]="+gaussian1d[i]); 
-//		    	    	}
+		    	    	if (showDebug) {
+		    	    		System.out.println("lowpass="+lowpass);
+		    	    		for (i=0;i<gaussian1d.length;i++) System.out.println("gaussian1d["+i+"]="+gaussian1d[i]); 
+		    	    	}
 	   	   			}
 
-//	    	    	if (showDebug) {
-//	    	    		for (i=0;i<hamming.length;i++) System.out.println("hamming["+i+"]="+hamming[i]); 
-//	    	    	}
+	    	    	if (showDebug) {
+	    	    		for (i=0;i<hamming.length;i++) System.out.println("hamming["+i+"]="+hamming[i]); 
+	    	    	}
+*/	    	    	
 	    	    	int halfSize1=size1/2, shiftZero=size-halfSize1;
 	    	    	for (i=0;i<=size1;i++) for (j=0;j<=size1;j++){
 	    	    		int im=i%size1,jm=j%size1;
@@ -8272,6 +9227,7 @@ d()/dy=C*x+2*B*y+E=0
 			   double [][][][] grid,
 			   int [] uv0,
 			   double [][] weights, // quadrant of sample weights
+			   boolean useContrast, // do not use cells with undefined contrast
 			   boolean forceLinear,  // use linear approximation (instead of quadratic)
 			   double thresholdLin,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
 			   double thresholdQuad  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
@@ -8286,7 +9242,7 @@ d()/dy=C*x+2*B*y+E=0
 		   for (int iDv=-dist;iDv<=dist;iDv++) for (int iDu=-dist;iDu<=dist;iDu++) {
 			   uv[0]=uv0[0]+iDu;
 			   uv[1]=uv0[1]+iDv;
-			   if (isCellDefined(grid,uv)) {
+			   if ((!useContrast && isCellDefined(grid,uv)) || isCellDefinedC(grid,uv)) {
 				   w=weights[(iDv>=0)?iDv:-iDv][(iDu>=0)?iDu:-iDu];
 				   if (w!=0.0){
 					   if (maxU<iDu) maxU=iDu;
@@ -8298,13 +9254,16 @@ d()/dy=C*x+2*B*y+E=0
 					   if (maxUmV<(iDu-iDv)) maxUmV= iDu-iDv;
 					   if (minUmV>(iDu-iDv)) minUmV= iDu-iDv;
 					   samples0[index][0]=new double[2];
-					   samples0[index][1]=new double[2];
+					   samples0[index][1]=new double[useContrast?3:2];
 					   samples0[index][2]=new double[1];
 					   samples0[index][2][0]=w;
 					   samples0[index][0][0]=iDu;
 					   samples0[index][0][1]=iDv;
 					   samples0[index][1][0]=grid[uv[1]][uv[0]][0][0];
 					   samples0[index][1][1]=grid[uv[1]][uv[0]][0][1];
+					   if (useContrast){
+						   samples0[index][1][2]=grid[uv[1]][uv[0]][0][2]; // contrast
+					   }
 					   index++;
 				   }
 			   }
@@ -8327,6 +9286,14 @@ d()/dy=C*x+2*B*y+E=0
 				   forceLinear || (diameter<5),  // use linear approximation diameter <4 should be enough, 5 - just to be safe
 				   thresholdLin,  // thershold ratio of matrix determinant to norm for linear approximation (det too low - fail)
 				   thresholdQuad);  // thershold ratio of matrix determinant to norm for quadratic approximation (det too low - fail)
+		   if ((estimatedCell==null) || (estimatedCell[0]==null) || useContrast) return estimatedCell;
+		   double contrast=Double.NaN;
+		   if (isCellDefined(grid,uv0)) {
+			   double [] xycOld=grid[uv0[1]][uv0[0]][0];
+			   if (xycOld.length>2) contrast=xycOld[2];
+		   }
+		   double [] xyc={estimatedCell[0][0],estimatedCell[0][1],contrast};
+		   estimatedCell[0]=xyc;
 		   return estimatedCell;
 	   }
 	   
@@ -8399,8 +9366,6 @@ d()/dy=C*x+2*B*y+E=0
 					 System.out.println(i+": wv="+IJ.d2s(wv[i][0],3)+":"+IJ.d2s(wv[i][1],3));
 				 }
 			 }                                   
-		   
-		   
 		   return result;
 	   }
 // calculate simulation parameters for quadratic distortion of the pattern, compatible with SimulationPattern class
@@ -8850,6 +9815,10 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		public double minCorrContrast;
 		public double minGridPeriod;
 		public double maxGridPeriod;
+		public double debugX;
+		public double debugY;
+		public double debugRadius;
+		
 
 		public PatternDetectParameters(
 				double gaussWidth,
@@ -8864,7 +9833,11 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 				double corrRingWidth,
 				double minCorrContrast,
 				double minGridPeriod,
-				double maxGridPeriod) {
+				double maxGridPeriod,
+				double debugX,
+				double debugY,
+				double debugRadius
+				) {
 			this.gaussWidth=gaussWidth;
 			this.corrGamma = corrGamma;
 			this.corrSigma = corrSigma;
@@ -8878,7 +9851,9 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			this.minCorrContrast = minCorrContrast;
 			this.minGridPeriod=minGridPeriod;
 			this.maxGridPeriod=maxGridPeriod;
-
+			this.debugX=debugX;
+			this.debugY=debugY;
+			this.debugRadius=debugRadius;
 		}
 
 		public void setProperties(String prefix,Properties properties){
@@ -8895,7 +9870,11 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			properties.setProperty(prefix+"minCorrContrast",this.minCorrContrast+"");
 			properties.setProperty(prefix+"minGridPeriod",this.minGridPeriod+"");
 			properties.setProperty(prefix+"maxGridPeriod",this.maxGridPeriod+"");
+			properties.setProperty(prefix+"debugX",this.debugX+"");
+			properties.setProperty(prefix+"debugY",this.debugY+"");
+			properties.setProperty(prefix+"debugRadius",this.debugRadius+"");
 		}
+		
 		public void getProperties(String prefix,Properties properties){
 			this.gaussWidth=Double.parseDouble(properties.getProperty(prefix+"gaussWidth"));
 			this.corrGamma=Double.parseDouble(properties.getProperty(prefix+"corrGamma"));
@@ -8914,6 +9893,12 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			if (properties.getProperty(prefix+"maxGridPeriod")!=null)
 				this.minGridPeriod=Double.parseDouble(properties.getProperty(prefix+"maxGridPeriod"));
 			else this.maxGridPeriod=0.0;
+			if (properties.getProperty(prefix+"debugX")!=null)
+				this.debugX=Double.parseDouble(properties.getProperty(prefix+"debugX"));
+			if (properties.getProperty(prefix+"debugY")!=null)
+				this.debugY=Double.parseDouble(properties.getProperty(prefix+"debugY"));
+			if (properties.getProperty(prefix+"debugRadius")!=null)
+				this.debugRadius=Double.parseDouble(properties.getProperty(prefix+"debugRadius"));
 		}
 		
 	}
@@ -8922,6 +9907,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	
 	public static class DistortionParameters {
 		public int   correlationSize;
+		public int   maximalCorrelationSize;
 		public double correlationGaussWidth; // 0 - no window, <0 - use Hamming
 		public boolean absoluteCorrelationGaussWidth=false; // do not scale correlationGaussWidth when the FFT size is increased  
 		public int zeros; // leave this number of zeros on the margins of the window (toatal from both sides). If correlationGaussWidth>0 will 
@@ -8935,8 +9921,16 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		public double correlationMaxOffset;     // maximal distance between predicted and actual pattern node
 		public double correlationMinContrast;   // minimal contrast for the pattern to pass
 		public double correlationMinInitialContrast;   // minimal contrast for the pattern of the center (initial point)
+		public double correlationMinAbsoluteContrast;   // minimal contrast for the pattern to pass, does not compensate for low ligt
+		public double correlationMinAbsoluteInitialContrast;   // minimal contrast for the pattern of the center (initial point)
+		
+		public double scaleFirstPassContrast; // Decrease contrast of cells that are too close to the border to be processed in refinement pass
+		public double contrastSelectSigma; // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+		public double contrastAverageSigma; // Gaussian sigma to average correlation variations (as contrast reference) 0.5
+		
 		public int    minimalPatternCluster;       //    minimal pattern cluster size (0 - disable retries)
 		public double scaleMinimalInitialContrast; // increase/decrease minimal contrast if initial cluster is >0 but less than minimalPatternCluster
+		
 		public double searchOverlap;         // when searching for grid, step this amount of the FFTSize
 		public int    patternSubdiv;
 		public double correlationDx; // not saved
@@ -8983,6 +9977,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
         
 		public DistortionParameters(
 				int correlationSize,
+				int maximalCorrelationSize,
 				double correlationGaussWidth,
 				boolean absoluteCorrelationGaussWidth,
 				int zeros,  
@@ -8995,6 +9990,12 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 				double correlationMaxOffset,     // maximal distance between predicted and actual pattern node
 				double correlationMinContrast,   // minimal contrast for the pattern to pass
 				double correlationMinInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+				double correlationMinAbsoluteContrast,   // minimal contrast for the pattern to pass, does not compensate for low ligt
+				double correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+
+				double scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+				double contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+				double contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
 				int    minimalPatternCluster,       //    minimal pattern cluster size (0 - disable retries)
 				double scaleMinimalInitialContrast, // increase/decrease minimal contrast if initial cluster is >0 but less than minimalPatternCluster
 				double searchOverlap,         // when searching for grid, step this amount of the FFTSize
@@ -9038,6 +10039,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 				){
 
 			this.correlationSize = correlationSize;
+			this.maximalCorrelationSize=maximalCorrelationSize;
 			this.correlationGaussWidth = correlationGaussWidth;
 			this.absoluteCorrelationGaussWidth=absoluteCorrelationGaussWidth;
 			this.zeros=zeros;
@@ -9050,6 +10052,11 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			this.correlationMaxOffset=correlationMaxOffset;
 			this.correlationMinContrast=correlationMinContrast;
 			this.correlationMinInitialContrast=correlationMinInitialContrast;
+			this.correlationMinAbsoluteContrast=correlationMinAbsoluteContrast;   // minimal contrast for the pattern to pass, does not compensate for low ligt
+			this.correlationMinAbsoluteInitialContrast=correlationMinAbsoluteInitialContrast;   // minimal contrast for the pattern of the center (initial point)
+			this.scaleFirstPassContrast=scaleFirstPassContrast; // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+			this.contrastSelectSigma=contrastSelectSigma; // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+			this.contrastAverageSigma=contrastAverageSigma; // Gaussian sigma to average correlation variations (as contrast reference) 0.5
 			this.minimalPatternCluster=minimalPatternCluster;        //    minimal pattern cluster size (0 - disable retries)
 			this.scaleMinimalInitialContrast=scaleMinimalInitialContrast; // increase/decrease minimal contrast if initial cluster is >0 but less than minimalPatternCluster
 			this.searchOverlap=searchOverlap;         // when searching for grid, step this amount of the FFTSize
@@ -9095,6 +10102,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		public DistortionParameters clone() {
 			return new DistortionParameters(
 			this.correlationSize,
+			this.maximalCorrelationSize,
 			this.correlationGaussWidth,
 			this.absoluteCorrelationGaussWidth,
 			this.zeros,
@@ -9106,7 +10114,12 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			this.correlationRingWidth,
 			this.correlationMaxOffset,     // maximal distance between predicted and actual pattern node
 			this.correlationMinContrast,   // minimal contrast for the pattern to pass
-			this.correlationMinInitialContrast, 
+			this.correlationMinInitialContrast,
+			this.correlationMinAbsoluteContrast,   // minimal contrast for the pattern to pass, does not compensate for low ligt
+			this.correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+			this.scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+			this.contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
+			this.contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
 			this.minimalPatternCluster,        //    minimal pattern cluster size (0 - disable retries)
 			this.scaleMinimalInitialContrast,  // increase/decrease minimal contrast if initial cluster is >0 but less than minimalPatternCluster
 			this.searchOverlap,         // when searching for grid, step this amount of the FFTSize
@@ -9152,6 +10165,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 
 		public void setProperties(String prefix,Properties properties){
 			properties.setProperty(prefix+"correlationSize",this.correlationSize+"");
+			properties.setProperty(prefix+"maximalCorrelationSize",this.maximalCorrelationSize+"");
 			properties.setProperty(prefix+"correlationGaussWidth",this.correlationGaussWidth+"");
 			properties.setProperty(prefix+"absoluteCorrelationGaussWidth",this.absoluteCorrelationGaussWidth+"");
 			properties.setProperty(prefix+"zeros",this.zeros+"");
@@ -9164,6 +10178,11 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			properties.setProperty(prefix+"correlationMaxOffset",this.correlationMaxOffset+"");
 			properties.setProperty(prefix+"correlationMinContrast",this.correlationMinContrast+"");
 			properties.setProperty(prefix+"correlationMinInitialContrast",this.correlationMinInitialContrast+"");
+			properties.setProperty(prefix+"correlationMinAbsoluteContrast",this.correlationMinAbsoluteContrast+"");
+			properties.setProperty(prefix+"correlationMinAbsoluteInitialContrast",this.correlationMinAbsoluteInitialContrast+"");
+			properties.setProperty(prefix+"scaleFirstPassContrast",this.scaleFirstPassContrast+"");
+			properties.setProperty(prefix+"contrastSelectSigma",this.contrastSelectSigma+"");
+			properties.setProperty(prefix+"contrastAverageSigma",this.contrastAverageSigma+"");
 			properties.setProperty(prefix+"minimalPatternCluster",this.minimalPatternCluster+"");
 			properties.setProperty(prefix+"scaleMinimalInitialContrast",this.scaleMinimalInitialContrast+"");
 			properties.setProperty(prefix+"searchOverlap",this.searchOverlap+"");
@@ -9210,6 +10229,8 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 		public void getProperties(String prefix,Properties properties){
 			if (properties.getProperty(prefix+"correlationSize")!=null)
 			    this.correlationSize=Integer.parseInt(properties.getProperty(prefix+"correlationSize"));
+			if (properties.getProperty(prefix+"maximalCorrelationSize")!=null)
+			    this.maximalCorrelationSize=Integer.parseInt(properties.getProperty(prefix+"maximalCorrelationSize"));
 			if (properties.getProperty(prefix+"correlationGaussWidth")!=null)
 			    this.correlationGaussWidth=Double.parseDouble(properties.getProperty(prefix+"correlationGaussWidth"));
 			if (properties.getProperty(prefix+"FFTSize")!=null)
@@ -9234,6 +10255,19 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			    this.correlationMinContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinContrast"));
 			if (properties.getProperty(prefix+"correlationMinInitialContrast")!=null)
 			    this.correlationMinInitialContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinInitialContrast"));
+			
+			if (properties.getProperty(prefix+"correlationMinAbsoluteContrast")!=null)
+			    this.correlationMinAbsoluteContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteContrast"));
+			if (properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast")!=null)
+			    this.correlationMinAbsoluteInitialContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast"));
+			
+			if (properties.getProperty(prefix+"scaleFirstPassContrast")!=null)
+			    this.scaleFirstPassContrast=Double.parseDouble(properties.getProperty(prefix+"scaleFirstPassContrast"));
+			if (properties.getProperty(prefix+"contrastSelectSigma")!=null)
+			    this.contrastSelectSigma=Double.parseDouble(properties.getProperty(prefix+"contrastSelectSigma"));
+			if (properties.getProperty(prefix+"contrastAverageSigma")!=null)
+			    this.contrastAverageSigma=Double.parseDouble(properties.getProperty(prefix+"contrastAverageSigma"));
+			
 			if (properties.getProperty(prefix+"minimalPatternCluster")!=null)
 			    this.minimalPatternCluster=Integer.parseInt(properties.getProperty(prefix+"minimalPatternCluster"));
 			if (properties.getProperty(prefix+"scaleMinimalInitialContrast")!=null)
@@ -10478,7 +11512,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    		int bayerG2=3;
 	    		int bayerR=1;
 	    		double avrgGreenB=0.0;
-	    		double avrgGreenP=0.0;
+//	    		double avrgGreenP=0.0;
 	    		int len=backgroundBayer[bayerG1].length;
 	    		int halfWidth=width/2;
 	    		int halfHeight=len/halfWidth;
@@ -10491,10 +11525,10 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    			if (modBackground) backgroundBayer[bayerG1][i]=0.5*(backgroundBayer[bayerG1][i]+backgroundBayer[bayerG2][i]);
 	    			avrgGreenB+=backgroundBayer[bayerG1][i];
 	    			pointedBayer[bayerG1][i]=0.5*(pointedBayer[bayerG1][i]+pointedBayer[bayerG2][i]);
-	    			avrgGreenP+=pointedBayer[bayerG1][i];
+//	    			avrgGreenP+=pointedBayer[bayerG1][i];
 	    		}
 	    		avrgGreenB/=len;
-	    		avrgGreenP/=len;
+//	    		avrgGreenP/=len;
 	    		for (int i=0; i<len;i++){
 	    			if (modBackground) {
 	    				backgroundBayer[bayerR][i]/=(backgroundBayer[bayerG1][i]*(1.0-this.greenFloor)+avrgGreenB*this.greenFloor);
@@ -10655,10 +11689,10 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    			}
 	    		} else if (this.algorithmNumber==1){
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++) {
-	    				int numSamples=0;
+//	    				int numSamples=0;
 	    				int numPositiveSamples=0;
 	    				for (int nImg=startIndex;nImg<whichOn[numPointer].length; nImg++){
-	    					numSamples++;
+//	    					numSamples++;
 	    					if (whichOn[numPointer][nImg]) numPositiveSamples++;
 	    				}
 	    				for (int i=0;i<len;i++) {
@@ -10674,10 +11708,10 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    		} else 	if (this.algorithmNumber==2){
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++) {
 	    				int numSamples=0;
-	    				int numPositiveSamples=0;
+//	    				int numPositiveSamples=0;
 	    				for (int nImg=startIndex;nImg<whichOn[numPointer].length; nImg++){
 	    					numSamples++;
-	    					if (whichOn[numPointer][nImg]) numPositiveSamples++;
+//	    					if (whichOn[numPointer][nImg]) numPositiveSamples++;
 	    				}
 	    				double pwr=1.0/numSamples;
 	    				for (int i=0;i<len;i++) {
@@ -10721,24 +11755,27 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    					diffOnOff[numPointer][i]=d/(whichOn[numPointer].length-1);
 	    				}
 	    			}
-	    		} else 	if (this.algorithmNumber==4){
+	    		} else 	if (this.algorithmNumber==4){ // sometimes long - 11.391 sec, other - 0.558 s
 	    			double avOn,avOff;
 	    			noise=new double [whichOn.length][];
+		    		if (debugLevel>debugTiming) printTiming("alg_"+this.algorithmNumber+"-start-"+title);
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++){
+			    		if (debugLevel>debugTiming) printTiming("numPointer-"+numPointer+"-"+whichOn[numPointer].length+"-"+len+"-"+title);
 	    				noise[numPointer]=new double[len];
 	    				for (int i=0;i<len;i++){
-	    					double d=0.0;
+//	    					double d=0.0;
 	    					avOn= 0.0;
 	    					avOff=0.0;
 	    					for (int nImg=1;nImg<whichOn[numPointer].length; nImg++){
 	    						if (whichOn[numPointer][nImg]) {
-	    							d+=reds[nImg][i];
+//	    							d+=reds[nImg][i];
 	    							avOn+=reds[nImg][i];
 	    						} else {
-	    							d-=reds[nImg][i];
+//	    							d-=reds[nImg][i];
 	    							avOff+=reds[nImg][i];
 	    						}
 	    					}
+	    					double d=avOn-avOff;
 	    					diffOnOff[numPointer][i]=d/(whichOn[numPointer].length-1);
 	    					avOn/=((whichOn[numPointer].length-1)/2);
 	    					avOff/=((whichOn[numPointer].length-1)/2);
@@ -10756,6 +11793,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    		// mask out too dim/too bright - TODO: still need to grow overexposed mask
 	    		/* Mask out pixels closer than overexposedRadius from overesposed areas*/
 	    		//overexposedRadius
+	    		if (debugLevel>debugTiming) printTiming("alg_"+this.algorithmNumber+"-done-"+title);
 	    		if (!headLaserMode) {
     				int discardBorder=5;
 	    			if (this.overexposedRadius>0){
@@ -10792,6 +11830,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    					}
 	    				}
 	    			}
+		    		if (debugLevel>debugTiming) printTiming("grown_by_"+this.overexposedRadius+"-"+title);
 					int debugNumBorder=0;
 					for (int iy=0;iy<halfHeight;iy++) for (int ix=0;ix<halfWidth;ix++){
 						if ((iy<discardBorder) || (ix<discardBorder) || (ix>=(halfWidth-discardBorder)) || (iy>=(halfHeight-discardBorder))){
@@ -10803,7 +11842,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 					for (int i=0;i<len;i++){
 						if (overexposed[i]) debugNumOver++;
 					}
-					System.out.println("Number of overexposed/border pixels="+debugNumOver+" border pixels="+debugNumBorder);
+					if (debugLevel>debugTiming) printTiming("Number of overexposed/border pixels="+debugNumOver+" border pixels="+debugNumBorder+" for "+title);
 
 	    			for (int numPointer=0; numPointer <whichOn.length;numPointer++) {
     					for (int i=0;i<len;i++) if (overexposed[i]) diffOnOff[numPointer][i]=0.0; // too close to overexposed in no-lasers image
@@ -10961,8 +12000,8 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 	    					firstMaxIndex[numPointer]=i;
 	    				}
 						if (debugLevel>0) { // rare events, output details to verify program
-							System.out.println ("Found replacement pointer for #"+numPointer+" ("+firstMax[numPointer]+"), x="
-									+(2*(firstMaxIndex[numPointer]%halfWidth))+" y="+(2*(firstMaxIndex[numPointer]/halfWidth)));
+							System.out.println ("Found replacement pointer for #"+numPointer+" ("+firstMax[numPointer]+"), x??="
+									+(2*(firstMaxIndex[numPointer]%halfWidth))+" y??="+(2*(firstMaxIndex[numPointer]/halfWidth)));
 							System.out.println (numberOfMax[numPointer]+ " pointer candidate"+((numberOfMax[numPointer]>1)?"s":"")+" remain"+((numberOfMax[numPointer]>1)?"s":"")+".");
 						}
 	    			}
