@@ -9670,7 +9670,8 @@ M * V = B
     	gd.addMessage("----------");
     	gd.addCheckbox("Applying known extrinsic parameters to the same timestamp images", true);
     	gd.addCheckbox("Use closest (by motor steps) image if none for the same timestamp is enabled", true);
-    	gd.addCheckbox("Verticaly center the camera head by calculateing center above horizontal", false);
+    	gd.addMessage("==== Note: The following correction will be applied to all subcameras, use selection above to specify which heights should be averaged" );
+    	gd.addCheckbox("Vertically center the camera head by calculateing center above horizontal", false);
 //    	gd.addCheckbox("Update currently disabled images", true);
 	    WindowTools.addScrollBars(gd);
     	gd.showDialog();

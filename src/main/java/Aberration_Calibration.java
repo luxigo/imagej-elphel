@@ -858,7 +858,9 @@ if (MORE_BUTTONS) {
 		panelPixelMapping.setLayout(new GridLayout(1, 0, 5, 5));
 		addButton("Load Pixel Mapping",panelPixelMapping); 
 		addButton("List Mapping Parameters",panelPixelMapping,color_report);
-		addButton("Test Direct Mapping",panelPixelMapping); 
+		if (MORE_BUTTONS) {		
+			addButton("Test Direct Mapping",panelPixelMapping); // not yet updated for non-radial
+		}
 		addButton("Test Equirectangular Mapping",panelPixelMapping); 
 		addButton("Crop Equirectangular Mapping",panelPixelMapping);
 		addButton("Generate & Save Equirectangular",panelPixelMapping);
@@ -6694,7 +6696,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("Test Direct Mapping")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (PIXEL_MAPPING==null) PIXEL_MAPPING=new PixelMapping((String)null,DEBUG_LEVEL);
-			GenericDialog gd=new GenericDialog("Select parameters for sensor->equirectangular pixel mapping");
+			GenericDialog gd=new GenericDialog("Select parameters for sensor->equirectangular pixel mapping *** NOT YET MODIFIED FOR NON-RADIAL !");
 			gd.addNumericField("Channel number (0..."+PIXEL_MAPPING.sensors.length,0,0);
 			gd.addNumericField("Output frame width", 2592,0,4,"output pix");
 			gd.addNumericField("Output frame height", 1936,0,4,"output pix");
