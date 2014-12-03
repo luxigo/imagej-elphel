@@ -47,15 +47,25 @@ import loci.formats.tiff.IFDList;
 import loci.formats.tiff.TiffParser;
 import loci.formats.tiff.TiffRational;
 import loci.formats.tiff.TiffSaver;
+import loci.formats.tiff.TiffCompression;
+
 
 public class EyesisTiff {
 //	private static org.apache.log4j.Logger log= Logger.getLogger(EyesisTiff.class); 
 	
+private String codec="UNCOMPRESSED";
+
 public EyesisTiff(){
 //	Please initialize the log4j system properly
 
 
 }
+
+public EyesisTiff(String codec){
+//	Please initialize the log4j system properly
+	this.codec=codec;
+}
+
 	public void saveTiff(
 			ImagePlus imp,
 			String path,
@@ -175,7 +185,7 @@ public EyesisTiff(){
         ifd.putIFDValue(IFD.SOFTWARE, "Elphel Eyesis"); 
         ifd.putIFDValue(IFD.IMAGE_DESCRIPTION, description);
         // copy some other data?
-        ifd.putIFDValue(IFD.COMPRESSION, 1); //TiffCompression.UNCOMPRESSED);
+        ifd.putIFDValue(IFD.COMPRESSION, TiffCompression.valueOf(codec).getCode());
         ifd.putIFDValue(IFD.PHOTOMETRIC_INTERPRETATION,2); // RGB
         ifd.putIFDValue(IFD.EXTRA_SAMPLES,2); // 0 = Unspecified data  1 = Associated alpha data (with pre-multiplied color) 2 = Unassociated alpha data
 //        int [] bpsArray={8,8,8,8};
@@ -257,7 +267,7 @@ public EyesisTiff(){
         ifd.putIFDValue(IFD.SOFTWARE, "Elphel Eyesis"); 
         ifd.putIFDValue(IFD.IMAGE_DESCRIPTION, description);
         // copy some other data?
-        ifd.putIFDValue(IFD.COMPRESSION, 1); //TiffCompression.UNCOMPRESSED);
+        ifd.putIFDValue(IFD.COMPRESSION, TiffCompression.valueOf(codec).getCode());
         ifd.putIFDValue(IFD.PHOTOMETRIC_INTERPRETATION,2); // RGB
         ifd.putIFDValue(IFD.EXTRA_SAMPLES,2); // extra bytes (over 3) meaning Unassociated alpha data
 
