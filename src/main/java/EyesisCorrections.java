@@ -472,7 +472,7 @@ public class EyesisCorrections {
 						this.defectsDiff[srcChannel]=this.pixelMapping.getDefectsDiff(srcChannel);
 						if (this.debugLevel>0){
 							if (this.defectsXY[srcChannel]==null){
-								System.out.println("No pixel defects info is availabele for channel "+srcChannel);
+								System.out.println("No pixel defects info is available for channel "+srcChannel);
 							} else {
 								System.out.println("Extracted "+this.defectsXY[srcChannel].length+" pixel outlayers for channel "+srcChannel+
 										" (x:y:difference");
@@ -700,7 +700,7 @@ public class EyesisCorrections {
 			if (path!=null){
 				path+=Prefs.getFileSeparator()+imp.getTitle()+".tiff";
 	 			 if (this.debugLevel>0) System.out.println("Saving equirectangular result to "+path);
-				(new EyesisTiff()).saveTiff(
+				(new EyesisTiff(correctionsParameters.tiffCompression)).saveTiff(
 						imp,
 						path,
 						correctionsParameters.equirectangularFormat,
