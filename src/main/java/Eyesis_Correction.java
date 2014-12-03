@@ -317,7 +317,11 @@ private Panel panel1,panel2,panel3,panel4,panel5,panel5a, panel6,panel7,panelPos
 
 	public void run(String arg) {
 		String options=Macro.getOptions();
-		prefsPath=Macro.getValue(options, "prefs", Prefs.getPrefsDir()+Prefs.getFileSeparator()+"Eyesis_Correction.xml");
+		try {
+			prefsPath=Macro.getValue(options, "prefs", Prefs.getPrefsDir()+Prefs.getFileSeparator()+"Eyesis_Correction.xml");
+		} catch(Exception e) {
+			prefsPath=Prefs.getPrefsDir()+Prefs.getFileSeparator()+"Eyesis_Correction.xml";
+		}
 		if (IJ.versionLessThan("1.43q")) return;
 		if (instance!=null) {
 			instance.toFront();
@@ -5689,7 +5693,7 @@ G= Y  +Pr*(- 2*Kr*(1-Kr))/Kg + Pb*(-2*Kb*(1-Kb))/Kg
 	 */
 	public static void main(String[] args) {
 		// set the plugins.dir property to make the plugin appear in the Plugins menu
-		Class<?> clazz = Aberration_Calibration.class;
+		Class<?> clazz = Eyesis_Correction.class;
 		String url = clazz.getResource("/" + clazz.getName().replace('.', '/') + ".class").toString();
 		String pluginsDir = url.substring(5, url.length() - clazz.getName().length() - 6);
 		System.setProperty("plugins.dir", pluginsDir);
