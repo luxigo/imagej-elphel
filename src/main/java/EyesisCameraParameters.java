@@ -858,62 +858,62 @@ import org.apache.commons.configuration.XMLConfiguration;
     			if (subCam!=null) {
 		    		gd.addMessage("Channel weight "+subCam.channelWeightCurrent);
     				if (numStation==0){
-        				gd.addNumericField("Channel "+numSubCam+" default weight",      subCam.channelWeightDefault, 3,6,"");
+        				gd.addNumericField("Channel "+numSubCam+" default weight",      subCam.channelWeightDefault, 5,8,"");
     				}
     				if (this.numStations>1) gd.addMessage("--- Station number "+numStation+" ---");
-    				gd.addNumericField("Subcamera azimuth",                             subCam.azimuth, 3,7,"degrees");
-    				gd.addNumericField("Subcamera distance from the axis",              subCam.radius,  3,7,"mm");
-    				gd.addNumericField("Subcamera height from the 'equator'",           subCam.height,  3,7,"mm");
-    				gd.addNumericField("Optical axis heading (relative to azimuth)",    subCam.phi,     3,7,"degrees");
-    				gd.addNumericField("Optical axis elevation (up from equator)",      subCam.theta,   3,7,"degrees");
-    				gd.addNumericField("Camera roll, positive CW looking to the target",subCam.psi,     3,7,"degrees");
-    				gd.addNumericField("Lens focal length",               subCam.focalLength, 3,6,"mm");
-    				gd.addNumericField("Sensor pixel period",             subCam.pixelSize, 3,6,"um");
-    				gd.addNumericField("Distortion radius (half width)",  subCam.distortionRadius, 5,8,"mm");
-    				gd.addNumericField("Distortion A8 (r^8)",             subCam.distortionA8, 6,8,"");
-    				gd.addNumericField("Distortion A7 (r^7)",             subCam.distortionA7, 6,8,"");
-    				gd.addNumericField("Distortion A6 (r^6)",             subCam.distortionA6, 6,8,"");
-    				gd.addNumericField("Distortion A5 (r^5)",             subCam.distortionA5, 6,8,"");
-    				gd.addNumericField("Distortion A (r^4)",              subCam.distortionA, 6,8,"");
-    				gd.addNumericField("Distortion B (r^3)",              subCam.distortionB, 6,8,"");
-    				gd.addNumericField("Distortion C (r^2)",              subCam.distortionC, 6,8,"");
-    				gd.addNumericField("Lens axis on the sensor (horizontal, from left edge)", subCam.px0, 2,7,"pixels");
-    				gd.addNumericField("Lens axis on the sensor (vertical, from top  edge)",   subCam.py0, 2,7,"pixels");
+    				gd.addNumericField("Subcamera azimuth",                             subCam.azimuth, 5,9,"degrees");
+    				gd.addNumericField("Subcamera distance from the axis",              subCam.radius,  5,9,"mm");
+    				gd.addNumericField("Subcamera height from the 'equator'",           subCam.height,  5,9,"mm");
+    				gd.addNumericField("Optical axis heading (relative to azimuth)",    subCam.phi,     5,9,"degrees");
+    				gd.addNumericField("Optical axis elevation (up from equator)",      subCam.theta,   5,9,"degrees");
+    				gd.addNumericField("Camera roll, positive CW looking to the target",subCam.psi,     5,9,"degrees");
+    				gd.addNumericField("Lens focal length",               subCam.focalLength, 5,8,"mm");
+    				gd.addNumericField("Sensor pixel period",             subCam.pixelSize, 5,8,"um");
+    				gd.addNumericField("Distortion radius (half width)",  subCam.distortionRadius, 6,8,"mm");
+    				gd.addNumericField("Distortion A8 (r^8)",             subCam.distortionA8, 8,10,"");
+    				gd.addNumericField("Distortion A7 (r^7)",             subCam.distortionA7, 8,10,"");
+    				gd.addNumericField("Distortion A6 (r^6)",             subCam.distortionA6, 8,10,"");
+    				gd.addNumericField("Distortion A5 (r^5)",             subCam.distortionA5, 8,10,"");
+    				gd.addNumericField("Distortion A (r^4)",              subCam.distortionA, 8,10,"");
+    				gd.addNumericField("Distortion B (r^3)",              subCam.distortionB, 8,10,"");
+    				gd.addNumericField("Distortion C (r^2)",              subCam.distortionC, 8,10,"");
+    				gd.addNumericField("Lens axis on the sensor (horizontal, from left edge)", subCam.px0, 4,9,"pixels");
+    				gd.addNumericField("Lens axis on the sensor (vertical, from top  edge)",   subCam.py0, 4,9,"pixels");
     				
     				gd.addMessage("=== non-radial model parameters ===");
     				gd.addMessage("For r^2 (Distortion C):");
-    				gd.addNumericField("Orthogonal elongation for r^2",   100*subCam.r_od[0][0], 3,7,"%");
-    				gd.addNumericField("Diagonal elongation for r^2",     100*subCam.r_od[0][1], 3,7,"%");
+    				gd.addNumericField("Orthogonal elongation for r^2",   100*subCam.r_od[0][0], 8,10,"%");
+    				gd.addNumericField("Diagonal elongation for r^2",     100*subCam.r_od[0][1], 8,10,"%");
     				gd.addMessage("For r^3 (Distortion B):");
-    				gd.addNumericField("Distortion center shift X for r^3", 100*subCam.r_xy[0][0], 1,6,"%");
-    				gd.addNumericField("Distortion center shift Y for r^3", 100*subCam.r_xy[0][1], 1,6,"%");
-    				gd.addNumericField("Orthogonal elongation for r^3",  100*subCam.r_od[1][0], 3,7,"%");
-    				gd.addNumericField("Diagonal elongation for r^3",    100*subCam.r_od[1][1], 3,7,"%");
+    				gd.addNumericField("Distortion center shift X for r^3", 100*subCam.r_xy[0][0], 8,10,"%");
+    				gd.addNumericField("Distortion center shift Y for r^3", 100*subCam.r_xy[0][1], 8,10,"%");
+    				gd.addNumericField("Orthogonal elongation for r^3",  100*subCam.r_od[1][0], 8,10,"%");
+    				gd.addNumericField("Diagonal elongation for r^3",    100*subCam.r_od[1][1], 8,10,"%");
     				gd.addMessage("For r^4 (Distortion A):");
-    				gd.addNumericField("Distortion center shift X for r^4", 100*subCam.r_xy[1][0], 1,6,"%");
-    				gd.addNumericField("Distortion center shift Y for r^4", 100*subCam.r_xy[1][1], 1,6,"%");
-    				gd.addNumericField("Orthogonal elongation for r^4",  100*subCam.r_od[2][0], 3,7,"%");
-    				gd.addNumericField("Diagonal elongation for r^4",    100*subCam.r_od[2][1], 3,7,"%");
+    				gd.addNumericField("Distortion center shift X for r^4", 100*subCam.r_xy[1][0], 8,10,"%");
+    				gd.addNumericField("Distortion center shift Y for r^4", 100*subCam.r_xy[1][1], 8,10,"%");
+    				gd.addNumericField("Orthogonal elongation for r^4",  100*subCam.r_od[2][0], 8,10,"%");
+    				gd.addNumericField("Diagonal elongation for r^4",    100*subCam.r_od[2][1], 8,10,"%");
     				gd.addMessage("For r^5 (Distortion A5):");
-    				gd.addNumericField("Distortion center shift X for r^5", 100*subCam.r_xy[2][0], 1,6,"%");
-    				gd.addNumericField("Distortion center shift Y for r^5", 100*subCam.r_xy[2][1], 1,6,"%");
-    				gd.addNumericField("Orthogonal elongation for r^5",  100*subCam.r_od[3][0], 3,7,"%");
-    				gd.addNumericField("Diagonal elongation for r^5",    100*subCam.r_od[3][1], 3,7,"%");
+    				gd.addNumericField("Distortion center shift X for r^5", 100*subCam.r_xy[2][0], 8,10,"%");
+    				gd.addNumericField("Distortion center shift Y for r^5", 100*subCam.r_xy[2][1], 8,10,"%");
+    				gd.addNumericField("Orthogonal elongation for r^5",  100*subCam.r_od[3][0], 8,10,"%");
+    				gd.addNumericField("Diagonal elongation for r^5",    100*subCam.r_od[3][1], 8,10,"%");
     				gd.addMessage("For r^6 (Distortion A6:");
-    				gd.addNumericField("Distortion center shift X for r^6", 100*subCam.r_xy[3][0], 1,6,"%");
-    				gd.addNumericField("Distortion center shift Y for r^6", 100*subCam.r_xy[3][1], 1,6,"%");
-    				gd.addNumericField("Orthogonal elongation for r^6",  100*subCam.r_od[4][0], 3,7,"%");
-    				gd.addNumericField("Diagonal elongation for r^6",    100*subCam.r_od[4][1], 3,7,"%");
+    				gd.addNumericField("Distortion center shift X for r^6", 100*subCam.r_xy[3][0], 8,10,"%");
+    				gd.addNumericField("Distortion center shift Y for r^6", 100*subCam.r_xy[3][1], 8,10,"%");
+    				gd.addNumericField("Orthogonal elongation for r^6",  100*subCam.r_od[4][0], 8,10,"%");
+    				gd.addNumericField("Diagonal elongation for r^6",    100*subCam.r_od[4][1], 8,10,"%");
     				gd.addMessage("For r^7 (Distortion A7):");
-    				gd.addNumericField("Distortion center shift X for r^7", 100*subCam.r_xy[4][0], 1,6,"%");
-    				gd.addNumericField("Distortion center shift Y for r^7", 100*subCam.r_xy[4][1], 1,6,"%");
-    				gd.addNumericField("Orthogonal elongation for r^7",  100*subCam.r_od[5][0], 3,7,"%");
-    				gd.addNumericField("Diagonal elongation for r^7",    100*subCam.r_od[5][1], 3,7,"%");
+    				gd.addNumericField("Distortion center shift X for r^7", 100*subCam.r_xy[4][0], 8,10,"%");
+    				gd.addNumericField("Distortion center shift Y for r^7", 100*subCam.r_xy[4][1], 8,10,"%");
+    				gd.addNumericField("Orthogonal elongation for r^7",  100*subCam.r_od[5][0], 8,10,"%");
+    				gd.addNumericField("Diagonal elongation for r^7",    100*subCam.r_od[5][1], 8,10,"%");
     				gd.addMessage("For r^8 (Distortion A8):");
-    				gd.addNumericField("Distortion center shift X for r^8", 100*subCam.r_xy[5][0], 1,6,"%");
-    				gd.addNumericField("Distortion center shift Y for r^8", 100*subCam.r_xy[5][1], 1,6,"%");
-    				gd.addNumericField("Orthogonal elongation for r^8",  100*subCam.r_od[6][0], 3,7,"%");
-    				gd.addNumericField("Diagonal elongation for r^8",    100*subCam.r_od[6][1], 3,7,"%");
+    				gd.addNumericField("Distortion center shift X for r^8", 100*subCam.r_xy[5][0], 8,10,"%");
+    				gd.addNumericField("Distortion center shift Y for r^8", 100*subCam.r_xy[5][1], 8,10,"%");
+    				gd.addNumericField("Orthogonal elongation for r^8",  100*subCam.r_od[6][0], 8,10,"%");
+    				gd.addNumericField("Diagonal elongation for r^8",    100*subCam.r_od[6][1], 8,10,"%");
     				
     			}
     		}
@@ -1368,7 +1368,7 @@ import org.apache.commons.configuration.XMLConfiguration;
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
     					null,  // eccentricity for b,a,a5,a6,a7,a8
     					null,  // elongation for c,b,a,a5,a6,a7,a8
-    					4.0); //channelWeightDefault
+    					8.0); //channelWeightDefault (was 4)
     			if (25<numSubCameras) 	this.eyesisSubCameras[numStation][25]=new EyesisSubCameraParameters(
     					270,     // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					12.025,  // double radius,  // mm, distance from the rotation axis
@@ -1390,7 +1390,7 @@ import org.apache.commons.configuration.XMLConfiguration;
     					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
     					null,  // eccentricity for b,a,a5,a6,a7,a8
     					null,  // elongation for c,b,a,a5,a6,a7,a8
-    					4.0); //channelWeightDefault
+    					8.0); //channelWeightDefault (was 4)
     		}
     	}
     	public void recenterVertically(boolean [] subcams, boolean [] stations){

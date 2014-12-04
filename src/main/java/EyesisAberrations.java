@@ -2157,6 +2157,10 @@ public class EyesisAberrations {
 			length=kernel[i].length;
 			break;
 		}
+		if (length==0){
+			System.out.println("mergeKernelsToStack(): no non-null kernels");
+			return null;
+		}
 		int [] channelsMask = new int [kernel.length];
 		for (i=0;i<kernel.length;i++) channelsMask[i]=0;
 		for (i=0;i<tilesY ;i++)  for (j=0;j<tilesX;j++) if (kernels[i][j]!=null) {
@@ -2178,6 +2182,7 @@ public class EyesisAberrations {
 		int outHeight=size*tilesY;
 
 		ImageStack stack=new ImageStack(outWidth,outHeight);
+		int numKernels=0;
 		float [] fpixels;
 		for (chn=0;chn<nChn;chn++) {
 			fpixels= new float [outWidth*outHeight];
@@ -2190,10 +2195,16 @@ public class EyesisAberrations {
 						fpixels[index]= (float) kernels[i][j][k][y*size+x];
 					}
 				}
+				if ((kernels[i][j]!=null && (kernels[i][j][k]!=null))) numKernels++;
 			}
 			if (names==null) stack.addSlice("channel"+k, fpixels);
 			else             stack.addSlice(names[chn], fpixels);
 		}
+		if (numKernels==0){
+			System.out.println("mergeKernelsToStack(): all kernels are empty");
+			return null;
+		}
+		System.out.println("mergeKernelsToStack(): got "+numKernels +" non-null kernels");
 		return stack;
 	}
 
@@ -2687,6 +2698,7 @@ public class EyesisAberrations {
 				if (!colorComponents.colorsToCorrect[i]) simul_pixels[i]=null; // removed unused
 			}
 			simul_pixels= normalizeAndWindow (simul_pixels, fullHamming);
+			
 		} else {
 			Rectangle PSFCellSim=new Rectangle (x0*subpixel/2,y0*subpixel/2,size*subpixel/2,size*subpixel/2);
 			
@@ -3256,8 +3268,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 //				if ((globalDebugLevel>0) && (tileY==22) && (tileX==32) && (y>=0) && (x>=0) && (y<height) && (x<width))System.out.println(" uvIndex["+(y*width+x)+"]="+uvIndex[y*width+x]);
 			}
 			result[tileY][tileX]=(sum>absThresh);
-			if (debugLevel>1) System.out.println(" tileY="+tileY+" tileX="+tileX+" x0="+x0+" y0="+y0+" sum="+sum);
-			
+			if (debugLevel>1) System.out.println(" tileY="+tileY+" tileX="+tileX+" x0="+x0+" y0="+y0+" sum="+sum+" threshold="+threshold+" absThresh="+absThresh+" rrsult="+result[tileY][tileX]);
 		}
 		return result;
 	}

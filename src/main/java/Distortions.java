@@ -6979,6 +6979,13 @@ List calibration
     				this.startTime+=(System.nanoTime()-startDialogTime); // do not count time used by the User.
     				if (this.showThisImages) showDiff (this.currentfX, "fit-"+this.iterationStepNumber);
     				if (this.showNextImages) showDiff (this.nextfX,    "fit-"+(this.iterationStepNumber+1));
+    			} else if ((this.debugLevel>0) && ((this.debugLevel>1) || ((System.nanoTime()-this.startTime)>10000000000.0))){ // > 10 sec
+					System.out.println("--> LevenbergMarquardt(): series:step ="+this.seriesNumber+":"+this.iterationStepNumber+
+    						", RMS="+IJ.d2s(this.currentRMS,8)+
+    						" ("+IJ.d2s(this.firstRMS,8)+") "+
+    						", RMSPure="+IJ.d2s(this.currentRMSPure,8)+
+    						" ("+IJ.d2s(this.firstRMSPure,8)+
+    						") at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3));
     			}
 				stepLevenbergMarquardtAction(); // apply step - in any case?
 				if (this.updateStatus){
