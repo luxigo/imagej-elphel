@@ -285,7 +285,7 @@ public class EyesisCorrectionParameters {
     		gd.addCheckbox ("Save chroma denoise mask (white - use hi-res, black - low-res)", this.saveChromaDenoiseMask);
     		gd.addCheckbox ("Rotate result image",                              this.rotate);
     		gd.addCheckbox ("Crop result image to the original size",           this.crop);
-			String [] tiffCompressionChoices={"UNCOMPRESSED","LZW","JPEG_2000","ALT_JPEG2000"};
+			String [] tiffCompressionChoices={"UNCOMPRESSED","LZW","JPEG", "JPEG_2000","ALT_JPEG2000"};
 			int tiffCompressionIndex=0;
 			String [] equirectangularFormatChoices={"RGBA 8-bit","RGBA 16-bit","RGBA 32-bit integer","RGBA 32-bit float","ImageJ stack"};
 			int [] equirectangularFormats={0,1,2,3,4};
