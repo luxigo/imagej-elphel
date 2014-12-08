@@ -606,6 +606,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		addButton("Select source directory",      panelDirs);
 		addButton("Select intermediate directory",panelDirs);
 		addButton("Select results directory",     panelDirs);
+		addButton("View CSV file",     panelDirs, color_report);
 		add(panelDirs);
 		
 		
@@ -1092,13 +1093,15 @@ if (MORE_BUTTONS) {
 	    	selectedProperties.setProperty("selected", "true");
 	    	saveProperties(null,PROCESS_PARAMETERS.kernelsDirectory, PROCESS_PARAMETERS.useXML, selectedProperties);
 	    	return;
-	    	
 /* ======================================================================== */
-	        
+	    } else if (label.equals("View CSV file")) {
+	    	viewCSVFile();
+	    	return;
+/* ======================================================================== */
 	    } else if (label.equals("Restore") || label.equals("Restore no autoload")) {
 	    	boolean noAuto=label.equals("Restore no autoload");
 	    	ABERRATIONS_PARAMETERS.autoRestore=false;
-	    	loadProperties(null,PROCESS_PARAMETERS.kernelsDirectory,PROCESS_PARAMETERS.useXML, PROPERTIES);
+	    	String confPath=loadProperties(null,PROCESS_PARAMETERS.kernelsDirectory,PROCESS_PARAMETERS.useXML, PROPERTIES);
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 	    	if (ABERRATIONS_PARAMETERS.autoRestore && !noAuto){
 	    		if (DEBUG_LEVEL>0)System.out.println("Auto-loading configuration files");
@@ -1114,6 +1117,13 @@ if (MORE_BUTTONS) {
 	    				UPDATE_STATUS,
 	    				DEBUG_LEVEL
 	    		);
+/*// Not needed, controlled by parameters	    		
+	    		if (ABERRATIONS_PARAMETERS.autoLoadPaths()[3]!=null) {
+	    			// Re-read configuration file to overwrite camera parameters restored with calibration files
+	    			if (DEBUG_LEVEL>0) System.out.println("Re-reading configuration to overwrite camera parameters restored from the sensor calibration files");
+	    			loadProperties(confPath,PROCESS_PARAMETERS.kernelsDirectory,PROCESS_PARAMETERS.useXML, PROPERTIES);
+	    		}
+*/	    		
 	    		if (dcdUpdated) DISTORTION_CALIBRATION_DATA=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData;
 		    	if (ABERRATIONS_PARAMETERS.autoReCalibrate){
 					if (LENS_DISTORTIONS.fittingStrategy==null) {
@@ -1169,6 +1179,7 @@ if (MORE_BUTTONS) {
 		    		}
 				}
 		    	restoreFocusingHistory(false);
+
 	    	}
 	    	return;
 		
@@ -2407,6 +2418,7 @@ if (MORE_BUTTONS) {
 					defaultPath,
 					PATTERN_PARAMETERS,
 					EYESIS_CAMERA_PARAMETERS,
+					ABERRATIONS_PARAMETERS,
 					null); // gridImages null - use specified files
 			if (DISTORTION_CALIBRATION_DATA.pathName== null){ // failed to select/open the file
 				DISTORTION_CALIBRATION_DATA=oldDISTORTION_CALIBRATION_DATA;
@@ -3171,15 +3183,17 @@ if (MORE_BUTTONS) {
 		    GenericDialog gd = new GenericDialog("Select sensor number");
 		    gd.addCheckbox("Restore all sensors", true);
 			gd.addNumericField("Number of sensor/channel to apply calibration (if \"all\" is not selected)", 0,0);
-			gd.addCheckbox("Overwrite SFE position/orientation from the sensor calibration data", true);
+			gd.addCheckbox("Overwrite all SFE position/orientation from the sensor calibration data", true);
+			gd.addCheckbox("Overwrite SFE distortion from the sensor calibration data", true);
 		    gd.showDialog();
 		    if (gd.wasCanceled()) return;
 		    boolean allFiles=gd.getNextBoolean();
 		    int numSensor= (int) gd.getNextNumber();
 		    if (allFiles) numSensor=-1;
 			boolean overwriteExtrinsic=gd.getNextBoolean();
-		    if (numSensor<0) LENS_DISTORTIONS.setDistortionFromImageStack(pathname,overwriteExtrinsic); // requires fitting strategy to be set?
-		    else LENS_DISTORTIONS.setDistortionFromImageStack(pathname, numSensor,true,overwriteExtrinsic); // report missing files
+			boolean overwriteDistortion=gd.getNextBoolean();
+		    if (numSensor<0) LENS_DISTORTIONS.setDistortionFromImageStack(pathname,overwriteExtrinsic,overwriteDistortion); // requires fitting strategy to be set?
+		    else LENS_DISTORTIONS.setDistortionFromImageStack(pathname, numSensor,true,overwriteExtrinsic,overwriteDistortion); // report missing files
 			return;
 		}
 /* ======================================================================== */
@@ -3830,6 +3844,7 @@ if (MORE_BUTTONS) {
 						FOCUS_MEASUREMENT_PARAMETERS.initialCalibrationFile,
 						PATTERN_PARAMETERS,
 						EYESIS_CAMERA_PARAMETERS, // is it null or 1?
+						ABERRATIONS_PARAMETERS,
 						imp_calibrated); // gridImages null - use specified files - single image
 				if (DISTORTION_CALIBRATION_DATA.pathName== null){ // failed to select/open the file
 					DISTORTION_CALIBRATION_DATA=null;
@@ -9549,6 +9564,49 @@ if (MORE_BUTTONS) {
 	}
 	
 /* ===== Other methods ==================================================== */
+	public void viewCSVFile(){
+		String [] extensions={".csv","CSV"};
+		CalibrationFileManagement.MultipleExtensionsFileFilter parFilter = new CalibrationFileManagement.MultipleExtensionsFileFilter("",extensions,"CSV table *.csv files");
+		String pathname=CalibrationFileManagement.selectFile(
+				true, // smart,
+				false,
+				"Restore CSV file (table)",
+				"Restore",
+				parFilter,
+				""); // (defaultPath==null)?this.pathName:defaultPath); //String defaultPath
+		if (pathname==null) return;
+		BufferedReader reader=null;
+		try {
+			reader = new BufferedReader( new FileReader (pathname));
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			System.out.println("Error opening "+pathname+" for reading");
+			return;
+		}
+		String header=null;
+		String         line = null;
+		StringBuilder  stringBuilder = new StringBuilder();
+		String         ls = System.getProperty("line.separator");
+		try {
+			header = reader.readLine();
+		} catch (IOException e) {
+			System.out.println("Failed to read a header from "+pathname);
+			try {reader.close();} catch (IOException e1) {}
+			return;
+		}
+	    try {
+			while( ( line = reader.readLine() ) != null ) {
+			    stringBuilder.append( line );
+			    stringBuilder.append( ls );
+			}
+		} catch (IOException e) {
+			System.out.println("Error reading from "+pathname);
+			try {reader.close();} catch (IOException e1) {}
+		}
+		new TextWindow(pathname, header, stringBuilder.toString(), 500,900);
+		try {reader.close();} catch (IOException e1) {}
+	}
+	
 	public void checkDefects(){
 		imp_sel = WindowManager.getCurrentImage();
 		if (imp_sel==null){
@@ -10195,6 +10253,7 @@ if (MORE_BUTTONS) {
 				configPaths[0],
 				patternParameters,
 				eyesisCameraParameters,
+				aberrationParameters,
 				null); // gridImages null - use specified files
 		if (distortions.fittingStrategy!=null) {
 			distortions.fittingStrategy.distortionCalibrationData=dcd;
@@ -10227,7 +10286,11 @@ if (MORE_BUTTONS) {
 		if (configPaths[3] !=null){ // load sensor
 			if (distortions.fittingStrategy==null) return false;
 			if (DEBUG_LEVEL>0) System.out.println("Autoloading sensor calibration files "+configPaths[3]);
-			distortions.setDistortionFromImageStack(configPaths[3],aberrationParameters.autoRestoreSensorOverwriteOrientation);
+			distortions.setDistortionFromImageStack(
+					configPaths[3],
+					aberrationParameters.autoRestoreSensorOverwriteOrientation,
+					aberrationParameters.autoRestoreSensorOverwriteDistortion
+					);
 		}
 		return true;
 	}
@@ -14424,7 +14487,7 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 
 	}
 /* ======================================================================== */
-	public void loadProperties(
+	public String loadProperties(
 			String path,
 			String directory,
 			boolean useXML,
@@ -14445,13 +14508,13 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	    		  path+=patterns[0];
 	    	  }
 	      }
-	     if (path==null) return;
+	     if (path==null) return path;
 	     InputStream is;
 		try {
 			is = new FileInputStream(path);
 		} catch (FileNotFoundException e) {
         	 IJ.showMessage("Error","Failed to open configuration file: "+path);
-         	 return;
+         	 return path;
 		}
 
 	     if (useXML) {
@@ -14460,14 +14523,14 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	     		
 	     	 } catch (IOException e) {
 	         	 IJ.showMessage("Error","Failed to read XML configuration file: "+path);
-	         	 return;
+	         	 return path;
 	     	 }
 	     } else {
 	         try {
 	      		properties.load(is);
 	      	 } catch (IOException e) {
 	          	 IJ.showMessage("Error","Failed to read configuration file: "+path);
-	          	 return;
+	          	 return path;
 	      	 }
 	     }
 	     try {
@@ -14478,6 +14541,8 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 	 	 }      
 	     getAllProperties(properties);
 		 if (DEBUG_LEVEL>0) System.out.println("Configuration parameters are restored from "+path);
+		 return path;
+		 
 	}
 /* ======================================================================== */
     public void setAllProperties(Properties properties){
@@ -16218,7 +16283,13 @@ private double [][] jacobianByJacobian(double [][] jacobian, boolean [] mask) {
 					double over;
 // individual per-thread - will be needed when converted to doubleFHT					
 //				    MatchSimulatedPattern matchSimulatedPattern=new MatchSimulatedPattern(FFT_SIZE);
-				    MatchSimulatedPattern matchSimulatedPattern=commonMatchSimulatedPattern.clone();
+				    MatchSimulatedPattern matchSimulatedPattern=commonMatchSimulatedPattern.cloneDeep(
+				    		false, // boolean clonePATTERN_GRID,
+				    		false, // boolean cloneTargetUV,
+				    		false, // boolean clonePixelsUV,
+				    		false, // boolean cloneFlatFieldForGrid,
+				    		false  // boolean cloneFocusMask
+				    		);
 				    matchSimulatedPattern.debugLevel=DEBUG_LEVEL;
 					SimulationPattern simulationPattern= new SimulationPattern(bitmaskPattern);
 					simulationPattern.debugLevel=DEBUG_LEVEL;

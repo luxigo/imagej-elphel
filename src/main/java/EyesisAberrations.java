@@ -2304,7 +2304,14 @@ public class EyesisAberrations {
 					//	double [] sum_kern_el=new double[6]; // just testing					
 					int x0,y0,nTX,nTY,nChn;
 					double [][] kernels;
-				    MatchSimulatedPattern matchSimulatedPattern=commonMatchSimulatedPattern.clone();
+					// change to true (first 2 only?) to separate memory arrays for threads
+				    MatchSimulatedPattern matchSimulatedPattern=commonMatchSimulatedPattern.cloneDeep(
+				    		false, // boolean clonePATTERN_GRID,
+				    		false, // boolean cloneTargetUV,
+				    		false, // boolean clonePixelsUV,
+				    		false, // boolean cloneFlatFieldForGrid,
+				    		false  // boolean cloneFocusMask
+				    		);
 				    matchSimulatedPattern.debugLevel=globalDebugLevel;
 					SimulationPattern simulationPattern= new SimulationPattern(bitmaskPattern);
 					simulationPattern.debugLevel=globalDebugLevel;
@@ -4478,10 +4485,12 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     	public String strategyPath="";
     	public String gridPath="";
     	public String sensorsPath="";
-    	public boolean autoRestoreSensorOverwriteOrientation=true; // overwrite camera parameters from sensor calibration files
+    	public boolean autoRestoreSensorOverwriteOrientation=false; // dangerous! true; // overwrite camera parameters from sensor calibration files
+    	public boolean autoRestoreSensorOverwriteDistortion= false; // dangerous! true; // overwrite camera parameters from sensor calibration files
 		public boolean autoReCalibrate=true; // Re-calibrate grids on autoload
 		public boolean autoReCalibrateIgnoreLaser=false; // "Ignore laser pointers on recalibrate"
-    	public boolean autoFilter=true;
+    	public boolean autoFilter=false; // true;
+    	public boolean trustEnabled= true; // mark all enabled images as hintedMatch=2 on Read Calibration
     	public boolean noMessageBoxes=true;
     	public boolean overwriteResultFiles=false;
     	public boolean partialToReprojected=true; // Use reprojected grid for partial kernel calculation (false - use extracted)
@@ -4514,9 +4523,11 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			properties.setProperty(prefix+"gridPath",this.gridPath);
 			properties.setProperty(prefix+"sensorsPath",this.sensorsPath);
 			properties.setProperty(prefix+"autoRestoreSensorOverwriteOrientation",this.autoRestoreSensorOverwriteOrientation+"");
+			properties.setProperty(prefix+"autoRestoreSensorOverwriteDistortion",this.autoRestoreSensorOverwriteDistortion+"");
 			properties.setProperty(prefix+"autoReCalibrate",this.autoReCalibrate+"");
 			properties.setProperty(prefix+"autoReCalibrateIgnoreLaser",this.autoReCalibrateIgnoreLaser+"");
 			properties.setProperty(prefix+"autoFilter",this.autoFilter+"");
+			properties.setProperty(prefix+"trustEnabled",this.trustEnabled+"");
 			properties.setProperty(prefix+"noMessageBoxes",this.noMessageBoxes+"");
 			properties.setProperty(prefix+"overwriteResultFiles",this.overwriteResultFiles+"");
 			properties.setProperty(prefix+"partialToReprojected",this.partialToReprojected+"");
@@ -4557,11 +4568,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (properties.getProperty(prefix+"sensorsPath")!=null)                this.sensorsPath=properties.getProperty(prefix+"sensorsPath");
 			if (properties.getProperty(prefix+"autoRestoreSensorOverwriteOrientation")!=null)
 				this.autoRestoreSensorOverwriteOrientation=Boolean.parseBoolean(properties.getProperty(prefix+"autoRestoreSensorOverwriteOrientation"));
+			if (properties.getProperty(prefix+"autoRestoreSensorOverwriteDistortion")!=null)
+				this.autoRestoreSensorOverwriteDistortion=Boolean.parseBoolean(properties.getProperty(prefix+"autoRestoreSensorOverwriteDistortion"));
+			
 			if (properties.getProperty(prefix+"autoReCalibrate")!=null)            this.autoReCalibrate=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrate"));
 			if (properties.getProperty(prefix+"autoReCalibrateIgnoreLaser")!=null) this.autoReCalibrateIgnoreLaser=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrateIgnoreLaser"));
 			if (properties.getProperty(prefix+"autoFilter")!=null)                 this.autoFilter=Boolean.parseBoolean(properties.getProperty(prefix+"autoFilter"));
-			
-			
+			if (properties.getProperty(prefix+"trustEnabled")!=null)               this.trustEnabled=Boolean.parseBoolean(properties.getProperty(prefix+"trustEnabled"));
 			if (properties.getProperty(prefix+"noMessageBoxes")!=null)             this.noMessageBoxes=Boolean.parseBoolean(properties.getProperty(prefix+"noMessageBoxes"));
 			if (properties.getProperty(prefix+"overwriteResultFiles")!=null)       this.overwriteResultFiles=Boolean.parseBoolean(properties.getProperty(prefix+"overwriteResultFiles"));
 			if (properties.getProperty(prefix+"partialToReprojected")!=null)       this.partialToReprojected=Boolean.parseBoolean(properties.getProperty(prefix+"partialToReprojected"));
@@ -4706,10 +4719,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		gd.addCheckbox("Process all enabled image files (false - use selected fitting series)", this.allImages);
     		gd.addMessage("===== Autoload options (when restoring configuration) =====");
     		gd.addCheckbox("Autoload additional files on \"Restore\"", this.autoRestore);
-    		gd.addCheckbox("Overwrite SFE parameters from the sensor calibration files (at auto-load)", this.autoRestoreSensorOverwriteOrientation);
+    		gd.addCheckbox("Overwrite all (including position/orientation) SFE parameters from the sensor calibration files (at auto-load) DANGEROUS!", this.autoRestoreSensorOverwriteOrientation);
+    		gd.addCheckbox("Overwrite SFE distortion parameters from the sensor calibration files (at auto-load) DANGEROUS!", this.autoRestoreSensorOverwriteDistortion);
+    		
     		gd.addCheckbox("Re-calibrate grids on autoload", this.autoReCalibrate);
     		gd.addCheckbox("Ignore laser pointers on recalibrate", this.autoReCalibrateIgnoreLaser);
     		gd.addCheckbox("Filter grids after restore", this.autoFilter);
+    		gd.addCheckbox("Trust enabled images on input (mark as hintedGrid=2)", this.trustEnabled);
    		
     		gd.addMessage("Calibration: "+(((this.calibrationPath==null) || (this.calibrationPath.length()==0))?"not configured ":(this.calibrationPath+" "))+
     				((currentConfigs[0]!=null)?("(current: "+currentConfigs[0]+")"):("") ));
@@ -4753,10 +4769,12 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		this.allImages=             gd.getNextBoolean();
     		this.autoRestore=           gd.getNextBoolean();
     		this.autoRestoreSensorOverwriteOrientation= gd.getNextBoolean();
+    		this.autoRestoreSensorOverwriteDistortion= gd.getNextBoolean();
     		this.autoReCalibrate=           gd.getNextBoolean();
     		this.autoReCalibrateIgnoreLaser=gd.getNextBoolean();
     		this.autoFilter=            gd.getNextBoolean();
-
+    		this.trustEnabled=          gd.getNextBoolean();
+    		
     		if (gd.getNextBoolean()) {
     			if (currentConfigs[0]!=null) this.calibrationPath=currentConfigs[0];
     			if (currentConfigs[1]!=null) this.strategyPath=   currentConfigs[1];

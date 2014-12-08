@@ -923,6 +923,7 @@ dPXmmc/dphi=
         		double zp, // target point horizontal, positive - away from camera,  mm
         		boolean calculateAll){ // calculate derivatives, false - values only
 //        	this.cummulativeCorrection=false; // just debugging
+        	final double maxRelativeRadius=2.0; // make configurable? 
         	
         	// TODO - add reduced calculations for less terms?
 //        	final int numDerivatives=44; // 18+6*2+7*2; // 18  for radial and 26 more for non-radial
@@ -1190,9 +1191,9 @@ dPXmmc/dphi=
         	partDeriv[0][0]=  1000.0/this.pixelSize*xyDist[0] + this.px0;
         	partDeriv[0][1]= -1000.0/this.pixelSize*xyDist[1] + this.py0;
         	
-        	if (!calculateAll) {
+        	if (!calculateAll) { // TODO: how to deal with it when calculating Jacobian???
         		// TODO: Looking away from the target, trying only with no dervatives. Do the same for derivatives too?
-            	if (XeYeZe[2]<0.0) {
+            	if ((XeYeZe[2]<0.0) || ((xmmc*xmmc+ymmc*ymmc)>maxRelativeRadius*maxRelativeRadius)){ // non-distorted too far from the axis
             		partDeriv[0][0]=Double.NaN;
             		partDeriv[0][1]=Double.NaN;
             	}

@@ -3,7 +3,7 @@
  ** MatchSimulatedPattern.java - Determine simulation pattern parameters to match
  ** the acquired image
  **
- ** Copyright (C) 2010-2011 Elphel, Inc.
+ ** Copyright (C) 2010-2014 Elphel, Inc.
  **
  ** -----------------------------------------------------------------------------**
  **  
@@ -25,6 +25,7 @@
 
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Queue;
@@ -51,9 +52,12 @@ public class MatchSimulatedPattern {
 	public int debugLevel=2;
 	public int FFT_SIZE=256;
 	public double [][][][] PATTERN_GRID=null; // global to be used with threads? TODO: Same as DIST_ARRAY - merge?
-    public int [][] reMap=null;               // maps grid coordinates from laser pointers to PATTERN_GRID u,v (2x3 - rotation + translation)
+	public int [] minUV={0,0};
+    public int [][] reMap=null;               // maps grid coordinates from laser pointers to PATTERN_GRID u,v (2x3 - rotation + translation) - SEEMS NOT USED!
+    public int [] UVShiftRot={0,0,0}; // {shift U, shift V, rot (1 of 8 - 4 non-mirrored, 4 - mirrored}
     public int [][][] targetUV=null; // maps PATTERN_GRID cells to the target (absolute) UV
-    public double [][][] pixelsUV=null; // made of PATTERN_GRID, but does not have any wave vectors. Calculated during laser calibration
+//    public double [][][] pixelsUV=null; // made of PATTERN_GRID, but does not have any wave vectors. Calculated during laser calibration
+    public double [][][] pXYUV=null; // made of PATTERN_GRID, but does not have any wave vectors. Calculated during laser calibration
     public double [][][] gridContrastBrightness=null; //{grid contrast, grid intensity red, grid intensity green, grid intensity blue}[v][u]
 	public Rectangle DIST_SELECTION=null;
 	public int [] UV_INDEX=null; // array containing index of the pattern UV (scanline order, U first), or -1 for the areas with no pattern
@@ -64,6 +68,36 @@ public class MatchSimulatedPattern {
 	public double [] gridFFCorr=null; // array matching greens with the flat field correction for the grid (zero outside of detected grid?)
 	public double [] flatFieldForGrid=null; // array matching image pixels, divide the input pixels by these values (if not null)
 	public boolean [] focusMask=null; // array matching image pixels, used with focusing (false outside sample areas)
+	final private int [][][] rotations={
+			   {{ 1, 0},{ 0, 1}}, // not mirrored
+			   {{ 0, 1},{-1, 0}},
+			   {{-1, 0},{ 0,-1}},
+			   {{ 0,-1},{ 1, 0}},
+			   
+			   {{ 1, 0},{ 0,-1}}, // mirrored
+			   {{ 0, 1},{ 1, 0}},
+			   {{-1, 0},{ 0, 1}},
+			   {{ 0,-1},{-1, 0}}};
+	   // shifts when rotating around unknown center (make it white)
+	final private int [][] dfltShifts={
+			   {0,0},
+			   {0,1},
+			   {0,0},
+			   {1,0},
+			   {0,1},
+			   {0,0},
+			   {1,0},
+			   {0,0}};
+	final private int [][] combinedRotations={
+			{0,	1,	2,	3,	4,	5,	6,	7},
+			{1,	2,	3,	0,	7,	4,	5,	6},
+			{2,	3,	0,	1,	6,	7,	4,	5},
+			{3,	0,	1,	2,	5,	6,	7,	4},
+			{4,	5,	6,	7,	0,	1,	2,	3},
+			{5,	6,	7,	4,	3,	0,	1,	2},
+			{6,	7,	4,	5,	2,	3,	0,	1},
+			{7,	4,	5,	6,	1,	2,	3,	0}};
+
     public MatchSimulatedPattern (){ }
     public MatchSimulatedPattern (int fft_size){
     	this.FFT_SIZE=fft_size;
@@ -79,11 +113,120 @@ public class MatchSimulatedPattern {
     	msp.UV_INDEX=this.UV_INDEX; // array containing index of the pattern UV (scanline order, U first), or -1 for the areas with no pattern
     	msp.UV_INDEX_WIDTH=this.UV_INDEX_WIDTH;
     	msp.reMap=this.reMap;
-    	msp.targetUV=this.targetUV;
-    	msp.pixelsUV=this.pixelsUV;
+    	msp.UVShiftRot=this.UVShiftRot.clone();
+//    public int [] UVShiftRot={0,0,0}; // {shift U, shift V, rot (1 of 8 - 4 non-mirrored, 4 - mirrored}
+    	
+    	msp.targetUV=this.targetUV; // 
+    	msp.pXYUV=this.pXYUV;
     	msp.flatFieldForGrid=this.flatFieldForGrid;
     	msp.focusMask=this.focusMask;
     	return msp;
+    }
+
+    public MatchSimulatedPattern cloneDeep(
+    		boolean clonePATTERN_GRID,
+    		boolean cloneTargetUV,
+    		boolean clonePixelsUV,
+    		boolean cloneFlatFieldForGrid,
+    		boolean cloneFocusMask
+    		){ // used in createPSFMap when creating threads
+    	MatchSimulatedPattern msp=new MatchSimulatedPattern (this.FFT_SIZE);
+// cloning should be thread safe, when using DoubleFHT - use individual instances     	
+    	msp.debugLevel=this.debugLevel;
+//    	msp.PATTERN_GRID=this.PATTERN_GRID; // global to be used with threads? TODO: Same as DIST_ARRAY - merge?
+    	if ( clonePATTERN_GRID && (msp.PATTERN_GRID!=null)){
+    		msp.PATTERN_GRID=new double [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][][];
+    		for (int i=0;i<this.PATTERN_GRID.length;i++) for (int j=0;j<this.PATTERN_GRID[i].length;j++) {
+    			if (this.PATTERN_GRID[i][j]!=null){
+    				msp.PATTERN_GRID[i][j]=new double [this.PATTERN_GRID[i][j].length][];
+    				for (int k=0;k<this.PATTERN_GRID[i][j].length;k++){
+    					if (this.PATTERN_GRID[i][j][k]!=null) msp.PATTERN_GRID[i][j][k]=this.PATTERN_GRID[i][j][k].clone();
+    					else msp.PATTERN_GRID[i][j][k]=null;
+    				}
+    			} else msp.PATTERN_GRID[i][j]=null;
+    		}
+    	} else msp.PATTERN_GRID=this.PATTERN_GRID;
+//    	msp.DIST_ARRAY=this.DIST_ARRAY;
+    	if (this.DIST_SELECTION!=null) msp.DIST_SELECTION=new Rectangle(this.DIST_SELECTION);
+    	else msp.DIST_SELECTION=null;
+    	
+    	if (this.UV_INDEX!=null) msp.UV_INDEX=this.UV_INDEX.clone(); // array containing index of the pattern UV (scanline order, U first), or -1 for the areas with no pattern
+    	else msp.UV_INDEX=null;
+
+    	msp.UV_INDEX_WIDTH=this.UV_INDEX_WIDTH;
+    	
+    	if (this.reMap!=null) { // probably not used
+    		msp.reMap=new int [2][];
+    		msp.reMap[0]=this.reMap[0].clone();
+    		msp.reMap[1]=this.reMap[1].clone();
+    	} else msp.reMap=null;
+    	
+    	msp.UVShiftRot=this.UVShiftRot.clone();
+//     public int [] UVShiftRot={0,0,0}; // {shift U, shift V, rot (1 of 8 - 4 non-mirrored, 4 - mirrored}
+//    	msp.targetUV=this.targetUV; 
+    	if (cloneTargetUV && (this.targetUV != null)) {
+    		msp.targetUV=new int [this.targetUV.length][this.targetUV[0].length][];
+    		for (int i=0;i<this.targetUV.length;i++) for (int j=0;j<this.targetUV[i].length;j++){
+    			if (this.targetUV[i][j]!=null) msp.targetUV[i][j]=this.targetUV[i][j].clone();
+    			else msp.targetUV[i][j]=null;
+    		}
+    	} else msp.targetUV=this.targetUV;
+    	
+//    	msp.pixelsUV=this.pixelsUV;
+    	
+    	if (clonePixelsUV && (this.pXYUV != null)) {
+    		msp.pXYUV=new double [this.pXYUV.length][this.pXYUV[0].length][];
+    		for (int i=0;i<this.pXYUV.length;i++) for (int j=0;j<this.pXYUV[i].length;j++){
+    			if (this.pXYUV[i][j]!=null) msp.pXYUV[i][j]=this.pXYUV[i][j].clone();
+    			else msp.pXYUV[i][j]=null;
+    		}
+    	} else msp.targetUV=this.targetUV;
+    	
+//    	msp.flatFieldForGrid=this.flatFieldForGrid;
+    	if (cloneFlatFieldForGrid && (this.flatFieldForGrid!=null)) msp.flatFieldForGrid=this.flatFieldForGrid.clone();
+    	else msp.flatFieldForGrid=this.flatFieldForGrid;
+    	
+//		msp.focusMask=this.focusMask;
+    	if (cloneFocusMask && (this.focusMask!=null)) msp.focusMask=this.focusMask.clone();
+    	else msp.focusMask=this.focusMask;
+    	return msp;
+    }
+    
+    public int [] getUVShiftRot(boolean shift){
+    	if (!shift) return this.UVShiftRot;
+    	int [][] reReMap=getRemapMatrix(this.UVShiftRot);
+    	int [] UVShiftRotCorr=this.UVShiftRot.clone();
+    	UVShiftRotCorr[0]-=reReMap[0][0]*this.minUV[0]+reReMap[0][1]*this.minUV[1];
+    	UVShiftRotCorr[1]-=reReMap[1][0]*this.minUV[0]+reReMap[1][1]*this.minUV[1];
+    	System.out.println("getUVShiftRot(true): minUV[0]="+minUV[0]+" minUV[1]="+minUV[1]);
+    	return UVShiftRotCorr;
+    }
+    
+    public int [][] getRemapMatrix(
+ 		   int [] UVShiftRot){
+/*        	   int [][] reReMap={
+ 			   {rotations[UVShiftRot[2]][0][0],rotations[UVShiftRot[2]][0][1],
+ 		       -(rotations[UVShiftRot[2]][0][0]*UVShiftRot[0] +rotations[UVShiftRot[2]][0][1]*UVShiftRot[1])},
+ 		       {rotations[UVShiftRot[2]][1][0],rotations[UVShiftRot[2]][1][1],
+     		       -(rotations[UVShiftRot[2]][1][0]*UVShiftRot[0] +rotations[UVShiftRot[2]][1][1]*UVShiftRot[1])}};
+*/
+ 	   // Moved shift calculation to calibrateGrid(), here just a regular R,T 2x3 matix
+ 	   int [][] reReMap={
+ 			   {rotations[UVShiftRot[2]][0][0],rotations[UVShiftRot[2]][0][1], UVShiftRot[0]},
+ 		       {rotations[UVShiftRot[2]][1][0],rotations[UVShiftRot[2]][1][1], UVShiftRot[1]}};
+ 	   return reReMap;
+    }
+    
+    public int [] combineUVShiftRot(
+ 		   int [] UVShiftRotA,
+ 		   int [] UVShiftRotB){
+ 	   int [][] reReMapA=getRemapMatrix(UVShiftRotA);
+ 	   int [][] reReMapB=getRemapMatrix(UVShiftRotB);
+ 	   int [] UVShiftRot=new int [3];
+ 	   UVShiftRot[0] = reReMapB[0][0]*reReMapA[0][2]+ reReMapB[0][1]*reReMapA[1][2] + reReMapB[0][2];
+ 	   UVShiftRot[1] = reReMapB[1][0]*reReMapA[0][2]+ reReMapB[1][1]*reReMapA[1][2] + reReMapB[1][2];
+ 	   UVShiftRot[2] = combinedRotations[UVShiftRotA[2]][UVShiftRotB[2]];
+ 	   return UVShiftRot; 
     }
     
     public double focusQualityOld(
@@ -6688,7 +6831,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
            private void invalidateCalibration(){
         	   this.reMap=null;    // invalidate if any
         	   this.targetUV=null; // invalidate if any
-               this.pixelsUV=null; // invalidate if any
+               this.pXYUV=null; // invalidate if any
                this.passNumber=1;
                resetCorrelationSizesUsed(); // reset which FFT sizes where used in correlation
            }
@@ -6702,12 +6845,12 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
            /* get height and width of the measured pattern array applies to PATTERN_GRID, targetUV and pixelsUV */
  
 		   public int getHeight(){
-			   if (this.pixelsUV==null) return 0;
-			   return this.pixelsUV.length;
+			   if (this.pXYUV==null) return 0;
+			   return this.pXYUV.length;
 		   }
 		   public int getWidth(){
-			   if (this.pixelsUV==null) return 0;
-			   return this.pixelsUV[0].length;
+			   if (this.pXYUV==null) return 0;
+			   return this.pXYUV[0].length;
 		   }
 		   /* Get physical target UV pair from measured pattern. Requires absolute mapping (by laser spots)
 		    *  Pair may be null if no pattern is detected for this node in the image
@@ -6718,8 +6861,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
            /* Get pixel X,Y pair for each node in the measured pattern. Calculated during absolute mapping (by laser spots)
             *  Pair may be null if no pattern is detected for this node in the image
             */
-           public double [][][] getPixelsUV(){
-        	   return this.pixelsUV;
+           public double [][][] getPXYUV(){
+        	   return this.pXYUV;
            }
            
            public int restorePatternGridFromGridList(
@@ -6778,9 +6921,14 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         			   // do not break black/white correspondence, always move by even number of cells
         			   if ((minU & 1)!=0 )minU--;
         			   if ((minV & 1)!=0 )minV--;
+        			   this.minUV[0]=minU;
+        			   this.minUV[1]=minV; // save shift to restore later
         			   this.PATTERN_GRID=setPatternGridArray(maxU-minU+1,maxV-minV+1);
         			   this.gridContrastBrightness=new double[4][this.PATTERN_GRID.length][this.PATTERN_GRID[0].length]; //{grid contrast, grid intensity red, grid intensity green, grid intensity blue}[v][u]
-        			   for (int n=0;n<4;n++) for (int v=0;v<this.gridContrastBrightness[0].length;v++) for (int u=0;u<this.gridContrastBrightness[0][0].length;u++) this.gridContrastBrightness[n][v][u]=0.0;
+        			   for (int n=0;n<4;n++)
+        				   for (int v=0;v<this.gridContrastBrightness[0].length;v++)
+        					   for (int u=0;u<this.gridContrastBrightness[0][0].length;u++)
+        						   this.gridContrastBrightness[n][v][u]=0.0;
 
         			   for (int n=0;n<pixelsXYSet.length;n++)
         				   for (int i=0;i<pixelsXYSet[n].length;i++) if ((pixelsXYSet[n][i]!=null)&&(pixelsUVSet[n][i]!=null)) {
@@ -7090,8 +7238,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
             * eighth  slice - blue intensity of the grid (avaraged around the grid node) 
             */
            public ImagePlus getCalibratedPatternAsImage(String title, int numUsedPointers){
-        	   if ((this.targetUV==null) ||(this.pixelsUV==null)) {
-        		   System.out.println("getCalibratedPatternAsImage(): this.targetUV="+((this.targetUV==null)?"null":"not null")+", this.pixelsUV="+((this.pixelsUV==null)?"null":"not null"));
+        	   if ((this.targetUV==null) ||(this.pXYUV==null)) {
+        		   System.out.println("getCalibratedPatternAsImage(): this.targetUV="+((this.targetUV==null)?"null":"not null")+", this.pixelsUV="+((this.pXYUV==null)?"null":"not null"));
         		   return null;
         	   }
         	   int numSlices=(this.gridContrastBrightness==null)?4:8;
@@ -7099,8 +7247,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   ImageStack stack=new ImageStack(getWidth(),getHeight());
         	   int index=0;
         	   for (int v=0;v<getHeight();v++) for (int u=0;u<getWidth();u++) {
-        		   if ((this.targetUV[v][u]==null) ||(this.pixelsUV[v][u]==null)||
-        				   (this.pixelsUV[v][u][0]<0.0) || (this.pixelsUV[v][u][1]<0.0)) { // disregard negative sensor pixels
+        		   if ((this.targetUV[v][u]==null) ||(this.pXYUV[v][u]==null)||
+        				   (this.pXYUV[v][u][0]<0.0) || (this.pXYUV[v][u][1]<0.0)) { // disregard negative sensor pixels
         			   pixels [0][index]=-1.0f;
         			   pixels [1][index]=-1.0f;
         			   pixels [2][index]= 0.0f;
@@ -7113,8 +7261,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         				   
         			   }
         		   } else {
-        			   pixels [0][index]=(float) this.pixelsUV[v][u][0];
-        			   pixels [1][index]=(float) this.pixelsUV[v][u][1];
+        			   pixels [0][index]=(float) this.pXYUV[v][u][0];
+        			   pixels [1][index]=(float) this.pXYUV[v][u][1];
         			   pixels [2][index]=(float) this.targetUV[v][u][0];
         			   pixels [3][index]=(float) this.targetUV[v][u][1];
         			   if (numSlices>4){
@@ -7144,8 +7292,8 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
            }
 // searching for single-pixel errors (program bug)           
            public ImagePlus getCalibratedPatternCurvatureAsImage(String title){
-        	   if ((this.targetUV==null) ||(this.pixelsUV==null)) {
-        		   String msg="this.targetUV="+((this.targetUV==null)?"null":"not null")+", this.pixelsUV="+((this.pixelsUV==null)?"null":"not null");
+        	   if ((this.targetUV==null) ||(this.pXYUV==null)) {
+        		   String msg="this.targetUV="+((this.targetUV==null)?"null":"not null")+", this.pixelsUV="+((this.pXYUV==null)?"null":"not null");
         		   IJ.showMessage("Error",msg);
         		   throw new IllegalArgumentException (msg);
         	   }
@@ -7171,13 +7319,13 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         		   for (int d=0;d<dirs.length;d++){
             		   int u1=u+dirs[d][0];
             		   int v1=v+dirs[d][1];
-        			   if ((this.targetUV[v1][u1]==null) ||(this.pixelsUV[v1][u1]==null)||
-            				   (this.pixelsUV[v1][u1][0]<0.0) || (this.pixelsUV[v1][u1][0]<0.0)) { // disregard negative sensor pixels
+        			   if ((this.targetUV[v1][u1]==null) ||(this.pXYUV[v1][u1]==null)||
+            				   (this.pXYUV[v1][u1][0]<0.0) || (this.pXYUV[v1][u1][0]<0.0)) { // disregard negative sensor pixels
         				   valid=false;
         				   break;
         			   } else {
-        				   avrg[0]+=weights[d]*this.pixelsUV[v1][u1][0];
-        				   avrg[1]+=weights[d]*this.pixelsUV[v1][u1][1];
+        				   avrg[0]+=weights[d]*this.pXYUV[v1][u1][0];
+        				   avrg[1]+=weights[d]*this.pXYUV[v1][u1][1];
         			   }
         		   }
         		   if (valid) {
@@ -7297,23 +7445,25 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 //		   
 // move elsewhere?
            /**
-            * Create this.targetUV and this.pixelsUV for th grid that does not have any laser pointer references
+            * Create this.targetUV and this.pixelsUV for the grid that does not have any laser pointer references
             */
            public void unCalibrateGrid(){
         	// calculate targetUV that maps PATTERN_GRID cells to the target (absolute) UV
         	   this.targetUV=new int    [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
-        	   this.pixelsUV=new double [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
+        	   this.pXYUV=new double [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
+// Or set it back to original 9do not touch, rotate/shift in the end?        	   
+        	   Arrays.fill(this.UVShiftRot, 0);
         	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++){
         		   if ((this.PATTERN_GRID[v][u]==null) || (this.PATTERN_GRID[v][u][0]==null)) {
         			   this.targetUV[v][u]=null;
-        			   this.pixelsUV[v][u]=null;
+        			   this.pXYUV[v][u]=null;
         		   } else {
         			   this.targetUV[v][u]=new int [2];
         			   this.targetUV[v][u][0]=u;
         			   this.targetUV[v][u][1]=v;
-        			   this.pixelsUV[v][u]=new double [2];
-        			   this.pixelsUV[v][u][0]=PATTERN_GRID[v][u][0][0];
-        			   this.pixelsUV[v][u][1]=PATTERN_GRID[v][u][0][1];
+        			   this.pXYUV[v][u]=new double [2];
+        			   this.pXYUV[v][u][0]=PATTERN_GRID[v][u][0][0];
+        			   this.pXYUV[v][u][1]=PATTERN_GRID[v][u][0][1];
         		   }
         	   }
         	   
@@ -7364,7 +7514,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   }
         	   // Later some pointers may be removed even if they are used to determine orientation/shift. But that should not lead
         	   // to white/black confusion
-        	   
+/*        	   
         	   int [][][] rotations={
         			   {{ 1, 0},{ 0, 1}}, // not mirrored
         			   {{ 0, 1},{-1, 0}},
@@ -7385,7 +7535,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         			   {0,0},
         			   {1,0},
         			   {0,0}};
-        			   
+*/        			   
         	   boolean [] possibleRotations={true,true,true,true,true,true,true,true};
 // If orientation is hinted, remove all other ones from the list of possible ones        	   
         	   if (hintRotation>=0){ // defind from the hintGrid
@@ -7558,7 +7708,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         		   }
         	   }
 // calculate remap array (rotation+translation) from the target UV to the measured grid UV.        	   
-        	   this.reMap=new int[2][3];
+        	   this.reMap=new int[2][3]; // seems it is never used?
         	   this.reMap[0][0]= rotations[rotation][0][0];
         	   this.reMap[0][1]= rotations[rotation][0][1];
         	   this.reMap[0][2]= uvShift[0];
@@ -7567,6 +7717,17 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   this.reMap[1][2]= uvShift[1];
 // calculate reverse remap array (rotation+translation) from the the measured grid UV to the target UV        	   
         	   int reRot=(rotation>=4)?rotation:((4-rotation) & 3); // number of reverse mirror-rotation
+//        	   int [] UVRot={uvShift[0],uvShift[1],reRot};
+        	   int [] UVRot={
+        			   -(rotations[reRot][0][0]*uvShift[0] +rotations[reRot][0][1]*uvShift[1]),
+        			   -(rotations[reRot][1][0]*uvShift[0] +rotations[reRot][1][1]*uvShift[1]),
+        			   reRot};
+        	   return  applyUVShiftRot(
+        			   UVRot, // int [] UVShiftRot,
+            		   uv,   // double [][]uv,
+            		   laserPointer,
+            		   noMessageBoxes);
+/* 
         	   int [][] reReMap={
         			   {rotations[reRot][0][0],rotations[reRot][0][1],
         		       -(rotations[reRot][0][0]*uvShift[0] +rotations[reRot][0][1]*uvShift[1])},
@@ -7581,11 +7742,11 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   }
 // calculate targetUV that maps PATTERN_GRID cells to the target (absolute) UV
         	   this.targetUV=new int    [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
-        	   this.pixelsUV=new double [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
+        	   this.pXYUV=new double [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
         	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++){
         		   if ((this.PATTERN_GRID[v][u]==null) || (this.PATTERN_GRID[v][u][0]==null)) {
         			   this.targetUV[v][u]=null;
-        			   this.pixelsUV[v][u]=null;
+        			   this.pXYUV[v][u]=null;
         		   } else {
         			   this.targetUV[v][u]=new int [2];
         			   this.targetUV[v][u][0]=reReMap[0][0]*u+reReMap[0][1]*v+reReMap[0][2];
@@ -7593,9 +7754,9 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 //        			   System.out.println("v="+v+", u="+u+", PATTERN_GRID.length="+PATTERN_GRID.length+", PATTERN_GRID[v].length="+PATTERN_GRID[v].length);
 //        			   System.out.println("this.pixelsUV.length="+this.pixelsUV.length);
 //        			   System.out.println("this.pixelsUV["+v+"].length="+this.pixelsUV[v].length);
-        			   this.pixelsUV[v][u]=new double [2];
-        			   this.pixelsUV[v][u][0]=PATTERN_GRID[v][u][0][0];
-        			   this.pixelsUV[v][u][1]=PATTERN_GRID[v][u][0][1];
+        			   this.pXYUV[v][u]=new double [2];
+        			   this.pXYUV[v][u][0]=PATTERN_GRID[v][u][0][0];
+        			   this.pXYUV[v][u][1]=PATTERN_GRID[v][u][0][1];
         		   }
         	   }
         	   int numGood=0;
@@ -7625,9 +7786,83 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   if ((debugLevel>0) && (numBad>0)){
         		   System.out.println("Removed "+numBad+" pointers that are too far from the predicted locations");
         	   }
-        	   
+        	   return numGood;
+*/        	   
+           }
+           
+           
+           public int applyUVShiftRot(
+        		   int [] UVShiftRot,
+        		   double [][]uv,
+        		   LaserPointer laserPointer,
+        		   boolean noMessageBoxes
+        		   ){
+        	   if (UVShiftRot!=null) this.UVShiftRot=UVShiftRot.clone();
+//        	   int reRot=(rotation>=4)?rotation:((4-rotation) & 3); // number of reverse mirror-rotation
+/*        	   int [][] reReMap={
+        			   {rotations[UVShiftRot[2]][0][0],rotations[UVShiftRot[2]][0][1],
+        		       -(rotations[UVShiftRot[2]][0][0]*UVShiftRot[0] +rotations[UVShiftRot[2]][0][1]*UVShiftRot[1])},
+        		       {rotations[UVShiftRot[2]][1][0],rotations[UVShiftRot[2]][1][1],
+            		       -(rotations[UVShiftRot[2]][1][0]*UVShiftRot[0] +rotations[UVShiftRot[2]][1][1]*UVShiftRot[1])}}; */
+        	   int [][] reReMap=getRemapMatrix(UVShiftRot);
+        	   if (debugLevel>1){
+//        		   System.out.println("rotation="+rotation+", reMap= [["+this.reMap[0][0]+","+this.reMap[0][1]+","+this.reMap[0][2]+"]["+
+//        				   +this.reMap[1][0]+","+this.reMap[1][1]+","+this.reMap[1][2]+"]]");      	   
+        		   System.out.println("reRot="+   UVShiftRot[2]+",  reReMap= [["+reReMap[0][0]+","+reReMap[0][1]+","+reReMap[0][2]+"]["+
+        				   +reReMap[1][0]+","+reReMap[1][1]+","+reReMap[1][2]+"]]");      	   
+        	   }
+// calculate targetUV that maps PATTERN_GRID cells to the target (absolute) UV
+        	   this.targetUV=new int    [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
+        	   this.pXYUV=new double [this.PATTERN_GRID.length][this.PATTERN_GRID[0].length][];
+        	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++){
+        		   if ((this.PATTERN_GRID[v][u]==null) || (this.PATTERN_GRID[v][u][0]==null)) {
+        			   this.targetUV[v][u]=null;
+        			   this.pXYUV[v][u]=null;
+        		   } else {
+        			   this.targetUV[v][u]=new int [2];
+        			   this.targetUV[v][u][0]=reReMap[0][0]*u+reReMap[0][1]*v+reReMap[0][2];
+        			   this.targetUV[v][u][1]=reReMap[1][0]*u+reReMap[1][1]*v+reReMap[1][2];
+//        			   System.out.println("v="+v+", u="+u+", PATTERN_GRID.length="+PATTERN_GRID.length+", PATTERN_GRID[v].length="+PATTERN_GRID[v].length);
+//        			   System.out.println("this.pixelsUV.length="+this.pixelsUV.length);
+//        			   System.out.println("this.pixelsUV["+v+"].length="+this.pixelsUV[v].length);
+        			   this.pXYUV[v][u]=new double [2];
+        			   this.pXYUV[v][u][0]=PATTERN_GRID[v][u][0][0];
+        			   this.pXYUV[v][u][1]=PATTERN_GRID[v][u][0][1];
+        		   }
+        	   }
+        	   int numGood=0;
+        	   int numBad=0;
+        	   double [] distUV=new double[2];
+        	   double dist;
+        	   if (laserPointer!=null) {
+        		   for (int i=0;i<uv.length;i++) if (uv[i]!=null) { //laserPointer == null > uv={}
+        			   // Verify that laser spots are inside specified distance from the cell centers        	   
+        			   distUV[0]=reReMap[0][0]*uv[i][0]+reReMap[0][1]*uv[i][1]+reReMap[0][2]-laserPointer.laserUVMap[i][0];
+        			   distUV[1]=reReMap[1][0]*uv[i][0]+reReMap[1][1]*uv[i][1]+reReMap[1][2]-laserPointer.laserUVMap[i][1];
+        			   dist=Math.sqrt(distUV[0]*distUV[0]+distUV[1]*distUV[1]);
+        			   if (debugLevel>1){
+        				   System.out.println("Laser spot #"+i+", distance from predicted ="+ IJ.d2s(dist,3)+" ("+IJ.d2s(200*dist,3)+
+        						   "% of cell radius), du="+IJ.d2s(distUV[0],3)+", dv="+IJ.d2s(distUV[1],3));
+        			   }
+        			   if ((2*dist)> laserPointer.maxOffsetFromCenter){
+        				   String msg="Laser point "+(i+1)+"(of "+uv.length+") is too far from the specified location, and this check is enforced in the configuration\n"+
+        						   "measured distance is "+ IJ.d2s(200*dist,1)+"% of the cell radius, specified is "+ IJ.d2s(100*laserPointer.maxOffsetFromCenter,1)+"%";
+        				   System.out.println("Warning:"+msg);
+        				   if (!noMessageBoxes) IJ.showMessage("Warning",msg);
+        				   numBad++;
+        				   uv[i]=null;
+        				   continue;
+        			   }
+        			   numGood++;
+        		   }
+        	   }
+        	   if ((debugLevel>0) && (numBad>0)){
+        		   System.out.println("Removed "+numBad+" pointers that are too far from the predicted locations");
+        	   }
         	   return numGood;        	   
            }
+
+           
            /**
             * Rotate/flip PATTERN_GRID to match expected
             * @param hintGrid [v][u][0 - pixel X, 1 - pixel Y, 2 - targetU, 3 - targetV

@@ -107,11 +107,18 @@ import org.apache.commons.configuration.XMLConfiguration;
     		public double      gridPeriod=0.0;  // average grid period, in pixels (to filter out (double-) reflected images
     		public boolean     noUsefulPSFKernels=false; // used to mark images w/o good PSF data
     		public double      diameter=0.0;
+    		public int []      UVShiftRot={0,0,0}; // shift and rotation of the grid
     		final int contrastIndex=2;
     		int getSetNumber(){return this.setNumber;}
         	public GridImageParameters(int index){
         		this.imgNumber=index;
         	}
+            public int [] getUVShiftRot(){
+            	return this.UVShiftRot;
+            }
+            public void setUVShiftRot(int [] UVShiftRot){
+            	this.UVShiftRot=UVShiftRot;
+            }
         	public int getStationNumber(){ // TODO: make only a single station number - in GridImageSet?
         		return this.stationNumber;
         	}
@@ -1504,6 +1511,7 @@ import org.apache.commons.configuration.XMLConfiguration;
         		String defaultPath,
         		PatternParameters patternParameters,
         		EyesisCameraParameters eyesisCameraParameters,
+    			EyesisAberrations.AberrationParameters aberrationParameters,
 				ImagePlus[] gridImages  ){ // null - use specified files
 			String [] extensions={".dcal-xml","-distcal.xml"};
 			CalibrationFileManagement.MultipleExtensionsFileFilter parFilter = new CalibrationFileManagement.MultipleExtensionsFileFilter("",extensions,"Distortion calibration *.dcal-xml files");
@@ -1520,7 +1528,8 @@ import org.apache.commons.configuration.XMLConfiguration;
 			this.gIS=null; // So readAllGrids will create it 
         	setFromXML(
         			pathname,
-            		eyesisCameraParameters);
+            		eyesisCameraParameters,
+        			aberrationParameters);
 			if (gridImages!=null) {
 //				this.pathName="";  // modified, keep the path anyway
 // overwrite saved paths with the provided images, number of images{ should match
@@ -1555,7 +1564,8 @@ import org.apache.commons.configuration.XMLConfiguration;
         	}
 */        
         public void setFromXML(String pathname,
-        		EyesisCameraParameters eyesisCameraParameters) {
+        		EyesisCameraParameters eyesisCameraParameters,
+    			EyesisAberrations.AberrationParameters aberrationParameters) {
         	this.eyesisCameraParameters=eyesisCameraParameters;
 
         	XMLConfiguration hConfig=null;
@@ -1617,11 +1627,18 @@ import org.apache.commons.configuration.XMLConfiguration;
         		else this.gIP[i].setStationNumber(0);
         		if (sub.getString("enabled")!=null) this.gIP[i].enabled=Boolean.parseBoolean(sub.getString("enabled"));
         		if (sub.getString("noUsefulPSFKernels")!=null) this.gIP[i].noUsefulPSFKernels=Boolean.parseBoolean(sub.getString("noUsefulPSFKernels"));
-        		if (sub.getString("setNumber")!=null) {
-        			this.gIP[i].setNumber=Integer.parseInt(sub.getString("setNumber"));
-        		} else {
-        			this.gIP[i].setNumber=-1;
-        		}
+        		this.gIP[i].setNumber=sub.getInt("setNumber",-1);
+// new
+        		this.gIP[i].hintedMatch=sub.getInt("hintedMatch",-1);
+        		this.gIP[i].enabled=sub.getBoolean("enabled",false);
+//        		if (aberrationParameters.trustEnabled && this.gIP[i].enabled) this.gIP[i].hintedMatch=2; // trusted
+        		if (aberrationParameters.trustEnabled) this.gIP[i].hintedMatch= this.gIP[i].enabled?2:-1; // trusted and only trusted to enabled
+      		
+//        		if (sub.getString("setNumber")!=null) {
+//        			this.gIP[i].setNumber=Integer.parseInt(sub.getString("setNumber"));
+//        		} else {
+//        			this.gIP[i].setNumber=-1;
+//        		}
         		for (int j=0;j<this.parameterDescriptions.length;j++){
         			if (sub.getString(parameterDescriptions[j][0])!=null)
         				this.pars[i][j] = Double.parseDouble(sub.getString(parameterDescriptions[j][0]));
@@ -1632,6 +1649,12 @@ import org.apache.commons.configuration.XMLConfiguration;
         					this.pars[i][j] = Double.NaN;
         				}
         		}
+        		int [] shiftRot={
+        				sub.getInt("gridShiftX", 0),
+        				sub.getInt("gridShiftY", 0),
+        				sub.getInt("gridRotate", 0)};
+        		this.gIP[i].setUVShiftRot(shiftRot);
+//        		getInt(String key, int defaultValue)
         	}
         	if (this.gIS!=null){
             	System.out.println("Using stored image set data");
@@ -1721,10 +1744,15 @@ import org.apache.commons.configuration.XMLConfiguration;
             	hConfig.addProperty("file.setNumber",this.gIP[i].setNumber);
             	hConfig.addProperty("file.name",this.gIP[i].path);
             	hConfig.addProperty("file.enabled",this.gIP[i].enabled);
+            	hConfig.addProperty("file.hintedMatch",this.gIP[i].hintedMatch); // new
             	hConfig.addProperty("file.timestamp",IJ.d2s(this.gIP[i].timestamp,6));
             	hConfig.addProperty("file.channel",this.gIP[i].channel);
             	hConfig.addProperty("file.stationNumber",this.gIP[i].getStationNumber());
             	hConfig.addProperty("file.noUsefulPSFKernels",this.gIP[i].noUsefulPSFKernels);
+            	int [] UVShiftRot=this.gIP[i].getUVShiftRot();
+            	hConfig.addProperty("file.gridShiftX",UVShiftRot[0]);
+            	hConfig.addProperty("file.gridShiftY",UVShiftRot[1]);
+            	hConfig.addProperty("file.gridRotate",UVShiftRot[2]);
             	for (int j=0;j<this.parameterDescriptions.length;j++){
                 	hConfig.addProperty("file."+parameterDescriptions[j][0],this.pars[i][j]);
             	}
@@ -1793,6 +1821,85 @@ import org.apache.commons.configuration.XMLConfiguration;
 
         }
         
+        public int [] setGridsWithRemap(
+        		int fileNumber,
+        		int [][] reMap,
+        		float [][] pixels,
+        		PatternParameters patternParameters){
+//        	boolean disableNoFlatfield=false;  // true only for processing transitional images - mixture of ff/ no-ff 
+    		int sensorWidth=this.eyesisCameraParameters.getSensorWidth(this.gIP[fileNumber].channel);
+    		int sensorHeight=this.eyesisCameraParameters.getSensorHeight(this.gIP[fileNumber].channel);
+        	int station=this.gIP[fileNumber].getStationNumber();
+        	int size=0;
+        	int size_extra=0;
+//    		int numOfGridNodes=0;
+//    		int numOfGridNodes_extra=0;
+        	for (int i=0;i<pixels[0].length;i++) if ((pixels[0][i]>=0) && (pixels[1][i]>=0) && (pixels[0][i]<sensorWidth) && (pixels[1][i]<sensorHeight)){
+        		int u=(int) Math.round(pixels[2][i]);
+        		int v=(int) Math.round(pixels[3][i]);
+    			int u1= reMap[0][0]*u + reMap[0][1]*v + reMap[0][2]; // u
+    			int v1= reMap[1][0]*u + reMap[1][1]*v + reMap[1][2]; // v;
+//        		if (patternParameters.getXYZM(u,v,this.debugLevel>1)!=null) size++;
+        		if (patternParameters.getXYZM(u1,v1,false,station)!=null) size++; // already assumes correct uv?
+        		else size_extra++;
+        	}
+        	
+        	
+        	this.gIP[fileNumber].resetMask();
+        	this.gIP[fileNumber].pixelsXY=new double [size][6];
+        	this.gIP[fileNumber].pixelsUV=new int    [size][2];
+        	this.gIP[fileNumber].pixelsXY_extra=new double [size_extra][6];
+        	this.gIP[fileNumber].pixelsUV_extra=new int    [size_extra][2];
+
+//        	numOfGridNodes+=size;
+//        	numOfGridNodes_extra+=size_extra;
+        	int index=0;
+        	int index_extra=0;
+//        	boolean vignettingAvailable=pixels.length>=8;
+//			this.gIP[fileNumber].flatFieldAvailable=pixels.length>=8;
+//        	if (disableNoFlatfield && !this.gIP[fileNumber].flatFieldAvailable) this.gIP[fileNumber].enabled=false; // just to use old mixed data
+        	for (int i=0;i<pixels[0].length;i++) if ((pixels[0][i]>=0) && (pixels[1][i]>=0) && (pixels[0][i]<sensorWidth) && (pixels[1][i]<sensorHeight)) {
+        		int u=(int) Math.round(pixels[2][i]);
+        		int v=(int) Math.round(pixels[3][i]);
+    			int u1= reMap[0][0]*u + reMap[0][1]*v + reMap[0][2]; // u
+    			int v1= reMap[1][0]*u + reMap[1][1]*v + reMap[1][2]; // v;
+
+        		
+//        		if (patternParameters.getXYZM(u,v,this.debugLevel>1)!=null) {
+        		
+        		if (patternParameters.getXYZM(u1,v1,false,station)!=null) {
+        			this.gIP[fileNumber].pixelsXY[index][0]=pixels[0][i];
+        			this.gIP[fileNumber].pixelsXY[index][1]=pixels[1][i];
+        			this.gIP[fileNumber].pixelsUV[index][0]= u1; // u
+        			this.gIP[fileNumber].pixelsUV[index][1]= v1; // v;
+        			if (this.gIP[fileNumber].flatFieldAvailable){
+        				this.gIP[fileNumber].pixelsXY[index][2]=pixels[4][i];
+        				for (int n=0;n<3;n++) this.gIP[fileNumber].pixelsXY[index][n+3]=pixels[n+5][i]/this.gIP[fileNumber].intensityRange[n];
+        			} else {
+        				for (int n=0;n<4;n++)this.gIP[fileNumber].pixelsXY[index][n+2]=1.0;
+        			}
+        			index++;
+        		} else {
+        			this.gIP[fileNumber].pixelsXY_extra[index_extra][0]=pixels[0][i];
+        			this.gIP[fileNumber].pixelsXY_extra[index_extra][1]=pixels[1][i];
+        			this.gIP[fileNumber].pixelsUV_extra[index_extra][0]= u1; // u
+        			this.gIP[fileNumber].pixelsUV_extra[index_extra][1]= v1; // v;
+        			if (this.gIP[fileNumber].flatFieldAvailable){
+        				this.gIP[fileNumber].pixelsXY_extra[index_extra][2]=pixels[4][i];
+        				for (int n=0;n<3;n++){
+        					this.gIP[fileNumber].pixelsXY_extra[index_extra][n+3]=pixels[n+5][i]/this.gIP[fileNumber].intensityRange[n];
+        				}
+        			} else {
+        				for (int n=0;n<4;n++)this.gIP[fileNumber].pixelsXY_extra[index_extra][n+2]=1.0;
+        			}
+        			index_extra++;
+        		}
+        	}
+        	int [] result = {size,size_extra};
+        	return result;
+        }
+        
+        
         public boolean readAllGrids(PatternParameters patternParameters){
         	boolean disableNoFlatfield=false;  // true only for processing transitional images - mixture of ff/ no-ff 
 			System.out.println("readAllGrids(), this.debugLevel="+this.debugLevel+" this.gIS is "+((this.gIS==null)?"null":"not null")); 
@@ -1829,7 +1936,7 @@ import org.apache.commons.configuration.XMLConfiguration;
         		this.gIP[fileNumber].motors=getMotorPositions(imp_grid, this.numMotors);
         		this.gIP[fileNumber].matchedPointers=getUsedPonters(imp_grid);
 //        		this.gIP[fileNumber].enabled=true; // will filter separately
-        		this.gIP[fileNumber].hintedMatch=-1; // unknown yet
+//        		this.gIP[fileNumber].hintedMatch=-1; // unknown yet - now read from the calibration file
         		
         		double [] saturations=new double [4];
         		for (int i=0;i<saturations.length;i++) {
@@ -1852,6 +1959,7 @@ import org.apache.commons.configuration.XMLConfiguration;
             	}
         		float [][] pixels=new float[stack.getSize()][]; // now - 8 (x,y,u,v,contrast, vignR,vignG,vignB
             	for (int i=0;i<pixels.length;i++) pixels[i]= (float[]) stack.getPixels(i+1); // pixel X : negative - no grid here
+
             	
             	if (this.eyesisCameraParameters.badNodeThreshold>0.0){
             		boolean thisDebug =false;
@@ -1876,10 +1984,29 @@ import org.apache.commons.configuration.XMLConfiguration;
                  if (this.debugLevel>1) {
                   if (numBadNodes>0)
                 	  System.out.print("  -- replaced "+numBadNodes+" bad grid nodes");
-                  System.out.println();
+                  int [] uvrot=this.gIP[fileNumber].getUVShiftRot();
+                  System.out.println(" shift:rot="+uvrot[0]+"/"+uvrot[1]+":"+uvrot[2]+
+                		  " enabled="+this.gIP[fileNumber].enabled+" hintedMatch="+this.gIP[fileNumber].hintedMatch);
                  }
             	}
-
+  
+    			this.gIP[fileNumber].flatFieldAvailable=pixels.length>=8;
+            	if (disableNoFlatfield && !this.gIP[fileNumber].flatFieldAvailable) this.gIP[fileNumber].enabled=false; // just to use old mixed data
+            	// start new code:
+/*
+        		this.gIP[i].UVShiftRot[0]=sub.getInt("gridShiftX", 0);
+        		this.gIP[i].UVShiftRot[1]=sub.getInt("gridShiftY", 0);
+        		this.gIP[i].UVShiftRot[2]=sub.getInt("gridRotate", 0);
+ */
+            	int [][] shiftRotMatrix= (new MatchSimulatedPattern()).getRemapMatrix(this.gIP[fileNumber].getUVShiftRot());
+            	int [] sizeSizeExtra=setGridsWithRemap(
+                		fileNumber,
+                		shiftRotMatrix, // int [][] reMap,
+                		pixels,
+                		patternParameters);
+            	numOfGridNodes+=sizeSizeExtra[0];
+            	numOfGridNodes_extra+=sizeSizeExtra[1];
+/*
             	
         		int sensorWidth=this.eyesisCameraParameters.getSensorWidth(this.gIP[fileNumber].channel);
         		int sensorHeight=this.eyesisCameraParameters.getSensorHeight(this.gIP[fileNumber].channel);
@@ -1890,7 +2017,7 @@ import org.apache.commons.configuration.XMLConfiguration;
             		int u=(int) Math.round(pixels[2][i]);
             		int v=(int) Math.round(pixels[3][i]);
 //            		if (patternParameters.getXYZM(u,v,this.debugLevel>1)!=null) size++;
-            		if (patternParameters.getXYZM(u,v,false,station)!=null) size++;
+            		if (patternParameters.getXYZM(u,v,false,station)!=null) size++; // already assumes correct uv?
             		else size_extra++;
             	}
             	this.gIP[fileNumber].resetMask();
@@ -1905,9 +2032,12 @@ import org.apache.commons.configuration.XMLConfiguration;
             	int index=0;
             	int index_extra=0;
 //            	boolean vignettingAvailable=pixels.length>=8;
-    			this.gIP[fileNumber].flatFieldAvailable=pixels.length>=8;
+//    			this.gIP[fileNumber].flatFieldAvailable=pixels.length>=8;
 
-            	if (disableNoFlatfield && !this.gIP[fileNumber].flatFieldAvailable) this.gIP[fileNumber].enabled=false; // just to use old mixed data
+//            	if (disableNoFlatfield && !this.gIP[fileNumber].flatFieldAvailable) this.gIP[fileNumber].enabled=false; // just to use old mixed data
+            	
+            	
+            	
             	for (int i=0;i<pixels[0].length;i++) if ((pixels[0][i]>=0) && (pixels[1][i]>=0) && (pixels[0][i]<sensorWidth) && (pixels[1][i]<sensorHeight)) {
             		int u=(int) Math.round(pixels[2][i]);
             		int v=(int) Math.round(pixels[3][i]);
@@ -1940,7 +2070,7 @@ import org.apache.commons.configuration.XMLConfiguration;
             			index_extra++;
             		}
             	}
-            	
+*/            	
             	
             	calcGridPeriod(fileNumber); // will be used to filter out reflections 
 //System.out.println ("pixelsXY["+fileNumber+"]length="+pixelsXY[fileNumber].length);
@@ -2366,6 +2496,13 @@ import org.apache.commons.configuration.XMLConfiguration;
         	if (this.gIP[numImg].gridImageSet!=null) this.gIP[numImg].gridImageSet.updateParameterVectorFromSet(parameters);
         	return parameters;
         }
+        public int [] getUVShiftRot(int numImg){
+        	return this.gIP[numImg].getUVShiftRot();
+        }
+        public GridImageParameters getGridImageParameters(int numImg){
+        	return this.gIP[numImg];
+        }
+        
         public double [] getAzEl(int imgNum){ // get sensor azimuth and elevation DANGEROUS - absolute indices of parameters
         	if ((imgNum<0) || (imgNum>=this.pars.length)) {
         		String msg="There are only "+this.pars.length+" images defined, requested #"+imgNum;

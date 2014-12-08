@@ -1588,14 +1588,16 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 			if (numEstimated>0) selectEstimated=gd.getNextBoolean();
 			boolean selectNewEnabled=false;
 			if (numNewEnabled>0) selectNewEnabled=gd.getNextBoolean();
-			if (selectNewEnabled) {
-				this.selectedImages[numSeries]=this.distortionCalibrationData.selectNewEnabled();
-				return numSeries; // caller will repeat with the same series
-			}
-			
 			if (this.distortionCalibrationData.eyesisCameraParameters.numStations>1){
 //				boolean removeUnselectedStations=gd.getNextBoolean();
 				for (int i=0;i<constrainByStation.length; i++) constrainByStation[i]=gd.getNextBoolean();
+			}
+			if (selectNewEnabled) {
+				this.selectedImages[numSeries]=this.distortionCalibrationData.selectNewEnabled();
+				for (int i =0; i<this.distortionCalibrationData.getNumImages();i++){
+					this.selectedImages[numSeries][i]&=constrainByStation[this.distortionCalibrationData.gIP[i].getStationNumber()];
+				}
+				return numSeries; // caller will repeat with the same series
 			}
 
 			if (selectEstimated) {
@@ -1613,6 +1615,9 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     			} else {
     				System.out.println("Could not copy from invalid series "+sourceSeries);
     			}
+				for (int i =0; i<this.distortionCalibrationData.getNumImages();i++){
+					this.selectedImages[numSeries][i]&=constrainByStation[this.distortionCalibrationData.gIP[i].getStationNumber()];
+				}
 				return numSeries; // caller will repeat with the same series
 			}
 			if (removeAllImages || selectAllImages) {

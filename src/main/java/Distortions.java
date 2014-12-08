@@ -33,7 +33,7 @@ import ij.text.TextWindow;
 
 import java.awt.Rectangle;
 import java.awt.geom.Point2D;
-import java.util.Arrays;
+//import java.util.Arrays;
 //import java.io.StringWriter;
 import java.util.List;
 import java.util.ArrayList;
@@ -2602,7 +2602,9 @@ For each point in the image
 					System.out.println("\n---- applyHintedGrids() image #"+numGridImage+" (imageNumber="+imageNumber+") "+
 							" dcd.gIP["+numGridImage+"].pixelsXY.length="+dcd.gIP[numGridImage].pixelsXY.length+
 							" dcd.gIP["+numGridImage+"].pixelsXY_extra.length="+dcd.gIP[numGridImage].pixelsXY_extra.length+
-							" grid period="+dcd.gIP[numGridImage].gridPeriod
+							" grid period="+dcd.gIP[numGridImage].gridPeriod+
+							" enabled="+dcd.gIP[numGridImage].enabled+
+							" hintedMatch="+dcd.gIP[numGridImage].hintedMatch
 							);
 					if (this.debugLevel>(debugThreshold)){
 						for (int i=0;i<dcd.gIP[numGridImage].pixelsXY.length;i++){
@@ -2626,7 +2628,7 @@ For each point in the image
 				int   [][][] pixelsUVSet={
 						dcd.gIP[numGridImage].pixelsUV,
 						dcd.gIP[numGridImage].pixelsUV_extra};
-
+// shifts pixelsUV to have minimal u,v of 0 (stores shift in this.minUV), sets PATTERN_GRID
 				matchSimulatedPattern.restorePatternGridFromGridList( 
 						pixelsXYSet, //double [][] pixelsXY,
 						pixelsUVSet, // int [][] pixelsUV,
@@ -2702,10 +2704,10 @@ For each point in the image
 /*		            		System.out.println("v="+v+", u="+u);
 		            		System.out.println(" matchSimulatedPattern.targetUV[v][u] is "+((matchSimulatedPattern.targetUV[v][u]==null)?"null":"not null"));
 		            		System.out.println(" matchSimulatedPattern.pixelsUV[v][u] is "+((matchSimulatedPattern.pixelsUV[v][u]==null)?"null":"not null"));*/
-		            		if ((matchSimulatedPattern.targetUV[v][u]!=null) && (matchSimulatedPattern.pixelsUV [v][u]!=null)){
+		            		if ((matchSimulatedPattern.targetUV[v][u]!=null) && (matchSimulatedPattern.pXYUV [v][u]!=null)){
 
-		            			if ((matchSimulatedPattern.targetUV[v][u]!=null) && (matchSimulatedPattern.pixelsUV [v][u]!=null) &&
-		            					(matchSimulatedPattern.pixelsUV[v][u][0]>=0.0) || (matchSimulatedPattern.pixelsUV[v][u][1]>=0.0)) { // disregard negative sensor pixels
+		            			if ((matchSimulatedPattern.targetUV[v][u]!=null) && (matchSimulatedPattern.pXYUV [v][u]!=null) &&
+		            					(matchSimulatedPattern.pXYUV[v][u][0]>=0.0) || (matchSimulatedPattern.pXYUV[v][u][1]>=0.0)) { // disregard negative sensor pixels
 //				            		System.out.println(" matchSimulatedPattern.targetUV[v][u] is "+((matchSimulatedPattern.targetUV[v][u]==null)?"null":"not null"));
 //				            		System.out.println(" matchSimulatedPattern.targetUV[v][u][0]= "+matchSimulatedPattern.targetUV[v][u][0]);
 //				            		System.out.println(" matchSimulatedPattern.targetUV[v][u][1]= "+matchSimulatedPattern.targetUV[v][u][1]); //********
@@ -2721,6 +2723,7 @@ For each point in the image
 	            			}
 		            		}
 		            	}
+		            	// Move to DCD?
 		            	dcd.gIP[numGridImage].resetMask();
 		            	dcd.gIP[numGridImage].pixelsXY=new double [size][6];
 		            	dcd.gIP[numGridImage].pixelsUV=new int    [size][2];
@@ -2732,11 +2735,11 @@ For each point in the image
 /*		            		System.out.println("+ v="+v+", u="+u);
 		            		System.out.println(" + matchSimulatedPattern.targetUV[v][u] is "+((matchSimulatedPattern.targetUV[v][u]==null)?"null":"not null"));
 		            		System.out.println(" + matchSimulatedPattern.pixelsUV[v][u] is "+((matchSimulatedPattern.pixelsUV[v][u]==null)?"null":"not null"));*/
-		            		if ((matchSimulatedPattern.targetUV[v][u]!=null) &&(matchSimulatedPattern.pixelsUV[v][u]!=null) ) {
+		            		if ((matchSimulatedPattern.targetUV[v][u]!=null) &&(matchSimulatedPattern.pXYUV[v][u]!=null) ) {
 //			            		System.out.println("++ v="+v+", u="+u+" index="+index+" ("+size+"), index_extra="+index_extra+" ("+size_extra+")");
 		            		
-		            			if ((matchSimulatedPattern.targetUV[v][u]!=null) &&(matchSimulatedPattern.pixelsUV[v][u]!=null) &&
-		            					(matchSimulatedPattern.pixelsUV[v][u][0]>=0.0) || (matchSimulatedPattern.pixelsUV[v][u][1]>=0.0)) { // disregard negative sensor pixels
+		            			if ((matchSimulatedPattern.targetUV[v][u]!=null) &&(matchSimulatedPattern.pXYUV[v][u]!=null) &&
+		            					(matchSimulatedPattern.pXYUV[v][u][0]>=0.0) || (matchSimulatedPattern.pXYUV[v][u][1]>=0.0)) { // disregard negative sensor pixels
 		            				if (
 		            						(v>=matchSimulatedPattern.gridContrastBrightness[0].length) ||
 		            						(u>=matchSimulatedPattern.gridContrastBrightness[0][0].length)){
@@ -2746,10 +2749,10 @@ For each point in the image
 		            							" v="+v+" u="+u);
 		            				}
 		            			}
-
+// setting dcd.gIP[numGridImage].pixelsUV[index] with rotated/shifted
 		            			if (patternParameters.getXYZM(matchSimulatedPattern.targetUV[v][u][0],matchSimulatedPattern.targetUV[v][u][1],false,station)!=null) {
-		            				dcd.gIP[numGridImage].pixelsXY[index][0]=matchSimulatedPattern.pixelsUV[v][u][0];
-		            				dcd.gIP[numGridImage].pixelsXY[index][1]=matchSimulatedPattern.pixelsUV[v][u][1];
+		            				dcd.gIP[numGridImage].pixelsXY[index][0]=matchSimulatedPattern.pXYUV[v][u][0];
+		            				dcd.gIP[numGridImage].pixelsXY[index][1]=matchSimulatedPattern.pXYUV[v][u][1];
 		            				dcd.gIP[numGridImage].pixelsUV[index][0]=matchSimulatedPattern.targetUV[v][u][0];
 		            				dcd.gIP[numGridImage].pixelsUV[index][1]=matchSimulatedPattern.targetUV[v][u][1];
 		            				dcd.gIP[numGridImage].pixelsXY[index][2]=matchSimulatedPattern.gridContrastBrightness[0][v][u]; // grid contrast
@@ -2758,8 +2761,8 @@ For each point in the image
 		            				dcd.gIP[numGridImage].pixelsXY[index][5]=matchSimulatedPattern.gridContrastBrightness[3][v][u]/dcd.gIP[numGridImage].intensityRange[2]; // blue
 		            				index++;
 		            			} else {
-		            				dcd.gIP[numGridImage].pixelsXY_extra[index_extra][0]=matchSimulatedPattern.pixelsUV[v][u][0];
-		            				dcd.gIP[numGridImage].pixelsXY_extra[index_extra][1]=matchSimulatedPattern.pixelsUV[v][u][1];
+		            				dcd.gIP[numGridImage].pixelsXY_extra[index_extra][0]=matchSimulatedPattern.pXYUV[v][u][0];
+		            				dcd.gIP[numGridImage].pixelsXY_extra[index_extra][1]=matchSimulatedPattern.pXYUV[v][u][1];
 		            				dcd.gIP[numGridImage].pixelsUV_extra[index_extra][0]=matchSimulatedPattern.targetUV[v][u][0];
 		            				dcd.gIP[numGridImage].pixelsUV_extra[index_extra][1]=matchSimulatedPattern.targetUV[v][u][1];
 		            				dcd.gIP[numGridImage].pixelsXY_extra[index_extra][2]=matchSimulatedPattern.gridContrastBrightness[0][v][u]; // grid contrast
@@ -2773,8 +2776,21 @@ For each point in the image
 		            	dcd.gIP[numGridImage].hintedMatch =(hintGridTolerance>0.0)?2:1; // orientation or both orientation and translation
 						dcd.gIP[numGridImage].matchedPointers=rslt; // update number of matched pointers
 						if ((dcd.gIP[numGridImage].hintedMatch>1) || (dcd.gIP[numGridImage].matchedPointers>0)) numSuccess++;
+						// Update rotation/shift
+						//matchSimulatedPattern
+						int [] fileUVShiftRot=dcd.gIP[numGridImage].getUVShiftRot();
+						int [] extraUVShiftRot=matchSimulatedPattern.getUVShiftRot(true); // last shift/rotation during matching pattern, correct for zero shift
+						int [] extraDbg=matchSimulatedPattern.getUVShiftRot(false);
+						int [] combinedUVShiftRot=matchSimulatedPattern.combineUVShiftRot(fileUVShiftRot,extraUVShiftRot);
+						dcd.gIP[numGridImage].setUVShiftRot(combinedUVShiftRot);
 						System.out.println("applyHintedGrids(): dcd.gIP["+numGridImage+"].hintedMatch="+dcd.gIP[numGridImage].hintedMatch+
 								" dcd.gIP["+numGridImage+"].matchedPointers="+dcd.gIP[numGridImage].matchedPointers+ " points:"+index+" extra points:"+index_extra);
+						// testing rot/shift:
+						String nonzero=((extraUVShiftRot[0]==0)&&(extraUVShiftRot[1]==0)&&(extraUVShiftRot[2]==0))?" ":"*";
+						System.out.println("applyHintedGrids(): fileUVShiftRot=    "+fileUVShiftRot[0]+"/"+fileUVShiftRot[1]+":"+fileUVShiftRot[2]);
+						System.out.println("                   "+nonzero+"extraUVShiftRot=   "+extraUVShiftRot[0]+"/"+extraUVShiftRot[1]+":"+extraUVShiftRot[2]);
+						System.out.println("                    combinedUVShiftRot="+combinedUVShiftRot[0]+"/"+combinedUVShiftRot[1]+":"+combinedUVShiftRot[2]);
+						System.out.println("                    extraDbg="+extraDbg[0]+"/"+extraDbg[1]+":"+extraDbg[2]);
 					}
 				}
 			}
@@ -3664,6 +3680,7 @@ List calibration
 	    		errors,
 	    		numPairs,
 	    		this.showIndex,
+	    		true, // grid match
 	    		this.showRMS,
 	    		this.showPoints,
 	    		this.showLensLocation,
@@ -4055,6 +4072,7 @@ List calibration
     		double [] errors,
     		int    [] numPairs,
     		boolean showIndex,
+    		boolean showGridMatch,
     		boolean showErrors,
     	    boolean showPoints,
     		boolean showLensCoordinates,
@@ -4104,6 +4122,32 @@ List calibration
 			}
 			sb.append("\n");
 	    	
+	    }
+	    if (showGridMatch){
+			sb.append("Grid Match"+"\tX/Y:ROT");
+			for (int imgIndex=0;imgIndex<numImages;imgIndex++){
+				int imgNum=imgIndices[imgIndex]; // image number
+				int [] shiftRot=fittingStrategy.distortionCalibrationData.getUVShiftRot(imgNum);
+				sb.append("\t"+shiftRot[0]+"/"+shiftRot[1]+":"+shiftRot[2]);
+			}
+			sb.append("\n");
+			
+			sb.append("Lasers(matched)"+"\t");
+			for (int imgIndex=0;imgIndex<numImages;imgIndex++){
+				int imgNum=imgIndices[imgIndex]; // image number
+				
+    			int numPointers=0; // count number of laser pointers
+    	        DistortionCalibrationData.GridImageParameters gip=fittingStrategy.distortionCalibrationData.getGridImageParameters(imgNum);
+    			if (gip.laserPixelCoordinates!=null){
+    				for (int j=0;j<gip.laserPixelCoordinates.length;j++) if (gip.laserPixelCoordinates[j]!=null) numPointers++;
+    			}
+    			sb.append("\t");
+    			if (!gip.enabled) sb.append("(");
+    			sb.append(numPointers+"("+gip.matchedPointers+"):"+gip.hintedMatch +
+    					" "+IJ.d2s(gip.gridPeriod,1));
+    			if (!gip.enabled) sb.append(")");
+			}
+			sb.append("\n");
 	    }
 		if (showErrors) {
 				sb.append("--- RMS "+IJ.d2s(rms,3+extraDecimals)+"\tpix");
@@ -4996,7 +5040,7 @@ List calibration
     						" ("+IJ.d2s(this.currentRMSPure,8)+")"+
     						". Calculating next Jacobian. Points:"+this.Y.length+" Parameters:"+this.currentVector.length);
     			}
-    			if (this.debugLevel>1) {
+    			if ((this.debugLevel>0) && ((this.debugLevel>1) || ((System.nanoTime()-this.startTime)>10000000000.0))) {
     				System.out.println(this.seriesNumber+": initial RMS="+IJ.d2s(this.currentRMS,8)+
     						" ("+IJ.d2s(this.currentRMSPure,8)+")"+
     						". Calculating next Jacobian. Points:"+this.Y.length+" Parameters:"+this.currentVector.length);
@@ -5945,13 +5989,16 @@ List calibration
     }
     
     
-    public void setDistortionFromImageStack(String path, boolean overwriteExtrinsic){
+    public void setDistortionFromImageStack(
+    		String path,
+    		boolean overwriteExtrinsic,
+    		boolean overwriteDistortion){
     	int indexPeriod=path.indexOf('.',path.lastIndexOf(Prefs.getFileSeparator()));
     	int numSubCameras=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.eyesisSubCameras[0].length;
     	for (int chNum=0;chNum<numSubCameras;chNum++){
     		String channelPath=path.substring(0,indexPeriod-2)+String.format("%02d",chNum)+path.substring(indexPeriod);
     		try { // disable here for now
-    			setDistortionFromImageStack(channelPath, chNum, false, overwriteExtrinsic);
+    			setDistortionFromImageStack(channelPath, chNum, false, overwriteExtrinsic, overwriteDistortion);
     		} catch (Exception e) {
     			System.out.println("setDistortionFromImageStack(): " + e.toString());
     			e.printStackTrace();
@@ -5959,7 +6006,12 @@ List calibration
     	}
     }
     
-    public void setDistortionFromImageStack(String path, int numSensor, boolean reportProblems, boolean overwriteExtrinsic){
+    public void setDistortionFromImageStack(
+    		String path,
+    		int numSensor,
+    		boolean reportProblems,
+    		boolean overwriteExtrinsic,
+    		boolean overwriteDistortion){
 		Opener opener=new Opener();
 		ImagePlus imp=opener.openImage("", path);
     	if (imp==null) {
@@ -5971,12 +6023,16 @@ List calibration
     	}
 		if (this.debugLevel>0) System.out.println("Read "+path+" as a sensor calibration data");
     	(new JP46_Reader_camera(false)).decodeProperiesFromInfo(imp);
-    	setDistortionFromImageStack(imp, numSensor, overwriteExtrinsic);
+    	setDistortionFromImageStack(imp, numSensor, overwriteExtrinsic, overwriteDistortion);
     	this.pathNames[numSensor]=path;
     }
     
     //TODO: look more after testing. Currently all station parameters are set from the sensor images, may be minor differences
-    public void setDistortionFromImageStack(ImagePlus imp, int numSensor, boolean overwriteExtrinsic){
+    public void setDistortionFromImageStack(
+    		ImagePlus imp,
+    		int numSensor,
+    		boolean overwriteExtrinsic,
+    		boolean overwriteDistortion){
 //    	int corrX=0,corrY=1,
     	int corrMask=2;
     	if (numSensor<0) {
@@ -6104,8 +6160,8 @@ List calibration
         	if (imageSubCam==numSensor){
         		// vector from the data we just set
         		double [] parVector=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getParametersVector(stationNumber,imageSubCam);
-        		if (overwriteExtrinsic) fittingStrategy.distortionCalibrationData.setSubcameraParameters(parVector,imgNum);
-        		else                    fittingStrategy.distortionCalibrationData.setIntrinsicParameters(parVector,imgNum);
+        		if       (overwriteExtrinsic)  fittingStrategy.distortionCalibrationData.setSubcameraParameters(parVector,imgNum);
+        		else  if (overwriteDistortion) fittingStrategy.distortionCalibrationData.setIntrinsicParameters(parVector,imgNum);
         	}
         }
         
@@ -9987,6 +10043,7 @@ M * V = B
 		boolean [] selectedImagesDebug=null;
 		boolean debugThis=false;
 		int maxDebugImages=10;
+		if (this.debugLevel>0) System.out.println("updateCameraParametersFromCalculated("+allImages+")");
 		if (this.debugLevel>2){
 			int numSel=0;
 			for (int i=0;i<selectedImages.length;i++) if (selectedImages[i]) numSel++;
