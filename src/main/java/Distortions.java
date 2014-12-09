@@ -2780,7 +2780,7 @@ For each point in the image
 						//matchSimulatedPattern
 						int [] fileUVShiftRot=dcd.gIP[numGridImage].getUVShiftRot();
 						int [] extraUVShiftRot=matchSimulatedPattern.getUVShiftRot(true); // last shift/rotation during matching pattern, correct for zero shift
-						int [] extraDbg=matchSimulatedPattern.getUVShiftRot(false);
+//						int [] extraDbg=matchSimulatedPattern.getUVShiftRot(false);
 						int [] combinedUVShiftRot=matchSimulatedPattern.combineUVShiftRot(fileUVShiftRot,extraUVShiftRot);
 						dcd.gIP[numGridImage].setUVShiftRot(combinedUVShiftRot);
 						System.out.println("applyHintedGrids(): dcd.gIP["+numGridImage+"].hintedMatch="+dcd.gIP[numGridImage].hintedMatch+
@@ -2790,7 +2790,7 @@ For each point in the image
 						System.out.println("applyHintedGrids(): fileUVShiftRot=    "+fileUVShiftRot[0]+"/"+fileUVShiftRot[1]+":"+fileUVShiftRot[2]);
 						System.out.println("                   "+nonzero+"extraUVShiftRot=   "+extraUVShiftRot[0]+"/"+extraUVShiftRot[1]+":"+extraUVShiftRot[2]);
 						System.out.println("                    combinedUVShiftRot="+combinedUVShiftRot[0]+"/"+combinedUVShiftRot[1]+":"+combinedUVShiftRot[2]);
-						System.out.println("                    extraDbg="+extraDbg[0]+"/"+extraDbg[1]+":"+extraDbg[2]);
+//						System.out.println("                    extraDbg="+extraDbg[0]+"/"+extraDbg[1]+":"+extraDbg[2]);
 					}
 				}
 			}
@@ -7035,8 +7035,8 @@ List calibration
     				this.startTime+=(System.nanoTime()-startDialogTime); // do not count time used by the User.
     				if (this.showThisImages) showDiff (this.currentfX, "fit-"+this.iterationStepNumber);
     				if (this.showNextImages) showDiff (this.nextfX,    "fit-"+(this.iterationStepNumber+1));
-    			} else if ((this.debugLevel>0) && ((this.debugLevel>1) || ((System.nanoTime()-this.startTime)>10000000000.0))){ // > 10 sec
-					System.out.println("--> LevenbergMarquardt(): series:step ="+this.seriesNumber+":"+this.iterationStepNumber+
+    			} else if (this.debugLevel>1){
+					System.out.println("==> LevenbergMarquardt(): before action series:step ="+this.seriesNumber+":"+this.iterationStepNumber+
     						", RMS="+IJ.d2s(this.currentRMS,8)+
     						" ("+IJ.d2s(this.firstRMS,8)+") "+
     						", RMSPure="+IJ.d2s(this.currentRMSPure,8)+
@@ -7052,6 +7052,14 @@ List calibration
    	   						" ("+IJ.d2s(this.firstRMSPure,8)+")"+
    	   						" ");
 //   	   				showStatus(this.seriesNumber+": "+"Step #"+this.iterationStepNumber+" RMS="+IJ.d2s(this.currentRMS,8)+ " ("+IJ.d2s(this.firstRMS,8)+")",0);
+				}
+				if ((this.debugLevel>0) && ((this.debugLevel>1) || ((System.nanoTime()-this.startTime)>10000000000.0))){ // > 10 sec
+					System.out.println("--> LevenbergMarquardt(): series:step ="+this.seriesNumber+":"+this.iterationStepNumber+
+							", RMS="+IJ.d2s(this.currentRMS,8)+
+							" ("+IJ.d2s(this.firstRMS,8)+") "+
+							", RMSPure="+IJ.d2s(this.currentRMSPure,8)+
+							" ("+IJ.d2s(this.firstRMSPure,8)+
+							") at "+ IJ.d2s(0.000000001*(System.nanoTime()-this.startTime),3));
 				}
 				if (!cont){
 					if (this.saveSeries) {

@@ -21,7 +21,8 @@ import Jama.Matrix;
 		final int numInputs= 53; //27; // with A8...// 24;   // parameters in subcamera+...
 	    final int numOutputs=42; //16; // with A8...//13;  // parameters in a single camera
 //		final
-		boolean cummulativeCorrection=true; // r_xy, r_od for higher terms are relative to lower ones
+//		boolean cummulativeCorrection=true; // r_xy, r_od for higher terms are relative to lower ones
+		boolean cummulativeCorrection=false; //true; // r_xy, r_od for higher terms are relative to lower ones
 		public double focalLength=4.5;
 		public double pixelSize=  2.2; //um
 		public double distortionRadius=  2.8512; // mm - half width of the sensor
@@ -917,7 +918,7 @@ dPXmmc/dphi=
         		}
         	}
         }
-        public double [][] calcPartialDerivatives(
+        public double [][] calcPartialDerivatives_old(
         		double xp, // target point horizontal, positive - right,  mm
         		double yp, // target point vertical,   positive - down,  mm
         		double zp, // target point horizontal, positive - away from camera,  mm
@@ -1266,6 +1267,325 @@ dPXmmc/dphi=
         	partDeriv[17][1]=  1.0;
             return partDeriv;
         }
+        
+
+        
+        public double [][] calcPartialDerivatives(
+        		double xp, // target point horizontal, positive - right,  mm
+        		double yp, // target point vertical,   positive - down,  mm
+        		double zp, // target point horizontal, positive - away from camera,  mm
+        		boolean calculateAll){ // calculate derivatives, false - values only
+//        	this.cummulativeCorrection=false; // just debugging
+        	final double maxRelativeRadius=2.0; // make configurable? 
+        	
+        	// TODO - add reduced calculations for less terms?
+//        	final int numDerivatives=44; // 18+6*2+7*2; // 18  for radial and 26 more for non-radial
+        	final int numRadialDerivatives=18;
+        	final int numNonRadialDerivatives=26;
+        	final int distortionCIndex=15; // a8->9, a7->10, a6->11, a5->12, a->13, b->14, c->15
+        	double partDeriv[][] = new double [calculateAll?(numRadialDerivatives+numNonRadialDerivatives):1][2];
+//        	double [] XYZ= {xp-this.x0, yp-this.y0, zp-this.z0};
+        	double [] XYZ= {xp-this.x0, yp+this.y0, zp-this.z0}; // Y - "down" (as in images), not up
+        	double [] XeYeZe={
+        			this.rotMatrix[0][0]*XYZ[0] + this.rotMatrix[0][1]*XYZ[1] + this.rotMatrix[0][2]*XYZ[2],
+        			this.rotMatrix[1][0]*XYZ[0] + this.rotMatrix[1][1]*XYZ[1] + this.rotMatrix[1][2]*XYZ[2],
+        			this.rotMatrix[2][0]*XYZ[0] + this.rotMatrix[2][1]*XYZ[1] + this.rotMatrix[2][2]*XYZ[2]+this.distance
+        	};
+        	// PXYmmc - pinhole (non-distorted) projection coordinates. metric (in mm)
+        	double [] PXYmmc={this.focalLength/XeYeZe[2]*XeYeZe[0],this.focalLength/XeYeZe[2]*XeYeZe[1]};
+        	// now each term has individual radius
+//        	double [] rr=new double [r_xyod.length];
+        	// Geometric - get to pinhole coordinates on the sensor        	
+            double [][] dXeYeZe=null; //[14];
+            double [][] dPXYmmc=null;
+
+    		/*
+   		 Modifying to accommodate for eccentricity of different terms (2 parameters per term) and elliptical shape (another 2 terms). When all are
+   		 zeroes, the old parameters are in effect:
+   				Rdist/R=A8*R^7+A7*R^6+A6*R^5+A5*R^4+A*R^3+B*R^2+C*R+(1-A6-A7-A6-A5-A-B-C)");
+   				Rdist/R=A8*R6^7+A7*R5^6+A6*R4^5+A5*R3^4+A*R2^3+B*R1^2+C*R0+(1-A6-A7-A6-A5-A-B-C)");
+   				R[i] depends on px,py and r_xy[i][], r_o[i] (positive - "landscape", negative - "portrait"), r_d (positive - along y=x, negative - along y=-x)
+   				R[i] = r0[i]*(1+  (r_od[i][0]*(y[i]**2-x[i]**2)+ 2*r_od[i][1]*x[i]*y[i])/r0[i]**2;
+   				r0[i]=sqrt(x[i]**2+y[2]**2)
+   				x[i]=pixel_x-px0-((i>0)?r_xy[i-1][0]:0) 
+   				y[i]=pixel_y-py0-((i>0)?r_xy[i-1][1]:0)
+   		*/	
+        	double [] a={this.distortionC,this.distortionB,this.distortionA,this.distortionA5,this.distortionA6,this.distortionA7,this.distortionA8};
+        	double deltaX=0.0,deltaY=0.0; // difference between distorted and non-distorted as a fraction of this.distortionRadius
+        	double x=PXYmmc[0]/this.distortionRadius; // was xmmc
+        	double y=PXYmmc[1]/this.distortionRadius; // was ymmc
+        	double dDeltaX_dx=0.0, dDeltaX_dy=0.0, dDeltaY_dx=0.0, dDeltaY_dy=0;  
+        	if (calculateAll){
+            	for (double [] r:partDeriv) Arrays.fill(r, 0.0); // will fill the [0] (value) too, should be done before calculation of these 2 values
+            	// Geometric - get to pinhole coordinates on the sensor        	
+                dXeYeZe=new double[9][3]; //[14];
+             // Geometric - get to pinhole coordinates on the sensor        	
+                dXeYeZe[0][0]=XeYeZe[0];
+                dXeYeZe[0][1]=XeYeZe[1];
+                dXeYeZe[0][2]=XeYeZe[2];
+    // /dphi            
+                dXeYeZe[1][0]=(-cPS*sPH + sPS*sTH*cPH)*XYZ[0]                    +(-cPS*cPH-sPS*sTH*sPH)*XYZ[2];
+                dXeYeZe[1][1]=(-sPS*sPH-cPS*sTH*cPH)  *XYZ[0]                    +(-sPS*cPH+cPS*sTH*sPH)*XYZ[2];
+                dXeYeZe[1][2]=(cTH*cPH)*XYZ[0]                                     -cTH*sPH* XYZ[2];
+    // /dtheta
+                dXeYeZe[2][0]=(sPS*cTH*sPH)*XYZ[0]              -sPS*sTH*XYZ[1]  +(sPS*cTH*cPH)*XYZ[2];
+                dXeYeZe[2][1]=(-cPS*cTH*sPH)*XYZ[0]             +cPS*sTH*XYZ[1]  +(-cPS*cTH*cPH)*XYZ[2];
+                dXeYeZe[2][2]=(-sTH*sPH)*XYZ[0]                 -cTH*XYZ[1]      -sTH*cPH* XYZ[2];
+    // /dpsi            
+                dXeYeZe[3][0]=(-sPS*cPH+cPS*sTH*sPH)*XYZ[0]     +cPS*cTH*XYZ[1]  +(sPS*sPH+cPS*sTH*cPH)*XYZ[2];
+                dXeYeZe[3][1]=(cPS*cPH+ sPS*sTH*sPH)*XYZ[0]     +sPS*cTH*XYZ[1]  +(-cPS*sPH+sPS*sTH*cPH)*XYZ[2];
+                dXeYeZe[3][2]=0.0;
+    // /dX0
+//              dXeYeZe[4][0]=-cPS*cPH+sPS*sTH*sPH; // bad?
+                dXeYeZe[4][0]=-cPS*cPH-sPS*sTH*sPH; // bad?
+                dXeYeZe[4][1]=-sPS*cPH+cPS*sTH*sPH;
+                dXeYeZe[4][2]=-cTH*sPH;
+    // /dY0
+//                dXeYeZe[5][0]=-sPS*cTH;
+//                dXeYeZe[5][1]= cPS*cTH;
+//                dXeYeZe[5][2]= sTH;
+                dXeYeZe[5][0]=+sPS*cTH;
+                dXeYeZe[5][1]=-cPS*cTH;
+                dXeYeZe[5][2]=-sTH;
+    // /dZ0
+//              dXeYeZe[6][0]= cPS*sPH+sPS*sTH*cPH; //bad?
+                dXeYeZe[6][0]= cPS*sPH-sPS*sTH*cPH; //bad?
+                dXeYeZe[6][1]= sPS*sPH+cPS*sTH*cPH;
+                dXeYeZe[6][2]=-cTH*cPH;
+    // /df
+                dXeYeZe[7][0]=0.0;
+                dXeYeZe[7][1]=0.0;
+                dXeYeZe[7][2]=0.0;
+    // /ddist
+                dXeYeZe[8][0]=0.0;
+                dXeYeZe[8][1]=0.0;
+                dXeYeZe[8][2]=1.0;
+                
+                
+                dPXYmmc=new double[9][2]; //[14];
+             // TODO: move up        	
+//              double [][] dPXYmmc=new double[9][2]; //[14];
+              dPXYmmc[0][0]=PXYmmc[0]; // is it needed? probably not used
+              dPXYmmc[0][1]=PXYmmc[1];
+  //(4) PXmmc =f/Ze*  Xe  // mm, left from the lens axis intersection with the sensor
+              
+  //dPXmmc/dphi   = f/Ze * dXe/dphi - f*Xe/Ze^2 * dZe/dphi
+              dPXYmmc[1][0]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[1][0]-dXeYeZe[0][0]/dXeYeZe[0][2]*dXeYeZe[1][2]);
+  //dPXmmc/dtheta = f/Ze * dXe/dtheta - f*Xe/Ze^2 * dZe/dtheta
+              dPXYmmc[2][0]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[2][0]-dXeYeZe[0][0]/dXeYeZe[0][2]*dXeYeZe[2][2]);
+  //dPXmmc/dpsi   = f/Ze * dXe/dpsi - f*Xe/Ze^2 * dZe/dpsi
+              dPXYmmc[3][0]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[3][0]-dXeYeZe[0][0]/dXeYeZe[0][2]*dXeYeZe[3][2]);
+  //dPXmmc/dX0    = f/Ze * dXe/dX0 - f*Xe/Ze^2 * dZe/dX0
+              dPXYmmc[4][0]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[4][0]-dXeYeZe[0][0]/dXeYeZe[0][2]*dXeYeZe[4][2]);
+  //dPXmmc/dY0    = f/Ze * dXe/dY0 - f*Xe/Ze^2 * dZe/dY0
+              dPXYmmc[5][0]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[5][0]-dXeYeZe[0][0]/dXeYeZe[0][2]*dXeYeZe[5][2]);
+  //dPXmmc/dZ0    = f/Ze * dXe/dZ0 - f*Xe/Ze^2 * dZe/dZ0
+              dPXYmmc[6][0]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[6][0]-dXeYeZe[0][0]/dXeYeZe[0][2]*dXeYeZe[6][2]); //bad?
+  //dPXmmc/df     = Xe/Ze
+              dPXYmmc[7][0]=dXeYeZe[0][0]/dXeYeZe[0][2];
+  //dPXmmc/ddist =  - f*Xe/Ze^2
+              dPXYmmc[8][0]=-this.focalLength*dXeYeZe[0][0]/(dXeYeZe[0][2]*dXeYeZe[0][2]);
+
+  //(5) PYmmc =f/Ze*  Ye  // mm, up from the lens axis intersection with the sensor
+  //dPYmmc/dphi   = f/Ze * dYe/dphi - f*Ye/Ze^2 * dZe/dphi
+              dPXYmmc[1][1]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[1][1]-dXeYeZe[0][1]/dXeYeZe[0][2]*dXeYeZe[1][2]);
+  //dPYmmc/dtheta = f/Ze * dYe/dtheta - f*Ye/Ze^2 * dZe/dtheta
+              dPXYmmc[2][1]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[2][1]-dXeYeZe[0][1]/dXeYeZe[0][2]*dXeYeZe[2][2]);
+  //dPYmmc/dpsi   = f/Ze * dYe/dpsi - f*Ye/Ze^2 * dZe/dpsi
+              dPXYmmc[3][1]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[3][1]-dXeYeZe[0][1]/dXeYeZe[0][2]*dXeYeZe[3][2]);
+  //dPYmmc/dX0    = f/Ze * dYe/dX0 - f*Ye/Ze^2 * dZe/dX0
+              dPXYmmc[4][1]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[4][1]-dXeYeZe[0][1]/dXeYeZe[0][2]*dXeYeZe[4][2]);
+  //dPYmmc/dY0    = f/Ze * dYe/dY0 - f*Ye/Ze^2 * dZe/dY0
+              dPXYmmc[5][1]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[5][1]-dXeYeZe[0][1]/dXeYeZe[0][2]*dXeYeZe[5][2]);
+  //dPYmmc/dZ0    = f/Ze * dYe/dZ0 - f*Ye/Ze^2 * dZe/dZ0
+              dPXYmmc[6][1]=this.focalLength/dXeYeZe[0][2]*(dXeYeZe[6][1]-dXeYeZe[0][1]/dXeYeZe[0][2]*dXeYeZe[6][2]); // good?
+  //dPYmmc/df     = Ye/Ze
+              dPXYmmc[7][1]=dXeYeZe[0][1]/dXeYeZe[0][2];
+  //dPYmmc/ddist =  - f*Ye/Ze^2
+              dPXYmmc[8][1]=-this.focalLength*dXeYeZe[0][1]/(dXeYeZe[0][2]*dXeYeZe[0][2]);
+                
+        	}
+        	// conversion coefficient from relative (to distortionRadius) to pixels
+        	// negate for y!
+        	double rel_to_pix=this.distortionRadius*1000.0/this.pixelSize;
+    		double x2=x*x;   // relative squared X-shift from this term center
+    		double y2=y*y;   // relative squared Y-shift from this term center
+    		double r2=x2+y2; // relative squared distance from this term center
+    		double xy=x*y;
+    		double rr=Math.sqrt(r2);
+        	//TODO:  seems that rr[i] can be just a single running variable, not an array
+        	for (int i=0;i<r_xyod.length;i++){
+        		// effective distance from this term center corrected for elongation
+//        		double rr=Math.sqrt(r2+ r_xyod[i][2]*(y2-x2)+ 2.0*r_xyod[i][3]*x*y );
+                if (rr<0.00000001*this.distortionRadius) rr=0.00000001*this.distortionRadius; // avoid 1/0.0 -// Added 3 zeros (old comment)
+        		double rr_pow_i_minus_1,rr_pow_i,rr_pow_i_plus_1;
+        		if (i==0){
+        			rr_pow_i_minus_1=1.0/rr;
+        			rr_pow_i=1.0;
+        		}else{
+        			rr_pow_i_minus_1=ipow(rr,i-1);
+        			rr_pow_i=rr_pow_i_minus_1*rr;
+        		}
+        		rr_pow_i_plus_1=rr_pow_i*rr;
+        		double ki1= r_xyod[i][0]*x+r_xyod[i][1]*y;
+        		double ki2= r_xyod[i][2]*(y2-x2)+2.0*r_xyod[i][3]*xy;
+        		double ki=a[i]*(rr_pow_i_plus_1-1.0)+ki1*rr_pow_i+ki2*rr_pow_i_minus_1; // scaling of distorted distance from this term's center (does not include pinhole center shift itself)
+//        		double ki=a[i]*(rr_pow_i*rr-1.0); // scaling of distorted distance from this term's center (does not include pinhole center shift itself)
+        		deltaX+=x*ki; // relative distorted distance from the center
+        		deltaY+=y*ki;
+//        		if ((debugLevel>2) && ((r_xyod[i][0]!=0.0) || (r_xyod[i][0]!=0.0))){
+//        			System.out.println ("i="+i+" r_xyod[i][0]="+r_xyod[i][0]+" r_xyod[i][1]="+r_xyod[i][1]+" a[0]="+a[0]+" a[1]="+a[1]+" a[2]="+a[2]+" a[3]="+a[3]);
+//        		}
+        		if (calculateAll) {
+//        			double csi=rel_to_pix*a[i]*(i+1)*rr_pow_i;
+// drr_dx=x/rr, drr_dy=y/r
+//                  ki=a[i]*(rr^(i+1-1.0) +ki1*rr^i+ki2*rr^(i-1)
+//        			dki_dx=a[i]*(i+1)*(rr^i)+ (dki1_dx*rr^i+ ki1*i* rr^(i-1)*x/r) + (dki2_dx+ ki2*(i-1)*rr^(i-2)*x/r)=
+//        			(a[i]*(i+1)*(rr^i)/rr)*x +
+//        			(axi*r^(i-1) + (axi*x+ayi*y)/r*i)) * x +
+//        			2*(adi*y - aoi*x)*rr^(i-1)+
+//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)/r^3 * x
+//        			dki_dy=
+//        			(a[i]*(i+1)*(rr^i)/rr)*y +
+//        			(ayi*r^(i-1)*y + (axi*x+ayi*y)/r*i)) * y +
+//        			2*(adi*x + aoi*y)*rr^(i-1)+
+//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)/r^3 * y
+// Below may speed up by branching for i==0, i==1 - starting with commonn code
+        			double ai_iplus1_rr_pow_i_minus_1= a[i]*(i+1)*rr_pow_i_minus_1;       		
+        			double ki1_div_r_mul_i=i*ki1/rr;
+        			double ki2_div_r3_mul_im1=(i-1)*ki2/(rr*rr*rr);
+        			double dki_dx= x*(ai_iplus1_rr_pow_i_minus_1 +
+        					r_xyod[i][0]*rr_pow_i_minus_1 + ki1_div_r_mul_i+ki2_div_r3_mul_im1)+
+        					2*(r_xyod[i][3]*y - r_xyod[i][2]*x)/rr_pow_i_minus_1;
+        			double dki_dy= y*(ai_iplus1_rr_pow_i_minus_1 +
+        					r_xyod[i][1]*rr_pow_i_minus_1 + ki1_div_r_mul_i + ki2_div_r3_mul_im1)+
+        					2*(r_xyod[i][3]*x + r_xyod[i][2]*y)/rr_pow_i_minus_1;
+//        			double ai_iplus1_rr_pow_i= a[i]*(i+1)*rr_pow_i;       		
+//        			double dki_dxmmc=          ai_iplus1_rr_pow_i*(x*(1.0-r_xyod[i][2])+y*r_xyod[i][3])/rr;
+//        			double dki_dymmc=          ai_iplus1_rr_pow_i*(y*(1.0+r_xyod[i][2])+x*r_xyod[i][3])/rr;
+                    // the following 4 shifts are "extra", on top of non-distorted (pinhole) - pinhole should be added to the per-term sum
+        			double dDeltaXi_dx = ki+x*dki_dx; // mmc; // here dDelta*_d*mmc are relative (both I/O are fractions of distortionRadius)
+        			double dDeltaXi_dy =    x*dki_dy; // mmc;
+        			double dDeltaYi_dx =    y*dki_dx; // mmc;
+        			double dDeltaYi_dy = ki+y*dki_dy; // mmc;
+        			dDeltaX_dx += dDeltaXi_dx; // here dDelta*_d*mmc are relative (both I/O are fractions of distortionRadius)
+        			dDeltaX_dy += dDeltaXi_dy;
+        			dDeltaY_dx += dDeltaYi_dx;
+        			dDeltaY_dy += dDeltaYi_dy;
+//dpx_dai, dpi_dai - same as before        			
+        			int index= distortionCIndex-i; // reverse order, // a8->9, a7->10, a6->11, a5->12, a->13, b->14, c->15
+    				partDeriv[index][0]= rel_to_pix*x*(rr_pow_i_plus_1-1.0); // OK
+    				partDeriv[index][1]=-rel_to_pix*y*(rr_pow_i_plus_1-1.0); // OK
+// dpx_daxi,dpy_daxi,dpx_dayi,dpy_dayi
+// dpx_daxi= x^2*r^i;
+// dpy_daxi=-x*y*r^i;
+// dpx_dayi= x*y*r^i;
+// dpy_dayi=-y^2*r^i;
+        			index=numRadialDerivatives-2+4*i;
+        			double rel_to_pix_mul_rr_pow_i=rel_to_pix*rr_pow_i;
+        			if (i>0){ // eccentricity is not applicabe to the first (C) term
+        				partDeriv[index  ][0]=  rel_to_pix_mul_rr_pow_i*x2;
+        				partDeriv[index  ][1]= -rel_to_pix_mul_rr_pow_i*xy;
+        				partDeriv[index+1][0]=  rel_to_pix_mul_rr_pow_i*xy;
+        				partDeriv[index+1][1]= -rel_to_pix_mul_rr_pow_i*y2;
+        			}
+// dpx_daoi,dpy_daoi,dpx_dadi,dpy_dadi
+// dpx_daoi= x*(y^2-x^2)*r^(i-1);
+// dpY_daoi=-y*(y^2-x^2)*r^(i-1);
+// dpx_daDi= 2*x*xy*r^(i-1);
+// dpy_daDi=-2*y*xy*r^(i-1);
+    				double rel_to_pix_mul_y2_minus_x2_mul_rr_pow_i_minus_1=rel_to_pix* (y2-x2)*rr_pow_i_minus_1;
+    				double rel_to_pix_mul_2xy_mul_rr_pow_i_minus_1=rel_to_pix*2.0*xy*rr_pow_i_minus_1;
+    				
+        			index=numRadialDerivatives-2+4*i;
+    				partDeriv[index+2][0]= x*rel_to_pix_mul_y2_minus_x2_mul_rr_pow_i_minus_1;
+    				partDeriv[index+2][1]=-y*rel_to_pix_mul_y2_minus_x2_mul_rr_pow_i_minus_1;
+    				partDeriv[index+3][0]= x*rel_to_pix_mul_2xy_mul_rr_pow_i_minus_1;
+    				partDeriv[index+3][1]=-y*rel_to_pix_mul_2xy_mul_rr_pow_i_minus_1;
+        		}        		
+        	}
+
+        	double [] xyDist={PXYmmc[0]+this.distortionRadius*deltaX,PXYmmc[1]+this.distortionRadius*deltaY};
+        	// convert to sensor pixels coordinates
+        	partDeriv[0][0]=  1000.0/this.pixelSize*xyDist[0] + this.px0;
+        	partDeriv[0][1]= -1000.0/this.pixelSize*xyDist[1] + this.py0;
+        	
+        	if (!calculateAll) { // TODO: how to deal with it when calculating Jacobian???
+        		// TODO: Looking away from the target, trying only with no dervatives. Do the same for derivatives too?
+            	if ((XeYeZe[2]<0.0) || (r2>maxRelativeRadius*maxRelativeRadius)){ // non-distorted too far from the axis
+            		partDeriv[0][0]=Double.NaN;
+            		partDeriv[0][1]=Double.NaN;
+            	}
+        		return partDeriv;
+        	}
+        	// correct parameter derivatives to cumulative version
+        	if (this.cummulativeCorrection){
+            	for (int i=r_xyod.length-2;i>=0;i--){
+        			int index=numRadialDerivatives-2+4*i;
+        			if (i>0){ // eccentricity is not applicabe to the first (C) term
+        				partDeriv[index  ][0]+=partDeriv[index+4][0]; // oob=36
+        				partDeriv[index  ][1]+=partDeriv[index+4][1];
+        				partDeriv[index+1][0]+=partDeriv[index+5][0];
+        				partDeriv[index+1][1]+=partDeriv[index+5][1];
+        			}        			
+    				partDeriv[index+2][0]+=partDeriv[index+6][0];
+    				partDeriv[index+2][1]+=partDeriv[index+6][1];
+    				partDeriv[index+3][0]+=partDeriv[index+7][0];
+    				partDeriv[index+3][1]+=partDeriv[index+7][1];
+            	}
+        	}
+        	
+// convert    dDelta*_d* from relative/relative to pix/mm (invert pixel Y direction)
+// added 1.0 to account for non-distorted (pinhole) shift        	
+        	double dPx_dPinholeX= (1.0+dDeltaX_dx)*1000.0/this.pixelSize;
+        	double dPx_dPinholeY=       dDeltaX_dy*1000.0/this.pixelSize;
+        	double dPy_dPinholeX=      -dDeltaY_dx*1000.0/this.pixelSize;
+        	double dPy_dPinholeY=-(1.0+dDeltaY_dy)*1000.0/this.pixelSize;
+        	if (this.debugLevel>2){
+        		System.out.println(" deltaX="+deltaX+" deltaY="+deltaY+" xyDist[0]="+xyDist[0]+" xyDist[1]="+xyDist[1]);
+        		System.out.println(" PXYmmc[0]="+PXYmmc[0]+" PXYmmc[1]="+PXYmmc[1]+" x="+x+" y"+y);
+        		System.out.println(" dDeltaX_dxmmc="+dDeltaX_dx+" dDeltaX_dymmc="+dDeltaX_dy+" dDeltaY_dxmmc="+dDeltaY_dx+" dDeltaY_dymmc"+dDeltaY_dy);
+        		System.out.println(" dPx_dPinholeX="+dPx_dPinholeX+" dPx_dPinholeY="+dPx_dPinholeY+" dPy_dPinholeX="+dPy_dPinholeX+" dPy_dPinholeY"+dPy_dPinholeY);
+        	}
+            
+            double K=Math.PI/180; // multiply all derivatives my angles 
+// dPX/dphi   =  1000/Psz* dxDist/dphi
+        	partDeriv[ 1][0]=  K*(dPx_dPinholeX*dPXYmmc[1][0]+dPx_dPinholeY*dPXYmmc[1][1]);
+        	partDeriv[ 1][1]=  K*(dPy_dPinholeX*dPXYmmc[1][0]+dPy_dPinholeY*dPXYmmc[1][1]);
+            
+// dPX/dtheta =  1000/Psz* dxDist/dtheta
+        	partDeriv[ 2][0]=  K*(dPx_dPinholeX*dPXYmmc[2][0]+dPx_dPinholeY*dPXYmmc[2][1]);
+        	partDeriv[ 2][1]=  K*(dPy_dPinholeX*dPXYmmc[2][0]+dPy_dPinholeY*dPXYmmc[2][1]);
+// dPX/dpsi   =  1000/Psz* dxDist/dpsi
+        	partDeriv[ 3][0]=  K*(dPx_dPinholeX*dPXYmmc[3][0]+dPx_dPinholeY*dPXYmmc[3][1]);
+        	partDeriv[ 3][1]=  K*(dPy_dPinholeX*dPXYmmc[3][0]+dPy_dPinholeY*dPXYmmc[3][1]);
+// dPX/dX0    =  1000/Psz* dxDist/dX0
+        	partDeriv[ 4][0]=  dPx_dPinholeX*dPXYmmc[4][0]+dPx_dPinholeY*dPXYmmc[4][1];
+        	partDeriv[ 4][1]=  dPy_dPinholeX*dPXYmmc[4][0]+dPy_dPinholeY*dPXYmmc[4][1];
+// dPX/dY0    =  1000/Psz* dxDist/dY0
+        	partDeriv[ 5][0]=  dPx_dPinholeX*dPXYmmc[5][0]+dPx_dPinholeY*dPXYmmc[5][1];
+        	partDeriv[ 5][1]=  dPy_dPinholeX*dPXYmmc[5][0]+dPy_dPinholeY*dPXYmmc[5][1];
+// dPX/dZ0    =  1000/Psz* dxDist/dZ0
+        	partDeriv[ 6][0]=  dPx_dPinholeX*dPXYmmc[6][0]+dPx_dPinholeY*dPXYmmc[6][1];
+        	partDeriv[ 6][1]=  dPy_dPinholeX*dPXYmmc[6][0]+dPy_dPinholeY*dPXYmmc[6][1];
+// dPX/df     =  1000/Psz* dxDist/df
+        	partDeriv[ 7][0]=  dPx_dPinholeX*dPXYmmc[7][0]+dPx_dPinholeY*dPXYmmc[7][1];
+        	partDeriv[ 7][1]=  dPy_dPinholeX*dPXYmmc[7][0]+dPy_dPinholeY*dPXYmmc[7][1];
+// dPX/ddist  =  1000/Psz* dxDist/ddist
+        	partDeriv[ 8][0]=  dPx_dPinholeX*dPXYmmc[8][0]+dPx_dPinholeY*dPXYmmc[8][1];
+        	partDeriv[ 8][1]=  dPy_dPinholeX*dPXYmmc[8][0]+dPy_dPinholeY*dPXYmmc[8][1];
+            
+// dPX/dPX0   =  1
+// dPY/dPX0   =  0
+        	partDeriv[16][0]=  1.0;
+        	partDeriv[16][1]=  0.0;
+// dPX/dPY0   =  0
+// dPY/dPY0   =  1
+        	partDeriv[17][0]=  0.0;
+        	partDeriv[17][1]=  1.0;
+            return partDeriv;
+        }
+        
         
         
         public void setProperties(String prefix,Properties properties){
