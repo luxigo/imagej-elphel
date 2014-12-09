@@ -1460,13 +1460,13 @@ dPXmmc/dphi=
 //        					2*(r_xyod[i][3]*y - r_xyod[i][2]*x)/rr_pow_i_minus_1;
         			double dki_dx= x*(ai_iplus1_rr_pow_i_minus_1 +
         					ki1_r_pow_im2_mul_i + ki2_r_pow_im3_mul_im1)+ // r_xyod[i][0]*rr_pow_i_minus_1 + 
-        					r_xyod[i][0]*rr_pow_i + 2*(r_xyod[i][3]*y - r_xyod[i][2]*x)/rr_pow_i_minus_1;
+        					r_xyod[i][0]*rr_pow_i + 2*(r_xyod[i][3]*y - r_xyod[i][2]*x)*rr_pow_i_minus_1;
 //        			double dki_dy= y*(ai_iplus1_rr_pow_i_minus_1 +
 //        					r_xyod[i][1]*rr_pow_i_minus_1 + ki1_div_r_mul_i + ki2_div_r3_mul_im1)+
 //        					2*(r_xyod[i][3]*x + r_xyod[i][2]*y)/rr_pow_i_minus_1;
         			double dki_dy= y*(ai_iplus1_rr_pow_i_minus_1 +
         					ki1_r_pow_im2_mul_i + ki2_r_pow_im3_mul_im1)+ // r_xyod[i][1]*rr_pow_i_minus_1 +
-        					r_xyod[i][1]*rr_pow_i + 2*(r_xyod[i][3]*x + r_xyod[i][2]*y)/rr_pow_i_minus_1;
+        					r_xyod[i][1]*rr_pow_i + 2*(r_xyod[i][3]*x + r_xyod[i][2]*y)*rr_pow_i_minus_1;
 //        			double ai_iplus1_rr_pow_i= a[i]*(i+1)*rr_pow_i;       		
 //        			double dki_dxmmc=          ai_iplus1_rr_pow_i*(x*(1.0-r_xyod[i][2])+y*r_xyod[i][3])/rr;
 //        			double dki_dymmc=          ai_iplus1_rr_pow_i*(y*(1.0+r_xyod[i][2])+x*r_xyod[i][3])/rr;
