@@ -2780,7 +2780,7 @@ For each point in the image
 						//matchSimulatedPattern
 						int [] fileUVShiftRot=dcd.gIP[numGridImage].getUVShiftRot();
 						int [] extraUVShiftRot=matchSimulatedPattern.getUVShiftRot(true); // last shift/rotation during matching pattern, correct for zero shift
-						int [] extraDbg=matchSimulatedPattern.getUVShiftRot(false);
+//						int [] extraDbg=matchSimulatedPattern.getUVShiftRot(false);
 						int [] combinedUVShiftRot=matchSimulatedPattern.combineUVShiftRot(fileUVShiftRot,extraUVShiftRot);
 						dcd.gIP[numGridImage].setUVShiftRot(combinedUVShiftRot);
 						System.out.println("applyHintedGrids(): dcd.gIP["+numGridImage+"].hintedMatch="+dcd.gIP[numGridImage].hintedMatch+
@@ -2790,7 +2790,7 @@ For each point in the image
 						System.out.println("applyHintedGrids(): fileUVShiftRot=    "+fileUVShiftRot[0]+"/"+fileUVShiftRot[1]+":"+fileUVShiftRot[2]);
 						System.out.println("                   "+nonzero+"extraUVShiftRot=   "+extraUVShiftRot[0]+"/"+extraUVShiftRot[1]+":"+extraUVShiftRot[2]);
 						System.out.println("                    combinedUVShiftRot="+combinedUVShiftRot[0]+"/"+combinedUVShiftRot[1]+":"+combinedUVShiftRot[2]);
-						System.out.println("                    extraDbg="+extraDbg[0]+"/"+extraDbg[1]+":"+extraDbg[2]);
+//						System.out.println("                    extraDbg="+extraDbg[0]+"/"+extraDbg[1]+":"+extraDbg[2]);
 					}
 				}
 			}
