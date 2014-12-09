@@ -3530,7 +3530,7 @@ For each point in the image
 			int imgNumber,
 			double delta){ // these parameters can work for one image only
         int doubleNumAllPoints=this.Y.length; // all points in all images multiplied by 2 (x and y error are separate)		
-		double [][] jacobian16=new double[16][doubleNumAllPoints];
+		double [][] jacobian16=new double[lensDistortionParameters.getNumOutputs()][doubleNumAllPoints];
 		double []   values=    new double[doubleNumAllPoints];
 		
 		for (int i=0;i<jacobian16.length;i++) for (int j=0;j<doubleNumAllPoints;j++) jacobian16[i][j]=0.0;
@@ -3587,7 +3587,7 @@ For each point in the image
 							System.out.println(all);
 						}
 						for (int i=0;i<derivatives.length;i++){
-							jacobian16[i][2*fullIndex]= derivatives[i][0];
+							jacobian16[i][2*fullIndex]= derivatives[i][0]; // oob 16
 							jacobian16[i][2*fullIndex+1]=derivatives[i][1];
 						}
 
