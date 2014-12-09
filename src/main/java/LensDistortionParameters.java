@@ -711,35 +711,28 @@ dPXmmc/dphi=
         			13, // 13		public double distortionA=0.0; // r^4 (normalized to focal length or to sensor half width?)
         			14, // 14		public double distortionB=0.0; // r^3
         			15, // 15		public double distortionC=0.0; // r^2
-
         			18, // 16		Orthogonal elongation for r^2"
         			19, // 17		Diagonal   elongation for r^2"
-        			
         			20, // 18		Distortion center shift X for r^3"
         			21, // 19		Distortion center shift Y for r^3"
         			22, // 20		Orthogonal elongation for r^3"
         			23, // 21		Diagonal   elongation for r^3"
-        			
         			24, // 22		Distortion center shift X for r^4"
         			25, // 23		Distortion center shift Y for r^4"
         			26, // 24		Orthogonal elongation for r^4"
         			27, // 25		Diagonal   elongation for r^4"
-        			
         			28, // 26		Distortion center shift X for r^5"
         			29, // 27		Distortion center shift Y for r^5"
         			30, // 28		Orthogonal elongation for r^5"
         			31, // 29		Diagonal   elongation for r^5"
-        			
         			32, // 30		Distortion center shift X for r^6"
         			33, // 31		Distortion center shift Y for r^6"
         			34, // 32		Orthogonal elongation for r^6"
         			35, // 33		Diagonal   elongation for r^6"
-        			
         			36, // 34		Distortion center shift X for r^7"
         			37, // 35		Distortion center shift Y for r^7"
         			38, // 36		Orthogonal elongation for r^6"
         			39, // 37		Diagonal   elongation for r^6"
-
         			40, // 38		Distortion center shift X for r^8"
         			41, // 29		Distortion center shift Y for r^8"
         			42, // 40		Orthogonal elongation for r^8"
@@ -1299,7 +1292,7 @@ dPXmmc/dphi=
             double [][] dXeYeZe=null; //[14];
             double [][] dPXYmmc=null;
 
-    		/*
+/*
    		 Modifying to accommodate for eccentricity of different terms (2 parameters per term) and elliptical shape (another 2 terms). When all are
    		 zeroes, the old parameters are in effect:
    				Rdist/R=A8*R^7+A7*R^6+A6*R^5+A5*R^4+A*R^3+B*R^2+C*R+(1-A6-A7-A6-A5-A-B-C)");
@@ -1440,26 +1433,40 @@ dPXmmc/dphi=
 //        			double csi=rel_to_pix*a[i]*(i+1)*rr_pow_i;
 // drr_dx=x/rr, drr_dy=y/r
 //                  ki=a[i]*(rr^(i+1-1.0) +ki1*rr^i+ki2*rr^(i-1)
-//        			dki_dx=a[i]*(i+1)*(rr^i)+ (dki1_dx*rr^i+ ki1*i* rr^(i-1)*x/r) + (dki2_dx+ ki2*(i-1)*rr^(i-2)*x/r)=
-//        			(a[i]*(i+1)*(rr^i)/rr)*x +
-//        			(axi*r^(i-1) + (axi*x+ayi*y)/r*i)) * x +
-//        			2*(adi*y - aoi*x)*rr^(i-1)+
-//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)/r^3 * x
+//        			dki_dx=a[i]*(i+1)*(rr^i)*x/rr+ (dki1_dx*rr^i+ ki1*i* rr^(i-1)*x/r) + (dki2_dx+           ki2*(i-1)*rr^(i-2)*x/r)= // (WAS)
+//        			dki_dx=a[i]*(i+1)*(rr^i)+      (dki1_dx*rr^i+ ki1*i* rr^(i-1)*x/r) + (dki2_dx*rr^(i-1) + ki2*(i-1)*rr^(i-2)*x/r)= // (CORRECTED)
+//        			(a[i]*(i+1)*(rr^i)/rr)*x +                       // OK
+//        			(axi*r^(i-1) + (axi*x+ayi*y)/r*i)) * x  +        // (WAS)
+//        			(axi*r^i     + (axi*x+ayi*y)*i*rr^(i-2) * x) +   // (CORRECTED)
+//        			2*(adi*y - aoi*x)*rr^(i-1)+                      // OK
+//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)/r^3 * x          // (WAS)
+//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)*r^(i-3) * x      // (CORRECTED)
 //        			dki_dy=
-//        			(a[i]*(i+1)*(rr^i)/rr)*y +
-//        			(ayi*r^(i-1)*y + (axi*x+ayi*y)/r*i)) * y +
-//        			2*(adi*x + aoi*y)*rr^(i-1)+
-//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)/r^3 * y
+//        			(a[i]*(i+1)*(rr^i)/rr)*y +                       // OK
+//        			(ayi*r^(i-1)*y + (axi*x+ayi*y)/r*i)) * y +       // (WAS)
+//        			(ayi*r^i       + (axi*x+ayi*y)*i*rr^(i-2) * x) + // (CORRECTED)
+//        			2*(adi*x + aoi*y)*rr^(i-1)+                      // OK
+//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)/r^3 * y          // (WAS)
+//        			(aoi*(y^2-x^2)+2*adi*x*y)*(i-1)*r^(i-3) * x      // (CORRECTED)
 // Below may speed up by branching for i==0, i==1 - starting with commonn code
-        			double ai_iplus1_rr_pow_i_minus_1= a[i]*(i+1)*rr_pow_i_minus_1;       		
-        			double ki1_div_r_mul_i=i*ki1/rr;
-        			double ki2_div_r3_mul_im1=(i-1)*ki2/(rr*rr*rr);
+        			double ai_iplus1_rr_pow_i_minus_1= a[i]*(i+1)*rr_pow_i_minus_1;
+        			double rr_pow_i_minus_2=rr_pow_i_minus_1/rr;
+//        			double ki1_div_r_mul_i=i*ki1/rr;
+        			double ki1_r_pow_im2_mul_i=i*ki1*rr_pow_i_minus_2;       // (axi*x+ayi*y)*i*rr^(i-2) 
+//        			double ki2_div_r3_mul_im1=(i-1)*ki2/(rr*rr*rr);
+        			double ki2_r_pow_im3_mul_im1=(i-1)*ki2*rr_pow_i_minus_2/rr; // (aoi*(y^2-x^2)+2*adi*x*y)* (i-1)*r^(i-3)
+//        			double dki_dx= x*(ai_iplus1_rr_pow_i_minus_1 +
+//        					r_xyod[i][0]*rr_pow_i_minus_1 + ki1_div_r_mul_i+ki2_div_r3_mul_im1)+
+//        					2*(r_xyod[i][3]*y - r_xyod[i][2]*x)/rr_pow_i_minus_1;
         			double dki_dx= x*(ai_iplus1_rr_pow_i_minus_1 +
-        					r_xyod[i][0]*rr_pow_i_minus_1 + ki1_div_r_mul_i+ki2_div_r3_mul_im1)+
-        					2*(r_xyod[i][3]*y - r_xyod[i][2]*x)/rr_pow_i_minus_1;
+        					ki1_r_pow_im2_mul_i + ki2_r_pow_im3_mul_im1)+ // r_xyod[i][0]*rr_pow_i_minus_1 + 
+        					r_xyod[i][0]*rr_pow_i + 2*(r_xyod[i][3]*y - r_xyod[i][2]*x)/rr_pow_i_minus_1;
+//        			double dki_dy= y*(ai_iplus1_rr_pow_i_minus_1 +
+//        					r_xyod[i][1]*rr_pow_i_minus_1 + ki1_div_r_mul_i + ki2_div_r3_mul_im1)+
+//        					2*(r_xyod[i][3]*x + r_xyod[i][2]*y)/rr_pow_i_minus_1;
         			double dki_dy= y*(ai_iplus1_rr_pow_i_minus_1 +
-        					r_xyod[i][1]*rr_pow_i_minus_1 + ki1_div_r_mul_i + ki2_div_r3_mul_im1)+
-        					2*(r_xyod[i][3]*x + r_xyod[i][2]*y)/rr_pow_i_minus_1;
+        					ki1_r_pow_im2_mul_i + ki2_r_pow_im3_mul_im1)+ // r_xyod[i][1]*rr_pow_i_minus_1 +
+        					r_xyod[i][1]*rr_pow_i + 2*(r_xyod[i][3]*x + r_xyod[i][2]*y)/rr_pow_i_minus_1;
 //        			double ai_iplus1_rr_pow_i= a[i]*(i+1)*rr_pow_i;       		
 //        			double dki_dxmmc=          ai_iplus1_rr_pow_i*(x*(1.0-r_xyod[i][2])+y*r_xyod[i][3])/rr;
 //        			double dki_dymmc=          ai_iplus1_rr_pow_i*(y*(1.0+r_xyod[i][2])+x*r_xyod[i][3])/rr;
