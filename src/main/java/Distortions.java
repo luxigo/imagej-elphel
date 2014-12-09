@@ -9383,6 +9383,7 @@ M * V = B
 	    }
 		if (debugDerivatives) gd.addNumericField("Select delta to increment selected parameter", .001, 5);
 		if (debugDerivatives) gd.addCheckbox("Show inter-parameter derivatives matrix", true);
+		WindowTools.addScrollBars(gd);
 	    gd.showDialog();
 	    if (gd.wasCanceled()) return;
 	    int selectedParameter=     (int) gd.getNextNumber();
