@@ -404,6 +404,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     		1296.0, // double px0     // lens axis from sensor, horizontal, from left (pixels)
     		968.0, // double py0     // lens axis from sensor, vertical, from top (pixels)
     		true, //  boolean flipVertical // acquired image is mirrored vertically (mirror used)
+    		-1, // lensDistortionModel (use default)
     		null, //  double [][] r_xy,
     		null  //  double [][] r_od
     		);
@@ -1169,7 +1170,8 @@ if (MORE_BUTTONS) {
 	        		System.out.println("Number of enabled grid images: "+numImages[0]+
 	        				", of them new: "+numImages[1]+
 	        				", disabled without vignetting info: "+numImages[2]+
-	        				", disabled having less than "+minGridsNoPointer+" nodes and no matched pointers: "+numImages[3]);
+	        				", disabled having less than "+minGridsNoPointer+" nodes and no matched pointers: "+numImages[3]+
+	        				", disabled with no lasers and enableNoLaser==false (like 2 bottom cameras):" +numImages[4]);
 	    			
 		    		if (DISTORTION_CALIBRATION_DATA.gIS==null) {
 		    			int numImageSets=DISTORTION_CALIBRATION_DATA.buildImageSets(false); // from scratch
@@ -6062,7 +6064,7 @@ if (MORE_BUTTONS) {
     		gd.addNumericField("Minimal registered grid period as a fraction of maximal (to filter reflections)", 0.4,2); //was 0.7
     		gd.addCheckbox    ("Reset orientation from the image with most pointers (false - only if it was not set yet)", overwriteAll);
     		gd.addCheckbox    ("Disable (old) images without vignetting information", true);
-    		gd.addNumericField("Minimal number of grids in no-pointer images and estimated orientation", 1000,0);
+    		gd.addNumericField("Minimal number of grid nodes in no-pointer images and estimated orientation", 1000,0);
     		gd.showDialog();
     		if (gd.wasCanceled()) return;
     		boolean resetHinted=       gd.getNextBoolean();
@@ -6081,7 +6083,8 @@ if (MORE_BUTTONS) {
     		System.out.println("Number of enabled grid images: "+numImages[0]+
     				", of them new: "+numImages[1]+
     				", disabled without vignetting info: "+numImages[2]+
-    				", disabled having less than "+minGridsNoPointer+" nodes and no matched pointers: "+numImages[3]);
+    				", disabled having less than "+minGridsNoPointer+" nodes and no matched pointers: "+numImages[3]+
+    				", disabled with no lasers and enableNoLaser==false (like 2 bottom cameras):" +numImages[4]);
     		if (DISTORTION_CALIBRATION_DATA.gIS==null) {
     			int numImageSets=DISTORTION_CALIBRATION_DATA.buildImageSets(false); // from scratch
     			if (DEBUG_LEVEL>0) System.out.println("Image set was empty, built a new one with "+numImageSets+" image sets (\"panoramas\"): ");

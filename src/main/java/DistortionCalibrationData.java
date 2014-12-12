@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.configuration.ConfigurationException;
@@ -675,11 +676,18 @@ import org.apache.commons.configuration.XMLConfiguration;
         	String header="Name\tUnits";
         	StringBuffer sb = new StringBuffer();
         	for (int i=0;i<numSubCameras;i++) header+="\t"+i;
-            for (int stationNumber=0;stationNumber<this.eyesisCameraParameters.numStations;stationNumber++){
-            	if (this.eyesisCameraParameters.numStations>1){
-                	sb.append("Station "+stationNumber+" W="+(100*this.eyesisCameraParameters.stationWeight[stationNumber])+"%");  for (int i=-1;i<numSubCameras;i++) sb.append("\t===");  sb.append("\n");
-            	}
-            	double [][] cameraPars=new double [numSubCameras][];
+        	for (int stationNumber=0;stationNumber<this.eyesisCameraParameters.numStations;stationNumber++){
+        		if (this.eyesisCameraParameters.numStations>1){
+        			sb.append("Station "+stationNumber+" W="+(100*this.eyesisCameraParameters.stationWeight[stationNumber])+"%");  for (int i=-1;i<numSubCameras;i++) sb.append("\t===");  sb.append("\n");
+        		}
+        		
+        		int [] lensDistortionModels=new int [numSubCameras];
+        		for (int i=0;i<numSubCameras;i++) lensDistortionModels[i]=eyesisCameraParameters.getLensDistortionModel(stationNumber,i);
+        		sb.append("Lens Distortion Model\t");
+        		for (int i=0;i<numSubCameras;i++) sb.append("\t"+lensDistortionModels[i]);
+        		sb.append("\n");
+        		double [][] cameraPars=new double [numSubCameras][];
+            	
             	for (int i=0;i<numSubCameras;i++) cameraPars[i]=eyesisCameraParameters.getParametersVector(stationNumber,i);
             	// parameters same order as in this
             	for (int n=0;n<cameraPars[0].length;n++) if (isSubcameraParameter(n) && isIntrinsicParameter(n)){
@@ -935,8 +943,10 @@ import org.apache.commons.configuration.XMLConfiguration;
             	}
         	}
         	int numNoVignetting=0;
+        	int disabledNoLaser=0;
         	for (int i=0;i<this.gIP.length;i++){
         		int stationNumber=this.gIP[i].getStationNumber();
+        		boolean enableNoLaser=this.eyesisCameraParameters.getEnableNoLaser(stationNumber,this.gIP[i].channel);
         		boolean wasEnabled=this.gIP[i].enabled;
         		if (resetHinted) this.gIP[i].hintedMatch=-1; // undefined
         		if (Double.isNaN(this.gIP[i].gridPeriod) ||
@@ -949,15 +959,17 @@ import org.apache.commons.configuration.XMLConfiguration;
         			if (
         					(this.gIP[i].matchedPointers>=minPointers) ||
         					((this.gIP[i].matchedPointers>0) && (this.gIP[i].hintedMatch>0)) || // orientation and one pointer
-        					(this.gIP[i].hintedMatch>1)) {
+        					((this.gIP[i].hintedMatch>1) && enableNoLaser)) { // do not use bottom images w/o matched pointers
         				// before enabling - copy orientation from gIS  
         				if (!this.gIP[i].enabled && (gIS_index[i]>=0)){ 
         					if (!Double.isNaN(this.gIS[gIS_index[i]].goniometerTilt))	setGH(i,this.gIS[gIS_index[i]].goniometerTilt );
         					if (!Double.isNaN(this.gIS[gIS_index[i]].goniometerAxial))	setGA(i,this.gIS[gIS_index[i]].goniometerAxial );
         				}
         				this.gIP[i].enabled=true;
+        			} else this.gIP[i].enabled=false;
+        			if ((this.gIP[i].hintedMatch>1) && !enableNoLaser && (this.gIP[i].matchedPointers==0)){
+        				disabledNoLaser++;
         			}
-        			else this.gIP[i].enabled=false;
         		}
         			
         		if (disableNoVignetting) {
@@ -977,7 +989,7 @@ import org.apache.commons.configuration.XMLConfiguration;
             	if (this.gIP[i].newEnabled) newEnabled++;
         	}
         	// may need buildImageSets
-        	int [] result={numEnabled,newEnabled,numNoVignetting,notEnoughNodes};
+        	int [] result={numEnabled,newEnabled,numNoVignetting,notEnoughNodes,disabledNoLaser};
         	return result;
         }
 // TODO:
@@ -1277,7 +1289,26 @@ import org.apache.commons.configuration.XMLConfiguration;
         	return numEnabled;
         }
 
-        
+        int [] getStations(){
+        	int [] result = new int [this.gIP.length];
+        	for (int i=0;i<result.length;i++) result[i]=(this.gIP[i]!=null)?this.gIP[i].stationNumber:-1;
+        	return result;
+        }
+        int [] getChannels(){
+        	int [] result = new int [this.gIP.length];
+        	for (int i=0;i<result.length;i++) result[i]=(this.gIP[i]!=null)?this.gIP[i].channel:-1;
+        	return result;
+        }
+        int [] getMatchedPointers(){
+        	int [] result = new int [this.gIP.length];
+        	for (int i=0;i<result.length;i++) result[i]=(this.gIP[i]!=null)?this.gIP[i].matchedPointers:0;
+        	return result;
+        }
+        int [] getHintedMatch(){
+        	int [] result = new int [this.gIP.length];
+        	for (int i=0;i<result.length;i++) result[i]=(this.gIP[i]!=null)?this.gIP[i].hintedMatch:-1;
+        	return result;
+        }
         
         boolean [] selectNewEnabled () {
         	boolean [] newEnabled=new boolean [this.gIP.length] ;
@@ -1285,14 +1316,22 @@ import org.apache.commons.configuration.XMLConfiguration;
         	return newEnabled;
         }
 
+        boolean [] selectEnabled () {
+        	boolean [] enabled=new boolean [this.gIP.length] ;
+        	for (int i=0;i<this.gIP.length;i++) enabled[i]= (this.gIP[i]!=null) && this.gIP[i].enabled;
+        	return enabled;
+        }
+
         boolean [] selectEstimated (boolean enabledOnly) {
+        	boolean [] estimated=new boolean [getNumImages()];
         	if (this.gIS==null) {
             	String msg="Image sets are not initialized";
         		IJ.showMessage("Error",msg);
-        		throw new IllegalArgumentException (msg);
+//        		throw new IllegalArgumentException (msg);
+        		Arrays.fill(estimated, true);
+            	return estimated;
         	}
         	
-        	boolean [] estimated=new boolean [getNumImages()];
         	for (int i=0;i<estimated.length;i++) estimated[i]=false;
         	for (int i=0;i<this.gIS.length;i++)	if (this.gIS[i].imageSet!=null){
         		for (int j=0;j<this.gIS[i].imageSet.length;j++) if (this.gIS[i].imageSet[j]!=null) {

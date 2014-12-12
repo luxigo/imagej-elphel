@@ -29,6 +29,14 @@ import org.apache.commons.configuration.XMLConfiguration;
 
 
     public  class EyesisCameraParameters{
+    	final public String [] distortionModelDescriptions= {
+    		"Radial model",
+    		"Non radial with shift/elongation, non cummulative",
+    		"Non radial with shift/elongation, cummulative",
+    		"With non-radial polynomial terms"
+    	};
+    	final int [] distortionModels={0,100,101,200};
+    	public int defaultLensDistortionModel=200;
     	public double [] goniometerHorizontal; // goniometer rotation around "horizontal" axis (tilting from the target - positive)
     	public double [] goniometerAxial; // goniometer rotation around Eyesis axis (clockwise in plan - positive 
     	public EyesisSubCameraParameters [][] eyesisSubCameras=null;
@@ -274,6 +282,13 @@ import org.apache.commons.configuration.XMLConfiguration;
     	}
 
     	public int getNumStations() {return this.numStations;}
+    	public int getNumChannels() {
+    		return getNumChannels(0);
+    	}
+    	public int getNumChannels(int numStation) {
+    		return this.eyesisSubCameras[numStation].length;
+    	}
+//    	this.eyesisSubCameras[numStation].length
     	public EyesisCameraParameters () {} // just create new instance, all parameters data will be provided additionally
     	public EyesisCameraParameters (
     			int numStations,
@@ -685,7 +700,7 @@ import org.apache.commons.configuration.XMLConfiguration;
         			if (numSubCameras>0) {
         				initSubCameras(numStation, numSubCameras); // set array with default parameters
         				for (int i=0;i<numSubCameras;i++){
-        					this.eyesisSubCameras[numStation][i].getProperties(prefix+numStation+"_subCamera_"+i+'.',properties);
+        					this.eyesisSubCameras[numStation][i].getProperties(prefix+numStation+"_subCamera_"+i+'.',properties,i);
         				}
         			}
     			}
@@ -741,7 +756,11 @@ import org.apache.commons.configuration.XMLConfiguration;
     		GenericDialog gd = new GenericDialog(title);
 //        	public double goniometerHorizontal; // goniometer rotation around "horizontal" axis (tilting from the target - positive)
 //        	public double goniometerAxial; // goniometer rotation around Eyesis axis (clockwise in plan - positive 
-//this.isTripod    		
+//this.isTripod
+    		String [] modelChoice=new String [distortionModelDescriptions.length+1];
+    		modelChoice[0]="--- keep current ---";
+    		for (int i=0;i<distortionModelDescriptions.length;i++) modelChoice[i+1]=distortionModelDescriptions[i];
+    		gd.addChoice("Change camera distortion model for all channels", modelChoice, modelChoice[0]);
     		gd.addCheckbox("Tripod mode (first vertical axis, then horizontal), changes meaning of the next 2 fields",this.isTripod);
     		gd.addMessage("=== Camera parameters to be fitted ===");
     		for (int numStation=0;numStation<this.numStations;numStation++) {
@@ -801,6 +820,15 @@ import org.apache.commons.configuration.XMLConfiguration;
     	    WindowTools.addScrollBars(gd);
     		gd.showDialog();
     		if (gd.wasCanceled()) return -1;
+    		int modelIndex=gd.getNextChoiceIndex()-1;
+    		if (modelIndex>=0){
+    			for (EyesisSubCameraParameters [] esps:this.eyesisSubCameras){
+    				for (EyesisSubCameraParameters esp:esps){
+    					esp.lensDistortionModel=distortionModels[modelIndex];
+    				}
+    			}
+    		}
+
     		this.isTripod=                 gd.getNextBoolean();
     		for (int numStation=0;numStation<this.numStations;numStation++) {
     			if (this.numStations>1){
@@ -861,6 +889,8 @@ import org.apache.commons.configuration.XMLConfiguration;
         				gd.addNumericField("Channel "+numSubCam+" default weight",      subCam.channelWeightDefault, 5,8,"");
     				}
     				if (this.numStations>1) gd.addMessage("--- Station number "+numStation+" ---");
+    				gd.addNumericField("Subcamera lens distortion model",               subCam.lensDistortionModel, 5,0,"");
+    				gd.addCheckbox    ("Enable matching w/o laser pointers",            subCam.enableNoLaser);
     				gd.addNumericField("Subcamera azimuth",                             subCam.azimuth, 5,9,"degrees");
     				gd.addNumericField("Subcamera distance from the axis",              subCam.radius,  5,9,"mm");
     				gd.addNumericField("Subcamera height from the 'equator'",           subCam.height,  5,9,"mm");
@@ -930,6 +960,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		    		channelWeightDefault=gd.getNextNumber();
     				}
     				subCam.channelWeightDefault= channelWeightDefault; // assign to all stations
+    				subCam.lensDistortionModel= (int) gd.getNextNumber();
+    				subCam.enableNoLaser =            gd.getNextBoolean();
     				subCam.azimuth=         gd.getNextNumber();
     				subCam.radius=          gd.getNextNumber();
     				subCam.height=          gd.getNextNumber();
@@ -997,6 +1029,26 @@ import org.apache.commons.configuration.XMLConfiguration;
     			}
     		}
     		return true;
+    	}
+    	public int getLensDistortionModel(int stationNumber,int subCamNumber){
+        	if (
+        			(this.eyesisSubCameras==null) ||
+        			(this.numStations<=stationNumber) ||
+        			(this.eyesisSubCameras.length<=stationNumber) ||
+        			(this.eyesisSubCameras[stationNumber].length<=subCamNumber)) throw new IllegalArgumentException
+            ("Nonexistent subcamera "+subCamNumber+ " and/or station number="+stationNumber+" this.numStations="+this.numStations+" this.eyesisSubCameras.length="+this.eyesisSubCameras.length);
+        	EyesisSubCameraParameters subCam=this.eyesisSubCameras[stationNumber][subCamNumber];
+        	return subCam.lensDistortionModel;
+    	}
+    	boolean getEnableNoLaser(int stationNumber,int subCamNumber){
+        	if (
+        			(this.eyesisSubCameras==null) ||
+        			(this.numStations<=stationNumber) ||
+        			(this.eyesisSubCameras.length<=stationNumber) ||
+        			(this.eyesisSubCameras[stationNumber].length<=subCamNumber)) throw new IllegalArgumentException
+            ("Nonexistent subcamera "+subCamNumber+ " and/or station number="+stationNumber+" this.numStations="+this.numStations+" this.eyesisSubCameras.length="+this.eyesisSubCameras.length);
+        	EyesisSubCameraParameters subCam=this.eyesisSubCameras[stationNumber][subCamNumber];
+        	return subCam.enableNoLaser;
     	}
         /**
          * 
@@ -1191,6 +1243,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		for (int i=0;i<numSubCameras;i++)  this.eyesisSubCameras[numStation][i]=null;
     		if (numSubCameras==3) {
     			this.eyesisSubCameras[numStation][0]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
     					0.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					52.53, // double radius,  // mm, distance from the rotation axis
     					34.64, // double height,  // mm, up (was downwards) - from the origin point
@@ -1213,6 +1267,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			this.eyesisSubCameras[numStation][1]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
     					30.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					60.0, // double radius,  // mm, distance from the rotation axis
     					-17.32, // double height,  // mm, up (was downwards) - from the origin point
@@ -1235,6 +1291,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			this.eyesisSubCameras[numStation][2]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
     					-30.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					60.0, // double radius,  // mm, distance from the rotation axis
     					-17.32, // double height,  // mm, up (was downwards) - from the origin point
@@ -1258,6 +1316,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     					1.0); //channelWeightDefault
     		} else if (numSubCameras==1) {
     			this.eyesisSubCameras[numStation][0]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
     					0.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					0.0, // double radius,  // mm, distance from the rotation axis
     					0.0, // double height,  // mm, up (was downwards) - from the origin point
@@ -1282,6 +1342,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     		} else {
     			// default setup for the 26 sub-cameras	    		
     			for (int i=0;i<8;i++) if (i<numSubCameras) 	this.eyesisSubCameras[numStation][i]=new EyesisSubCameraParameters( // top 8 cameras
+    					defaultLensDistortionModel,
+    					true,
     					45.0*i,      // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					41.540,      // double radius,  // mm, distance from the rotation axis
     					42.883,      // double height,  // mm, up (was downwards?) - from the origin point
@@ -1304,6 +1366,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			for (int i=8;i<16;i++) if (i<numSubCameras) 	this.eyesisSubCameras[numStation][i]=new EyesisSubCameraParameters( // middle 8 cameras
+    					defaultLensDistortionModel,
+    					true,
     					45.0*(i-8),  // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					54.525,      // double radius,  // mm, distance from the rotation axis
     					0.0, // double height,  // mm, up (was downwards) - from the origin point
@@ -1326,6 +1390,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			for (int i=16;i<24;i++) if (i<numSubCameras) 	this.eyesisSubCameras[numStation][i]=new EyesisSubCameraParameters( // bottom eight cameras
+    					defaultLensDistortionModel,
+    					true,
     					45.0*(i-16), // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					41.540,      // double radius,  // mm, distance from the rotation axis
     					-42.883,     // double height,  // mm, up (was downwards?) - from the origin point
@@ -1348,6 +1414,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
     			if (24<numSubCameras) 	this.eyesisSubCameras[numStation][24]=new EyesisSubCameraParameters(
+    					defaultLensDistortionModel,
+    					false,
     					90,      // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					12.025,  // double radius,  // mm, distance from the rotation axis
     					-807.0,  // double height,  // mm, up - from the origin point
@@ -1370,6 +1438,8 @@ import org.apache.commons.configuration.XMLConfiguration;
     					null,  // elongation for c,b,a,a5,a6,a7,a8
     					8.0); //channelWeightDefault (was 4)
     			if (25<numSubCameras) 	this.eyesisSubCameras[numStation][25]=new EyesisSubCameraParameters(
+    					defaultLensDistortionModel,
+    					false,
     					270,     // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     					12.025,  // double radius,  // mm, distance from the rotation axis
     					-841.0,  // double height,  // mm, up - from the origin point

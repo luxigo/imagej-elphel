@@ -22,6 +22,9 @@ import Jama.Matrix;
 	    final int numOutputs=42; //16; // with A8...//13;  // parameters in a single camera
 //		final
 //		boolean cummulativeCorrection=true; // r_xy, r_od for higher terms are relative to lower ones
+	    public int defaultLensDistortionModel=200;
+	    public int lensDistortionModel=defaultLensDistortionModel;
+	    public int lensDistortionModelType=0; // set from lensDistortionModel 
 		boolean cummulativeCorrection=false; //true; // r_xy, r_od for higher terms are relative to lower ones
 		public double focalLength=4.5;
 		public double pixelSize=  2.2; //um
@@ -73,7 +76,22 @@ import Jama.Matrix;
 // intermediate values
 		public double phi, theta,psi,cPH,sPH,cTH,sTH,cPS,sPS;
 		public double [][] rotMatrix=new double[3][3]; // includes mirroring for Y (target coordinates y- down, camera - y  up)
-		
+		public void setDistortionModelParameters(){
+			if (lensDistortionModel<0){
+				System.out.println("BUG:setDistortionModelParameters() - lensDistortionModel<0");
+				lensDistortionModel=defaultLensDistortionModel;
+			}
+			this.cummulativeCorrection= (lensDistortionModel==101);
+			if (lensDistortionModel<100){
+				lensDistortionModelType=0;
+			} else if (lensDistortionModel<200){
+				lensDistortionModelType=1;
+			} else if (lensDistortionModel<300){
+				lensDistortionModelType=2;
+			} else {
+				lensDistortionModelType=0;
+			}
+		}
 	    public LensDistortionParameters(
 //	    		LensDistortionParameters lensDistortionParameters,
 	    		boolean isTripod,
@@ -116,6 +134,7 @@ import Jama.Matrix;
 				double px0,           // center of the lens on the sensor, pixels
 				double py0,           // center of the lens on the sensor, pixels
 				boolean flipVertical, // acquired image is mirrored vertically (mirror used)
+				int lensDistortionModel,
 				double [][] r_xy,  
 				double [][] r_od
 		){
@@ -140,6 +159,7 @@ import Jama.Matrix;
 			px0,
 			py0,
 			flipVertical,
+			lensDistortionModel,
 			r_xy,  
 			r_od);
 		}
@@ -166,6 +186,7 @@ import Jama.Matrix;
 			1296,   // px0,
 			698,    // py0,
 			true,   // flipVertical,
+			-1,     // lensDistortionModel
 			null,   // r_xy,  
 			null   // r_od,
 			);
@@ -192,6 +213,7 @@ import Jama.Matrix;
 					this.px0,
 					this.py0,
 					this.flipVertical,
+					this.lensDistortionModel,
 					this.r_xy,
 					this.r_od
 			);
@@ -218,6 +240,7 @@ import Jama.Matrix;
 				double px0,           // center of the lens on the sensor, pixels
 				double py0,           // center of the lens on the sensor, pixels
 				boolean flipVertical, // acquired image is mirrored vertically (mirror used)
+				int lensDistortionModel,
 				double [][] r_xy,   // per polynomial term center x,y correction only 6, as for the first term delta x, delta y ==0  
 				double [][] r_od   // per polynomial term orthogonal+diagonal elongation
 		){
@@ -241,6 +264,7 @@ import Jama.Matrix;
 			this.px0=px0;
 			this.py0=py0;
 			this.flipVertical=flipVertical;
+			this.lensDistortionModel=(lensDistortionModel>=0)?lensDistortionModel:defaultLensDistortionModel;
 			if (r_xy==null) r_xy=r_xy_dflt;
 			if (r_od==null) r_od=r_od_dflt;
 			this.r_xy=new double [r_xy.length][2];
@@ -273,6 +297,7 @@ import Jama.Matrix;
 					pars.px0,          //        center of the lens on the sensor, pixels
 					pars.py0,          // center of the lens on the sensor, pixels
 					this.flipVertical, // (keep)  acquired image is mirrored vertically (mirror used)
+					pars.lensDistortionModel,
 					pars.r_xy,         // do not exist yet!
 					pars.r_od          // do not exist yet!
 			);
@@ -301,6 +326,7 @@ import Jama.Matrix;
 					ldp.px0,
 					ldp.py0,
 					ldp.flipVertical,
+					ldp.lensDistortionModel,
 					ldp.r_xy,  
 					ldp.r_od);
 		}
@@ -427,6 +453,7 @@ dPXmmc/dphi=
     		this.r_xyod[0][1]=0.0; // this.py0;
     		this.r_xyod[0][2]=this.r_od[0][0];
     		this.r_xyod[0][3]=this.r_od[0][1];
+    		setDistortionModelParameters();
     		if (cummulativeCorrection){
     			for (int i=1;i<this.r_xyod.length;i++){
     	    		this.r_xyod[i][0]=this.r_xyod[i-1][0]+this.r_xy[i-1][0];
@@ -911,13 +938,39 @@ dPXmmc/dphi=
         		}
         	}
         }
-        public double [][] calcPartialDerivatives_old(
+        public double [][] calcPartialDerivatives(
         		double xp, // target point horizontal, positive - right,  mm
         		double yp, // target point vertical,   positive - down,  mm
         		double zp, // target point horizontal, positive - away from camera,  mm
         		boolean calculateAll){ // calculate derivatives, false - values only
+        	double maxRelativeRadius=2.0;
+        	return calcPartialDerivatives(xp,yp,zp,maxRelativeRadius,calculateAll);
+        }        
+        public double [][] calcPartialDerivatives(
+        		double xp, // target point horizontal, positive - right,  mm
+        		double yp, // target point vertical,   positive - down,  mm
+        		double zp, // target point horizontal, positive - away from camera,  mm
+            	double maxRelativeRadius, // make configurable? 
+        		boolean calculateAll){ // calculate derivatives, false - values only
+        	switch (this.lensDistortionModelType){
+        	case 0:
+        	case 1:
+        		return calcPartialDerivatives_type1(xp,yp,zp,maxRelativeRadius,calculateAll);
+        	case 2:
+        		return calcPartialDerivatives_type2(xp,yp,zp,maxRelativeRadius,calculateAll);
+        	default:
+        		return calcPartialDerivatives_type1(xp,yp,zp,maxRelativeRadius,calculateAll);
+        	}
+        }
+        
+        
+        public double [][] calcPartialDerivatives_type1(
+        		double xp, // target point horizontal, positive - right,  mm
+        		double yp, // target point vertical,   positive - down,  mm
+        		double zp, // target point horizontal, positive - away from camera,  mm
+        		double maxRelativeRadius,
+        		boolean calculateAll){ // calculate derivatives, false - values only
 //        	this.cummulativeCorrection=false; // just debugging
-        	final double maxRelativeRadius=2.0; // make configurable? 
         	
         	// TODO - add reduced calculations for less terms?
 //        	final int numDerivatives=44; // 18+6*2+7*2; // 18  for radial and 26 more for non-radial
@@ -1261,15 +1314,13 @@ dPXmmc/dphi=
             return partDeriv;
         }
         
-
-        
-        public double [][] calcPartialDerivatives(
+        public double [][] calcPartialDerivatives_type2(
         		double xp, // target point horizontal, positive - right,  mm
         		double yp, // target point vertical,   positive - down,  mm
         		double zp, // target point horizontal, positive - away from camera,  mm
+        		double maxRelativeRadius,
         		boolean calculateAll){ // calculate derivatives, false - values only
 //        	this.cummulativeCorrection=false; // just debugging
-        	final double maxRelativeRadius=2.0; // make configurable? 
         	
         	// TODO - add reduced calculations for less terms?
 //        	final int numDerivatives=44; // 18+6*2+7*2; // 18  for radial and 26 more for non-radial

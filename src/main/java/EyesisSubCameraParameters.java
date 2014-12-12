@@ -25,6 +25,8 @@ import java.util.Properties;
 
     public class EyesisSubCameraParameters{
     	// origin is on the rotation axis of the tube body closest to the goniometer horizontal axis
+    	public int    lensDistortionModel=0;
+    	public boolean enableNoLaser=true; // enable images for this channel w/o matched laser pointer
     	public double azimuth; // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     	public double radius;  // mm, distance from the rotation axis
     	public double height;       // mm, up - from the origin point
@@ -66,6 +68,8 @@ import java.util.Properties;
 		*/		
 		
     	public EyesisSubCameraParameters(
+    			int lensDistortionModel,
+    			boolean enableNoLaser,
     			double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
     			double radius,  // mm, distance from the rotation axis
     			double height,  // mm, up from the origin point
@@ -88,6 +92,8 @@ import java.util.Properties;
 				double [][] r_od,     // elongation for c,b,a,a5,a6,a7,a8
     			double channelWeightDefault
     	){
+    		this.lensDistortionModel=lensDistortionModel;
+    		this.enableNoLaser=enableNoLaser;
     		this.azimuth=azimuth;
     		this.radius=radius;
     		this.height=height;
@@ -121,6 +127,8 @@ import java.util.Properties;
     	// defects are not cloned!
     	public EyesisSubCameraParameters clone() {
     		return new EyesisSubCameraParameters(
+    				this.lensDistortionModel,
+    				this.enableNoLaser,
     				this.azimuth,
     				this.radius,
     				this.height,
@@ -152,6 +160,8 @@ import java.util.Properties;
     	}
 // TODO: add/restore new properties
     	public void setProperties(String prefix,Properties properties){
+    		properties.setProperty(prefix+"lensDistortionModel",this.lensDistortionModel+"");
+    		properties.setProperty(prefix+"enableNoLaser",this.enableNoLaser+"");
     		properties.setProperty(prefix+"azimuth",this.azimuth+"");
     		properties.setProperty(prefix+"radius",this.radius+"");
     		properties.setProperty(prefix+"height",this.height+"");
@@ -181,6 +191,11 @@ import java.util.Properties;
 			properties.setProperty(prefix+"channelWeightDefault",this.channelWeightDefault+"");
     	}
     	public void getProperties(String prefix,Properties properties){
+    		getProperties(prefix,properties, -1);
+    	}
+    	public void getProperties(String prefix,Properties properties, int channel){
+    		if (properties.getProperty(prefix+"lensDistortionModel")!=null)
+    			this.lensDistortionModel=Integer.parseInt(properties.getProperty(prefix+"lensDistortionModel"));
     		if (properties.getProperty(prefix+"azimuth")!=null)
     			this.azimuth=Double.parseDouble(properties.getProperty(prefix+"azimuth"));
     		if (properties.getProperty(prefix+"radius")!=null)
@@ -231,6 +246,13 @@ import java.util.Properties;
 				this.channelWeightDefault=Double.parseDouble(properties.getProperty(prefix+"channelWeightDefault"));
 				this.channelWeightCurrent=this.channelWeightDefault;
 			}
+//			/enableNoLaser
+			if (properties.getProperty(prefix+"enableNoLaser")!=null) {
+				this.enableNoLaser=Boolean.parseBoolean(properties.getProperty(prefix+"enableNoLaser"));
+			} else {
+				this.enableNoLaser=(channel<24);
+			}
+			
     	}
     	public void setChannelWeightCurrent(
     			double weight){

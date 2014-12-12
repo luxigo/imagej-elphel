@@ -50,6 +50,7 @@ import Jama.Matrix;
 // 1 - put commons-configuration-1.7.jar under ImageJ plugins directory (I used ImageJ-Elphel)
 // 2 - in Eclipse project properties -> Build Path -> Libraries -> Add External jar
 public class Distortions {
+	final public double hintedMaxRelativeRadius=1.2; // make adjustable?
 	private showDoubleFloatArrays SDFA_INSTANCE=new showDoubleFloatArrays(); // just for debugging?
 //    int numInputs=27; // with A8...// 24;   // parameters in subcamera+...
 //    int numOutputs=16; // with A8...//13;  // parameters in a single camera
@@ -3010,12 +3011,25 @@ For each point in the image
 	 * @param v grid V (signed, 0 in the center)
 	 * @return [7] {pX,pY,grid mask (binary), grid R, grid G, grid B, alpha}
 	 */
-	
 	public double [] reprojectGridNode(
 			LensDistortionParameters lensDistortionParameters,
 			int numImg,
 			int u, // grid signed u,v
-			int v
+			int v){
+		double maxRelativeRadius=this.hintedMaxRelativeRadius; // make adjustable
+		return  reprojectGridNode(
+				lensDistortionParameters,
+				numImg,
+				u, // grid signed u,v
+				v,
+		       	maxRelativeRadius);
+	}	
+	public double [] reprojectGridNode(
+			LensDistortionParameters lensDistortionParameters,
+			int numImg,
+			int u, // grid signed u,v
+			int v,
+	       	double maxRelativeRadius //=2.0;
 	){
 		int debugThreshold=1;
 		int nChn=   this.fittingStrategy.distortionCalibrationData.gIP[numImg].channel;
@@ -3035,6 +3049,7 @@ For each point in the image
 					XYZMP[0], // target point horizontal, positive - right,  mm
 					XYZMP[1], // target point vertical,   positive - down,  mm
 					XYZMP[2], // target point horizontal, positive - away from camera,  mm
+					maxRelativeRadius, //
 					false); // calculate derivatives, false - values only (NaN for behind points - only when false here)
 			if (Double.isNaN(pXY[0][0])) {
 				if (this.debugLevel>debugThreshold){
@@ -3094,6 +3109,7 @@ For each point in the image
 			double goniometerAxial,     // Axial
 			int  imageSet,
 			boolean filterBorder){
+		double maxRelativeRadius=this.hintedMaxRelativeRadius; // make adjustable
 		int debugThreshold=2;
 		// Get parameter vector (22) for the selected sensor, current Eyesisparameters and specified orientation angles 		
 		double [] parVector=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getParametersVector(stationNumber,subCamera);
@@ -3155,6 +3171,7 @@ For each point in the image
 						XYZM[0], // target point horizontal, positive - right,  mm
 						XYZM[1], // target point vertical,   positive - down,  mm
 						XYZM[2], // target point horizontal, positive - away from camera,  mm
+						maxRelativeRadius,
 						false); // calculate derivatives, false - values only (NaN for behind points - only when false here)
 // verify the grid is inside the sensor area (may use sensor mask later too? probably not needed)
 				// Now NaN if point is behind the sensor
@@ -5963,6 +5980,10 @@ List calibration
     	imp.setProperty("comment_entrancePupilForward",  "entrance pupil distance from the azimuth/radius/height, outwards in mm");
     	imp.setProperty("entrancePupilForward",  ""+entrancePupilForward); // currently global, decoders will use per-sensor
        	imp.setProperty("comment_defects", "Sensor hot/cold pixels list as x:y:difference");
+       	
+       	imp.setProperty("comment_lensDistortionModel", "Integer specifying lens distrotion model (0 - radial)");
+       	imp.setProperty("lensDistortionModel", ""+subCam.lensDistortionModel);
+       	
 		for (int i=0;i<subCam.r_xy.length;i++){
 			imp.setProperty("r_xy_"+i+"_x",subCam.r_xy[i][0]+"");
 			imp.setProperty("r_xy_"+i+"_y",subCam.r_xy[i][1]+"");
@@ -6144,6 +6165,7 @@ List calibration
         		subCam.defectsDiff=null;
         	}
  // non-radial
+        	if (imp.getProperty("lensDistortionModel")  !=null) subCam.lensDistortionModel= Integer.parseInt((String) imp.getProperty("lensDistortionModel"));
         	subCam.setDefaultNonRadial();
 			for (int i=0;i<subCam.r_xy.length;i++) {
 				if (imp.getProperty("r_xy_"+i+"_x")  !=null) subCam.r_xy[i][0]= Double.parseDouble((String) imp.getProperty("r_xy_"+i+"_x"));
@@ -9555,6 +9577,7 @@ M * V = B
         	System.out.println("this.lensDistortionParameters.distortionA="+IJ.d2s(this.lensDistortionParameters.distortionA, 5));
         	System.out.println("this.lensDistortionParameters.distortionB="+IJ.d2s(this.lensDistortionParameters.distortionB, 5));
         	System.out.println("this.lensDistortionParameters.distortionC="+IJ.d2s(this.lensDistortionParameters.distortionC, 5));
+        	System.out.println("this.lensDistortionParameters.lensDistortionModel="+this.lensDistortionParameters.lensDistortionModel);
         	for (int i=0;i<this.lensDistortionParameters.r_xy.length;i++){
             	System.out.println("this.lensDistortionParameters.r_xy["+i+"][0]="+IJ.d2s(this.lensDistortionParameters.r_xy[i][0], 5));
             	System.out.println("this.lensDistortionParameters.r_xy["+i+"][1]="+IJ.d2s(this.lensDistortionParameters.r_xy[i][1], 5));
@@ -9760,6 +9783,7 @@ M * V = B
     	if (reCenterVertically){
     		eyesisCameraParameters.recenterVertically(channelMask, stationMask);
     		for (int i=0;i<channelMask.length;i++) channelMask[i]= true;
+    		parameterMask[distortionCalibrationData.getParameterIndexByName("subcamHeight")] = true;
     	}
 
 		

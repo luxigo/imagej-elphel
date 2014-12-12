@@ -30,7 +30,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
@@ -1394,6 +1399,448 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     		for (int i=0;i<this.parameterList.length;i++) if ((this.parameterList[i][0]==nSub) && (this.parameterList[i][1]==index)) return i;
     		return -1;
     	}
+    	private int [] arrayToSortedInt(int [] srcArray){
+    		Set<Integer> set = new HashSet<Integer>();
+    		for (Integer data:srcArray) set.add(data);
+    		int [] array = new int [set.size()];
+    		int i=0;
+    		for (Integer val:set) array[i++]= val;
+    		Arrays.sort(array);
+    		return array;
+    	}
+    	
+    	public boolean selectIndividualImages(
+    			boolean [] selection,
+    			boolean allImages,
+    			int startIndex,
+    			int perPage){
+    		boolean [] enabled=  this.distortionCalibrationData.selectEnabled();
+    		int [] hintedMatch=this.distortionCalibrationData.getHintedMatch();
+    		if (selection.length!=enabled.length){
+    			System.out.println("BUG: selectIndividualImages(): selection.length!=enabled.length!");
+    			return false;
+    		}
+    		int endIndex=startIndex;
+    		int numImg=0;
+    		for (endIndex=startIndex; (endIndex<enabled.length) && (numImg<perPage);endIndex++) if (allImages || enabled[endIndex]) numImg++;
+    		for (;(endIndex<enabled.length) && !allImages && !enabled[endIndex];endIndex++); // advance over disabled images
+    		GenericDialog gd=new GenericDialog("Select images "+startIndex+"..."+(endIndex-1));
+    		for (int i=startIndex;i<endIndex;i++) if (allImages || enabled[i]){
+				gd.addCheckbox    (i+" - "+(this.distortionCalibrationData.gIP[i].enabled?"":"(disabled) ")+
+						IJ.d2s(this.distortionCalibrationData.gIP[i].timestamp,6)+
+						": "+this.distortionCalibrationData.gIP[i].channel+
+						" matched "+this.distortionCalibrationData.gIP[i].matchedPointers+" pointers"+
+						", hinted state: "+((hintedMatch[i]<0)?"undefined":((hintedMatch[i]==0)?"failed":((hintedMatch[i]==1)?"orientation":"orientation and translation"))),
+						selection[i]);
+    		}
+    		if (endIndex<enabled.length){
+         		gd.enableYesNoCancel("Done", "Next");
+    		}
+			WindowTools.addScrollBars(gd);
+			gd.showDialog();
+			if (gd.wasCanceled()) return false;
+    		for (int i=startIndex;i<endIndex;i++) if (allImages || enabled[i]){
+    			selection[i]=gd.getNextBoolean();
+    		}
+			if (gd.wasOKed()) return true;
+			return selectIndividualImages(
+	    			selection,
+	    			allImages,
+	    			endIndex,
+	    			perPage);
+    	}
+
+    	public boolean selectImageSets(
+    			boolean [] selection,
+    			boolean allImages,
+    			int startIndex,
+    			int perPage){
+    		boolean [] enabled=  this.distortionCalibrationData.selectEnabled();
+    		int [] imageStations=this.distortionCalibrationData.getStations();
+    		int [] imageChannels=this.distortionCalibrationData.getChannels();
+
+    		if (selection.length!=enabled.length){
+    			System.out.println("BUG: selectIndividualImages(): selection.length!=enabled.length!");
+    			return false;
+    		}
+    	    int [][] imageSets=this.distortionCalibrationData.listImages(!allImages); // true - only enabled images
+    	    boolean [] enabledSets=new boolean [imageSets.length];
+    	    boolean [] selectedSets=new boolean [imageSets.length]; // at least one image selected in the series
+    	    for (int i=0;i<imageSets.length;i++){
+    	    	enabledSets[i]=false;
+    	    	selectedSets[i]=false;
+    	    	if (imageSets[i]!=null) for (int j=0;j<imageSets[i].length;j++){
+    	    		enabledSets[i] |= enabled[imageSets[i][j]];	
+    	    		selectedSets[i] |= selection[imageSets[i][j]];	
+    	    	}
+    	    }
+    	    
+    		int endIndex=startIndex;
+    		int numSet=0;
+    		for (endIndex=startIndex; (endIndex<enabledSets.length) && (numSet<perPage);endIndex++) if (enabledSets[endIndex]) numSet++;
+    		for (;(endIndex<enabledSets.length) &&  !enabledSets[endIndex];endIndex++); // advance over disabled sets
+    		GenericDialog gd=new GenericDialog("Select image Sets "+startIndex+"..."+(endIndex-1));
+    		for (int i=startIndex;i<endIndex;i++) if (enabledSets[i]){
+    			int station=-1;
+    			String sImgList="";
+    			int l=0;
+    			for (int j=0;j<imageSets[i].length;j++) if (enabled[imageSets[i][j]]) {
+    				station=imageStations[imageSets[i][j]];
+    				int channel=imageChannels[imageSets[i][j]];
+    				if (l > 0) sImgList+=", ";
+    				sImgList+=imageSets[i][j]+" ["+channel+"] ";
+    				l++;
+    	    	}
+				gd.addCheckbox    (i+" ("+sImgList+") === Station_"+(station+1), selectedSets[i]);
+    		}
+    		if (endIndex<enabledSets.length){
+         		gd.enableYesNoCancel("Done", "Next");
+    		}
+			WindowTools.addScrollBars(gd);
+			gd.showDialog();
+			if (gd.wasCanceled()) return false;
+//			Arrays.fill(selection, false);
+    		for (int i=startIndex;i<endIndex;i++) if (enabledSets[i]){
+    			selectedSets[i]=gd.getNextBoolean();
+    			for (int j=0;j<imageSets[i].length;j++) {
+    				selection[imageSets[i][j]]=selectedSets[i];
+    			}
+    		}
+			if (gd.wasOKed()) return true;
+			return selectImageSets(
+	    			selection,
+	    			allImages,
+	    			endIndex,
+	    			perPage);
+    	}
+    	
+    	
+    	/**
+    	 * Manage image selection for the current series
+    	 * @param numSeries series number to manage
+    	 * @return -1 - cancel, 0 - repeat again, 1 -  Done,
+    	 */
+    	public int manageSelection(
+    			int numSeries){
+//    		String [] firstOperand= {"Current","Inverted current","None","All"};
+//    		String [] SecondOperand={"Selection","Inverted selection","None","All"};
+//    		String [] operation={"And","Or"};
+    		String [] actions={
+    				"Replace current with new selection",
+    				"Add selection to current",
+    				"Add inverted selection to current",
+    				"And selection with current",
+    				"Remove selection from current",
+    				"Invert current selection, disregard other settings"};
+    		String [] selectionType={
+    				"Select from all enabled images",                 // 0
+    				"Select from new enabled images",                 // 1
+    				"Select from images with estimated orientation",  // 2
+    				"Individual images, start from empty selection",  // 3
+    				"Individual images, start from current selection",// 4
+    				"Image sets, start from empty selection",         // 5
+    				"Image sets, start from current selection"        // 6
+    				};   
+    		int numStations=this.distortionCalibrationData.eyesisCameraParameters.getNumStations();
+    		int numChannels=this.distortionCalibrationData.eyesisCameraParameters.getNumChannels(0); // for station 0
+    		boolean [] selected=          this.selectedImages[numSeries];
+    		boolean [] enabled=           this.distortionCalibrationData.selectEnabled();
+            boolean [] newEnabled=        this.distortionCalibrationData.selectNewEnabled ();
+            boolean [] estimated=         this.distortionCalibrationData.selectEstimated(true); //boolean enabledOnly);
+            boolean [] estimatedAll=      this.distortionCalibrationData.selectEstimated(false); //boolean enabledOnly);
+
+    		if (selected.length!=enabled.length){
+    			System.out.println("WARNING: manageSelection(): lengths (strategy and images) mismatch selected.length="+selected.length+" available images: "+enabled.length);
+   				boolean [] newSelection=new boolean[enabled.length];
+				for (int i=0;i<newSelection.length;i++) newSelection[i]=(i<enabled.length)?enabled[i]:false;
+				selected=newSelection;
+				this.selectedImages[numSeries]=selected;
+    		}
+    		int numSelected=0;
+    		int [] numSelectedPerStation=new int [numStations];
+    		Arrays.fill(numSelectedPerStation, 0);
+    		int numEnabled  = 0; // this.distortionCalibrationData.getNumEnabled();
+    		int [] numEnabledPerStation=new int [numStations];
+    		Arrays.fill(numEnabledPerStation, 0);
+    		int [] totalPerStation=new int [numStations];
+    		Arrays.fill(totalPerStation, 0);
+    		int [] imageStations=this.distortionCalibrationData.getStations();
+    		int [] imageChannels=this.distortionCalibrationData.getChannels();
+    		
+    		int numNewEnabled=0;
+    		int [] numNewEnabledPerStation=new int [numStations];
+    		Arrays.fill(numNewEnabledPerStation, 0);
+    		int numNewEnabledSelected=0;
+    		int [] numNewEnabledSelectedPerStation=new int [numStations];
+    		Arrays.fill(numNewEnabledSelectedPerStation, 0);
+    		
+    		int numEstimatedSelected=0;
+    		int [] numEstimatedSelectedPerStation=new int [numStations];
+    		Arrays.fill(numEstimatedSelectedPerStation, 0);
+
+    		int numEstimated=0;
+    		int [] numEstimatedPerStation=new int [numStations];
+    		Arrays.fill(numEstimatedPerStation, 0);
+    		
+    		int numEstimatedAll=0;
+    		int [] numEstimatedAllPerStation=new int [numStations];
+    		Arrays.fill(numEstimatedAllPerStation, 0);
+
+    		int [] matchedPointers=this.distortionCalibrationData.getMatchedPointers();
+    		int [] matchedPointersIndex=arrayToSortedInt(matchedPointers);
+    		int [] hintedMatch=this.distortionCalibrationData.getHintedMatch();
+    		int [] hintedMatchIndex=arrayToSortedInt(hintedMatch);
+    		Map <Integer,Integer> mapMP=new HashMap<Integer,Integer>();
+    		Map <Integer,Integer> mapHM=new HashMap<Integer,Integer>();
+    		for (Integer index=0;index<matchedPointersIndex.length;index++) mapMP.put(new Integer(matchedPointersIndex[index]),index);
+    		for (Integer index=0;index<hintedMatchIndex.length;index++) mapHM.put(new Integer(hintedMatchIndex[index]),index);
+    		
+    		int []   numMatchedPointers=        new int [matchedPointersIndex.length];
+    		int []   numMatchedPointersSelected=new int [matchedPointersIndex.length];
+    		int []   numMatchedPointersEnabled= new int [matchedPointersIndex.length];
+    		int [][] numMatchedPointersPerStation=        new int [matchedPointersIndex.length][];
+    		int [][] numMatchedPointersSelectedPerStation=new int [matchedPointersIndex.length][];
+    		int [][] numMatchedPointersEnabledPerStation= new int [matchedPointersIndex.length][];
+    		for (int n=0;n<numMatchedPointers.length;n++){
+    			numMatchedPointers[n]=0;
+    			numMatchedPointersSelected[n]=0;
+    			numMatchedPointersEnabled[n]=0;
+    			numMatchedPointersPerStation[n]=new int [numStations];
+    			numMatchedPointersSelectedPerStation[n]=new int [numStations];
+    			numMatchedPointersEnabledPerStation[n]=new int [numStations];
+        		Arrays.fill(numMatchedPointersPerStation[n], 0);
+        		Arrays.fill(numMatchedPointersSelectedPerStation[n], 0);
+        		Arrays.fill(numMatchedPointersEnabledPerStation[n], 0);
+    		}
+
+    		int []   numHintedMatch=        new int [matchedPointersIndex.length];
+    		int []   numHintedMatchSelected=new int [matchedPointersIndex.length];
+    		int []   numHintedMatchEnabled= new int [matchedPointersIndex.length];
+    		int [][] numHintedMatchPerStation=        new int [matchedPointersIndex.length][];
+    		int [][] numHintedMatchSelectedPerStation=new int [matchedPointersIndex.length][];
+    		int [][] numHintedMatchEnabledPerStation= new int [matchedPointersIndex.length][];
+    		for (int n=0;n<numHintedMatch.length;n++){
+    			numHintedMatch[n]=0;
+    			numHintedMatchSelected[n]=0;
+    			numHintedMatchEnabled[n]=0;
+    			numHintedMatchPerStation[n]=new int [numStations];
+    			numHintedMatchSelectedPerStation[n]=new int [numStations];
+    			numHintedMatchEnabledPerStation[n]=new int [numStations];
+        		Arrays.fill(numHintedMatchPerStation[n], 0);
+        		Arrays.fill(numHintedMatchSelectedPerStation[n], 0);
+        		Arrays.fill(numHintedMatchEnabledPerStation[n], 0);
+    		}
+
+    		
+    		for (int i=0;i<selected.length;i++) if (imageStations[i]>=0){
+    			int mpi=mapMP.get(new Integer(matchedPointers[i]));
+    			int hmi=mapHM.get(new Integer(hintedMatch[i]));
+    			if (enabled[i]) {
+    				numEnabledPerStation[imageStations[i]]++;
+    				numEnabled++;
+        			if (selected[i]) {
+        				numSelectedPerStation[imageStations[i]]++;
+        				numSelected++;
+        				numMatchedPointersSelectedPerStation[mpi][imageStations[i]]++;
+        				numMatchedPointersSelected[mpi]++;
+
+        				numHintedMatchSelectedPerStation[hmi][imageStations[i]]++;
+        				numHintedMatchSelected[hmi]++;
+
+        			}
+        			if (newEnabled[i]){
+        				numNewEnabledPerStation[imageStations[i]]++;
+        				numNewEnabled++;
+            			if (selected[i]) {
+            				numNewEnabledSelectedPerStation[imageStations[i]]++;
+            				numNewEnabledSelected++;
+            			}
+        			}
+        			if (estimated[i]){
+        				numEstimatedPerStation[imageStations[i]]++;
+        				numEstimated++;
+            			if (selected[i]) {
+            				numEstimatedSelectedPerStation[imageStations[i]]++;
+            				numEstimatedSelected++;
+            			}
+        			}
+        			numMatchedPointersEnabledPerStation[mpi][imageStations[i]]++;
+    				numMatchedPointersEnabled[mpi]++;
+        			
+        			numHintedMatchEnabledPerStation[hmi][imageStations[i]]++;
+    				numHintedMatchEnabled[hmi]++;
+    				
+    				
+    			}
+    			if (estimatedAll[i]){
+    				numEstimatedAllPerStation[imageStations[i]]++;
+    				numEstimatedAll++;
+    			}
+    			numMatchedPointersPerStation[mpi][imageStations[i]]++;
+				numMatchedPointers[mpi]++;
+
+				numHintedMatchPerStation[hmi][imageStations[i]]++;
+				numHintedMatch[hmi]++;
+				
+				totalPerStation[imageStations[i]]++;
+
+    		}
+    		String sAvailable="["+numSelected+"/"+numEnabled+"/"+selected.length+"]   ";
+    		String sNewEnabled="["+numNewEnabledSelected+"/"+numNewEnabled+"]   ";
+    		String sEstimated="["+numEstimatedSelected+"/"+numEstimated+"/"+numEstimatedAll+"]   ";
+    		String [] sMatchedPointers=new String [matchedPointersIndex.length];
+    		String [] sHintedMatch=new String [hintedMatchIndex.length];
+    		for (int n=0;n<sMatchedPointers.length;n++){
+    			sMatchedPointers[n]="["+numMatchedPointersSelected[n]+"/"+numMatchedPointersEnabled[n]+"/"+numMatchedPointers[n]+"]   ";
+    		}
+    		for (int n=0;n<sHintedMatch.length;n++){
+    			sHintedMatch[n]="["+numHintedMatchSelected[n]+" / "+numHintedMatchEnabled[n]+" / "+numHintedMatch[n]+"]   ";
+    		}
+    		if (numStations>1) for (int i=0;i<numStations;i++) {
+    			sAvailable+= " station_"+(i+1)+": ["+numSelectedPerStation[i]+" / "+numEnabledPerStation[i]+" / "+totalPerStation[i]+"]";
+    			sNewEnabled+=" station_"+(i+1)+": ["+numNewEnabledSelectedPerStation[i]+" / "+numNewEnabledPerStation[i]+"]";
+    			sEstimated+=" station_"+(i+1)+": ["+numEstimatedSelectedPerStation[i]+" / "+numEstimatedPerStation[i]+" / "+numEstimatedAllPerStation[i]+"]";
+    			for (int n=0;n<sMatchedPointers.length;n++){
+    				sMatchedPointers[n]+=" station_"+(i+1)+": ["+numMatchedPointersSelectedPerStation[n][i]+" / "+
+    						numMatchedPointersEnabledPerStation[n][i]+" / "+numMatchedPointersPerStation[n][i]+"]";
+    			}
+    			for (int n=0;n<sHintedMatch.length;n++){
+    				sHintedMatch[n]+=" station_"+(i+1)+": ["+numHintedMatchSelectedPerStation[n][i]+" / "+
+    						numHintedMatchEnabledPerStation[n][i]+" / "+numHintedMatchPerStation[n][i]+"]";
+    			}
+    			
+    		}
+
+    		int operIndex=0,selectionTypeIndex=0;
+//			boolean selectEstimated=false;
+//			boolean selectNewEnabled=false;
+    		boolean [] requiredMatchedPointers=new boolean [matchedPointersIndex.length];
+    		boolean [] requiredHintedMatch=new boolean [hintedMatchIndex.length];
+    		boolean [] requiredStations=new boolean [numStations];
+    		boolean [] requiredChannels=new boolean [numChannels];
+    		Arrays.fill(requiredMatchedPointers,true);
+    		Arrays.fill(requiredHintedMatch,true);
+    		Arrays.fill(requiredStations,true);
+    		Arrays.fill(requiredChannels,true);
+    		selectionType[0]+=" ("+numEnabled+")";
+    		selectionType[1]+=" ("+numNewEnabled+")";
+    		selectionType[2]+=" ("+numEstimated+")";
+    		if (this.debugLevel>0){
+    			System.out.println("Image statistics for series "+numSeries+": [currently selected/enabled/total]");
+    			System.out.println("Grid images:"+sAvailable);
+    			System.out.println("New enabled images: "+sNewEnabled);
+    			System.out.println("Estimated orientation: "+sEstimated);
+        		for (int n=0;n<sMatchedPointers.length;n++) System.out.println("Images with "+matchedPointersIndex[n]+" pointers: "+sMatchedPointers[n]);
+        		for (int n=0;n<sHintedMatch.length;n++) System.out.println("Images with hinted match state=\""+hintedMatchIndex[n]+"\": "+sHintedMatch[n]);
+        		System.out.println();
+    		}
+
+    		GenericDialog gd=new GenericDialog("Manage image selection for series "+numSeries);
+    		gd.addMessage("Image statistics: [currently selected/enabled/total]");
+    		gd.addMessage("Grid images:"+sAvailable);
+    		gd.addMessage("New enabled images: "+sNewEnabled);
+    		gd.addMessage("Estimated orientation: "+sEstimated);
+    		for (int n=0;n<sMatchedPointers.length;n++) gd.addMessage("Images with "+matchedPointersIndex[n]+" pointers: "+sMatchedPointers[n]);
+    		for (int n=0;n<sHintedMatch.length;n++) gd.addMessage("Images with hinted match state=\""+hintedMatchIndex[n]+"\": "+sHintedMatch[n]);
+			gd.addChoice("Operation on selection", actions, actions[operIndex]);
+			gd.addChoice("Selection type", selectionType, selectionType[selectionTypeIndex]);
+    		//selectionType
+//			gd.addCheckbox("Select images with estimated orientation", selectEstimated);
+//			gd.addCheckbox("Select new enabled images", selectNewEnabled);
+    		gd.addMessage("=== Filter selection by the number of matched laser pointers ===");
+    		for (int i=0;i<matchedPointersIndex.length;i++){
+    			gd.addCheckbox("Select images with "+matchedPointersIndex[i]+" pointers", requiredMatchedPointers[i]);
+    		}
+    		gd.addMessage("=== Filter selection by the hinted match state (-1 - none, 1 - orientation, 2 - position and orientation) ===");
+    		for (int i=0;i<hintedMatchIndex.length;i++){
+    			gd.addCheckbox("Select images hintedMatch="+hintedMatchIndex[i], requiredHintedMatch[i]);
+    		}
+    		gd.addMessage("=== Limit selection by the station ===");
+    		for (int i=0;i<requiredStations.length;i++){
+    			gd.addCheckbox("Select station "+(i+1), requiredStations[i]);
+    		}
+    		gd.addMessage("=== Limit selection by the channel ===");
+    		for (int i=0;i<requiredChannels.length;i++){
+    			gd.addCheckbox("Select channel "+i, requiredChannels[i]);
+    		}
+    		gd.enableYesNoCancel("OK", "More");
+			WindowTools.addScrollBars(gd);
+			gd.showDialog();
+			if (gd.wasCanceled()) return -1;
+			boolean more=!gd.wasOKed();
+			operIndex=gd.getNextChoiceIndex();
+			selectionTypeIndex=gd.getNextChoiceIndex(); // TODO:Implement!
+//			selectEstimated=gd.getNextBoolean();
+//			selectNewEnabled=gd.getNextBoolean();
+    		for (int i=0;i<matchedPointersIndex.length;i++) requiredMatchedPointers[i]=gd.getNextBoolean();
+    		for (int i=0;i<hintedMatchIndex.length;i++)     requiredHintedMatch[i]=    gd.getNextBoolean();
+    		for (int i=0;i<requiredStations.length;i++)     requiredStations[i]=gd.getNextBoolean();
+    		for (int i=0;i<requiredChannels.length;i++)     requiredChannels[i]=gd.getNextBoolean();
+    		boolean [] selection=new boolean [enabled.length];
+    		Arrays.fill(selection,false);
+    		switch (selectionTypeIndex){
+    		case 0: 
+    			selection=enabled.clone();
+    			break;
+    		case 1:
+    			selection=newEnabled.clone();
+    			break;
+    		case 2:
+    			selection=estimated.clone();
+    			break;
+    		case 4: // start from current selection
+    			selection=selected.clone();
+    		case 3: // start from empty selection
+    			if (!selectIndividualImages(
+	    			selection,
+	    			false, // allImages,
+	    			0, // star iIndex
+	    			500)) return -1; //perPage))
+    		case 6: // start from current selection
+    			selection=selected.clone();
+    		case 5: // start from empty selection
+    			if (!selectImageSets(
+    	    			selection,
+    	    			false, // allImages,
+    	    			0, // star iIndex
+    	    			500)) return -1; //perPage))
+    		}
+			for (int i=0;i<selection.length;i++) selection[i] &= requiredMatchedPointers[mapMP.get(new Integer(matchedPointers[i]))]; 
+			for (int i=0;i<selection.length;i++) selection[i] &= requiredHintedMatch[mapHM.get(new Integer(hintedMatch[i]))]; 
+    		
+			for (int i=0;i<selection.length;i++) if (imageStations[i]>=0) selection[i] &= requiredStations[imageStations[i]]; 
+			else selection[i] = false;
+				
+			for (int i=0;i<selection.length;i++) if (imageChannels[i]>=0) selection[i] &= requiredChannels[imageChannels[i]]; 
+			else selection[i] = false;
+			
+			// now combine new/old selections
+			switch (operIndex){
+			case 0: // keep new selection
+				break;
+			case 1:
+				for (int i=0;i<selection.length;i++) selection[i] |= selected[i]; // OR
+				break;
+			case 2:
+				for (int i=0;i<selection.length;i++) selection[i] = selected[i] | !selection[i]; // OR-NOT
+				break;
+			case 3:
+				for (int i=0;i<selection.length;i++) selection[i] = selected[i] && selection[i]; // AND
+				break;
+			case 4:
+				for (int i=0;i<selection.length;i++) selection[i] = selected[i] && !selection[i]; // AND-NOT
+				break;
+			case 5:
+				for (int i=0;i<selection.length;i++) selection[i]= !selected[i];
+				break;
+			}
+			// Remove disabled
+			for (int i=0;i<selection.length;i++) selection[i] &= enabled[i];
+			// replace current selection
+			this.selectedImages[numSeries]=selection;
+			return more?0:1;
+    	}
+    	
     	
     	/**
     	 * 
@@ -1402,7 +1849,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     	 * @param fromToImages - limit number of checkboxes, otherwise window does not show the bottom ones
     	 * @param useParameters Select parameters for this series
     	 * @param askNextSeries Ask for next series number
-    	 * @param zeroAndOther use 2 channels 0 and "other", propagete settings for channel 1 to all the rest
+    	 * @param zeroAndOther use 2 channels 0 and "other", propagate settings for channel 1 to all the rest
     	 * @return -2 - cancel, -1, done, otherwise - number of step to edit
     	 */
     	public int selectStrategyStep(
@@ -1417,6 +1864,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     			){
     		boolean showDirectMap=false;
     		boolean showReverseMap=false;
+    		boolean showAdvancedImageSelection=false;
     		// if current series is not valid (probably just started a new one) - look for the last valid (if any)
     		// and copy it;
     		int numEstimated=this.distortionCalibrationData.getNumberOfEstimated(true); //(boolean enabledOnly
@@ -1439,6 +1887,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
     		}
     		
 			GenericDialog gd = new GenericDialog("Fitting Strategy Step Configuration, step "+numSeries+" number of enabled images="+this.distortionCalibrationData.getNumEnabled());
+			gd.addCheckbox("Advanced image selection (disregard other fields)", showAdvancedImageSelection);
 			gd.addCheckbox("Copy all from the series below, ignore all other fields", false);
 			gd.addNumericField("Source series to copy from", (numSeries>0)?(numSeries-1):(numSeries+1), 0, 3, "");
 			gd.addCheckbox("Remove all (but first) images, reopen dialog", false); // remove all will be invalid, copied from the previous
@@ -1465,8 +1914,8 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 			}
 			
 			if (useImages) {
-	    		gd.addNumericField("Image sepection range, from", fromToImages[0], 0);
-	    		gd.addNumericField("Image sepection range, up to (inclufing)", fromToImages[1], 0);
+	    		gd.addNumericField("Image selection range, from", fromToImages[0], 0);
+	    		gd.addNumericField("Image selection range, up to (including)", fromToImages[1], 0);
 				gd.addMessage("Select files to include");
 				for (int i =0; i<this.distortionCalibrationData.getNumImages();i++)
 					if ((allImages || this.distortionCalibrationData.gIP[i].enabled) && (i>=fromToImages[0]) && (i<=fromToImages[1])){
@@ -1580,6 +2029,12 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 			WindowTools.addScrollBars(gd);
 			gd.showDialog();
 			if (gd.wasCanceled()) return -2;
+			showAdvancedImageSelection=gd.getNextBoolean();
+			if (showAdvancedImageSelection){
+				int rslt=0;
+				while (rslt==0) rslt=manageSelection(numSeries);
+				return (rslt<0)?-2:numSeries;
+			}
 			boolean copyFromPrevious=gd.getNextBoolean();
 			int sourceStrategy= (int) gd.getNextNumber();
 			boolean removeAllImages=gd.getNextBoolean();
@@ -1822,7 +2277,7 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 //    		gd.addNumericField("Number of series in this strategy", (oldLength>0)?oldLength:1, 0); //
     		gd.addCheckbox    ("Select images",selectImages);
     		gd.addNumericField("Show image checkboxes from", fromToImages[0], 0);
-    		gd.addNumericField("Show image checkboxes up to (inclufing)", fromToImages[1], 0);
+    		gd.addNumericField("Show image checkboxes up to (including)", fromToImages[1], 0);
     		gd.addCheckbox    ("Select from all images (false - only enabled)",allImages);
     		gd.addCheckbox    ("Select parameters",selectParameters);
     		gd.addCheckbox    ("Ask for initial lambda",askLambdas);
