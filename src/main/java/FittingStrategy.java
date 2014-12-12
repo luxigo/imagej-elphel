@@ -2033,7 +2033,8 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 			if (showAdvancedImageSelection){
 				int rslt=0;
 				while (rslt==0) rslt=manageSelection(numSeries);
-				return (rslt<0)?-2:numSeries;
+//				return (rslt<0)?-2:numSeries;
+				return numSeries; // cancel from manageSelection will just exit that mode with no changes
 			}
 			boolean copyFromPrevious=gd.getNextBoolean();
 			int sourceStrategy= (int) gd.getNextNumber();
