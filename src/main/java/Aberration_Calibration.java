@@ -6193,7 +6193,7 @@ if (MORE_BUTTONS) {
 				return;
 			}
 			GenericDialog gd=new GenericDialog ("Parameters of the filter by predicted grid");
-    		gd.addNumericField("Mismatch tolerance of match between the predicted and acquired grid", 5.0, 1,4,"pix");
+    		gd.addNumericField("Mismatch tolerance of match between the predicted and acquired grid", 0.5, 1,4,"fraction of grid half-period");
     		gd.addCheckbox    ("Calibrate by translation (false - orientation only)", true);
     		gd.addCheckbox    ("Process all images (false - only not yet enabled)", false);
     		gd.addCheckbox    ("Ignore laser pointers", false);
@@ -6272,7 +6272,7 @@ if (MORE_BUTTONS) {
 			gd=new GenericDialog ("Image set # "+imageSetNumber+" re-calibration without laser pointers");
 			gd.addMessage("Strategy 0 should have all parameters but 2 goniometer axes disabled");
 			gd.addMessage("Imgages belonging to the set will be selected, possible to check with \"Remove Outlayers\" for strategy 0");
-    		gd.addNumericField("Mismatch tolerance of match between the predicted and acquired grid", hintGridTolerance, 1,4,"pix");
+    		gd.addNumericField("Mismatch tolerance of match between the predicted and acquired grid", hintGridTolerance, 1,4,"fraction of grid half-period");
     		gd.addCheckbox("Ignore laser pointers", ignoreLaserPointers);
     		gd.addNumericField("Image set tilt", tiltCenter, 2,6,"degrees");
     		gd.addNumericField("Image set axial", axialCenter, 2,6,"degrees");

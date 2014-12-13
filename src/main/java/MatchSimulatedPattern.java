@@ -6625,15 +6625,16 @@ public class MatchSimulatedPattern {
            public double [][] calcGridMatchMatrix (double [][][] hintGrid, double searchAround){
         	   double [][][] measuredUV=mapEstimatedToMeasured(hintGrid, searchAround);
         	   if (this.debugLevel>2){
-        		   double [][] pixels=new double[7][measuredUV.length*measuredUV[0].length];
+        		   double [][] pixels=new double[9][measuredUV.length*measuredUV[0].length];
         		   int index=0;
-        		   String [] titles={"grid-U","grid-V","contrast","hint-X","hint-Y","hint-U","hint-V"};
+        		   String [] titles={"grid-U","grid-V","contrast","hint-X","hint-Y","hint-U","hint-V","grid-hint-U","grid-hint-V"}; // last 2 only valid for rotation==0
         		   for (int v=0; v<measuredUV.length;v++) for (int u=0;u<measuredUV[v].length;u++){
         			   if (measuredUV[v][u]!=null){
         				   for (int i=0; i<3;i++)	pixels[i][index]=measuredUV[v][u][i];
         				   for (int i=0; i<4;i++)	pixels[i+3][index]=hintGrid[v][u][i];
+        				   for (int i=0; i<2;i++)	pixels[i+7][index]=measuredUV[v][u][i]-hintGrid[v][u][i+2];
         			   } else {
-        				   for (int i=0; i<7;i++)	pixels[i][index]=Double.NaN;
+        				   for (int i=0; i<9;i++)	pixels[i][index]=Double.NaN;
         			   }
         			   index++;
         		   }
@@ -6656,14 +6657,56 @@ public class MatchSimulatedPattern {
         		   data [index][2][0]=measuredUV[v][u][2]; // contrast
         		   index++;
         	   }
-    		   if (this.debugLevel>0) System.out.println("calcGridMatchMatrix(), data.length="+data.length+" measuredUV.length="+measuredUV.length+
+    		   if (this.debugLevel>0) {
+    			   System.out.println("calcGridMatchMatrix(), data.length="+data.length+" measuredUV.length="+measuredUV.length+
     				   ((measuredUV.length>0)?(", measuredUV[0].length="+measuredUV[0].length):""));
+    			   if (this.debugLevel>3) for (index=0;index<data.length;index++){
+    				   System.out.println(data[index][0][0]+","+data[index][0][1]+","+data[index][1][0]+","+data[index][1][1]+","+data[index][2][0]);
+    			   }
+    		   }
+//			   int gridRotation=-1; //undefined
         	   if (data.length<3){
-//        		   if (this.debugLevel>0) System.out.println("calcGridMatchMatrix(), data.length="+data.length+" measuredUV.length="+measuredUV.length+
-//        				   ((measuredUV.length>0)?(", measuredUV[0].length="+measuredUV[0].length):""));
+///        		   if (this.debugLevel>0) System.out.println("calcGridMatchMatrix(), data.length="+data.length+" measuredUV.length="+measuredUV.length+
+///        				   ((measuredUV.length>0)?(", measuredUV[0].length="+measuredUV[0].length):""));
         		   return null;
         	   }
         	   double [][] coeff=new PolynomialApproximation(this.debugLevel).quadraticApproximation(data, true);
+        	   if (coeff!=null) {
+//				   gridRotation=matrixToRot(coeff);
+	        	   int rot=matrixToRot(coeff);
+	        	   boolean [] flips=rotToFlips(rot);
+	        	   double [][] aI={{1,0},{0,1}};
+	    		   double [][] aSwap= {{ 0,1},{1,0}};
+	    		   double [][] aFlipU={{-1,0},{0,1}};
+	    		   double [][] aFlipV={{ 1,0},{0,-1}};
+	        	   Matrix M=new Matrix(aI);
+	        	   if (flips[0]) M=M.times((new Matrix(aSwap))); 
+	        	   if (flips[1]) M=M.times((new Matrix(aFlipU))); 
+	        	   if (flips[2]) M=M.times((new Matrix(aFlipV)));
+	        	   // now M reconstructs coeff
+	        	   double [][]aM=M.getArray();
+				   double SMU=0.0,SMV=0.0,SW=0.0;
+				   for (int i=0;i<data.length;i++){
+					   SMU+=data[i][2][0]*(data[i][1][0]-(aM[0][0]*data[i][0][0]+aM[0][1]*data[i][0][1]));
+					   SMV+=data[i][2][0]*(data[i][1][1]-(aM[1][0]*data[i][0][0]+aM[1][1]*data[i][0][1]));
+					   SW+=data[i][2][0];
+				   }
+				   SMU/=SW;
+				   SMV/=SW;
+				   if (this.debugLevel>0) {
+					   System.out.println("coeff[0][0]="+coeff[0][0]+" coeff[0][1]="+coeff[0][1]+" coeff[0][2]="+coeff[0][2]);
+					   System.out.println("coeff[1][0]="+coeff[1][0]+" coeff[1][1]="+coeff[1][1]+" coeff[1][2]="+coeff[1][2]);
+					   System.out.println("aM[0][0]="+aM[0][0]+" aM[0][1]="+aM[0][1]+" SMU="+SMU);
+					   System.out.println("aM[1][0]="+aM[1][0]+" aM[1][1]="+aM[1][1]+" SMV="+SMV);
+				   }
+				   coeff[0][0]=aM[0][0];
+				   coeff[0][1]=aM[0][1];
+				   coeff[1][0]=aM[1][0];
+				   coeff[1][1]=aM[1][1];
+				   coeff[0][2]=SMU;
+				   coeff[1][2]=SMV;
+				   
+        	   }
         	   return coeff;
            }
            public int matrixToRot(double [][] coeff){
@@ -6744,7 +6787,7 @@ public class MatchSimulatedPattern {
         	   }
         	   return worst;
            }
-           public double worstGridMatchTranslate(double [][] coeff){
+           public double worstGridMatchTranslate(double [][] coeff){ // in grids half-periods, not pixels!
         	   int [][] iCoeff=gridMatrixApproximate(coeff);
         	   double worst=0;
         	   for (int i=0;i<2;i++){
@@ -7117,6 +7160,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 			   int [] iGridTranslateUV=null; // translate UV grid by these integer numbers
 			   if (hintGrid!=null){
 				   gridMatchCoeff=calcGridMatchMatrix (hintGrid, searchAround);
+				   // now already rounds rotate and re-replaces gridMatchCoeff with approximated, refines gridMatchCoeff[0][2] and gridMatchCoeff[1][2]
 				   if (gridMatchCoeff!=null) {
 					   gridRotation=matrixToRot(gridMatchCoeff);
 					   this.debugLevel=global_debug_level;
@@ -7132,7 +7176,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
 					   }
 					   // hintGridTolerance==0 - do not try to determine shift from the hint (not reliable yet)
 					   if (hintGridTolerance>0) {
-						   if (worstGridMatchTranslate(gridMatchCoeff)<=hintGridTolerance){
+						   if (worstGridMatchTranslate(gridMatchCoeff)<=hintGridTolerance){ // convert to pixels from halfperiods (or just chnage definition of hintGridTolerance)
 							   if (global_debug_level>1) System.out.println("worstGridMatchTranslate(gridMatchCoeff)= "+worstGridMatchTranslate(gridMatchCoeff)+", hintGridTolerance="+hintGridTolerance);
 							   iGridTranslateUV=new int[2];
 							   iGridTranslateUV[0]=iGridMatchCoeff[0][2];
