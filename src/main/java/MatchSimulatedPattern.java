@@ -7249,7 +7249,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   int numNewDefined=0;
 //        	   System.out.println("this.PATTERN_GRID.length="+this.PATTERN_GRID.length+"this.PATTERN_GRID[0.length="+this.PATTERN_GRID[0].length);
 //        	   System.out.println("this.targetUV.length="+this.targetUV.length+"this.targetUV[0.length="+this.targetUV[0].length);
-        	   if (this.debugLevel>0){
+        	   if (this.debugLevel>1){
             	   double [][] debugReplace=null;
             	   String [] debugTiltes={"deltaX","deltaY","Contrast", "measX","measY", "targetU","targetV"};
         		   debugReplace=new double[7][this.PATTERN_GRID.length*this.PATTERN_GRID[0].length];
