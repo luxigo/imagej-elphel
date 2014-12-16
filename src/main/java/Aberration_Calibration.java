@@ -619,6 +619,8 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		addButton("Conf. Multifile",panelConf1,color_configure);
 		addButton("Conf. Simulation",panelConf1);
 		addButton("Conf. Pattern Detection",panelConf1);
+		addButton("Waves",panelConf1);
+		//WavePatternGenerator
 		add(panelConf1);
 
 		panelConf2 = new Panel();
@@ -1047,6 +1049,11 @@ if (MORE_BUTTONS) {
 /* ======================================================================== */
 		} else if (label.equals("Conf. Pattern Detection")) {
 			showPatternDetectParametersDialog(PATTERN_DETECT);
+			return;
+/* ======================================================================== */
+		} else if (label.equals("Waves")) {
+			WavePatternGenerator wpg=new WavePatternGenerator();
+			while(wpg.selectAndGenerate());
 			return;
 /* ======================================================================== */
 		} else if (label.equals("Conf. PSF")) {

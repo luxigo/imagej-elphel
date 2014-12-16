@@ -1798,12 +1798,14 @@ I* - special case when the subcamera is being adjusted/replaced. How to deal wit
 	    			500)) return -1; //perPage))
     		case 6: // start from current selection
     			selection=selected.clone();
+    			break;
     		case 5: // start from empty selection
     			if (!selectImageSets(
     	    			selection,
     	    			false, // allImages,
     	    			0, // star iIndex
     	    			500)) return -1; //perPage))
+    			break;
     		}
 			for (int i=0;i<selection.length;i++) selection[i] &= requiredMatchedPointers[mapMP.get(new Integer(matchedPointers[i]))]; 
 			for (int i=0;i<selection.length;i++) selection[i] &= requiredHintedMatch[mapHM.get(new Integer(hintedMatch[i]))]; 

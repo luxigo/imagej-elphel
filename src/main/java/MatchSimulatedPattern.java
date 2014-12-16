@@ -5770,7 +5770,8 @@ public class MatchSimulatedPattern {
 			   double [] xyc={
 					   this.PATTERN_GRID[v][u][0][0],
 					   this.PATTERN_GRID[v][u][0][1],
-					   (this.gridContrastBrightness==null)?1.0:this.gridContrastBrightness[0][v][u]
+					   (this.PATTERN_GRID[v][u][0].length>2)?this.PATTERN_GRID[v][u][0][2]:
+					   ((this.gridContrastBrightness==null)?1.0:this.gridContrastBrightness[0][v][u])
 			   };
 			   return xyc; // this.PATTERN_GRID[uv[1]][uv[0]][0];
 		   }
@@ -5779,7 +5780,8 @@ public class MatchSimulatedPattern {
 			   double [] xyc={
 					   this.PATTERN_GRID[uv[1]][uv[0]][0][0],
 					   this.PATTERN_GRID[uv[1]][uv[0]][0][1],
-					   (this.gridContrastBrightness==null)?1.0:this.gridContrastBrightness[0][uv[1]][uv[0]]
+					   (this.PATTERN_GRID[uv[1]][uv[0]][0].length>2)?this.PATTERN_GRID[uv[1]][uv[0]][0][2]:
+					   ((this.gridContrastBrightness==null)?1.0:this.gridContrastBrightness[0][uv[1]][uv[0]])
 			   };
 			   return xyc; // this.PATTERN_GRID[uv[1]][uv[0]][0];
 		   }
@@ -6623,7 +6625,7 @@ public class MatchSimulatedPattern {
             * @return {{Au, Bu, Cu}.{Av, Bc, Cv}}; where Umeas=Au*Uhint+Bu*Vhint+Cu, Vmeas=Av*Uhint+Bv*Vhint+Cv
             */
            public double [][] calcGridMatchMatrix (double [][][] hintGrid, double searchAround){
-        	   double [][][] measuredUV=mapEstimatedToMeasured(hintGrid, searchAround);
+        	   double [][][] measuredUV=mapEstimatedToMeasured(hintGrid, searchAround); // contrast - minimal of the ones around
         	   if (this.debugLevel>2){
         		   double [][] pixels=new double[9][measuredUV.length*measuredUV[0].length];
         		   int index=0;
@@ -7247,6 +7249,31 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   int numNewDefined=0;
 //        	   System.out.println("this.PATTERN_GRID.length="+this.PATTERN_GRID.length+"this.PATTERN_GRID[0.length="+this.PATTERN_GRID[0].length);
 //        	   System.out.println("this.targetUV.length="+this.targetUV.length+"this.targetUV[0.length="+this.targetUV[0].length);
+        	   if (this.debugLevel>0){
+            	   double [][] debugReplace=null;
+            	   String [] debugTiltes={"deltaX","deltaY","Contrast", "measX","measY", "targetU","targetV"};
+        		   debugReplace=new double[7][this.PATTERN_GRID.length*this.PATTERN_GRID[0].length];
+        		   for (int i=0;i<debugReplace.length;i++) Arrays.fill(debugReplace[i],Double.NaN);
+        		   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++) {
+        			   double [][] cell=this.PATTERN_GRID[v][u];
+        			   if ((cell !=null) && (cell.length>0) &&(cell[0] !=null) && (cell[0].length>1)){
+        				   int tu=this.targetUV[v][u][0]-minU;
+        				   int tv=this.targetUV[v][u][1]-minV;
+        				   if ((tu>=0) && (tv>=0) && (tv<grid.length) && (tu<grid[tv].length) && (grid[tv][tu]!=null)) {
+        					   int index=v*this.PATTERN_GRID[0].length+u;
+        					   debugReplace[0][index]=grid[tv][tu][0]-this.PATTERN_GRID[v][u][0][0];
+        					   debugReplace[1][index]=grid[tv][tu][1]-this.PATTERN_GRID[v][u][0][1];
+        					   debugReplace[2][index]=this.PATTERN_GRID[v][u][0][2];
+        					   debugReplace[3][index]=this.PATTERN_GRID[v][u][0][0];
+        					   debugReplace[4][index]=this.PATTERN_GRID[v][u][0][1];
+        					   debugReplace[5][index]=tu;
+        					   debugReplace[6][index]=tu;
+        				   }
+        			   }
+        		   }
+        		   SDFA_INSTANCE.showArrays(debugReplace, this.PATTERN_GRID[0].length, this.PATTERN_GRID.length, true, "replaceGridXYWithProjected", debugTiltes);
+        	   }
+        	   
         	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++) {
         		   double [][] cell=this.PATTERN_GRID[v][u];
         		   if ((cell !=null) && (cell.length>0) &&(cell[0] !=null) && (cell[0].length>1)){
