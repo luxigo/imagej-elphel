@@ -3839,7 +3839,9 @@ if (MORE_BUTTONS) {
 //					DEBUG_LEVEL);
 			DISTORTION.loop_debug_level);
 			if (numAbsolutePoints<=0) { // no pointers in this image
-				IJ.showMessage("Error","No laser pointers matched - they are needed for absolute grid positioning\nProcess canceled");
+				String msg="No laser pointers matched - they are needed for absolute grid positioning\nProcess canceled";
+				IJ.showMessage("Error",msg);
+				System.out.println("Error: "+msg);
 				return;
 			}
 			if (DEBUG_LEVEL>0) System.out.println("Matched "+numAbsolutePoints+" laser pointers, grid generated at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
@@ -19720,7 +19722,6 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			gd.addNumericField("Detection ring width (fraction):",      distortionParameters.correlationRingWidth, 3);
 			gd.addNumericField("Correlation minimal contrast (normalized)",         distortionParameters.correlationMinContrast, 3);
 			gd.addNumericField("Correlation minimal contrast for initial search (normalized)", distortionParameters.correlationMinInitialContrast, 3);
-
 			gd.addNumericField("Correlation minimal contrast (absolute)",         distortionParameters.correlationMinAbsoluteContrast, 3);
 			gd.addNumericField("Correlation minimal contrast for initial search (absolute)", distortionParameters.correlationMinAbsoluteInitialContrast, 3);
 			

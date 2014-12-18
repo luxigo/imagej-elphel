@@ -7217,7 +7217,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   
            }
            
-           public int replaceGridXYWithProjected(double [][][] projectedGrid){
+           public int replaceGridXYWithProjected(double [][][] projectedGrid, String debugTitle){
         	   int minU=0,minV=0,maxU=0,maxV=0;
         	   boolean notYetSet=true;
         	   for (double [][]row:projectedGrid) for (double [] cell:row) if (cell!=null){
@@ -7249,7 +7249,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         	   int numNewDefined=0;
 //        	   System.out.println("this.PATTERN_GRID.length="+this.PATTERN_GRID.length+"this.PATTERN_GRID[0.length="+this.PATTERN_GRID[0].length);
 //        	   System.out.println("this.targetUV.length="+this.targetUV.length+"this.targetUV[0.length="+this.targetUV[0].length);
-        	   if (this.debugLevel>1){
+        	   if ((debugTitle!=null) && (this.debugLevel>0)){
             	   double [][] debugReplace=null;
             	   String [] debugTiltes={"deltaX","deltaY","Contrast", "measX","measY", "targetU","targetV"};
         		   debugReplace=new double[7][this.PATTERN_GRID.length*this.PATTERN_GRID[0].length];
@@ -7271,7 +7271,7 @@ y=xy0[1] + dU*deltaUV[0]*(xy1[1]-xy0[1])+dV*deltaUV[1]*(xy2[1]-xy0[1])
         				   }
         			   }
         		   }
-        		   SDFA_INSTANCE.showArrays(debugReplace, this.PATTERN_GRID[0].length, this.PATTERN_GRID.length, true, "replaceGridXYWithProjected", debugTiltes);
+        		   SDFA_INSTANCE.showArrays(debugReplace, this.PATTERN_GRID[0].length, this.PATTERN_GRID.length, true, "replaceGridXYWithProjected-"+debugTitle, debugTiltes);
         	   }
         	   
         	   for (int v=0;v<this.PATTERN_GRID.length;v++) for (int u=0;u<this.PATTERN_GRID[v].length;u++) {

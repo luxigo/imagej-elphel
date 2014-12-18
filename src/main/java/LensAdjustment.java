@@ -71,6 +71,11 @@ public class LensAdjustment {
 		distortionParameters.flatFieldCorrection=focusMeasurementParameters.flatFieldCorrection;
 		distortionParameters.flatFieldExpand=focusMeasurementParameters.flatFieldExpand;
 		
+		distortionParameters.correlationMinContrast=focusMeasurementParameters.correlationMinContrast;
+		distortionParameters.correlationMinInitialContrast=focusMeasurementParameters.correlationMinInitialContrast;
+		distortionParameters.correlationMinAbsoluteContrast=focusMeasurementParameters.correlationMinAbsoluteContrast;
+		distortionParameters.correlationMinAbsoluteInitialContrast=focusMeasurementParameters.correlationMinAbsoluteInitialContrast;
+		
 		if (maskNonPSF) {
 			distortionParameters.numberExtrapolated=0; //1; //3; // measuring PSF - extrapolate
 		} else {
@@ -364,6 +369,13 @@ public class LensAdjustment {
         public int correlationSize=32;
         public double correlationGaussWidth=0.75;
         public double minUVSpan;           // Minimal u/v span in correlation window that triggers increase of the correlation FFT size
+
+		public double correlationMinContrast=1.2;   // minimal contrast for the pattern to pass
+		public double correlationMinInitialContrast=1.5;   // minimal contrast for the pattern of the center (initial point)
+		public double correlationMinAbsoluteContrast=0.5;   // minimal contrast for the pattern to pass, does not compensate for low ligt
+		public double correlationMinAbsoluteInitialContrast=0.5;   // minimal contrast for the pattern of the center (initial point)
+        
+        
         public boolean flatFieldCorrection=true;
         public double flatFieldExpand=4.0;
         
@@ -374,8 +386,10 @@ public class LensAdjustment {
         public boolean configureCamera=false; // only valid after dialog
         public int [] motorPos=null; // will point to
     	public double [] ampsSeconds={0.0,0.0,0.0,0.0}; // cumulative Amps*seconds (read only, but will be saved/restored)
-        
     	public int manufacturingState=0;
+    	
+   	
+    	
     	public String [] manufacturingStateNames={
     			"New SFE",
     			"UV cured (not released)",
@@ -579,6 +593,10 @@ public class LensAdjustment {
                 int correlationSize,
                 double correlationGaussWidth,
                 double minUVSpan,           // Minimal u/v span in correlation window that triggers increase of the correlation FFT size
+        		double correlationMinContrast,   // minimal contrast for the pattern to pass
+        		double correlationMinInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+        		double correlationMinAbsoluteContrast,   // minimal contrast for the pattern to pass, does not compensate for low ligt
+        		double correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
                 boolean flatFieldCorrection,
                 double flatFieldExpand,
                 double thresholdFinish,// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
@@ -730,6 +748,10 @@ public class LensAdjustment {
 			this.correlationSize=correlationSize;
 			this.correlationGaussWidth=correlationGaussWidth;
 			this.minUVSpan=minUVSpan;
+			this.correlationMinContrast=correlationMinContrast;   // minimal contrast for the pattern to pass
+			this.correlationMinInitialContrast=correlationMinInitialContrast;   // minimal contrast for the pattern of the center (initial point)
+			this.correlationMinAbsoluteContrast=correlationMinAbsoluteContrast;   // minimal contrast for the pattern to pass, does not compensate for low ligt
+			this.correlationMinAbsoluteInitialContrast=correlationMinAbsoluteInitialContrast;   // minimal contrast for the pattern of the center (initial point)
 			this.flatFieldCorrection=flatFieldCorrection;
 			this.flatFieldExpand=flatFieldExpand;
 			this.thresholdFinish=thresholdFinish;// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
@@ -884,6 +906,10 @@ public class LensAdjustment {
     				this.correlationSize,
     				this.correlationGaussWidth,
     				this.minUVSpan,
+    				this.correlationMinContrast,
+    				this.correlationMinInitialContrast,
+    				this.correlationMinAbsoluteContrast,
+    				this.correlationMinAbsoluteInitialContrast,
     				this.flatFieldCorrection,
     				this.flatFieldExpand,
     				this.thresholdFinish, 
@@ -1047,6 +1073,12 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"correlationSize",this.correlationSize+"");
 			properties.setProperty(prefix+"correlationGaussWidth",this.correlationGaussWidth+"");
 			properties.setProperty(prefix+"minUVSpan",this.minUVSpan+"");
+			
+			properties.setProperty(prefix+"correlationMinContrast",this.correlationMinContrast+"");
+			properties.setProperty(prefix+"correlationMinInitialContrast",this.correlationMinInitialContrast+"");
+			properties.setProperty(prefix+"correlationMinAbsoluteContrast",this.correlationMinAbsoluteContrast+"");
+			properties.setProperty(prefix+"correlationMinAbsoluteInitialContrast",this.correlationMinAbsoluteInitialContrast+"");
+			
 			properties.setProperty(prefix+"flatFieldCorrection",this.flatFieldCorrection+"");
 			properties.setProperty(prefix+"flatFieldExpand",this.flatFieldExpand+"");
 			properties.setProperty(prefix+"thresholdFinish",this.thresholdFinish+"");
@@ -1365,6 +1397,14 @@ public class LensAdjustment {
 				this.correlationGaussWidth=Double.parseDouble(properties.getProperty(prefix+"correlationGaussWidth"));
 			if (properties.getProperty(prefix+"minUVSpan")!=null)
 				this.minUVSpan=Double.parseDouble(properties.getProperty(prefix+"minUVSpan"));
+			if (properties.getProperty(prefix+"correlationMinContrast")!=null)
+				this.correlationMinContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinContrast"));
+			if (properties.getProperty(prefix+"correlationMinInitialContrast")!=null)
+				this.correlationMinInitialContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinInitialContrast"));
+			if (properties.getProperty(prefix+"correlationMinAbsoluteContrast")!=null)
+				this.correlationMinAbsoluteContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteContrast"));
+			if (properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast")!=null)
+				this.correlationMinAbsoluteInitialContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast"));
 			if (properties.getProperty(prefix+"flatFieldCorrection")!=null)
 				this.flatFieldCorrection=Boolean.parseBoolean(properties.getProperty(prefix+"flatFieldCorrection"));
 			if (properties.getProperty(prefix+"flatFieldExpand")!=null)
@@ -1627,9 +1667,14 @@ public class LensAdjustment {
     		gd.addNumericField("Sigma for filling the OTF ",               this.gaps_sigma, 3);
     		gd.addNumericField("Denoise mask ",                            this.mask_denoise, 3);
     		gd.addNumericField("Invert deconvolution if less than",        this.deconvInvert, 3);
+    		gd.addMessage(     "--- Pattern correlation parameters ---");
 			gd.addNumericField("Correlation size:",                        this.correlationSize, 0); // 64
 			gd.addNumericField("Correlation Gauss width (relative):",      this.correlationGaussWidth, 3);
 			gd.addNumericField("Minimal UV span in correlation window to trigger FFT size increase",this.minUVSpan, 3);
+			gd.addNumericField("Correlation minimal contrast (normalized)",                    this.correlationMinContrast, 3);
+			gd.addNumericField("Correlation minimal contrast for initial search (normalized)", this.correlationMinInitialContrast, 3);
+			gd.addNumericField("Correlation minimal contrast (absolute)",                      this.correlationMinAbsoluteContrast, 3);
+			gd.addNumericField("Correlation minimal contrast for initial search (absolute)",   this.correlationMinAbsoluteInitialContrast, 3);
 			gd.addCheckbox    ("Compensate uneven pattern intensity",      this.flatFieldCorrection);
 			gd.addNumericField("Expand during extrapolation (relative to the average grid period)", this.flatFieldExpand, 3);
 			gd.addNumericField("Threshold RMS to exit LMA",                this.thresholdFinish, 7,9,"pix");
@@ -1816,6 +1861,10 @@ public class LensAdjustment {
 			this.correlationSize=      (int) gd.getNextNumber();
 			this.correlationGaussWidth=      gd.getNextNumber();
 			this.minUVSpan=                  gd.getNextNumber();
+			this.correlationMinContrast=  gd.getNextNumber();
+			this.correlationMinInitialContrast=  gd.getNextNumber();
+			this.correlationMinAbsoluteContrast=  gd.getNextNumber();
+			this.correlationMinAbsoluteInitialContrast=  gd.getNextNumber();
 			this.flatFieldCorrection=        gd.getNextBoolean();
 			this.flatFieldExpand=            gd.getNextNumber();
 			this.thresholdFinish=            gd.getNextNumber();

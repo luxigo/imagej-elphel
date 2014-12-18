@@ -11,6 +11,7 @@ import ij.process.ImageProcessor;
 import java.awt.Rectangle;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1288,7 +1289,7 @@ public class EyesisAberrations {
         			}
         			// now replace extracted grid X,Y with projected (need to add sensor correction)
         			if (projectedGrid!=null){
-        				int numReplaced= matchSimulatedPattern.replaceGridXYWithProjected(projectedGrid);
+        				int numReplaced= matchSimulatedPattern.replaceGridXYWithProjected(projectedGrid,(debugLevel>1)?imp.getTitle():null);
             			if (debugLevel>0) System.out.println("Replaced extracted XY with projected ones for "+numReplaced+" nodes");
         			}
         			correlationSizesUsed=matchSimulatedPattern.getCorrelationSizesUsed();
@@ -2232,6 +2233,7 @@ public class EyesisAberrations {
 			final int          masterDebugLevel, // get rid of it? // ** NEW
 			final int          globalDebugLevel,// ** NEW
 			final int          debug_level){// debug level used inside loops
+		final boolean debugLateralShifts=(globalDebugLevel>1);
 		System.out.println("createPSFMap(): masterDebugLevel="+masterDebugLevel+" globalDebugLevel="+globalDebugLevel+" debug_level="+debug_level); // 2 2 0
 		final long startTime = System.nanoTime();
 		  Runtime runtime = Runtime.getRuntime();
@@ -2285,14 +2287,19 @@ public class EyesisAberrations {
 				pdfKernelMap[nTileY][nTileX]=new double[colorComponents.colorsToCorrect.length][];
 			} else pdfKernelMap[nTileY][nTileX]=null;
 		}
+		final double [][][][] debugLateral=new double [PSFBooleanMap.length][PSFBooleanMap[0].length][][];
+		for (nTileY=0;nTileY<debugLateral.length;nTileY++) for (nTileX=0;nTileX<debugLateral[0].length;nTileX++){
+			debugLateral[nTileY][nTileX]=null;
+		}
 		final Thread[] threads = newThreadArray(threadsMax);
-		 if (globalDebugLevel>1) System.out.println("Starting "+threads.length+" threads: "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+		if (globalDebugLevel>1) System.out.println("Starting "+threads.length+" threads: "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 		final AtomicInteger ai = new AtomicInteger(0);
 		final int patternCells=numPatternCells;
 		//	  final double []   overexposedMap, // map of overexposed pixels in the image (may be null)
 		final double [] overexposed=(overexposedAllowed>0)?JP4_INSTANCE.overexposedMap (imp_sel):null;
 		final int mapWidth=imp_sel.getWidth();
    		final AtomicInteger tilesFinishedAtomic = new AtomicInteger(1); // first finished will be 1
+   		final int debugNumColors=6; 
 		for (int ithread = 0; ithread < threads.length; ithread++) {
 			// Concurrently run in as many threads as CPUs
 			threads[ithread] = new Thread() {
@@ -2341,6 +2348,9 @@ public class EyesisAberrations {
 							pdfKernelMap[nTY][nTX]=null;
 							if (globalDebugLevel>0) System.out.println("Overexposed fraction of "+over+" at x0="+x0+" y0="+y0+" width"+(2*fft_size));
 						} else {
+							if (debugLateralShifts) {
+								debugLateral[nTY][nTX]= new double [debugNumColors][];    // X/Y shift of the PSF array, in Bayer component pixel coordinates (same as PSF arrays)
+							} 
 							kernels=getPSFKernels(imp_sel,
 									simArray, //simulation image, scaled PSF_subpixel/2
 									2*fft_size,       // size in pixels (twice fft_size)
@@ -2360,7 +2370,8 @@ public class EyesisAberrations {
 									fht_instance,      // provide DoubleFHT instance to save on initializations (or null)
 									debug_level,// ((x0<512)&& (y0<512))?3:debug_level DEBUG during "focusing"
 									masterDebugLevel, // get rid of it? // ** NEW
-									globalDebugLevel// ** NEW
+									globalDebugLevel,// ** NEW
+									debugLateralShifts?debugLateral[nTY][nTX]:null
 							);
 							if (kernels!=null) {
 								if (kernelLength(kernels)>(PSFKernelSize*PSFKernelSize)) kernels=resizeForFFT(kernels,PSFKernelSize); // shrink before normalizing
@@ -2390,6 +2401,45 @@ public class EyesisAberrations {
 		startAndJoin(threads);
 		 if (globalDebugLevel>1) System.out.println("Threads done at "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 //		globalDebugLevel=saved_globalDebugLevel;
+		if (debugLateralShifts) {
+		    boolean [] debugUsedColors=new boolean [debugNumColors];
+		    Arrays.fill(debugUsedColors,false);
+			for (double [][][] dbgRow:debugLateral) for (double [][] dbgTile:dbgRow) if (dbgTile!=null) for (int c=0;c<dbgTile.length;c++){
+				if (dbgTile[c]!=null) debugUsedColors[c]=true;
+			}
+			int numUsedColors=0;
+			for (boolean b:debugUsedColors) if (b) numUsedColors++;
+			if (numUsedColors>0) {
+				int [] cIndex=new int [numUsedColors];
+				int index=0;
+				for (int i=0;i<debugUsedColors.length;i++) if (debugUsedColors[i]) cIndex[index++]=i;
+				String [] dbgComponets={"latChromX","latChromY","shftX","shftY","centX","centY"};
+				String [] debugTitles=new String[dbgComponets.length*numUsedColors];
+				index=0;
+				for (int i=0;i<dbgComponets.length;i++) for (int j=0;j<cIndex.length;j++){
+					debugTitles[index++]=dbgComponets[i]+"-"+cIndex[j];
+				}
+				double [][] dbgLat= new double [debugTitles.length][debugLateral.length*debugLateral[0].length];
+				int layer=0;
+				for (int i=0;i<dbgComponets.length;i++) for (int j=0;j<cIndex.length;j++){
+					Arrays.fill(dbgLat[layer],Double.NaN);
+					for (nTileY=0;nTileY<debugLateral.length;nTileY++) for (nTileX=0;nTileX<debugLateral[0].length;nTileX++) if (debugLateral[nTileY][nTileX]!=null){
+						if (debugLateral[nTileY][nTileX][cIndex[j]]!=null) dbgLat[layer][nTileY*debugLateral[0].length+nTileX]=debugLateral[nTileY][nTileX][cIndex[j]][i];
+					} layer++;
+				}				
+				SDFA_INSTANCE.showArrays(dbgLat, debugLateral[0].length, debugLateral.length, true, "lateral"+imp_sel.getTitle(), debugTitles);
+				/*
+					debugLateralTile[i][0]=lateralChromatic[i][0];
+					debugLateralTile[i][1]=lateralChromatic[i][1];
+					debugLateralTile[i][2]=PSF_shifts[i][0];
+					debugLateralTile[i][3]=PSF_shifts[i][1];
+					debugLateralTile[i][4]=PSF_centroids[i][0];
+					debugLateralTile[i][5]=PSF_centroids[i][1];
+						    			sdfra_instance.showArrays(pointedBayer.clone(), halfWidth, halfHeight, true, title+"-bayer", subtitles);
+
+				 */
+			}
+		}
 		return pdfKernelMap;
 	}
 	/* Combine both greens as a checkerboard pattern (after oversampleFFTInput()) */
@@ -2589,8 +2639,8 @@ public class EyesisAberrations {
 			DoubleFHT fht_instance, // provide DoubleFHT instance to save on initializations (or null)
 			int masterDebugLevel, // get rid of it? // ** NEW
 			int globalDebugLevel,// ** NEW
-
-			int debug
+			int debug,
+			double [][] debugLateralTile
 	){
 		boolean debugThis=false; //(y0==384) && ((x0==448) || (x0==512));
 		if (globalDebugLevel>1){
@@ -2920,7 +2970,21 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			System.out.println("#!# "+x0+":"+y0+" "+"Lateral shift green from simulation "+IJ.d2s(lateralChromaticAbs[referenceComp],3)+"pix(sensor):  ["+referenceComp+"][0]="+IJ.d2s(lateralChromatic[referenceComp][0],3)+
 					"  ["+referenceComp+"][1]="+IJ.d2s(lateralChromatic[referenceComp][1],3));
 		}
-		
+		if (debugLateralTile!=null)	for (i=0;i<PSF_shifts.length;i++) {
+				if (colorComponents.colorsToCorrect[i]){
+					debugLateralTile[i]=new double [6];
+					debugLateralTile[i][0]=lateralChromatic[i][0];
+					debugLateralTile[i][1]=lateralChromatic[i][1];
+					debugLateralTile[i][2]=PSF_shifts[i][0];
+					debugLateralTile[i][3]=PSF_shifts[i][1];
+					debugLateralTile[i][4]=PSF_centroids[i][0];
+					debugLateralTile[i][5]=PSF_centroids[i][1];
+			} else {
+				debugLateralTile[i]=null;
+			}
+			
+			
+		}
 		if (debugThis && (kernels!=null)){
 			int debugSize=0;
 			for (int ii=0;ii<kernels.length;ii++) if (kernels[ii]!=null){
