@@ -124,8 +124,8 @@ public class LensAdjustment {
 		int numAbsolutePoints=0;
 		if (updating) {		
 			// add new nodes if the appeared after shift of the pattern
-			if (debug_level>1) { // calculate/print number of defined nodes in the grid
-				System.out.println("updateFocusGrid(), number of defined grid cells (before distortions()) = "+matchSimulatedPattern.numDefinedCells());
+			if (debug_level>0) { // calculate/print number of defined nodes in the grid
+				System.out.println("updateFocusGrid(), number of already defined grid cells (before distortions()) = "+matchSimulatedPattern.numDefinedCells());
 			}
 			matchSimulatedPattern.distortions(
 					null, // is not used in update mode

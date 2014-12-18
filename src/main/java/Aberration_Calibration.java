@@ -320,7 +320,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 		  // TODO: adjust to a reasonable number
 		  1.0, //this.correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
 		  
-		  0.8, //	scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+		  0.8, //	scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in refinement pass
 		  0.1, // contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
 		  0.5, //contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
 		  
@@ -19725,7 +19725,7 @@ use the result to create a rejectiobn mask - if the energy was high, (multiplica
 			gd.addNumericField("Correlation minimal contrast (absolute)",         distortionParameters.correlationMinAbsoluteContrast, 3);
 			gd.addNumericField("Correlation minimal contrast for initial search (absolute)", distortionParameters.correlationMinAbsoluteInitialContrast, 3);
 			
-			gd.addNumericField("Decrease contrast of cells that are too close to the border to be processed in rifinement pass", distortionParameters.scaleFirstPassContrast, 3);
+			gd.addNumericField("Decrease contrast of cells that are too close to the border to be processed in refinement pass", distortionParameters.scaleFirstPassContrast, 3);
 			gd.addNumericField("Gaussian sigma to select correlation centers (fraction of UV period), 0.1", distortionParameters.contrastSelectSigma, 3);
 			gd.addNumericField("Gaussian sigma to average correlation variations (as contrast reference), 0.5", distortionParameters.contrastAverageSigma, 3);
 

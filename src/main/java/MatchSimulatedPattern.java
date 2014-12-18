@@ -3312,11 +3312,11 @@ public class MatchSimulatedPattern {
 //		   double [][][] nodes=null;
 		   Queue<GridNode> nodeQueue = new ConcurrentLinkedQueue<GridNode>();		   
 		   boolean fromVeryBeginning=true;
-		   for (int i=3;i<triedIndices.length;i++) if (triedIndices[i]){ // do not count first three
-			   fromVeryBeginning=false;
-			   break;
-		   }
 		   if (!updating) {
+			   for (int i=3;i<triedIndices.length;i++) if (triedIndices[i]){ // do not count first three NPE
+				   fromVeryBeginning=false;
+				   break;
+			   }
 			   double [] point = new double[2];
 			   int tryHor=0,tryVert=0;
 //				distortionParameters.searchOverlap=goniometerParameters.searchOverlap;
@@ -10299,7 +10299,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 				double correlationMinAbsoluteContrast,   // minimal contrast for the pattern to pass, does not compensate for low ligt
 				double correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
 
-				double scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+				double scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in refinement pass
 				double contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
 				double contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
 				int    minimalPatternCluster,       //    minimal pattern cluster size (0 - disable retries)
@@ -10360,7 +10360,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			this.correlationMinInitialContrast=correlationMinInitialContrast;
 			this.correlationMinAbsoluteContrast=correlationMinAbsoluteContrast;   // minimal contrast for the pattern to pass, does not compensate for low ligt
 			this.correlationMinAbsoluteInitialContrast=correlationMinAbsoluteInitialContrast;   // minimal contrast for the pattern of the center (initial point)
-			this.scaleFirstPassContrast=scaleFirstPassContrast; // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+			this.scaleFirstPassContrast=scaleFirstPassContrast; // Decrease contrast of cells that are too close to the border to be processed in refinement pass
 			this.contrastSelectSigma=contrastSelectSigma; // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
 			this.contrastAverageSigma=contrastAverageSigma; // Gaussian sigma to average correlation variations (as contrast reference) 0.5
 			this.minimalPatternCluster=minimalPatternCluster;        //    minimal pattern cluster size (0 - disable retries)
@@ -10423,7 +10423,7 @@ error=Sum(W(x,y)*(F^2 +  2*F*(A*x^2+B*y^2+C*x*y+D*x+E*y-Z(x,y)) +(...) )
 			this.correlationMinInitialContrast,
 			this.correlationMinAbsoluteContrast,   // minimal contrast for the pattern to pass, does not compensate for low ligt
 			this.correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
-			this.scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in rifinement pass
+			this.scaleFirstPassContrast, // Decrease contrast of cells that are too close to the border to be processed in refinement pass
 			this.contrastSelectSigma, // Gaussian sigma to select correlation centers (fraction of UV period), 0.1
 			this.contrastAverageSigma, // Gaussian sigma to average correlation variations (as contrast reference) 0.5
 			this.minimalPatternCluster,        //    minimal pattern cluster size (0 - disable retries)
