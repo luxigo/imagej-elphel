@@ -9983,11 +9983,19 @@ if (MORE_BUTTONS) {
     	}
 //    	double [] targetTilts={0.0,0.0};
     	double [] manualScrewsCW=null;
+    	double [] postUVScrews=null;
     	if (zTxTyM1M2M3!=null){
     		manualScrewsCW=FOCUSING_FIELD.fieldFitting.mechanicalFocusingModel.getManualScrews(
     				zTxTy[0]-FOCUSING_FIELD.targetRelFocalShift, //double zErr, // positive - away from lens
     				zTxTy[1]-FOCUSING_FIELD.targetRelTiltX, //targetTilts[0],                     // double tXErr,// positive - 1,2 away from lens, 3 - to the lens
     				zTxTy[2]-FOCUSING_FIELD.targetRelTiltY); //targetTilts[1]);                    // double tYErr);
+    		
+    		postUVScrews=FOCUSING_FIELD.fieldFitting.mechanicalFocusingModel.getManualScrews(
+    				FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity,
+    				zTxTy[0]-FOCUSING_FIELD.targetRelFocalShift, //double zErr, // positive - away from lens
+    				zTxTy[1]-FOCUSING_FIELD.targetRelTiltX, //targetTilts[0],                     // double tXErr,// positive - 1,2 away from lens, 3 - to the lens
+    				zTxTy[2]-FOCUSING_FIELD.targetRelTiltY); //targetTilts[1]);                    // double tYErr);
+    		
     	}
     	double scaleMovement=1.0; // calculate automatically - reduce when close
     	boolean parallelMove=false;
@@ -10010,6 +10018,16 @@ if (MORE_BUTTONS) {
     					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
     			else  System.out.println("Suggested rotation for screw # "+(i+1)+
     					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+    		}
+    		if (postUVScrews!=null) {
+    			System.out.println("----- Post-UV fixture screw adjustments -----");
+    			for (int i=0;i<postUVScrews.length;i++){
+    				double deg=360*Math.abs(postUVScrews[i]);
+    				if (postUVScrews[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
+    						" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+    				else  System.out.println("Suggested rotation for screw # "+(i+1)+
+    						" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+    			}
     		}
     		System.out.println("----- end of Focus/tilt measurement results -----");
     		
@@ -10041,6 +10059,17 @@ if (MORE_BUTTONS) {
 			double deg=360*Math.abs(manualScrewsCW[i]);
 			if (manualScrewsCW[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
 			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+		}
+		if (postUVScrews!=null) {
+			for (int i=0;i<postUVScrews.length;i++){
+				double deg=360*Math.abs(postUVScrews[i]);
+				if (postUVScrews[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+				else                    gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+			}
+			gd.addMessage(     "--- Post-UV fixture screws sensitivity ---");
+			for (int i=0;i<FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity.length;i++){
+				gd.addNumericField("Screw "+i+" sensitivity", FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity[i], 4,6,"um/turn CW");
+			}
 		}
 		gd.addNumericField("Scale movement",scaleMovement,3,5,"x");
         gd.addCheckbox("Recalculate and apply parallel move only",parallelMove); // should be false after manual movement
@@ -10076,6 +10105,12 @@ if (MORE_BUTTONS) {
 		newMotors[0]=               (int)  gd.getNextNumber();
 		newMotors[1]=               (int)  gd.getNextNumber();
 		newMotors[2]=               (int)  gd.getNextNumber();
+		
+		if (postUVScrews!=null) {
+			for (int i=0;i<FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity.length;i++){
+				FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity[i]=gd.getNextNumber();
+			}
+		}
 		scaleMovement=                     gd.getNextNumber();
 		parallelMove=                      gd.getNextBoolean();
         FOCUSING_FIELD.filterZ=            gd.getNextBoolean();

@@ -255,18 +255,18 @@ public class LensAdjustment {
         // when approximating PSF with a second degree polynomial:
         public double psf_cutoffEnergy=0.98; //0.5; // disregard pixels outside of this fraction of the total energy
         public double psf_cutoffLevel= 0.2; // disregard pixels below this fraction of the maximal value
-        public int    psf_minArea    = 10;  // continue increasing the selected area, even if beyound psf_cutoffEnergy and psf_cutoffLevel,
-                                             // if the selected area is smaller than this (so approximation wpuld work)
+        public int    psf_minArea    = 10;  // continue increasing the selected area, even if beyond psf_cutoffEnergy and psf_cutoffLevel,
+                                             // if the selected area is smaller than this (so approximation would work)
         public double psf_blurSigma  = 0.0; // optionally blur the calculated mask
         
         public double weightRatioRedToGreen=0.7;  // Use this data when combining defocusing data from different color PSF
-        public double weightRatioBlueToGreen=0.3;
-        public double targetFarNear=0.0;         // OBSOLETE target logariphm of average tangential-to-radial resolution
+        public double weightRatioBlueToGreen=0.2;
+        public double targetFarNear=0.0;         // OBSOLETE target logarithm of average tangential-to-radial resolution
         public boolean useRadialTangential=false; // Use targetFarNear (radial/tangential resolution)  as a proxy for the distance  
         public double targetMicrons=0.0;          // target lens center distance (away from "best focus"
         public double toleranceMicrons=0.5; // microns
         public double toleranceTilt=0.02; // 
-        public double toleranceThreshold=3.0; // When each error is under swcaled thereshold, reduce correxction step twice
+        public double toleranceThreshold=3.0; // When each error is under scaled threshold, reduce correction step twice
 //        public boolean parallelAdjust=true;   // move 3 motors parallel after each 3-motor focus/tilt adjustment   
         public double  parallelAdjustThreshold=4.0;   // adjust 3 motors parallel if focal distance error in the center exceeds this    
         
@@ -353,7 +353,7 @@ public class LensAdjustment {
     	public int    subdiv=4; 
     	// overwrites  	public static class MultiFilePSF.overexposedMaxFraction
     	public double overexposedMaxFraction=0.1; // allowed fraction of the overexposed pixels in the PSF kernel measurement area 
-    	// overwirites	public static class PSFParameters.minDefinedArea
+    	// overwrites	public static class PSFParameters.minDefinedArea
     	public double minDefinedArea=0.75;    // minimal (weighted) fraction of the defined patter pixels in the FFT area
         public int PSFKernelSize=32;          // size of the detected PSF kernel
 		public boolean approximateGrid=true; // approximate grid with polynomial 
@@ -375,6 +375,7 @@ public class LensAdjustment {
 		public double correlationMinAbsoluteContrast=0.5;   // minimal contrast for the pattern to pass, does not compensate for low ligt
 		public double correlationMinAbsoluteInitialContrast=0.5;   // minimal contrast for the pattern of the center (initial point)
         
+		public double [] postUVscrewSensitivity={-2.908571735,-3.8198374024,-2.4491867448};
         
         public boolean flatFieldCorrection=true;
         public double flatFieldExpand=4.0;
@@ -597,6 +598,7 @@ public class LensAdjustment {
         		double correlationMinInitialContrast,   // minimal contrast for the pattern of the center (initial point)
         		double correlationMinAbsoluteContrast,   // minimal contrast for the pattern to pass, does not compensate for low ligt
         		double correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+        		double [] postUVscrewSensitivity, // microns/turn for 3 post-UV fixture adjustment screws
                 boolean flatFieldCorrection,
                 double flatFieldExpand,
                 double thresholdFinish,// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
@@ -752,6 +754,7 @@ public class LensAdjustment {
 			this.correlationMinInitialContrast=correlationMinInitialContrast;   // minimal contrast for the pattern of the center (initial point)
 			this.correlationMinAbsoluteContrast=correlationMinAbsoluteContrast;   // minimal contrast for the pattern to pass, does not compensate for low ligt
 			this.correlationMinAbsoluteInitialContrast=correlationMinAbsoluteInitialContrast;   // minimal contrast for the pattern of the center (initial point)
+			this.postUVscrewSensitivity=postUVscrewSensitivity.clone(); // microns/turn for 3 post-UV fixture adjustment screws
 			this.flatFieldCorrection=flatFieldCorrection;
 			this.flatFieldExpand=flatFieldExpand;
 			this.thresholdFinish=thresholdFinish;// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
@@ -910,6 +913,7 @@ public class LensAdjustment {
     				this.correlationMinInitialContrast,
     				this.correlationMinAbsoluteContrast,
     				this.correlationMinAbsoluteInitialContrast,
+    				this.postUVscrewSensitivity,
     				this.flatFieldCorrection,
     				this.flatFieldExpand,
     				this.thresholdFinish, 
@@ -1078,7 +1082,9 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"correlationMinInitialContrast",this.correlationMinInitialContrast+"");
 			properties.setProperty(prefix+"correlationMinAbsoluteContrast",this.correlationMinAbsoluteContrast+"");
 			properties.setProperty(prefix+"correlationMinAbsoluteInitialContrast",this.correlationMinAbsoluteInitialContrast+"");
-			
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				properties.setProperty(prefix+"postUVscrewSensitivity_"+i,this.postUVscrewSensitivity[i]+"");
+			}
 			properties.setProperty(prefix+"flatFieldCorrection",this.flatFieldCorrection+"");
 			properties.setProperty(prefix+"flatFieldExpand",this.flatFieldExpand+"");
 			properties.setProperty(prefix+"thresholdFinish",this.thresholdFinish+"");
@@ -1405,6 +1411,10 @@ public class LensAdjustment {
 				this.correlationMinAbsoluteContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteContrast"));
 			if (properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast")!=null)
 				this.correlationMinAbsoluteInitialContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast"));
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				if (properties.getProperty(prefix+"postUVscrewSensitivity_"+i)!=null)
+					this.postUVscrewSensitivity[i]=Double.parseDouble(properties.getProperty(prefix+"postUVscrewSensitivity_"+i));
+			}
 			if (properties.getProperty(prefix+"flatFieldCorrection")!=null)
 				this.flatFieldCorrection=Boolean.parseBoolean(properties.getProperty(prefix+"flatFieldCorrection"));
 			if (properties.getProperty(prefix+"flatFieldExpand")!=null)
@@ -1679,6 +1689,11 @@ public class LensAdjustment {
 			gd.addNumericField("Expand during extrapolation (relative to the average grid period)", this.flatFieldExpand, 3);
 			gd.addNumericField("Threshold RMS to exit LMA",                this.thresholdFinish, 7,9,"pix");
 			gd.addNumericField("Maximal number of LMA iterations per series",this.numIterations, 0);
+    		gd.addMessage(     "--- Post-UV fixture screws sensitivity ---");
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				gd.addNumericField("Screw "+i+" sensitivity",              this.postUVscrewSensitivity[i], 4,6,"um/turn CW");
+			}
+    		
     		gd.addMessage("-----");
     		gd.addNumericField("Report focal length at this temperature", this.reportTemperature, 1,5,"C");
 			
@@ -1869,6 +1884,9 @@ public class LensAdjustment {
 			this.flatFieldExpand=            gd.getNextNumber();
 			this.thresholdFinish=            gd.getNextNumber();
 			this.numIterations=        (int) gd.getNextNumber();
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				this.postUVscrewSensitivity[i]=            gd.getNextNumber();
+			}
     		this.reportTemperature=          gd.getNextNumber();
     		return true;
     	}
