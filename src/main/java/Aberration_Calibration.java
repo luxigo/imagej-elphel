@@ -10061,12 +10061,13 @@ if (MORE_BUTTONS) {
 			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
 		}
 		if (postUVScrews!=null) {
+			gd.addMessage("Suggested rotation of the post-UV fixture screws (far lsft, near left, right) ---");
 			for (int i=0;i<postUVScrews.length;i++){
 				double deg=360*Math.abs(postUVScrews[i]);
 				if (postUVScrews[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
 				else                    gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
 			}
-			gd.addMessage(     "--- Post-UV fixture screws sensitivity ---");
+			gd.addMessage("--- Post-UV fixture screws sensitivity ---");
 			for (int i=0;i<FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity.length;i++){
 				gd.addNumericField("Screw "+i+" sensitivity", FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity[i], 4,6,"um/turn CW");
 			}
