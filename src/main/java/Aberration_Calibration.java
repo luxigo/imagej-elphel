@@ -10061,7 +10061,7 @@ if (MORE_BUTTONS) {
 			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
 		}
 		if (postUVScrews!=null) {
-			gd.addMessage("Suggested rotation of the post-UV fixture screws (far lsft, near left, right) ---");
+			gd.addMessage("Suggested rotation of the post-UV fixture screws (far left, near left, right) ---");
 			for (int i=0;i<postUVScrews.length;i++){
 				double deg=360*Math.abs(postUVScrews[i]);
 				if (postUVScrews[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
