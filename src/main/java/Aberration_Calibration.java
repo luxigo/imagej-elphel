@@ -5947,6 +5947,9 @@ if (MORE_BUTTONS) {
 			    		if (FOCUSING_FIELD.updateAverageTilts){
 			    			FOCUSING_FIELD.avgTx=zTxTyAbsRel[0][1]; // average absolute tilt X (optionally used when finding Z of the glued SFE)
 			    			FOCUSING_FIELD.avgTy=zTxTyAbsRel[0][2]; // average absolute tilt Y (optionally used when finding Z of the glued SFE)
+			    			FOCUS_MEASUREMENT_PARAMETERS.result_fDistance=ZTM[0];
+			    			FOCUS_MEASUREMENT_PARAMETERS.result_tiltX=ZTM[1];
+			    			FOCUS_MEASUREMENT_PARAMETERS.result_tiltY=ZTM[2];
 			    		}
 					}
 	    		}
