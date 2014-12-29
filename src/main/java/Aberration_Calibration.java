@@ -829,6 +829,7 @@ if (MORE_BUTTONS) {
 		addButton("Test measurement", panelCurvature,color_debug);
 		addButton("Optimize qualB", panelCurvature,color_debug);
 		addButton("Focus/Tilt LMA", panelCurvature,color_process);
+		addButton("Post-UV Adjust", panelCurvature,color_process);
 		add(panelCurvature);
 		
 	//panelGoniometer
@@ -4372,11 +4373,12 @@ if (MORE_BUTTONS) {
 //			int [] mmm=	 MOTORS.focusingHistory.getPosition();
 
 //System.out.println("@@"+MOTORS.historySize()+": "+MOTORS.curpos[0]+", "+MOTORS.curpos[1]+", "+MOTORS.curpos[2]+" --- "+mmm[0]+", "+mmm[1]+", "+mmm[2]);
-
-			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distamnce from center PSF
-					FOCUS_MEASUREMENT_PARAMETERS,
-	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
-	    			DEBUG_LEVEL);
+			if (FOCUS_MEASUREMENT_PARAMETERS.showLegacy){
+				MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distamnce from center PSF
+						FOCUS_MEASUREMENT_PARAMETERS,
+						MOTORS.getMicronsPerStep(), //double micronsPerStep,
+						DEBUG_LEVEL);
+			}			
 //System.out.println("@@@"+MOTORS.historySize()+": "+MOTORS.curpos[0]+", "+MOTORS.curpos[1]+", "+MOTORS.curpos[2]+" --- "+mmm[0]+", "+mmm[1]+", "+mmm[2]);
 			boolean autoMove= label.equals("Auto Focus/Tilt");
 			boolean fineFocus=label.equals("Fine Focus");
@@ -4934,11 +4936,9 @@ if (MORE_BUTTONS) {
 			FOCUSING_FIELD.testQualB(true); //     public double[] testQualB(boolean interactive)
 			return;
 		}
-		
-				
-		
 /* ======================================================================== */
-		if       (label.equals("Focus/Tilt LMA")) {
+		if       (label.equals("Focus/Tilt LMA") || label.equals("Post-UV Adjust")) {
+			int adjustMode=label.equals("Focus/Tilt LMA")?0:1;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (FOCUSING_FIELD==null) {
 				if (DEBUG_LEVEL>0) System.out.println("FOCUSING_FIELD==null, trying to restore from the previously saved file");
@@ -4959,12 +4959,13 @@ if (MORE_BUTTONS) {
 				}
 			}
 			// Just for old focal distance calculation
-			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
-					FOCUS_MEASUREMENT_PARAMETERS,
-	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
-	    			DEBUG_LEVEL);
-			
-			while (adjustFocusTiltLMA());
+			if (FOCUS_MEASUREMENT_PARAMETERS.showLegacy){
+				MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
+						FOCUS_MEASUREMENT_PARAMETERS,
+						MOTORS.getMicronsPerStep(), //double micronsPerStep,
+						DEBUG_LEVEL);
+			}
+			while (adjustFocusTiltLMA(adjustMode));
 			return;
 		}
 //		
@@ -5426,11 +5427,12 @@ if (MORE_BUTTONS) {
 						FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
 						FOCUS_MEASUREMENT_PARAMETERS.result_PY0);
 			}
-			
-			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
-					FOCUS_MEASUREMENT_PARAMETERS,
-	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
-	    			DEBUG_LEVEL);
+			if (FOCUS_MEASUREMENT_PARAMETERS.showLegacy){
+				MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
+						FOCUS_MEASUREMENT_PARAMETERS,
+						MOTORS.getMicronsPerStep(), //double micronsPerStep,
+						DEBUG_LEVEL);
+			}
 			moveAndMaybeProbe(
 					true, // just move, not probe
 					null, // no move, just measure
@@ -5500,10 +5502,12 @@ if (MORE_BUTTONS) {
 	    	String [] zTxTyNames={"z", "tx","ty"};
 //			boolean useLMA=true;
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
-			MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
-					FOCUS_MEASUREMENT_PARAMETERS,
-	    			MOTORS.getMicronsPerStep(), //double micronsPerStep,
-	    			DEBUG_LEVEL);
+			if (FOCUS_MEASUREMENT_PARAMETERS.showLegacy){
+				MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
+						FOCUS_MEASUREMENT_PARAMETERS,
+						MOTORS.getMicronsPerStep(), //double micronsPerStep,
+						DEBUG_LEVEL);
+			}
 			GenericDialog gd = new GenericDialog(modeAverage?"Averaging measurements":"Temperature Scan");
 			//replayMode
 			double scanMinutes=modeAverage?2.0:30.0;
@@ -5938,7 +5942,7 @@ if (MORE_BUTTONS) {
 							"Average Tilt y: "+IJ.d2s(zcZ0TxTy[0][2],3)+"um/mm\n";
 					System.out.println(msg);
 					gd.addMessage(msg);
-					gd.addCheckbox("Store calculated tilts, defaultValue",FOCUSING_FIELD.updateAverageTilts);
+					gd.addCheckbox("Store calculated tilts",FOCUSING_FIELD.updateAverageTilts);
 				}
 				gd.showDialog();
 	    		if (!gd.wasCanceled()){
@@ -9918,7 +9922,11 @@ if (MORE_BUTTONS) {
 	}
 	
 	
-	public boolean adjustFocusTiltLMA(){
+	/**
+	 * @param adjustMode - 0  normal, using motors. 1 - post-UV manual adjustment
+	 * @return
+	 */
+	public boolean adjustFocusTiltLMA(int adjustMode){
 		// just for reporting distance old way
 /*		
 		MOTORS.focusingHistory.optimalMotorPosition( // recalculate calibration to estimate current distance from center PSF
@@ -9940,8 +9948,11 @@ if (MORE_BUTTONS) {
 					FOCUS_MEASUREMENT_PARAMETERS.result_PX0,
 					FOCUS_MEASUREMENT_PARAMETERS.result_PY0);
 		}
+		int [] adjustModeAllCommon={1,1,1};
+		// save zTxTyAdjustMode used in moveMeasureAndSave, and overwrite it with adjustModeAllCommon (so new tX,tY will be calculated each time)
+		int [] savedZTxTyAdjustMode=FOCUSING_FIELD.zTxTyAdjustMode.clone();
+		FOCUSING_FIELD.zTxTyAdjustMode=adjustModeAllCommon.clone();
 		// No-move measure, add to history
-	
 		moveAndMaybeProbe(
 				true, // just move, not probe
 				null, // no move, just measure
@@ -9961,16 +9972,17 @@ if (MORE_BUTTONS) {
 				UPDATE_STATUS,
 				MASTER_DEBUG_LEVEL,
 				DISTORTION.loop_debug_level);
+// restore configured 		FOCUSING_FIELD.zTxTyAdjustMode
+		FOCUSING_FIELD.zTxTyAdjustMode=savedZTxTyAdjustMode.clone();
 		//get measurement
 		FocusingField.FocusingFieldMeasurement fFMeasurement=MOTORS.getThisFFMeasurement(FOCUSING_FIELD);	
 		// calculate z, tx, ty, m1,m2,m3
-		int [] adjustModeAllCommon={1,1,1};
 	    double [] zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
 	    		adjustModeAllCommon, // FOCUSING_FIELD.zTxTyAdjustMode,
 	    		false,  // allow tilt scan
 	    		fFMeasurement,
 	    		false, // parallel move
-	    		true, // boolean noQualB,   // do not re-claculate testQualB 
+	    		true, // boolean noQualB,   // do not re-calculate testQualB 
 	    		false); // boolean noAdjust); // do not calculate correction
 		// show dialog: Apply, re-calculate, exit
     	int [] currentMotors=fFMeasurement.motors;
@@ -10012,28 +10024,31 @@ if (MORE_BUTTONS) {
     		System.out.println("Relative to optimal focal shift "+IJ.d2s(zTxTy[0],3)+" um ("+IJ.d2s(FOCUSING_FIELD.targetRelFocalShift,3)+"um)");
     		System.out.println("Relative to optimal horizontal tilt "+IJ.d2s(zTxTy[1],3)+" um/mm ("+IJ.d2s(FOCUSING_FIELD.targetRelTiltX,3)+"um/mm)");
     		System.out.println("Relative to optimal vertical tilt "+IJ.d2s(zTxTy[2],3)+" um/mm ("+IJ.d2s(FOCUSING_FIELD.targetRelTiltY,3)+"um/mm)");
-    		for (int i=0;i<newMotors.length;i++){
-        		System.out.println("Suggested for motor "+(i+1)+" "+newMotors[i]+" ("+currentMotors[i]+")");
-    		}
-    		if (manualScrewsCW!=null) for (int i=0;i<manualScrewsCW.length;i++){
-    			double deg=360*Math.abs(manualScrewsCW[i]);
-    			if (manualScrewsCW[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
-    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
-    			else  System.out.println("Suggested rotation for screw # "+(i+1)+
-    					" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
-    		}
-    		if (postUVScrews!=null) {
-    			System.out.println("----- Post-UV fixture screw adjustments -----");
-    			for (int i=0;i<postUVScrews.length;i++){
-    				double deg=360*Math.abs(postUVScrews[i]);
-    				if (postUVScrews[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
-    						" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+    		if (adjustMode==0) {
+    			for (int i=0;i<newMotors.length;i++){
+    				System.out.println("Suggested for motor "+(i+1)+" "+newMotors[i]+" ("+currentMotors[i]+")");
+    			}
+    			if (manualScrewsCW!=null) for (int i=0;i<manualScrewsCW.length;i++){
+    				double deg=360*Math.abs(manualScrewsCW[i]);
+    				if (manualScrewsCW[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
+    						" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
     				else  System.out.println("Suggested rotation for screw # "+(i+1)+
-    						" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+    						" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+    			}
+    		} else if (adjustMode==1) {
+    			if (postUVScrews!=null) {
+    				System.out.println("----- Post-UV fixture screw adjustments -----");
+    				for (int i=0;i<postUVScrews.length;i++){
+    					double deg=360*Math.abs(postUVScrews[i]);
+    					if (postUVScrews[i]>=0) System.out.println("Suggested rotation for screw # "+(i+1)+
+    							" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+    					else  System.out.println("Suggested rotation for screw # "+(i+1)+
+    							" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+    				}
     			}
     		}
     		System.out.println("----- end of Focus/tilt measurement results -----");
-    		
+
     		if (MASTER_DEBUG_LEVEL>0) System.out.println(FOCUSING_FIELD.showSamples());
     	}
     	GenericDialog gd = new GenericDialog("Adjusting focus/tilt");
@@ -10053,26 +10068,29 @@ if (MORE_BUTTONS) {
 		gd.addCheckbox("Optimize tiltX",         (FOCUSING_FIELD.qualBOptimizeMode & 2) != 0);
 		gd.addCheckbox("Optimize tiltY",         (FOCUSING_FIELD.qualBOptimizeMode & 4) != 0);
         
-        
-		gd.addNumericField("Motor 1",newMotors[0],0,5,"steps ("+currentMotors[0]+")");
-		gd.addNumericField("Motor 2",newMotors[1],0,5,"steps ("+currentMotors[1]+")");
-		gd.addNumericField("Motor 3",newMotors[2],0,5,"steps ("+currentMotors[2]+")");
-		gd.addMessage("Suggested rotation of the top screws, use if motor positions are out of limits - outside of +/-25,000");
-		if (manualScrewsCW!=null)  for (int i=0;i<manualScrewsCW.length;i++){
-			double deg=360*Math.abs(manualScrewsCW[i]);
-			if (manualScrewsCW[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
-			else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
-		}
-		if (postUVScrews!=null) {
-			gd.addMessage("Suggested rotation of the post-UV fixture screws (far left, near left, right) ---");
-			for (int i=0;i<postUVScrews.length;i++){
-				double deg=360*Math.abs(postUVScrews[i]);
-				if (postUVScrews[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
-				else                    gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+		if (adjustMode==0) {
+			gd.addNumericField("Motor 1",newMotors[0],0,5,"steps ("+currentMotors[0]+")");
+			gd.addNumericField("Motor 2",newMotors[1],0,5,"steps ("+currentMotors[1]+")");
+			gd.addNumericField("Motor 3",newMotors[2],0,5,"steps ("+currentMotors[2]+")");
+			gd.addMessage("Suggested rotation of the top screws, use if motor positions are out of limits - outside of +/-25,000");
+			if (manualScrewsCW!=null)  for (int i=0;i<manualScrewsCW.length;i++){
+				double deg=360*Math.abs(manualScrewsCW[i]);
+				if (manualScrewsCW[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+				else                      gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(manualScrewsCW[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
 			}
-			gd.addMessage("--- Post-UV fixture screws sensitivity ---");
-			for (int i=0;i<FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity.length;i++){
-				gd.addNumericField("Screw "+i+" sensitivity", FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity[i], 4,6,"um/turn CW");
+		} else if (adjustMode==1) {
+
+			if (postUVScrews!=null) {
+				gd.addMessage("Suggested rotation of the post-UV fixture screws (far left, near left, right) ---");
+				for (int i=0;i<postUVScrews.length;i++){
+					double deg=360*Math.abs(postUVScrews[i]);
+					if (postUVScrews[i]>=0) gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CW)");
+					else                    gd.addMessage("Screw # "+(i+1)+" "+IJ.d2s(postUVScrews[i],3)+" ("+IJ.d2s(deg,0)+"\u00b0 CCW)");
+				}
+				gd.addMessage("--- Post-UV fixture screws sensitivity ---");
+				for (int i=0;i<FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity.length;i++){
+					gd.addNumericField("Screw "+i+" sensitivity", FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity[i], 4,6,"um/turn CW");
+				}
 			}
 		}
 		gd.addNumericField("Scale movement",scaleMovement,3,5,"x");
@@ -10089,11 +10107,13 @@ if (MORE_BUTTONS) {
         gd.addNumericField("Tilt min",FOCUSING_FIELD.tMin,2,5,"um/mm");
         gd.addNumericField("Tilt max",FOCUSING_FIELD.tMax,2,5,"um/mm");
         gd.addNumericField("Tilt step",FOCUSING_FIELD.tStep,2,5,"um/mm");
+		gd.addCheckbox("Store calculated tilts",FOCUSING_FIELD.updateAverageTilts);
         gd.addCheckbox("Show current PSF",showPSF);
-		
-		gd.addNumericField("Motor anti-hysteresis travel (last measured was "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.measuredHysteresis,0)+")", FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis, 0,7,"motors steps");
+        if (adjustMode==0) {
+        	gd.addNumericField("Motor anti-hysteresis travel (last measured was "+IJ.d2s(FOCUS_MEASUREMENT_PARAMETERS.measuredHysteresis,0)+")", FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis, 0,7,"motors steps");
+        }
 		gd.addNumericField("Debug Level:",                                MASTER_DEBUG_LEVEL, 0);
-		gd.enableYesNoCancel("Apply movement","Re-measure"); // default OK (on enter) - "Apply"
+		if (adjustMode==0) gd.enableYesNoCancel("Apply movement","Re-measure"); // default OK (on enter) - "Apply"
     	WindowTools.addScrollBars(gd);
     	gd.showDialog();
 		if (gd.wasCanceled()) return false;
@@ -10105,14 +10125,15 @@ if (MORE_BUTTONS) {
 		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?1:0;
 		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?2:0;
 		FOCUSING_FIELD.qualBOptimizeMode+= gd.getNextBoolean()?4:0;
-		
-		newMotors[0]=               (int)  gd.getNextNumber();
-		newMotors[1]=               (int)  gd.getNextNumber();
-		newMotors[2]=               (int)  gd.getNextNumber();
-		
-		if (postUVScrews!=null) {
-			for (int i=0;i<FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity.length;i++){
-				FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity[i]=gd.getNextNumber();
+		if (adjustMode==0) {
+			newMotors[0]=               (int)  gd.getNextNumber();
+			newMotors[1]=               (int)  gd.getNextNumber();
+			newMotors[2]=               (int)  gd.getNextNumber();
+		} else if (adjustMode==1) {
+			if (postUVScrews!=null) {
+				for (int i=0;i<FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity.length;i++){
+					FOCUS_MEASUREMENT_PARAMETERS.postUVscrewSensitivity[i]=gd.getNextNumber();
+				}
 			}
 		}
 		scaleMovement=                     gd.getNextNumber();
@@ -10128,11 +10149,27 @@ if (MORE_BUTTONS) {
         FOCUSING_FIELD.tMin=               gd.getNextNumber();
         FOCUSING_FIELD.tMax=               gd.getNextNumber();
         FOCUSING_FIELD.tStep=              gd.getNextNumber();
+		FOCUSING_FIELD.updateAverageTilts= gd.getNextBoolean();
+
         showPSF=                           gd.getNextBoolean();
-		FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis= (int) gd.getNextNumber();
+        if (adjustMode==0) {
+        	FOCUS_MEASUREMENT_PARAMETERS.motorHysteresis= (int) gd.getNextNumber();
+        }
 		MASTER_DEBUG_LEVEL=(         int)  gd.getNextNumber();
 		DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 		FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
+		if (FOCUSING_FIELD.updateAverageTilts){
+			double[][]zTxTyAbsRel=FOCUSING_FIELD.getZ0TxTyAbsRel(); // z - z0, not zc here !
+			if (zTxTyAbsRel!=null){
+    			FOCUSING_FIELD.avgTx=                         zTxTyAbsRel[0][1]; // average absolute tilt X (optionally used when finding Z of the glued SFE)
+    			FOCUSING_FIELD.avgTy=                         zTxTyAbsRel[0][2]; // average absolute tilt Y (optionally used when finding Z of the glued SFE)
+    			FOCUS_MEASUREMENT_PARAMETERS.result_fDistance=zTxTy[0];
+    			FOCUS_MEASUREMENT_PARAMETERS.result_tiltX=    zTxTy[1];
+    			FOCUS_MEASUREMENT_PARAMETERS.result_tiltY=    zTxTy[2];
+			}
+		}
+		
+		
 		if (showPSF){
 			if (PSF_KERNEL_MAP==null){
 				IJ.showMessage("Warning","PSF_KERNEL_MAP is null, nothing to show" );
@@ -10156,6 +10193,7 @@ if (MORE_BUTTONS) {
 				}
 			}
 		}
+		
 		if (parallelMove){ // ignore/recalculate newMotors data 
 			int [] adjustZOnly={1,0,0};
 			zTxTyM1M2M3 = FOCUSING_FIELD.adjustLMA(
@@ -10182,7 +10220,7 @@ if (MORE_BUTTONS) {
 		newMotors[1]=currentMotors[1]+((int) Math.round((newMotors[1]-currentMotors[1])*scaleMovement));
 		newMotors[2]=currentMotors[2]+((int) Math.round((newMotors[2]-currentMotors[2])*scaleMovement));
 		
-		if (gd.wasOKed()){
+		if ((adjustMode==0) && gd.wasOKed()){
 			// Move, no measure
 			MOTORS.moveElphel10364Motors(
 					true, //boolean wait,
@@ -12046,14 +12084,16 @@ if (MORE_BUTTONS) {
 		if ((debugLevel>0) && (metrics!=null)){
 			// see if lens is calibrated
 			double [] resolutions={1.0/metrics[1][6],1.0/metrics[5][6],1.0/metrics[2][6]}; // R,G,B
-			double fDistanceOld=focusingMotors.focusingHistory.getLensDistance(
-					resolutions, // {R-sharpness,G-sharpness,B-sharpness}
-					true, // boolean absolute, // return absolutely calibrated data
-					focusMeasurementParameters.lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
-					focusMeasurementParameters.lensDistanceWeightY, // R-frac, B-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
-					debugLevel
-			);
-
+			double fDistanceOld=Double.NaN;
+			if (FOCUS_MEASUREMENT_PARAMETERS.showLegacy) {
+				fDistanceOld=focusingMotors.focusingHistory.getLensDistance(
+						resolutions, // {R-sharpness,G-sharpness,B-sharpness}
+						true, // boolean absolute, // return absolutely calibrated data
+						focusMeasurementParameters.lensDistanceWeightK, // 0.0 - all 3 component errors are combined with the same weights. 1.0 - proportional to squared first derivatives 
+						focusMeasurementParameters.lensDistanceWeightY, // R-frac, B-frac have the same scale regardless of the sharpness, but not Y. This is to balance Y contribution
+						debugLevel
+						);
+			}
 //			int ca=6;
 			String sZTxTy="";
 			if (zTxTy!=null){
@@ -12063,8 +12103,7 @@ if (MORE_BUTTONS) {
 			System.out.println("##"+focusingMotors.historySize()+": "+actualPosition[0]+", "+actualPosition[1]+", "+actualPosition[2]+
 					": "+
 					sZTxTy+
-					" fDistanceOld="+IJ.d2s(fDistanceOld,3)+"um"+
-					"  Far/Near="+IJ.d2s(oldFarNear,3)+
+					(FOCUS_MEASUREMENT_PARAMETERS.showLegacy?(" fDistanceOld="+IJ.d2s(fDistanceOld,3)+"um"+"  Far/Near="+IJ.d2s(oldFarNear,3)):"")+
 					"  Tilt X="+IJ.d2s(oldTx,3)+
 					"  Tilt Y="+IJ.d2s(oldTy,3)+
 					"  R50% average="+IJ.d2s(metrics[ca][3],3)+" sensor pixels,"+
@@ -12095,8 +12134,6 @@ if (MORE_BUTTONS) {
 			focusMeasurementParameters.result_RC50=metrics[ca][6];  // last measured RC50(R50 calculated only for the 2 center samples)
 		}
 	}
-	
-	
 	
 	public boolean moveAndMeasureSharpness(
 			int [] newMotorPos, // null OK

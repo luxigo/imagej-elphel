@@ -231,9 +231,9 @@ public class LensAdjustment {
     	public String comment="no comments"; // Comment to add to the results
     	public int lensSerialLength=4;
     	public String lensSerial=""; // Lens serial number
-    	public boolean  askLensSerial=true; // Ask lens serial on camera power cycle
+    	public boolean askLensSerial=true; // Ask lens serial on camera power cycle
     	public double reportTemperature=50;      // temperature to report focal length  
-
+    	public boolean showLegacy=false; // Show old focusing parameters (most are not supported anyway)
     	public boolean includeLensSerial=true; // add lens serial to config filename
     	public double centerDeltaX=0.0; // required X-difference between lens center and sensor center 
     	public double centerDeltaY=0.0; // required Y-difference between lens center and sensor center
@@ -606,7 +606,8 @@ public class LensAdjustment {
 				boolean cameraIsConfigured,
 				int [] motorPos,
 	        	double [] ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
-	        	double reportTemperature      // temperature to report focal length  
+	        	double reportTemperature,      // temperature to report focal length
+	        	boolean showLegacy
     			){
     		this.gridGeometryFile=gridGeometryFile;
     		this.initialCalibrationFile=initialCalibrationFile;
@@ -763,7 +764,7 @@ public class LensAdjustment {
             this.motorPos=motorPos;
         	this.ampsSeconds=ampsSeconds; // cumulative Amps*seconds (read only, but will be saved/restored)
         	this.reportTemperature=reportTemperature;
-			
+        	this.showLegacy=showLegacy;
     	}
     	public FocusMeasurementParameters clone(){
     		return new FocusMeasurementParameters(
@@ -921,7 +922,8 @@ public class LensAdjustment {
     				this.cameraIsConfigured,
     				this.motorPos,
     	        	this.ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
-    	        	this.reportTemperature
+    	        	this.reportTemperature,
+    	        	this.showLegacy
         			);
     	}
 		public void setProperties(String prefix,Properties properties){
@@ -1092,6 +1094,7 @@ public class LensAdjustment {
 			for (int i=0;i<this.ampsSeconds.length;i++) 
 				properties.setProperty(prefix+"ampsSeconds_"+i,this.ampsSeconds[i]+"");
 			properties.setProperty(prefix+"reportTemperature",this.reportTemperature+"");
+			properties.setProperty(prefix+"showLegacy",this.showLegacy+"");
 		}    	
 		public void getProperties(String prefix,Properties properties){
 			if (properties.getProperty(prefix+"gridGeometryFile")!=null)
@@ -1427,6 +1430,8 @@ public class LensAdjustment {
 				this.ampsSeconds[i]=Double.parseDouble(properties.getProperty(prefix+"ampsSeconds_"+i));
 			if (properties.getProperty(prefix+"reportTemperature")!=null)
 				this.reportTemperature=Double.parseDouble(properties.getProperty(prefix+"reportTemperature"));
+			if (properties.getProperty(prefix+"showLegacy")!=null)
+				this.showLegacy=Boolean.parseBoolean(properties.getProperty(prefix+"showLegacy"));
 		}
 		public boolean getLensSerial(){
 			while (true) { // loop until OK-ed
@@ -1696,6 +1701,7 @@ public class LensAdjustment {
     		
     		gd.addMessage("-----");
     		gd.addNumericField("Report focal length at this temperature", this.reportTemperature, 1,5,"C");
+			gd.addCheckbox    ("Show legacy focusing parameters (most are already not supported anyway)",      this.showLegacy);
 			
     		if (!Double.isNaN(this.sensorTemperature)) gd.addMessage("Last measured sensor temperature is "+this.sensorTemperature+" C");
 
@@ -1888,6 +1894,7 @@ public class LensAdjustment {
 				this.postUVscrewSensitivity[i]=            gd.getNextNumber();
 			}
     		this.reportTemperature=          gd.getNextNumber();
+			this.showLegacy=                 gd.getNextBoolean();
     		return true;
     	}
 /* ======================================================================== */
