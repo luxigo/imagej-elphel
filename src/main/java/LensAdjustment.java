@@ -375,7 +375,7 @@ public class LensAdjustment {
 		public double correlationMinAbsoluteContrast=0.5;   // minimal contrast for the pattern to pass, does not compensate for low ligt
 		public double correlationMinAbsoluteInitialContrast=0.5;   // minimal contrast for the pattern of the center (initial point)
         
-		public double [] postUVscrewSensitivity={-2.908571735,-3.8198374024,-2.4491867448};
+		public double [] postUVscrewSensitivity={-300,-300,-120}; //{-2.908571735,-3.8198374024,-2.4491867448};
         
         public boolean flatFieldCorrection=true;
         public double flatFieldExpand=4.0;
