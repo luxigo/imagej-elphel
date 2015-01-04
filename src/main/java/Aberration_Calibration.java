@@ -5942,19 +5942,23 @@ if (MORE_BUTTONS) {
 							"Average Tilt y: "+IJ.d2s(zcZ0TxTy[0][2],3)+"um/mm\n";
 					System.out.println(msg);
 					gd.addMessage(msg);
-					gd.addCheckbox("Store calculated tilts",FOCUSING_FIELD.updateAverageTilts);
+					if (modeAverage) {
+						gd.addCheckbox("Store calculated tilts",FOCUSING_FIELD.updateAverageTilts);
+					}
 				}
 				gd.showDialog();
 	    		if (!gd.wasCanceled()){
 					if (FOCUSING_FIELD.recalculateAverageTilts==1){ // only if recalculated
-			    		FOCUSING_FIELD.updateAverageTilts=gd.getNextBoolean();
-			    		if (FOCUSING_FIELD.updateAverageTilts){
-			    			FOCUSING_FIELD.avgTx=zTxTyAbsRel[0][1]; // average absolute tilt X (optionally used when finding Z of the glued SFE)
-			    			FOCUSING_FIELD.avgTy=zTxTyAbsRel[0][2]; // average absolute tilt Y (optionally used when finding Z of the glued SFE)
-			    			FOCUS_MEASUREMENT_PARAMETERS.result_fDistance=ZTM[0];
-			    			FOCUS_MEASUREMENT_PARAMETERS.result_tiltX=ZTM[1];
-			    			FOCUS_MEASUREMENT_PARAMETERS.result_tiltY=ZTM[2];
-			    		}
+						if (modeAverage && (ZTM!=null) ) { // in temp.scan ZTM==null
+							FOCUSING_FIELD.updateAverageTilts=gd.getNextBoolean();
+							if (FOCUSING_FIELD.updateAverageTilts){
+								FOCUSING_FIELD.avgTx=zTxTyAbsRel[0][1]; // average absolute tilt X (optionally used when finding Z of the glued SFE)
+								FOCUSING_FIELD.avgTy=zTxTyAbsRel[0][2]; // average absolute tilt Y (optionally used when finding Z of the glued SFE)
+								FOCUS_MEASUREMENT_PARAMETERS.result_fDistance=ZTM[0];
+								FOCUS_MEASUREMENT_PARAMETERS.result_tiltX=ZTM[1];
+								FOCUS_MEASUREMENT_PARAMETERS.result_tiltY=ZTM[2];
+							}
+						}
 					}
 	    		}
 			}
