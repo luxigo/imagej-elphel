@@ -1254,6 +1254,7 @@ public class EyesisAberrations {
         						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel, // subCamera,
         						Double.NaN, // goniometerHorizontal, - not used
         						Double.NaN, // goniometerAxial, - not used
+        						Double.NaN, // inter-axis angle, - not used ?
         						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].getSetNumber(), //imageSet,
         						true); //filterBorder)
         				hintTolerance=5.0; // TODO:set from configurable parameter

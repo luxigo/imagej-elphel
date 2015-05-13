@@ -6662,8 +6662,9 @@ if (MORE_BUTTONS) {
 	    		gd.addNumericField("Station number (0.."+(LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.numStations-1), stationNumber, 0);
 			}
     		gd.addNumericField("Number of sub-camera (starting with 0)", 0, 0);
-    		gd.addNumericField("Camera tilt (0 - vertical, >0 looking above horizon on the target", 0.0, 1,6,"degrees");
-    		gd.addNumericField("Camera axial (0 - subcamera 0 looking to the target, >0 - rotated clockwise", 0.0, 1,6,"degrees");
+    		gd.addNumericField("Camera tilt (0 - vertical, >0 looking above horizon on the target)", 0.0, 1,6,"degrees");
+    		gd.addNumericField("Camera axial (0 - subcamera 0 looking to the target, >0 - rotated clockwise)", 0.0, 1,6,"degrees");
+    		gd.addNumericField("Inter-axis angle (from 90)", 0.0, 1,6,"degrees");
     		gd.showDialog();
     		if (gd.wasCanceled()) return;
 			if (LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters.numStations>1){
@@ -6672,11 +6673,13 @@ if (MORE_BUTTONS) {
     		int channelNumber=        (int) gd.getNextNumber();
     		double tilt=       gd.getNextNumber();
     		double axial=      gd.getNextNumber();
+    		double inter=      gd.getNextNumber();
     		ImagePlus imp_simulatePatternOnSensor=LENS_DISTORTIONS.simulatePatternOnSensor(
     				stationNumber,
     				channelNumber,
     				tilt,
     				axial,
+    				inter,
     				SIMUL,
     				THREADS_MAX,                 //int threadsMax,
     				UPDATE_STATUS,               // boolean updateStatus,

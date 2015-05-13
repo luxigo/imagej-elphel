@@ -598,6 +598,7 @@ horizontal axis:
 				subCam,
 				goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 				goniometerTiltAxial[1],  // Axial,goniometerAxial
+				goniometerTiltAxial[2],  // inter-axis angle
 				-1, // use camera parameters, not imageSet
 				true // filter border
 				);

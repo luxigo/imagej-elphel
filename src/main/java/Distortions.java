@@ -716,10 +716,11 @@ public class Distortions {
 			if (this.debugLevel>2){
 				System.out.println("listImageSets() 1: ");
 				for (int is=0;is<this.fittingStrategy.distortionCalibrationData.gIS.length;is++){
-					System.out.println("listImageSets() 1: "+is+": tilt="+
-							this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerTilt+" axial="+
-							this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerAxial+" estimated="+
-							this.fittingStrategy.distortionCalibrationData.gIS[is].orientationEstimated);
+					System.out.println("listImageSets() 1: "+is+
+							": tilt="+    this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerTilt+
+							" axial="+    this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerAxial+
+							" interAxis="+this.fittingStrategy.distortionCalibrationData.gIS[is].interAxisAngle+
+							" estimated="+this.fittingStrategy.distortionCalibrationData.gIS[is].orientationEstimated);
 				}
 			}
 		}
@@ -731,10 +732,11 @@ public class Distortions {
 			if (this.debugLevel>2){
 				System.out.println("listImageSets() 2: ");
 				for (int is=0;is<this.fittingStrategy.distortionCalibrationData.gIS.length;is++){
-					System.out.println("listImageSets() 2: "+is+": tilt="+
-							this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerTilt+" axial="+
-							this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerAxial+" estimated="+
-							this.fittingStrategy.distortionCalibrationData.gIS[is].orientationEstimated);
+					System.out.println("listImageSets() 2: "+is+
+							": tilt="+    this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerTilt+
+							" axial="+    this.fittingStrategy.distortionCalibrationData.gIS[is].goniometerAxial+
+							" interAxis="+this.fittingStrategy.distortionCalibrationData.gIS[is].interAxisAngle+
+							" estimated="+this.fittingStrategy.distortionCalibrationData.gIS[is].orientationEstimated);
 				}
 			}
 		}
@@ -2462,6 +2464,7 @@ For each point in the image
 			int subCam,
 			double goniometerTilt,
 			double goniometerAxial,
+			double goniometerInterAxis,
 			SimulationPattern.SimulParameters simulParametersDefault,
 			int threadsMax,
 			boolean updateStatus,
@@ -2481,6 +2484,7 @@ For each point in the image
 				subCam,
 				goniometerTilt, // Tilt, goniometerHorizontal
 				goniometerAxial,  // Axial,goniometerAxial
+				goniometerInterAxis, // inter-axis angle
 				-1, // use camera parameters, not imageSet
 				true // filter border
 		);
@@ -2662,6 +2666,7 @@ For each point in the image
 							dcd.gIP[numGridImage].channel,
 							goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 							goniometerTiltAxial[1],  // Axial,goniometerAxial
+							goniometerTiltAxial[2],  // inter-axis angle
 							setNumber, // -1 or specific image set
 							true // filter border
 					);
@@ -2902,19 +2907,22 @@ For each point in the image
 			GenericDialog gd=new GenericDialog("Specify camera orientation (channel"+fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel+")");
 			gd.addMessage("No goniometer orientation is available for image # "+numGridImage+" - "+fittingStrategy.distortionCalibrationData.gIP[numGridImage].path+
 			", please specify orientation manually");
-			gd.addNumericField("Camera tilt (0 - vertical, >0 looking above horizon on the target", 0.0, 1,6,"degrees");
-			gd.addNumericField("Camera axial (0 - subcamera 0 looking to the target, >0 - rotated clockwise", 0.0, 1,6,"degrees");
+			gd.addNumericField("Camera tilt (0 - vertical, >0 looking above horizon on the target)", 0.0, 1,6,"degrees");
+			gd.addNumericField("Camera axial (0 - subcamera 0 looking to the target, >0 - rotated clockwise)", 0.0, 1,6,"degrees");
+			gd.addNumericField("Camera inter-axis angle (from 90) ", 0.0, 1,6,"degrees");
 			gd.showDialog();
 			if (gd.wasCanceled()) return;
-			goniometerTiltAxial=new double[2];
-			goniometerTiltAxial[0]=       gd.getNextNumber();
+			goniometerTiltAxial=new double[3];
+			goniometerTiltAxial[0]=      gd.getNextNumber();
 			goniometerTiltAxial[1]=      gd.getNextNumber();
+			goniometerTiltAxial[2]=      gd.getNextNumber();
 		}
 		double [][][] hintGrid=estimateGridOnSensor(
 				fittingStrategy.distortionCalibrationData.getImageStation(numGridImage), // station number
 				fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel,
 				goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 				goniometerTiltAxial[1],  // Axial,goniometerAxial
+				goniometerTiltAxial[2],  // inter-axis angle
 				(useSetData?fittingStrategy.distortionCalibrationData.gIP[numGridImage].getSetNumber():-1),
 				true // filter border
 				);
@@ -3107,6 +3115,7 @@ For each point in the image
 			int subCamera,
 			double goniometerHorizontal, // Tilt 
 			double goniometerAxial,     // Axial
+			double goniometerInterAxis,     // interAxisAngle
 			int  imageSet,
 			boolean filterBorder){
 		double maxRelativeRadius=this.hintedMaxRelativeRadius; // make adjustable
@@ -3126,6 +3135,11 @@ For each point in the image
 			int goniometerAxialIndex=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getGoniometerAxialIndex();
 			parVector[goniometerAxialIndex]=     goniometerAxial;
 		}
+		if (!Double.isNaN(goniometerInterAxis)) {
+			int goniometerInterAxisAngleIndex=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getInterAxisAngleIndex();
+			parVector[goniometerInterAxisAngleIndex]=  goniometerInterAxis;
+		}
+//		/interAxis
 		int sensorWidth=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getSensorWidth(subCamera);
 		int sensorHeight=fittingStrategy.distortionCalibrationData.eyesisCameraParameters.getSensorHeight(subCamera);
 		System.out.println("estimateGridOnSensor(): subCamera="+subCamera+", goniometerHorizontal="+goniometerHorizontal+", goniometerAxial="+goniometerAxial);
@@ -9842,7 +9856,7 @@ M * V = B
 		distortionCalibrationData.gIS[numSet].goniometerAxial=Double.NaN;
 		distortionCalibrationData.gIS[numSet].goniometerTilt= Double.NaN;
 		// re-estimate orientation
-		double [] ta=distortionCalibrationData.getImagesetTiltAxial(distortionCalibrationData.gIS[numSet].timeStamp); // updates tilt/axial
+		double [] ta=distortionCalibrationData.getImagesetTiltAxial(distortionCalibrationData.gIS[numSet].timeStamp); // updates tilt/axial (now interAxis too!)
 	    if ((ta==null) || Double.isNaN(ta[0]) || Double.isNaN(ta[1])) return false;
 	    return true;
     }

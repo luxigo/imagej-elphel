@@ -1136,6 +1136,7 @@ import org.apache.commons.configuration.XMLConfiguration;
  //       public int getNumSubCameras (){return (this.eyesisSubCameras==null)?0:this.eyesisSubCameras.length;}
         public int getGoniometerHorizontalIndex(){return 6;}
         public int getGoniometerAxialIndex(){return 7;}
+        public int getInterAxisAngleIndex(){return 9;}
         public int getSensorWidth() { return this.sensorWidth;}
         public int getSensorHeight() { return this.sensorHeight;}
         public int getSensorWidth(int subCam) { return this.sensorWidth;} // for the future? different sensors

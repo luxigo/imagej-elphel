@@ -765,7 +765,8 @@ import org.apache.commons.configuration.XMLConfiguration;
         	}
         	String header="#\ttimestamp";
         	if (this.eyesisCameraParameters.numStations>1) header+="\tStation";
-        	header+="\tAxial\tTilt\thorPhi\thorPsi\tX\tY\tZ\tMotor2\tMotor3";
+//        	header+="\tAxial\tTilt\thorPhi\thorPsi\tX\tY\tZ\tMotor2\tMotor3";
+        	header+="\tAxial\tTilt\tdTilt\tInter\tMotor2\tMotor3";
         	if (numPoints!=null) header+="\tNumPoints";
         	header+="\tEnabled\tMatched";
         	if (setRMS!=null) header+="\tRMS\tWeight";
@@ -773,51 +774,67 @@ import org.apache.commons.configuration.XMLConfiguration;
     		StringBuffer sb = new StringBuffer();
     		
     		for (int i=0;i<this.gIS.length;i++){
-    			double firstHorAxisErrPhi=Double.NaN;
-    			double firstHorAxisErrPsi=Double.NaN;
-    			double firstGXYZ0=        Double.NaN;
-    			double firstGXYZ1=        Double.NaN;
-    			double firstGXYZ2=        Double.NaN;
-//    			int index=-1;
-//    			for (int ni=0;ni<this.gIS[i].imageSet.length;ni++) if (this.gIS[i].imageSet[ni]!=null){
-//    				index=this.gIS[i].imageSet[ni].imgNumber;
-//    				break;
-//   			}
-//				int horAxisErrPhiIndex=getParameterIndexByName("horAxisErrPhi");
-//				int horAxisErrPsiIndex=getParameterIndexByName("horAxisErrPsi");
-//				if ((index>=0) && (horAxisErrPhiIndex>=0)) { 
-//					firstHorAxisErrPhi=this.pars[index][horAxisErrPhiIndex];
-					firstHorAxisErrPhi=this.gIS[i].horAxisErrPhi;
-//				}
-//				if ((index>=0) && (horAxisErrPsiIndex>=0)) { 
-//					firstHorAxisErrPsi=this.pars[index][horAxisErrPsiIndex];
-					firstHorAxisErrPsi=this.gIS[i].horAxisErrPsi;
-//				}
-//				int GXYZ0Index=getParameterIndexByName("GXYZ0");
-//				if ((index>=0) && (GXYZ0Index>=0)) { 
-//					firstGXYZ0=this.pars[index][GXYZ0Index];
-					firstGXYZ0=this.gIS[i].GXYZ[0];
-//				}
-//				int GXYZ1Index=getParameterIndexByName("GXYZ1");
-//				if ((index>=0) && (GXYZ1Index>=0)) { 
-//					firstGXYZ1=this.pars[index][GXYZ1Index];
-					firstGXYZ1=this.gIS[i].GXYZ[1];
-//				}
-//				int GXYZ2Index=getParameterIndexByName("GXYZ2");
-//				if ((index>=0) && (GXYZ2Index>=0)) { 
-//					firstGXYZ2=this.pars[index][GXYZ2Index];
-					firstGXYZ2=this.gIS[i].GXYZ[2];
-//				}
+    			double axial_corr_sign=this.gIS[i].goniometerAxial; // correct sign of rotation beyond +/-180 according to motor steps
+    			if (this.gIS[i].motors != null) {
+    				if (this.gIS[i].motors[1] > 0){
+    					if (axial_corr_sign < -90.0) {
+    						axial_corr_sign += 360.0;
+    					}
+    				} else {
+    					if (axial_corr_sign > 90.0) {
+    						axial_corr_sign -= 360.0;
+    					}
+    					
+    				}
+    			}
+    			// calculate average tilt for this tilt motor and difference of the current tilt from average
+    			double dTilt=Double.NaN;
+    			if (!Double.isNaN(this.gIS[i].goniometerTilt) && (this.gIS[i].motors != null)){
+    				int i_low,i_high;
+    				for (i_low=i-1;i_low>=0;i_low--){
+    					if ((this.gIS[i_low].motors != null) && (this.gIS[i_low].motors[2] != this.gIS[i].motors[2])) break; 
+    				}
+    				i_low++;
+    				for (i_high=i+1;i_high < this.gIS.length;i_high++){
+    					if ((this.gIS[i_high].motors != null) && (this.gIS[i_high].motors[2] != this.gIS[i].motors[2])) break; 
+    				}
+    				int num_avg=0;
+    				double sum_avg=0.0;
+    				for (int i_avg=i_low;i_avg < i_high; i_avg++){
+    					if (!Double.isNaN(this.gIS[i_avg].goniometerTilt)){
+    						num_avg++;
+    						sum_avg += this.gIS[i_avg].goniometerTilt;
+    					}
+    				}
+    				if (num_avg>0) dTilt = this.gIS[i].goniometerTilt - (sum_avg/num_avg); 
+    				
+    			}
+//    			double firstHorAxisErrPhi=Double.NaN;
+//    			double firstHorAxisErrPsi=Double.NaN;
+//    			double firstGXYZ0=        Double.NaN;
+//    			double firstGXYZ1=        Double.NaN;
+//    			double firstGXYZ2=        Double.NaN;
+    			double firstInterAxisAngle=Double.NaN;
+//    			firstHorAxisErrPhi=this.gIS[i].horAxisErrPhi;
+//    			firstHorAxisErrPsi=this.gIS[i].horAxisErrPsi;
+//    			firstGXYZ0=this.gIS[i].GXYZ[0];
+//    			firstGXYZ1=this.gIS[i].GXYZ[1];
+//    			firstGXYZ2=this.gIS[i].GXYZ[2];
+    			firstInterAxisAngle = this.gIS[i].interAxisAngle;
+    			
     			sb.append(i+"\t"+IJ.d2s(this.gIS[i].timeStamp,6));
     			if (this.eyesisCameraParameters.numStations>1)	sb.append(i+"\t"+ this.gIS[i].getStationNumber());
-    			sb.append("\t"+(Double.isNaN(this.gIS[i].goniometerAxial)?"---":((this.gIS[i].orientationEstimated?"(":"")+IJ.d2s(this.gIS[i].goniometerAxial,3)+(this.gIS[i].orientationEstimated?")":""))));
+    			sb.append("\t"+(Double.isNaN(this.gIS[i].goniometerAxial)?"---":((this.gIS[i].orientationEstimated?"(":"")+IJ.d2s(axial_corr_sign,3)+(this.gIS[i].orientationEstimated?")":""))));
     			sb.append("\t"+(Double.isNaN(this.gIS[i].goniometerTilt)?"---":((this.gIS[i].orientationEstimated?"(":"")+IJ.d2s(this.gIS[i].goniometerTilt,3)+(this.gIS[i].orientationEstimated?")":""))));
-    			sb.append("\t"+(Double.isNaN(firstHorAxisErrPhi)?"---":IJ.d2s(firstHorAxisErrPhi,3)));
-    			sb.append("\t"+(Double.isNaN(firstHorAxisErrPsi)?"---":IJ.d2s(firstHorAxisErrPsi,3)));
+
+//    			sb.append("\t"+(Double.isNaN(firstHorAxisErrPhi)?"---":IJ.d2s(firstHorAxisErrPhi,3)));
+//    			sb.append("\t"+(Double.isNaN(firstHorAxisErrPsi)?"---":IJ.d2s(firstHorAxisErrPsi,3)));
+//    			sb.append("\t"+(Double.isNaN(firstGXYZ0)?"---":IJ.d2s(firstGXYZ0,3)));
+//    			sb.append("\t"+(Double.isNaN(firstGXYZ1)?"---":IJ.d2s(firstGXYZ1,3)));
+//    			sb.append("\t"+(Double.isNaN(firstGXYZ2)?"---":IJ.d2s(firstGXYZ2,3)));
     			
-    			sb.append("\t"+(Double.isNaN(firstGXYZ0)?"---":IJ.d2s(firstGXYZ0,3)));
-    			sb.append("\t"+(Double.isNaN(firstGXYZ1)?"---":IJ.d2s(firstGXYZ1,3)));
-    			sb.append("\t"+(Double.isNaN(firstGXYZ2)?"---":IJ.d2s(firstGXYZ2,3)));
+    			sb.append("\t"+(Double.isNaN(dTilt)?"---":IJ.d2s(dTilt,3)));
+    			sb.append("\t"+(Double.isNaN(firstInterAxisAngle)?"---":IJ.d2s(firstInterAxisAngle,3)));
 
     			if (this.gIS[i].motors==null) {
     				sb.append("\t"+"bug"+"\t"+"bug");
@@ -1361,6 +1378,7 @@ import org.apache.commons.configuration.XMLConfiguration;
          * updateSetOrientation() should be called after LMA or other updates to camera parameters
          * @param timeStamp - double timestamp identifying imageset (image does not need to be a part of selected grid files)
          * @return null if no images set has the specified timestamp, may contain Double.NaN if the orientation was not set.
+         * Now 3-rd term - interAxisAngle - with goniometerTilt it is used for correction of non-pure axial movement of the camera.
          */
         public double [] getImagesetTiltAxial(double timeStamp){
         	int mAxial=1;     // m2 
@@ -1372,7 +1390,7 @@ import org.apache.commons.configuration.XMLConfiguration;
         	for (int i=0;i<this.gIS.length;i++)
         		if (this.gIS[i].timeStamp==timeStamp) {
     				int iBest=i;
-        			if (Double.isNaN(this.gIS[i].goniometerTilt) || Double.isNaN(this.gIS[i].goniometerAxial)) {
+        			if (Double.isNaN(this.gIS[i].goniometerTilt) || Double.isNaN(this.gIS[i].goniometerAxial)  || Double.isNaN(this.gIS[i].interAxisAngle)) {
 // find the closest one (by motors)
         				if (this.gIS[i].motors==null) {
                 			if (this.debugLevel>0) System.out.println("getImagesetTiltAxial("+timeStamp+"): No motor data");
@@ -1396,7 +1414,8 @@ import org.apache.commons.configuration.XMLConfiguration;
             						(this.gIS[j].getStationNumber()==stationNumber) &&
             						(this.gIS[j].motors[mHorizontal]==thisMotorHorizontal) &&
             						!Double.isNaN(this.gIS[j].goniometerTilt) &&
-            						!Double.isNaN(this.gIS[j].goniometerAxial)){
+            						!Double.isNaN(this.gIS[j].goniometerAxial) &&
+            						!Double.isNaN(this.gIS[j].interAxisAngle)){
             					setList.add(new Integer(j));
             				}
             			}
@@ -1436,12 +1455,16 @@ import org.apache.commons.configuration.XMLConfiguration;
             					// now linear interpolate axail between theses two sets: indexClosest and indexSecond. (resolve/ guess crossing 360
             					double axialClosest=this.gIS[indexClosest].goniometerAxial;
             					double axialSecond= this.gIS[indexSecond].goniometerAxial;
+            					double interClosest=this.gIS[indexClosest].interAxisAngle;
+            					double interSecond= this.gIS[indexSecond].interAxisAngle;
             					axialClosest-=360.0*Math.floor((axialClosest+180.0)/360.0);
             					axialSecond-= 360.0*Math.floor((axialSecond+ 180.0)/360.0);
                 				if (this.debugLevel>2) System.out.println("getImagesetTiltAxial("+timeStamp+"):"+
                 						" same tilt - "+setList.size()+
                 						" axialClosest="+axialClosest+
                 						" axialSecond="+axialSecond+
+                						" interClosest="+interClosest+
+                						" interSecond="+interSecond+
                 						" motor closest="+this.gIS[indexClosest].motors[mAxial]+
                 						" motor second="+this.gIS[indexSecond].motors[mAxial]);
             					// axial motor has the same sign/direction as the axial angle
@@ -1455,6 +1478,11 @@ import org.apache.commons.configuration.XMLConfiguration;
             						(axialSecond-axialClosest)*
             						(thisMotorAxial-this.gIS[indexClosest].motors[mAxial])/
             						(this.gIS[indexSecond].motors[mAxial]-this.gIS[indexClosest].motors[mAxial]);
+            					this.gIS[i].interAxisAngle=
+            							interClosest+
+                						(interSecond-interClosest)*
+                						(thisMotorAxial-this.gIS[indexClosest].motors[mAxial])/
+                						(this.gIS[indexSecond].motors[mAxial]-this.gIS[indexClosest].motors[mAxial]);
             					this.gIS[i].goniometerTilt=
             						this.gIS[indexClosest].goniometerTilt+
             						(this.gIS[indexSecond].goniometerTilt-this.gIS[indexClosest].goniometerTilt)*
@@ -1464,7 +1492,7 @@ import org.apache.commons.configuration.XMLConfiguration;
             			} else { // old way
             				double d2Min=-1;
             				for (int j=0;j<this.gIS.length;j++) if ((j!=i) && (this.gIS[j].motors!=null) &&
-            						!Double.isNaN(this.gIS[j].goniometerTilt) && !Double.isNaN(this.gIS[j].goniometerAxial)) {
+            						!Double.isNaN(this.gIS[j].goniometerTilt) && !Double.isNaN(this.gIS[j].goniometerAxial )  && !Double.isNaN(this.gIS[j].interAxisAngle)) {
             					double d2=0;
             					for (int k=0;k<this.gIS[j].motors.length;k++){
             						d2+=1.0*(this.gIS[j].motors[k]-this.gIS[i].motors[k])*
@@ -1479,7 +1507,8 @@ import org.apache.commons.configuration.XMLConfiguration;
         			}
         			double [] result = {
         					this.gIS[iBest].goniometerTilt,
-        					this.gIS[iBest].goniometerAxial
+        					this.gIS[iBest].goniometerAxial,
+        					this.gIS[iBest].interAxisAngle
         			};
         			if (iBest!=i){
             			if (this.debugLevel>0) System.out.println("Orientation for set # "+i+" timestamp "+IJ.d2s(this.gIS[i].timeStamp,6)+
@@ -1487,6 +1516,7 @@ import org.apache.commons.configuration.XMLConfiguration;
             			this.gIS[i].orientationEstimated=true;
     					this.gIS[i].goniometerTilt= this.gIS[iBest].goniometerTilt;
     					this.gIS[i].goniometerAxial=this.gIS[iBest].goniometerAxial;
+    					this.gIS[i].interAxisAngle=this.gIS[iBest].interAxisAngle;
         			}
        				return result; // may have Double.NaN
         	}
