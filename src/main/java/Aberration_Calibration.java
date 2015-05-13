@@ -1179,7 +1179,7 @@ if (MORE_BUTTONS) {
 	        				", of them new: "+numImages[1]+
 	        				", disabled without vignetting info: "+numImages[2]+
 	        				", disabled having less than "+minGridsNoPointer+" nodes and no matched pointers: "+numImages[3]+
-	        				", disabled with no lasers and enableNoLaser==false (like 2 bottom cameras):" +numImages[4]);
+	        				", disabled with no lasers and enableNoLaser==false (like 2 bottom cameras - check all stations):" +numImages[4]);
 	    			
 		    		if (DISTORTION_CALIBRATION_DATA.gIS==null) {
 		    			int numImageSets=DISTORTION_CALIBRATION_DATA.buildImageSets(false); // from scratch
@@ -6104,7 +6104,7 @@ if (MORE_BUTTONS) {
     				", of them new: "+numImages[1]+
     				", disabled without vignetting info: "+numImages[2]+
     				", disabled having less than "+minGridsNoPointer+" nodes and no matched pointers: "+numImages[3]+
-    				", disabled with no lasers and enableNoLaser==false (like 2 bottom cameras):" +numImages[4]);
+    				", disabled with no lasers and enableNoLaser==false (like 2 bottom cameras - check all stations):" +numImages[4]);
     		if (DISTORTION_CALIBRATION_DATA.gIS==null) {
     			int numImageSets=DISTORTION_CALIBRATION_DATA.buildImageSets(false); // from scratch
     			if (DEBUG_LEVEL>0) System.out.println("Image set was empty, built a new one with "+numImageSets+" image sets (\"panoramas\"): ");
