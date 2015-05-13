@@ -6281,6 +6281,7 @@ if (MORE_BUTTONS) {
     		}
     		double tiltCenter=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerTilt;
     		double axialCenter=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerAxial;
+    		double interCenter=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].interAxisAngle;
     		int tiltNumSteps=1;
     		int axialNumSteps=21;
     		double tiltStep=0.25;
@@ -6296,6 +6297,7 @@ if (MORE_BUTTONS) {
     		gd.addCheckbox("Ignore laser pointers", ignoreLaserPointers);
     		gd.addNumericField("Image set tilt", tiltCenter, 2,6,"degrees");
     		gd.addNumericField("Image set axial", axialCenter, 2,6,"degrees");
+    		gd.addNumericField("Image set inter-axis", interCenter, 2,6,"degrees");
     		gd.addNumericField("Tilt number of steps", tiltNumSteps, 0,3,"");
     		gd.addNumericField("Axial number of steps", axialNumSteps, 0,3,"");
     		gd.addNumericField("Tilt scan step", tiltStep, 2,5,"degrees");
@@ -6308,6 +6310,7 @@ if (MORE_BUTTONS) {
     		ignoreLaserPointers=      gd.getNextBoolean();
     		tiltCenter=               gd.getNextNumber();
     		axialCenter=              gd.getNextNumber();
+    		interCenter=              gd.getNextNumber();
     		tiltNumSteps=       (int) gd.getNextNumber();
     		axialNumSteps=      (int) gd.getNextNumber();
     		tiltStep=                 gd.getNextNumber();
@@ -6318,13 +6321,18 @@ if (MORE_BUTTONS) {
     		double [] initialAxial=   new double [axialNumSteps];
     		double [][] finalTilt =   new double [tiltNumSteps][axialNumSteps];
     		double [][] finalAxial=   new double [tiltNumSteps][axialNumSteps];
+    		double [][] finalInter=   new double [tiltNumSteps][axialNumSteps];
     		double [][] finalError=   new double [tiltNumSteps][axialNumSteps];
     		for (int tiltIndex=0; tiltIndex<tiltNumSteps;tiltIndex++) initialTilt[tiltIndex]=tiltCenter+tiltStep*(tiltIndex-0.5*(tiltNumSteps-1));
     		for (int axialIndex=0;axialIndex<axialNumSteps;axialIndex++) initialAxial[axialIndex]=axialCenter+axialStep*(axialIndex-0.5*(axialNumSteps-1));
     		for (int tiltIndex=0; tiltIndex<tiltNumSteps;tiltIndex++) for (int axialIndex=0;axialIndex<axialNumSteps;axialIndex++) { 
     			LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerTilt=initialTilt[tiltIndex];
     			LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerAxial=initialAxial[axialIndex];
-    			if (DEBUG_LEVEL>0) System.out.println("Image Set #"+imageSetNumber+" Initial tilt="+initialTilt[tiltIndex]+" Initial axial="+initialAxial[axialIndex]);
+    			LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].interAxisAngle=interCenter; // no scanning, just use center value
+    			
+    			if (DEBUG_LEVEL>0) System.out.println("Image Set #"+imageSetNumber+
+    												  " Initial tilt="+initialTilt[tiltIndex]+
+    												  " Initial inter="+interCenter);
     			int [][] imageSets=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.listImages(!processAllImages);
     			int [] imageSet=imageSets[imageSetNumber];
     			if (imageSet==null){
@@ -6368,10 +6376,12 @@ if (MORE_BUTTONS) {
 				if (LMA_OK) {
 					finalTilt[tiltIndex][axialIndex]=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerTilt;
 					finalAxial[tiltIndex][axialIndex]=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerAxial;
+					finalInter[tiltIndex][axialIndex]=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].interAxisAngle;
 					finalError[tiltIndex][axialIndex]=LENS_DISTORTIONS.currentRMS;
 				} else {
 					finalTilt[tiltIndex][axialIndex]=initialTilt[tiltIndex];
 					finalAxial[tiltIndex][axialIndex]=initialAxial[axialIndex];
+					finalInter[tiltIndex][axialIndex]=interCenter;
 					finalError[tiltIndex][axialIndex]=Double.NaN;
 					if (DEBUG_LEVEL>0) System.out.println("----------------- LMA FAILED -------------------------");
 				}
@@ -6388,12 +6398,19 @@ if (MORE_BUTTONS) {
     		} 
 			if (DEBUG_LEVEL>0) System.out.println("================ Image Set #"+imageSetNumber+" rms="+IJ.d2s(bestRMS, 6)+
 					" final tilt="+finalTilt[bestTiltIndex][bestAxialIndex]+" ("+tiltCenter+": "+initialTilt[bestTiltIndex]+") " +
-					" final axial="+finalAxial[bestTiltIndex][bestAxialIndex]+" ("+axialCenter+": "+initialAxial[bestAxialIndex]+")");
+					" final axial="+finalAxial[bestTiltIndex][bestAxialIndex]+" ("+axialCenter+": "+initialAxial[bestAxialIndex]+")"+
+					" final inter="+finalInter[bestTiltIndex][bestAxialIndex]+" ("+interCenter+": "+interCenter+")");
 
 // repeat with the best indices			
 			LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerTilt=finalTilt[bestTiltIndex][bestAxialIndex]; //initialTilt[bestTiltIndex];
 			LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].goniometerAxial=finalAxial[bestTiltIndex][bestAxialIndex]; //initialAxial[bestAxialIndex];
-			if (DEBUG_LEVEL>0) System.out.println("Image Set #"+imageSetNumber+" Initial tilt="+finalTilt[bestTiltIndex][bestAxialIndex]+" Initial axial="+finalAxial[bestTiltIndex][bestAxialIndex]);
+			LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.gIS[imageSetNumber].interAxisAngle=finalInter[bestTiltIndex][bestAxialIndex];
+			if (DEBUG_LEVEL>0) System.out.println(
+					"Image Set #"+imageSetNumber+
+					" Initial tilt="+finalTilt[bestTiltIndex][bestAxialIndex]+
+					" Initial axial="+finalAxial[bestTiltIndex][bestAxialIndex]+
+					" Initial inter="+finalInter[bestTiltIndex][bestAxialIndex]
+							);
 			int [][] imageSets=LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.listImages(!processAllImages);
 			int [] imageSet=imageSets[imageSetNumber];
 			if (imageSet==null){
@@ -6443,7 +6460,8 @@ if (MORE_BUTTONS) {
 
 			if (DEBUG_LEVEL>0) System.out.println("================ Image Set #"+imageSetNumber+" rms="+IJ.d2s(bestRMS, 6)+
 					" final tilt="+finalTilt[bestTiltIndex][bestAxialIndex]+" ("+tiltCenter+": "+initialTilt[bestTiltIndex]+") " +
-					" final axial="+finalAxial[bestTiltIndex][bestAxialIndex]+" ("+axialCenter+": "+initialAxial[bestAxialIndex]+")");
+					" final axial="+finalAxial[bestTiltIndex][bestAxialIndex]+" ("+axialCenter+": "+initialAxial[bestAxialIndex]+")" +
+					" final inter="+finalInter[bestTiltIndex][bestAxialIndex]+" ("+interCenter+")");
 
 			return;
 		}
