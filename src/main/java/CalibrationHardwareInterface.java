@@ -150,11 +150,14 @@ public class CalibrationHardwareInterface {
     		this.thisTime=this.startTime;
     	}
 
-		private int [][] channelMap26={ // ip index, channel number
-				{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0}, // modified!
-				{0,1},{1,1},{2,1},{3,1},{4,1},{5,1},{6,1},{7,1},
-				{0,2},{1,2},{2,2},{3,2},{4,2},{5,2},{6,2},{7,2},
-				{8,0},{8,1}};
+		private int [][] channelMap21={ // ip index, channel number
+				{0,1},{0,0},{0,2},
+				{1,1},{1,0},{1,2},
+				{2,1},{2,0},{2,2},
+				{3,1},{3,0},{3,2},
+				{4,1},{4,0},{4,2},
+				{5,1},{5,0},{5,2},
+				{6,1},{6,0},{6,2}};
 		private int [][] channelMap1={ // ip index, channel number
 //				{0,-1}}; // negative channel - single camera
 		{0,0}}; // Try with 0
@@ -264,12 +267,12 @@ public class CalibrationHardwareInterface {
 				 for (int i=0;i<size;i++){
 					 this.flipImages[i]=false;
 					 int i0=((i>=this.channelMap3.length)?(this.channelMap3.length-1):i);
-					 this.channelMap[i]=this.channelMap26[i0].clone();
+					 this.channelMap[i]=this.channelMap21[i0].clone();
 				 }
 			 } else for (int i=0;i<size;i++){
 				 this.flipImages[i]=false;
-				 int i0=((i>=this.channelMap26.length)?(this.channelMap26.length-1):i);
-				 this.channelMap[i]=this.channelMap26[i0].clone();
+				 int i0=((i>=this.channelMap21.length)?(this.channelMap21.length-1):i);
+				 this.channelMap[i]=this.channelMap21[i0].clone();
 			 }
 		}
     	public void setProperties(String prefix,Properties properties){

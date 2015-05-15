@@ -1340,7 +1340,518 @@ import org.apache.commons.configuration.XMLConfiguration;
     					null,  // eccentricity for b,a,a5,a6,a7,a8
     					null,  // elongation for c,b,a,a5,a6,a7,a8
     					1.0); //channelWeightDefault
-    		} else {
+    		} else if (numSubCameras == 21) {
+    			// ================
+    			// PHG21 parameters
+    			//
+    			this.eyesisSubCameras[numStation][0]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					0.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					46.57, // double radius,  // mm, distance from the rotation axis
+    					0.0, // double height,  // mm, up (was downwards) - from the origin point
+    					0.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					-90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][1]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					21.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					50.36, // double radius,  // mm, distance from the rotation axis
+    					-15.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-53.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][2]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-21.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					50.36, // double radius,  // mm, distance from the rotation axis
+    					-15.0, // double height,  // mm, up (was downwards) - from the origin point
+    					53.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][3]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					0.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					46.57, // double radius,  // mm, distance from the rotation axis
+    					70.0, // double height,  // mm, up (was downwards) - from the origin point
+    					0.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					-90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][4]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					21.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					50.36, // double radius,  // mm, distance from the rotation axis
+    					55.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-53.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][5]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-21.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					50.36, // double radius,  // mm, distance from the rotation axis
+    					55.0, // double height,  // mm, up (was downwards) - from the origin point
+    					53.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][6]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					52.47, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					76.45, // double radius,  // mm, distance from the rotation axis
+    					35.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-52.47, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					-90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][7]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					59.13, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					91.65, // double radius,  // mm, distance from the rotation axis
+    					20.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-91.13, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][8]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					42.16, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					63.43, // double radius,  // mm, distance from the rotation axis
+    					20.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-10.16, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][9]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					52.47, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					76.45, // double radius,  // mm, distance from the rotation axis
+    					-35.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-52.47, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					-90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][10]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					59.13, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					91.65, // double radius,  // mm, distance from the rotation axis
+    					-50.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-91.13, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][11]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					42.16, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					63.43, // double radius,  // mm, distance from the rotation axis
+    					-50.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-10.16, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][12]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					0.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					46.57, // double radius,  // mm, distance from the rotation axis
+    					-70.0, // double height,  // mm, up (was downwards) - from the origin point
+    					0.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					-90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][13]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					21.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					50.36, // double radius,  // mm, distance from the rotation axis
+    					-85.0, // double height,  // mm, up (was downwards) - from the origin point
+    					-53.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][14]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-21.0, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					50.36, // double radius,  // mm, distance from the rotation axis
+    					-85.0, // double height,  // mm, up (was downwards) - from the origin point
+    					53.0, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][15]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-52.47, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					76.45, // double radius,  // mm, distance from the rotation axis
+    					-35.0, // double height,  // mm, up (was downwards) - from the origin point
+    					52.47, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					-90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][16]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-42.16, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					63.43, // double radius,  // mm, distance from the rotation axis
+    					-50.0, // double height,  // mm, up (was downwards) - from the origin point
+    					10.16, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][17]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-59.13, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					91.65, // double radius,  // mm, distance from the rotation axis
+    					-50.0, // double height,  // mm, up (was downwards) - from the origin point
+    					91.13, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][18]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-52.47, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					76.45, // double radius,  // mm, distance from the rotation axis
+    					35.0, // double height,  // mm, up (was downwards) - from the origin point
+    					52.47, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					-90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][19]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-42.16, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					63.43, // double radius,  // mm, distance from the rotation axis
+    					20.0, // double height,  // mm, up (was downwards) - from the origin point
+    					10.16, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			this.eyesisSubCameras[numStation][20]=new EyesisSubCameraParameters( //TODO:  modify for lens adjustment defaults?
+    					defaultLensDistortionModel,
+    					true,
+    					-59.13, // double azimuth, // azimuth of the lens entrance pupil center, degrees, clockwise looking from top
+    					91.65, // double radius,  // mm, distance from the rotation axis
+    					20.0, // double height,  // mm, up (was downwards) - from the origin point
+    					91.13, // double phi,     // degrees, optical axis from azimuth/r vector, clockwise
+    					0.0, //double theta,   // degrees, optical axis from the eyesis horizon, positive - up
+    					90.0,  //double psi;      // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target
+    		    		5.4, // double focalLength
+    		    		2.2, // double pixelSize (um)
+    		    		2.8512, //double distortionRadius mm - half width of the sensor
+    		    		0.0, // double distortionA8 // r^8 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA7 // r^7 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA6 // r^6 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA5 // r^5 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionA // r^4 (normalized to focal length or to sensor half width?)
+    		    		0.0, // double distortionB // r^3
+    		    		0.0,    // double distortionC // r^2
+    		    		1296.0, // double px0=1296.0;          // center of the lens on the sensor, pixels
+    					968.0, // double py0=968.0;           // center of the lens on the sensor, pixels
+    					null,  // eccentricity for b,a,a5,a6,a7,a8
+    					null,  // elongation for c,b,a,a5,a6,a7,a8
+    					1.0); //channelWeightDefault
+    			//
+    			// end of PHG21 parameters
+    			// =======================
+    			} else {
     			// default setup for the 26 sub-cameras	    		
     			for (int i=0;i<8;i++) if (i<numSubCameras) 	this.eyesisSubCameras[numStation][i]=new EyesisSubCameraParameters( // top 8 cameras
     					defaultLensDistortionModel,
