@@ -3761,92 +3761,99 @@ if (MORE_BUTTONS) {
 			POWER_CONTROL.lightsOnWithDelay();
 			long 	  startTime=System.nanoTime();
 			FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature=CAMERAS.getSensorTemperature(0,FOCUS_MEASUREMENT_PARAMETERS.EEPROM_channel);
-			imp_sel= CAMERAS.acquireSingleImage (
+			ImagePlus [] imp_set_ref = CAMERAS.acquireSeveralImages (
 					true, //boolean useLasers,
 					UPDATE_STATUS);
-			if (imp_sel==null){
+			if (imp_set_ref==null){
 				IJ.showMessage("Error","Failed to get camera image\nProcess canceled");
 				return;
 			}
-			if (FOCUS_MEASUREMENT_PARAMETERS.showAcquiredImages){
-				imp_sel.show();
-				imp_sel.updateAndDraw();
-			}
+			ImagePlus [] imp_set = new ImagePlus[imp_set_ref.length];
+			imp_set = imp_set_ref.clone();
 			if (LENS_DISTORTION_PARAMETERS==null){
 				IJ.showMessage("LENS_DISTORTION_PARAMETERS is not set");
 				return;
 			}
+			MatchSimulatedPattern [] matchSimulatedPatternSet = new MatchSimulatedPattern[imp_set.length];
+			ImagePlus [] imp_calibrated = new ImagePlus[imp_set.length];
 			double headPointersTilt=Double.NaN;
-			// measure rotation from the optical head lasers
-			if (findCenter &&FOCUS_MEASUREMENT_PARAMETERS.useHeadLasers){
-				ImagePlus imp_headLasers= CAMERAS.acquireSingleImage (
-						UV_LED_LASERS,
-						UPDATE_STATUS);
-				if (imp_headLasers==null){
-					IJ.showMessage("Error","Failed to get camera image\nProcess canceled");
-					return;
-				}
+			for (int imgCounter = 0; imgCounter < imp_set.length; imgCounter++) {
 				if (FOCUS_MEASUREMENT_PARAMETERS.showAcquiredImages){
-					imp_headLasers.show();
-					imp_headLasers.updateAndDraw();
+					imp_set[imgCounter].show();
+					imp_set[imgCounter].updateAndDraw();
 				}
-				double [][] headPointers=CAMERAS.getHeadPointers(imp_headLasers);
-				if (headPointers==null) {
-					System.out.println("Failed to locate optical head laser pointers");
+				
+				// measure rotation from the optical head lasers for the first image only
+				if (imgCounter == 0 && findCenter &&FOCUS_MEASUREMENT_PARAMETERS.useHeadLasers){
+					ImagePlus imp_headLasers= CAMERAS.acquireSingleImage (
+							UV_LED_LASERS,
+							UPDATE_STATUS);
+					if (imp_headLasers==null){
+						IJ.showMessage("Error","Failed to get camera image\nProcess canceled");
+						return;
+					}
+					if (FOCUS_MEASUREMENT_PARAMETERS.showAcquiredImages){
+						imp_headLasers.show();
+						imp_headLasers.updateAndDraw();
+					}
+					double [][] headPointers=CAMERAS.getHeadPointers(imp_headLasers);
+					if (headPointers==null) {
+						System.out.println("Failed to locate optical head laser pointers");
+						return;
+					}
+					if (DEBUG_LEVEL>1){
+						for (int n=0;n<headPointers.length;n++) if (headPointers[n]!=null){
+							System.out.println("Head pointer "+n+": X="+IJ.d2s(headPointers[n][0],2)+", Y="+IJ.d2s(headPointers[n][1],2));
+						}
+					}
+					if ((headPointers[0]!=null) && (headPointers[1]!=null)){
+						headPointersTilt=180.0/Math.PI*Math.atan2(headPointers[1][1]-headPointers[0][1], headPointers[1][0]-headPointers[0][0])-LASER_POINTERS.headLasersTilt;
+						if (DEBUG_LEVEL>0){
+							System.out.println("SFE is rotated by "+IJ.d2s(headPointersTilt,3)+" degrees according to optical head laser pointers (clockwise positive)");
+						}
+					}
+					FOCUS_MEASUREMENT_PARAMETERS.result_ROT=headPointersTilt;
+				}
+	
+				if (DEBUG_LEVEL>0) System.out.println("Image acquisition (@"+FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C) done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+				// reset matchSimulatedPattern, so it will start from scratch
+				matchSimulatedPatternSet[imgCounter] = new MatchSimulatedPattern(DISTORTION.FFTSize); // new instance, all reset
+				// next 2 lines are not needed for the new instance, but can be used alternatively if keeipg it
+				   matchSimulatedPatternSet[imgCounter].invalidateFlatFieldForGrid(); //Reset Flat Field calibration - different image. 
+				   matchSimulatedPatternSet[imgCounter].invalidateFocusMask();
+	
+				
+				if (matchSimulatedPatternSet[imgCounter].getPointersXY(imp_set[imgCounter],LASER_POINTERS.laserUVMap.length)==null) { // no pointers in this image
+					IJ.showMessage("Error","No laser pointers detected for image #" + imgCounter + " - they are needed for absolute grid positioning\nProcess canceled");
 					return;
 				}
-				if (DEBUG_LEVEL>1){
-					for (int n=0;n<headPointers.length;n++) if (headPointers[n]!=null){
-						System.out.println("Head pointer "+n+": X="+IJ.d2s(headPointers[n][0],2)+", Y="+IJ.d2s(headPointers[n][1],2));
-					}
+	
+				matchSimulatedPatternSet[imgCounter].debugLevel=DEBUG_LEVEL;
+				int numAbsolutePoints=LENS_ADJUSTMENT.updateFocusGrid(
+						LENS_DISTORTION_PARAMETERS.px0, // pixel coordinate of the the optical center
+						LENS_DISTORTION_PARAMETERS.py0, // pixel coordinate of the the optical center
+						imp_set[imgCounter],
+						matchSimulatedPatternSet[imgCounter],
+						DISTORTION,
+						FOCUS_MEASUREMENT_PARAMETERS,
+						PATTERN_DETECT,
+						LASER_POINTERS,
+						SIMUL,
+						false, // keep (not remove) non-PSF areas
+						COMPONENTS.equalizeGreens,
+						THREADS_MAX,
+						UPDATE_STATUS,
+	//					DEBUG_LEVEL);
+				DISTORTION.loop_debug_level);
+				if (numAbsolutePoints<=0) { // no pointers in this image
+					String msg="No laser pointers matched - they are needed for absolute grid positioning\nProcess canceled";
+					IJ.showMessage("Error",msg);
+					System.out.println("Error: "+msg);
+					return;
 				}
-				if ((headPointers[0]!=null) && (headPointers[1]!=null)){
-					headPointersTilt=180.0/Math.PI*Math.atan2(headPointers[1][1]-headPointers[0][1], headPointers[1][0]-headPointers[0][0])-LASER_POINTERS.headLasersTilt;
-					if (DEBUG_LEVEL>0){
-						System.out.println("SFE is rotated by "+IJ.d2s(headPointersTilt,3)+" degrees according to optical head laser pointers (clockwise positive)");
-					}
-				}
-				FOCUS_MEASUREMENT_PARAMETERS.result_ROT=headPointersTilt;
+				if (DEBUG_LEVEL>0) System.out.println("Matched "+numAbsolutePoints+" laser pointers, grid generated at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+				imp_calibrated[imgCounter] = matchSimulatedPatternSet[imgCounter].getCalibratedPatternAsImage(imp_set[imgCounter],"grid-",numAbsolutePoints);
 			}
-
-			if (DEBUG_LEVEL>0) System.out.println("Image acquisition (@"+FOCUS_MEASUREMENT_PARAMETERS.sensorTemperature+"C) done at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
-			// reset matchSimulatedPattern, so it will start from scratch
-			matchSimulatedPattern= new MatchSimulatedPattern(DISTORTION.FFTSize); // new instance, all reset
-			// next 2 lines are not needed for the new instance, but can be used alternatively if keeipg it
-			   matchSimulatedPattern.invalidateFlatFieldForGrid(); //Reset Flat Field calibration - different image. 
-			   matchSimulatedPattern.invalidateFocusMask();
-
-			
-			if (matchSimulatedPattern.getPointersXY(imp_sel,LASER_POINTERS.laserUVMap.length)==null) { // no pointers in this image
-				IJ.showMessage("Error","No laser pointers detected - they are needed for absolute grid positioning\nProcess canceled");
-				return;
-			}
-
-			matchSimulatedPattern.debugLevel=DEBUG_LEVEL;
-			int numAbsolutePoints=LENS_ADJUSTMENT.updateFocusGrid(
-					LENS_DISTORTION_PARAMETERS.px0, // pixel coordinate of the the optical center
-					LENS_DISTORTION_PARAMETERS.py0, // pixel coordinate of the the optical center
-					imp_sel,
-					matchSimulatedPattern,
-					DISTORTION,
-					FOCUS_MEASUREMENT_PARAMETERS,
-					PATTERN_DETECT,
-					LASER_POINTERS,
-					SIMUL,
-					false, // keep (not remove) non-PSF areas
-					COMPONENTS.equalizeGreens,
-					THREADS_MAX,
-					UPDATE_STATUS,
-//					DEBUG_LEVEL);
-			DISTORTION.loop_debug_level);
-			if (numAbsolutePoints<=0) { // no pointers in this image
-				String msg="No laser pointers matched - they are needed for absolute grid positioning\nProcess canceled";
-				IJ.showMessage("Error",msg);
-				System.out.println("Error: "+msg);
-				return;
-			}
-			if (DEBUG_LEVEL>0) System.out.println("Matched "+numAbsolutePoints+" laser pointers, grid generated at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
-			ImagePlus [] imp_calibrated={matchSimulatedPattern.getCalibratedPatternAsImage(imp_sel,"grid-",numAbsolutePoints)};
 			if (FOCUS_MEASUREMENT_PARAMETERS.showAcquiredImages) imp_calibrated[0].show(); // DISTORTION_PROCESS_CONFIGURATION.showGridImages
 			if (findCenter){
 				// Read required calibration files

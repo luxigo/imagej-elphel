@@ -1761,6 +1761,16 @@ public class CalibrationHardwareInterface {
 	    	this.lastTimestamp=(String) this.images[0].getProperty("timestamp");
 	    	return this.images[0];
 	    }
+	    public ImagePlus [] acquireSeveralImages (boolean useLasers, boolean updateStatus){
+			getImages(
+	   				null, // UVLEDLasers
+					selectAllSubcameras(),
+					(useLasers?selectAllSubcameras():null),
+					true, 
+					this.debugLevel>1); // reset and trigger
+	    	this.lastTimestamp=(String) this.images[0].getProperty("timestamp");
+	    	return this.images;
+	    }
 
 	    public ImagePlus acquireSingleImage (UVLEDandLasers uvLEDLasers, boolean updateStatus){
 			getImages(
