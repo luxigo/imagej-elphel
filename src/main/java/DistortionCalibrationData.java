@@ -993,7 +993,16 @@ import org.apache.commons.configuration.XMLConfiguration;
         			if (this.gIP[i].enabled &!this.gIP[i].flatFieldAvailable) numNoVignetting++;
         			this.gIP[i].enabled &= this.gIP[i].flatFieldAvailable;
         		}
-        		if (this.gIP[i].motors==null) this.gIP[i].enabled=false; // got some no-motor images made without scanning
+        		if (this.gIP[i].motors==null) { // only disable if any other set has motors
+        			boolean hasMotors=false;
+                	for (int j=0;j<this.gIP.length;j++){
+                		if (this.gIP[j].motors != null) {
+                			hasMotors=true;
+                			break;
+                		}
+                	}
+                	if (hasMotors) this.gIP[i].enabled=false; // got some no-motor images made without scanning
+        		}
         		
         		/* Disable no-pointer, new, number of points less than required */
         		if (this.gIP[i].enabled && !wasEnabled && (this.gIP[i].matchedPointers==0) && (this.gIP[i].pixelsXY.length<minGridNodes)){
@@ -1394,7 +1403,82 @@ import org.apache.commons.configuration.XMLConfiguration;
 // find the closest one (by motors)
         				if (this.gIS[i].motors==null) {
                 			if (this.debugLevel>0) System.out.println("getImagesetTiltAxial("+timeStamp+"): No motor data");
-        					return null;
+                			if (this.debugLevel>0) System.out.println("Looking for closest timestamps in the same station, image set = "+i);
+                			int early_set=-1;
+                			int late_set=-1;
+                			for (int j=0; j<this.gIS.length;j++) {
+                    			if (Double.isNaN(this.gIS[j].goniometerTilt) || Double.isNaN(this.gIS[j].goniometerAxial)  || Double.isNaN(this.gIS[j].interAxisAngle)) continue;
+                    			if (this.gIS[j].timeStamp > timeStamp){
+                    				if ((late_set<0) || (this.gIS[j].timeStamp < this.gIS[late_set].timeStamp)) late_set = j;
+                    			} else {
+                    				if ((early_set<0) || (this.gIS[j].timeStamp >this.gIS[early_set].timeStamp)) early_set = j;
+                    			}
+                			}
+                			
+                			if ((late_set <0) && (early_set<0)) {
+                    			if (this.debugLevel>0) System.out.println("Failed to find any known orientation");
+                    			return null;
+                			}
+                			if       (late_set <0) iBest= early_set;
+                			else if  (early_set <0) iBest= late_set;
+                			else {
+                				// interpolate
+            					double axialEarly=this.gIS[early_set].goniometerAxial;
+            					double axialLate= this.gIS[late_set].goniometerAxial;
+            					axialEarly-=360.0*Math.floor((axialEarly+180.0)/360.0); // convert to range +/-180
+            					axialLate-= 360.0*Math.floor((axialLate+ 180.0)/360.0);
+            					double axialCenter= 0.5*(axialEarly+axialLate);
+            					if (Math.abs(axialEarly-axialLate)>180) {
+            						if (axialCenter>0) axialCenter-=180.0;
+            						else axialCenter+=180.0;
+            					}
+            					
+            					double interEarly=this.gIS[early_set].interAxisAngle;
+            					double interLate= this.gIS[late_set].interAxisAngle;
+            					interEarly-=360.0*Math.floor((interEarly+180.0)/360.0);
+            					interLate-= 360.0*Math.floor((interLate+ 180.0)/360.0);
+            					double interCenter= 0.5*(interEarly+interLate);
+            					if (Math.abs(interEarly-interLate)>180) {
+            						if (interCenter>0) interCenter-=180.0;
+            						else interCenter+=180.0;
+            					}
+            					
+            					double tiltEarly=this.gIS[early_set].goniometerTilt;
+            					double tiltLate= this.gIS[late_set].goniometerTilt;
+            					tiltEarly-=360.0*Math.floor((tiltEarly+180.0)/360.0);
+            					tiltLate-= 360.0*Math.floor((tiltLate+ 180.0)/360.0);
+            					double tiltCenter= 0.5*(tiltEarly+tiltLate);
+            					if (Math.abs(tiltEarly-tiltLate)>180) {
+            						if (tiltCenter>0) tiltCenter-=180.0;
+            						else tiltCenter+=180.0;
+            					}
+            					this.gIS[i].goniometerTilt= tiltCenter;
+            					this.gIS[i].goniometerAxial=axialCenter;
+            					this.gIS[i].interAxisAngle=interCenter;
+                				if (this.debugLevel>2) System.out.println("getImagesetTiltAxial("+timeStamp+"):"+
+                						" axialEarly - "+ axialEarly+
+                						" axialLate - "+  axialLate+
+                						" axialCenter - "+axialCenter+
+                						" tiltEarly - "+  tiltEarly+
+                						" tiltLate - "+   tiltLate+
+                						" tiltCenter - "+ tiltCenter+
+                						" interEarly - "+ interEarly+
+                						" interLate - "+  interLate+
+                						" interCenter - "+interCenter);
+                			}
+                			if (iBest!=i) {
+                			// use closest
+                				this.gIS[i].goniometerTilt= this.gIS[iBest].goniometerTilt;
+                				this.gIS[i].goniometerAxial=this.gIS[iBest].goniometerAxial;
+                				this.gIS[i].interAxisAngle=this.gIS[iBest].interAxisAngle;
+                			}
+            				this.gIS[i].orientationEstimated=true;
+                			double [] result = {
+                					this.gIS[iBest].goniometerTilt,
+                					this.gIS[iBest].goniometerAxial,
+                					this.gIS[iBest].interAxisAngle
+                			};
+        					return result;
         				}
 // Maybe later use both motors, for now - just the axial. It seems to have <0.5 degree error (but accumulates gradually as there are friction rollers involved).
         				int thisMotorHorizontal=this.gIS[i].motors[mHorizontal];
@@ -1488,6 +1572,11 @@ import org.apache.commons.configuration.XMLConfiguration;
             						(this.gIS[indexSecond].goniometerTilt-this.gIS[indexClosest].goniometerTilt)*
             						(thisMotorAxial-this.gIS[indexClosest].motors[mAxial])/
             						(this.gIS[indexSecond].motors[mAxial]-this.gIS[indexClosest].motors[mAxial]);
+            					// 06/06/2015 Andrey: Was missing setting estimated orientation. Was it a bug?
+                    			this.gIS[i].orientationEstimated=true;
+                    			if (this.debugLevel>0) System.out.println("Orientation for set # "+i+" timestamp "+IJ.d2s(this.gIS[i].timeStamp,6)+
+                    					") is not defined, using interpolated between sets # "+indexClosest+" (timestamp "+IJ.d2s(this.gIS[indexClosest].timeStamp,6)+") "+
+                    					"and # "+indexSecond+" (timestamp "+IJ.d2s(this.gIS[indexSecond].timeStamp,6)+")");
             				}
             			} else { // old way
             				double d2Min=-1;
