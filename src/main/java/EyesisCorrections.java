@@ -101,8 +101,9 @@ public class EyesisCorrections {
 			System.out.println ("Number of used channels: "+numUsedChannels+" ("+sChannels+" )");
 		}
 		createChannelVignetting();
-		
-		if ((this.debugLevel>1) && (correctionsParameters.sourcePaths!=null) && (correctionsParameters.sourcePaths.length>0)) {
+		//java.lang.ClassCastException: [B cannot be cast to [F
+		//if ((this.debugLevel>1) && (correctionsParameters.sourcePaths!=null) && (correctionsParameters.sourcePaths.length>0)) {
+		if ((this.debugLevel>101) && (correctionsParameters.sourcePaths!=null) && (correctionsParameters.sourcePaths.length>0)) {
 			testFF(correctionsParameters.sourcePaths[0]);
 //			this.channelVignettingCorrection[srcChannel]=this.pixelMapping.getBayerFlatFieldFloat(
 /*			
