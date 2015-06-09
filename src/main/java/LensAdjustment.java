@@ -251,7 +251,7 @@ public class LensAdjustment {
     	public boolean showHistorySamples=true;   // show individual samples
     	public boolean showHistorySingleLine=true; // all parameters in a single line (easier to copy to spreadsheet)
         public boolean showAcquiredImages=false;
-        public boolean showROI=false;
+        public boolean showROI=true;
         public boolean showSamples=true;
         
         public boolean showFittedParameters=true;
