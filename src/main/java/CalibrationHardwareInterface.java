@@ -161,6 +161,8 @@ public class CalibrationHardwareInterface {
 		private int [][] channelMap1={ // ip index, channel number
 //				{0,-1}}; // negative channel - single camera
 		{0,0}}; // Try with 0
+		private int [][] channelMap2={ // ip index, channel number
+		{0,0},{0,1}};
 		private int [][] channelMap3={ // ip index, channel number
 //				{0,-1}}; // negative channel - single camera
 		{0,0},{1,0},{2,0}};
@@ -260,9 +262,15 @@ public class CalibrationHardwareInterface {
 		private void initDefaultMap(int size){
 			this.channelMap=new int [size][];
 			 this.flipImages=new boolean[size];
-			 if (size==1) {
+			 if (size==1) { // single camera - old lens focusing
 				 this.channelMap[0]=channelMap1[0].clone();
 				 this.flipImages[0]=true;
+			 } else if (size==2){ // New lens focusing machine
+				 this.channelMap[0]=channelMap2[0].clone();
+				 this.flipImages[0]=true;  // main sensor under test
+				 this.channelMap[1]=channelMap2[1].clone();
+				 this.flipImages[1]=false; // extra sensor for location
+		
 			 } else if (size==3){
 				 for (int i=0;i<size;i++){
 					 this.flipImages[i]=false;
@@ -1829,7 +1837,7 @@ public class CalibrationHardwareInterface {
 		public String [] groups={"heater","fan","light","light1","light2"};
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
-    	private double lightsDelay=5.0;
+    	private double lightsDelay=1.0;
     	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s&timestamp=%d";
     	private final String rootElement="Document";
     	public boolean powerConrtolEnabled=false;

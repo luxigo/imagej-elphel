@@ -206,7 +206,7 @@ public class LensAdjustment {
     	public String resultsSuperDirectory=""; // directory with subdirectories named as serial numbers to stro results
     	public int EEPROM_channel=1; // EEPROM channel to read serial number from
     	public boolean saveResults=true; // save focusing results
-    	public boolean showResults=true; // show focusing (includingh intermediate) results
+    	public boolean showResults=true; // show focusing (including intermediate) results
 
     	public String serialNumber=""; // camera serial number string
     	public double sensorTemperature=Double.NaN; // last measured sensor temperature
@@ -238,7 +238,9 @@ public class LensAdjustment {
     	public double centerDeltaX=0.0; // required X-difference between lens center and sensor center 
     	public double centerDeltaY=0.0; // required Y-difference between lens center and sensor center
     	// with the seam in the middle - make even # of samples horizontally
-    	public Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
+    	// to be made private or removed
+//    	public Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
+    	private Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
     	public int [] numSamples={8,5};       // number of samples in x and y directions
     	public int    sampleSize=256;// 512;       // size of square (2^n), in sensor pixels (twice FFT size)
     	public int    numInCenter=(numSamples[0]-2)*(numSamples[1]-2);// 2 - number of "center" samples
@@ -249,6 +251,9 @@ public class LensAdjustment {
     	public boolean showHistorySamples=true;   // show individual samples
     	public boolean showHistorySingleLine=true; // all parameters in a single line (easier to copy to spreadsheet)
         public boolean showAcquiredImages=false;
+        public boolean showROI=false;
+        public boolean showSamples=true;
+        
         public boolean showFittedParameters=true;
         public boolean useHeadLasers=true;
         
@@ -384,12 +389,31 @@ public class LensAdjustment {
         public int    numIterations=  100; // maximal number of iterations
         
         public boolean cameraIsConfigured=false;
+        public boolean useExtraSensor = true;
+        public boolean enRoundOff = true; // create round mask to refine lens center position (second LMA run) 
+        public boolean keepCircularMask=false; // keep sensor 0 round mask after running LMA, false - recalculate actual mask
         public boolean configureCamera=false; // only valid after dialog
         public int [] motorPos=null; // will point to
     	public double [] ampsSeconds={0.0,0.0,0.0,0.0}; // cumulative Amps*seconds (read only, but will be saved/restored)
     	public int manufacturingState=0;
     	
-   	
+    	// temporary - will re-calculate according to required lens center
+    	public Rectangle getMargins(){
+    		int iXC = (int) Math.round(centerDeltaX);
+    		int iYC = (int) Math.round(centerDeltaY);
+    		Rectangle margins=new Rectangle(this.margins);
+    		if ((iXC !=0) || (iYC!=0)){
+    			int hw=this.margins.width/2;
+    			int hh=this.margins.height/2;
+    			int ix0=this.margins.x+hw;
+    			int iy0=this.margins.y+hh;
+    			hw += (iXC < 0)?iXC:(-iXC);
+    			hh += (iYC < 0)?iYC:(-iYC);
+    			margins=new Rectangle(ix0+iXC-hw,iy0+iYC-hh,2*hw,2*hh);
+    		}
+    		
+    		return margins;
+    	}
     	
     	public String [] manufacturingStateNames={
     			"New SFE",
@@ -494,6 +518,9 @@ public class LensAdjustment {
     	    	boolean showHistorySamples,
     	    	boolean showHistorySingleLine, // all parameters in a single line (easier to copy to spreadsheet)
     	    	boolean showAcquiredImages,
+    	        boolean showROI,
+    	        boolean showSamples,
+    	    	
     	    	boolean showFittedParameters,
     	        boolean useHeadLasers,
                 double psf_cutoffEnergy, // disregard pixels outside of this fraction of the total energy
@@ -604,6 +631,9 @@ public class LensAdjustment {
                 double thresholdFinish,// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
                 int    numIterations, // maximal number of iterations
 				boolean cameraIsConfigured,
+				boolean useExtraSensor,
+				boolean enRoundOff,
+				boolean keepCircularMask,
 				int [] motorPos,
 	        	double [] ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
 	        	double reportTemperature,      // temperature to report focal length
@@ -655,6 +685,8 @@ public class LensAdjustment {
 			this.showHistorySamples=showHistorySamples;
 			this.showHistorySingleLine=showHistorySingleLine; // all parameters in a single line (easier to copy to spreadsheet)
 			this.showAcquiredImages=showAcquiredImages;
+			this.showROI=showROI;
+			this.showSamples=showSamples;
 			this.showFittedParameters=showFittedParameters;
 			this.useHeadLasers=useHeadLasers;
 			this.psf_cutoffEnergy=psf_cutoffEnergy;
@@ -761,6 +793,9 @@ public class LensAdjustment {
 			this.thresholdFinish=thresholdFinish;// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
 			this.numIterations=numIterations; // maximal number of iterations
             this.cameraIsConfigured=cameraIsConfigured;
+            this.useExtraSensor=useExtraSensor;
+            this.enRoundOff=enRoundOff;
+            this.keepCircularMask=keepCircularMask;
             this.motorPos=motorPos;
         	this.ampsSeconds=ampsSeconds; // cumulative Amps*seconds (read only, but will be saved/restored)
         	this.reportTemperature=reportTemperature;
@@ -812,6 +847,8 @@ public class LensAdjustment {
     				this.showHistorySamples,
     				this.showHistorySingleLine, // all parameters in a single line (easier to copy to spreadsheet)
     				this.showAcquiredImages,
+    				this.showROI,
+    				this.showSamples,
     				this.showFittedParameters,
     				this.useHeadLasers,
     				this.psf_cutoffEnergy,
@@ -920,6 +957,9 @@ public class LensAdjustment {
     				this.thresholdFinish, 
     				this.numIterations,
     				this.cameraIsConfigured,
+    				this.useExtraSensor,
+    				this.enRoundOff,
+    				this.keepCircularMask,
     				this.motorPos,
     	        	this.ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
     	        	this.reportTemperature,
@@ -977,8 +1017,13 @@ public class LensAdjustment {
 			
 			properties.setProperty(prefix+"showHistorySingleLine",this.showHistorySingleLine+"");
 			properties.setProperty(prefix+"showAcquiredImages",this.showAcquiredImages+"");
+			properties.setProperty(prefix+"showROI",this.showROI+"");
+			properties.setProperty(prefix+"showSamples",this.showSamples+"");
 			properties.setProperty(prefix+"showFittedParameters",this.showFittedParameters+"");
 			properties.setProperty(prefix+"useHeadLasers",this.useHeadLasers+"");
+			properties.setProperty(prefix+"useExtraSensor",this.useExtraSensor+"");
+			properties.setProperty(prefix+"enRoundOff",this.enRoundOff+"");
+			properties.setProperty(prefix+"keepCircularMask",this.keepCircularMask+"");
 			properties.setProperty(prefix+"psf_cutoffEnergy",this.psf_cutoffEnergy+"");
 			properties.setProperty(prefix+"psf_cutoffLevel",this.psf_cutoffLevel+"");
 			properties.setProperty(prefix+"psf_minArea",this.psf_minArea+"");
@@ -1198,10 +1243,21 @@ public class LensAdjustment {
 				this.showHistorySingleLine=Boolean.parseBoolean(properties.getProperty(prefix+"showHistorySingleLine"));
 			if (properties.getProperty(prefix+"showAcquiredImages")!=null)
 				this.showAcquiredImages=Boolean.parseBoolean(properties.getProperty(prefix+"showAcquiredImages"));
+			if (properties.getProperty(prefix+"showROI")!=null)
+				this.showROI=Boolean.parseBoolean(properties.getProperty(prefix+"showROI"));
+			if (properties.getProperty(prefix+"showSamples")!=null)
+				this.showSamples=Boolean.parseBoolean(properties.getProperty(prefix+"showSamples"));
 			if (properties.getProperty(prefix+"showFittedParameters")!=null)
 				this.showFittedParameters=Boolean.parseBoolean(properties.getProperty(prefix+"showFittedParameters"));
 			if (properties.getProperty(prefix+"useHeadLasers")!=null)
 				this.useHeadLasers=Boolean.parseBoolean(properties.getProperty(prefix+"useHeadLasers"));
+			if (properties.getProperty(prefix+"useExtraSensor")!=null)
+				this.useExtraSensor=Boolean.parseBoolean(properties.getProperty(prefix+"useExtraSensor"));
+			if (properties.getProperty(prefix+"enRoundOff")!=null)
+				this.enRoundOff = Boolean.parseBoolean(properties.getProperty(prefix+"enRoundOff"));
+			
+			if (properties.getProperty(prefix+"keepCircularMask")!=null)
+				this.keepCircularMask=Boolean.parseBoolean(properties.getProperty(prefix+"keepCircularMask"));
 			if (properties.getProperty(prefix+"psf_cutoffEnergy")!=null)
 				this.psf_cutoffEnergy=Double.parseDouble(properties.getProperty(prefix+"psf_cutoffEnergy"));
 			if (properties.getProperty(prefix+"psf_cutoffLevel")!=null)
@@ -1559,6 +1615,9 @@ public class LensAdjustment {
 			gd.addCheckbox    ("Save SFE focusing results (including intermediate) ", this.saveResults);
 			gd.addCheckbox    ("Show SFE focusing results (including intermediate) ", this.showResults);
 			gd.addCheckbox    ("Configure camera",                       !this.cameraIsConfigured);
+			gd.addCheckbox    ("Use extra sensor for 3d-location of the optical head", this.useExtraSensor);
+			gd.addCheckbox    ("Use circular sensor mask to refine lens center (second LMA run)", this.enRoundOff);
+			gd.addCheckbox    ("Keep circular sensor mask after finding lens center",  this.keepCircularMask);
 			gd.addNumericField("Camera FOV left margin (clear WOI)",      this.margins.x, 0,4,"pix");
 			gd.addNumericField("Camera FOV top margin (clear WOI)",       this.margins.y, 0,4,"pix");
 			gd.addNumericField("Camera FOV width (clear WOI)",            this.margins.width, 0,4,"pix");
@@ -1573,6 +1632,8 @@ public class LensAdjustment {
     		gd.addCheckbox    ("Show history details for each FOV sample",   this.showHistorySamples);
     		gd.addCheckbox    ("Show history details in a single line (for spreadheets)",  this.showHistorySingleLine);
     		gd.addCheckbox    ("Show acquired images",                    this.showAcquiredImages); // false;
+    		gd.addCheckbox    ("Mark ROI on \"Quick get&show\"",          this.showROI); // false;
+    		gd.addCheckbox    ("Mark individual samples on \"Quick get&show\"",this.showSamples); // false;
     		gd.addCheckbox    ("Show LMA fitted parameters",              this.showFittedParameters); // true;
     		gd.addCheckbox    ("Use optical head lasers to determine SFE rotation",this.useHeadLasers); // true;
 //    		gd.addCheckbox    ("Measure SFE rotation with optical head lasers",  this.useHeadLasers); // true;
@@ -1766,6 +1827,9 @@ public class LensAdjustment {
 			this.showResults=                gd.getNextBoolean();
 //    		this.comment=                    gd.getNextString().replace(' ','_'); //TODO: - add escape
     		this.configureCamera=            gd.getNextBoolean();
+    		this.useExtraSensor=             gd.getNextBoolean();
+    		this.enRoundOff=                 gd.getNextBoolean();
+    		this.keepCircularMask=           gd.getNextBoolean();
     		this.margins.x=            (int) gd.getNextNumber();
     		this.margins.y=            (int) gd.getNextNumber();
     		this.margins.width=        (int) gd.getNextNumber();
@@ -1781,6 +1845,8 @@ public class LensAdjustment {
     		this.showHistorySamples=         gd.getNextBoolean();
     		this.showHistorySingleLine=      gd.getNextBoolean();
     		this.showAcquiredImages=         gd.getNextBoolean();
+			this.showROI=                    gd.getNextBoolean();
+			this.showSamples=                gd.getNextBoolean();
     		this.showFittedParameters=       gd.getNextBoolean();
 			this.useHeadLasers=              gd.getNextBoolean();
     		this.psf_cutoffEnergy=      0.01*gd.getNextNumber();
@@ -1904,7 +1970,9 @@ public class LensAdjustment {
     			double y0){  // lens center on the sensor
     		int ix0=(int) Math.round(x0);
     		int iy0=(int) Math.round(y0);
-    		Rectangle woi=new Rectangle(this.margins);
+    		
+//    		Rectangle woi=new Rectangle(this.margins);
+    		Rectangle woi=this.getMargins();
 //    		System.out.println("Selection Rectangle("+woi.x+", "+woi.y+", "+woi.width+", "+woi.height+ ")");
     		int extra=this.sampleSize+2*(this.numSamples[1]+this.numSamples[0]);
     		if ((this.centerSamples) &&

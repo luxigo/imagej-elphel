@@ -888,14 +888,20 @@ import java.util.Properties;
         	if (nView>=this.photometricByView[station].length){  // OOB 1// NUll pointer - need to run F-field first? (oob1 when grid had less than now
 				nView=this.photometricByView.length-1;
 			}
+        	if (index > this.photometricByView[station][nView][0].length){
+        		System.out.println("getXYZMPE ("+u+","+v+","+station+","+channel+")");
+        		System.out.println("this.photometricByView[station][nView][0].length="+this.photometricByView[station][nView][0].length);
+        		System.out.println("index="+index+" vView="+nView);
+        		System.out.println();
+        	}
 
-        	double [] result= { // null
+        	double [] result= { // null 
         			this.gridGeometry[v1][u1][0],
         			this.gridGeometry[v1][u1][1],
 //        			this.gridGeometry[v1][u1][2]+((this.stationZCorr!=null)?this.stationZCorr[v1][u1][station]:0.0), // per-station correction
         			this.gridGeometry[v1][u1][2]+((this.stationZCorr!=null)?this.stationZCorr[v1][u1][useStation]:0.0), // per-station correction
         			this.gridGeometry[v1][u1][3],
-        			this.photometricByView[station][nView][0][index],
+        			this.photometricByView[station][nView][0][index], // java.lang.ArrayIndexOutOfBoundsException: 14215
         			this.photometricByView[station][nView][1][index],
         			this.photometricByView[station][nView][2][index],
         			this.photometricByView[station][nView][3][index],

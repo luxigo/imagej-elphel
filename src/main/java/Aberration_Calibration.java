@@ -374,10 +374,10 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     public static PatternParameters PATTERN_PARAMETERS=new PatternParameters(
     		viewMap,
     		1, // initial number of stations
-    		3022.6, // double patternWidth;  // pattern full width in mm
-    		2667.0, // double patternHeight; // pattern full height in mm
-    		41.6667, // patternHalfPeriod;    // distance between opposite sign nodes
-    		5.0     // double patternTilt;   // pattern tilt (degrees) - U clockwise from X-right (V clockwise from Y-down)
+    		7010.0,  //3022.6, // double patternWidth;  // pattern full width in mm
+    		3073.0,  //2667.0, // double patternHeight; // pattern full height in mm
+    		41.570,  //41.6667, // patternHalfPeriod;    // distance between opposite sign nodes
+    		5.0      // double patternTilt;   // pattern tilt (degrees) - U clockwise from X-right (V clockwise from Y-down)
     		);
 //    public static LensDistortionParameters LENS_DISTORTION_PARAMETERS=new LensDistortionParameters(
 
@@ -450,10 +450,16 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
 //    	{-27.5,35.5},  // bottom left
 //    	{32.5,29.5}};  // bottom right
 // settings for the office wall    	
-	{-30.5,-20.5}, // top left
-	{26.5,-25.5},  // top right
+//	{-30.5,-20.5}, // top left
+//	{26.5,-25.5},  // top right
+//	{-27.5,26.5},  // bottom left
+//	{32.5,20.5}};  // bottom right
+    
+	{-32.5,-20.5}, // top left
+	{30.5,-25.5},  // top right
 	{-27.5,26.5},  // bottom left
 	{32.5,20.5}};  // bottom right
+
     public static MatchSimulatedPattern.LaserPointer LASER_POINTERS= new MatchSimulatedPattern.LaserPointer (
 	    1.06,     //	public double headLasersTilt=  1.06; // degrees, right laser lower than left laser
     	0.05,      // minimalIntensity
@@ -470,7 +476,7 @@ public static MatchSimulatedPattern.DistortionParameters DISTORTION =new MatchSi
     	0.6,      // double greenFloor;      // when dividing by green, add this fraction of maximal value (decrease green accordingly)
     	true,    // boolean useOther=false; // when true - use red and other color, when false - only red
     	true,     // boolean otherGreen=true; // other color is green (false - blue)
-    	0.1,      // public double threshold;
+    	0.5,      // public double threshold;
     	false,    // public boolean swapUV; // first
     	false,    // public boolean flipU;
     	false,    // public boolean flipV;
@@ -792,7 +798,7 @@ if (MORE_BUTTONS) {
 //		if (MORE_BUTTONS) {		
 			addButton("Find Grid",panelFocusing,color_process);
 //		}
-        addButton("Select WOI",panelFocusing,color_lenses);
+//        addButton("Select WOI",panelFocusing,color_lenses); // will not be used - now WOI is run-time calcualted according to specified center
         addButton("Reset Histories",panelFocusing,color_lenses);
         addButton("Motors Home",panelFocusing,color_lenses);
 		addButton("Auto Pre-focus",panelFocusing,color_process);
@@ -2652,7 +2658,8 @@ if (MORE_BUTTONS) {
 			checkSerialAndRestore(); // returns true if did not change or was restored 
 			long 	  startTime=System.nanoTime();
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+//				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 					// reset histories
@@ -2672,6 +2679,22 @@ if (MORE_BUTTONS) {
 			if (imp_sel==null){
 				IJ.showMessage("Error","Failed to get camera image\nProcess canceled");
 				return;
+			}
+// Show ROI
+			System.out.println("ROI="+FOCUS_MEASUREMENT_PARAMETERS.getMargins());
+			if (FOCUS_MEASUREMENT_PARAMETERS.showROI) imp_sel.setRoi(FOCUS_MEASUREMENT_PARAMETERS.getMargins());
+			
+// set all samples
+			if (FOCUS_MEASUREMENT_PARAMETERS.showSamples) {
+				int sampleHalfSize=FOCUS_MEASUREMENT_PARAMETERS.sampleSize/2;
+				double [][][] sampleCoord=FOCUS_MEASUREMENT_PARAMETERS.sampleCoordinates(FOCUS_MEASUREMENT_PARAMETERS.result_PX0,FOCUS_MEASUREMENT_PARAMETERS.result_PY0);
+				Overlay overlay=new Overlay();
+				for (int i=0; i<sampleCoord.length; i++) for (int j=0; j<sampleCoord[i].length; j++) {
+					int xc=(int) Math.round(sampleCoord[i][j][0]);
+					int yc=(int) Math.round(sampleCoord[i][j][1]);
+					overlay.add(new Roi(xc-sampleHalfSize,yc-sampleHalfSize,2*sampleHalfSize,2*sampleHalfSize));
+				}
+			imp_sel.setOverlay(overlay);
 			}
 			imp_sel.show();
 			imp_sel.updateAndDraw();
@@ -3378,7 +3401,9 @@ if (MORE_BUTTONS) {
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 
 			if (FOCUS_MEASUREMENT_PARAMETERS.configureCamera) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)) FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)) {
+					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
+				}
 			}
 			return;
 		}
@@ -3574,7 +3599,7 @@ if (MORE_BUTTONS) {
 			if (label.equals("Focusing Acquire PSF")) {
 //				FOCUS_MEASUREMENT_PARAMETERS.showDialog("Focus Measurement Parameters");
 				if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-					if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+					if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 						FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 						if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 //						IJ.showMessage("Notice","Make sure camera is in TRIG=4 mode, JP4, correct exposure/white balance...");
@@ -3676,9 +3701,10 @@ if (MORE_BUTTONS) {
 				IJ.showMessage("Error","Image with selection is required");
 				return;
 			}
-		Rectangle oldWOI=FOCUS_MEASUREMENT_PARAMETERS.margins;
-		System.out.println("Old WOI="+oldWOI);
-			FOCUS_MEASUREMENT_PARAMETERS.margins=imp_sel.getRoi().getBounds();
+		    Rectangle oldWOI=FOCUS_MEASUREMENT_PARAMETERS.getMargins();
+		    System.out.println("Old WOI="+oldWOI);
+		    System.out.println("Setting WOI is not supported anymore, it is calculated from required center and configured margins jit");
+//			FOCUS_MEASUREMENT_PARAMETERS.margins=imp_sel.getRoi().getBounds();
 			return;
 		}
 //		addButton("Head Orientation",panelFocusing);
@@ -3688,7 +3714,7 @@ if (MORE_BUTTONS) {
 			UV_LED_LASERS.debugLevel=DEBUG_LEVEL;
 			UV_LED_LASERS.setParameters(FOCUS_MEASUREMENT_PARAMETERS);
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 //					IJ.showMessage("Notice","Make sure camera is in TRIG=4 mode, JP4, correct exposure/white balance...");
@@ -3744,7 +3770,7 @@ if (MORE_BUTTONS) {
 			boolean findCenter=label.equals("Lens Center");
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 //					IJ.showMessage("Notice","Make sure camera is in TRIG=4 mode, JP4, correct exposure/white balance...");
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
@@ -3801,11 +3827,16 @@ if (MORE_BUTTONS) {
 						System.out.println("Failed to locate optical head laser pointers");
 						return;
 					}
-					if (DEBUG_LEVEL>1){
+					if ((DEBUG_LEVEL>1) || (headPointers.length <2)){
 						for (int n=0;n<headPointers.length;n++) if (headPointers[n]!=null){
 							System.out.println("Head pointer "+n+": X="+IJ.d2s(headPointers[n][0],2)+", Y="+IJ.d2s(headPointers[n][1],2));
 						}
 					}
+					if (headPointers.length<2) {
+						System.out.println("Failed to locate optical head laser pointers. Needed 2, "+headPointers.length+" got.");
+						return;
+					}
+					
 					if ((headPointers[0]!=null) && (headPointers[1]!=null)){
 						headPointersTilt=180.0/Math.PI*Math.atan2(headPointers[1][1]-headPointers[0][1], headPointers[1][0]-headPointers[0][0])-LASER_POINTERS.headLasersTilt;
 						if (DEBUG_LEVEL>0){
@@ -3854,6 +3885,7 @@ if (MORE_BUTTONS) {
 				if (DEBUG_LEVEL>0) System.out.println("Matched "+numAbsolutePoints+" laser pointers, grid generated at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 				imp_calibrated[imgCounter] = matchSimulatedPatternSet[imgCounter].getCalibratedPatternAsImage(imp_set[imgCounter],"grid-",numAbsolutePoints);
 			}
+			matchSimulatedPattern= matchSimulatedPatternSet[0]; // global matchSimulatedPattern is used for Focus/Tilt LMA and many others
 			if (FOCUS_MEASUREMENT_PARAMETERS.showAcquiredImages) imp_calibrated[0].show(); // DISTORTION_PROCESS_CONFIGURATION.showGridImages
 			if (findCenter){
 				// Read required calibration files
@@ -3914,6 +3946,7 @@ if (MORE_BUTTONS) {
 				// Calculate Sensor Masks			
 				DISTORTION_CALIBRATION_DATA.debugLevel=DEBUG_LEVEL;
 				DISTORTION_CALIBRATION_DATA.updateStatus=UPDATE_STATUS;
+				
 				DISTORTION_CALIBRATION_DATA.calculateSensorMasks();
 
 				if (DEBUG_LEVEL>0) System.out.println("Starting LMA at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
@@ -3932,6 +3965,34 @@ if (MORE_BUTTONS) {
 				// Read camera parameters
 				EyesisCameraParameters camPars=
 					LENS_DISTORTIONS.fittingStrategy.distortionCalibrationData.eyesisCameraParameters;
+//				boolean enRoundOff=true; // TODO: Move to configurable parameters
+//        public double [] roundOffMask(int chn, double xCenter, double yCenter){
+				if (FOCUS_MEASUREMENT_PARAMETERS.enRoundOff) {
+					if (DEBUG_LEVEL>0) System.out.println("First XC="+camPars.eyesisSubCameras[stationNumber][0].px0+
+							"\n      YC="+camPars.eyesisSubCameras[stationNumber][0].py0);
+					DISTORTION_CALIBRATION_DATA.roundOffMask(
+							0, // int chn,
+							camPars.eyesisSubCameras[stationNumber][0].px0,   // double xCenter,
+							camPars.eyesisSubCameras[stationNumber][0].py0); // double yCenter);
+					if (DEBUG_LEVEL>0) System.out.println("Starting second LMA at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+
+					LENS_DISTORTIONS.seriesNumber=   1; // start from 1; (no need to repeat series 1)
+					LENS_DISTORTIONS.stopEachStep=   false;
+					LENS_DISTORTIONS.stopEachSeries= false;
+
+					// TODO: configure through FOCUS_MEASUREMENT_PARAMETERS 			
+					LENS_DISTORTIONS.thresholdFinish=FOCUS_MEASUREMENT_PARAMETERS.thresholdFinish;
+					LENS_DISTORTIONS.numIterations=FOCUS_MEASUREMENT_PARAMETERS.numIterations;
+
+					LENS_DISTORTIONS.LevenbergMarquardt(false); //  skip dialog
+					if (DEBUG_LEVEL>0) System.out.println("Finished second LMA at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					if (!FOCUS_MEASUREMENT_PARAMETERS.keepCircularMask) {
+						DISTORTION_CALIBRATION_DATA.calculateSensorMasks(); // TODO: save/restore original mask for channel 0
+						if (DEBUG_LEVEL>0) System.out.println("Recalculated sensor masks at "+ IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+					}
+				}
+				
+				
 				double threadPitch=0.35; // M1.6
 				double dPx0=camPars.eyesisSubCameras[stationNumber][0].px0-(camPars.sensorWidth/2)-FOCUS_MEASUREMENT_PARAMETERS.centerDeltaX;
 				double dPy0=camPars.eyesisSubCameras[stationNumber][0].py0-(camPars.sensorHeight/2)-FOCUS_MEASUREMENT_PARAMETERS.centerDeltaY;
@@ -4044,7 +4105,7 @@ if (MORE_BUTTONS) {
 			boolean autoMove=label.equals("Auto Pre-focus");
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 //					IJ.showMessage("Notice","Make sure camera is in TRIG=4 mode, JP4, correct exposure/white balance...");
@@ -4391,7 +4452,7 @@ if (MORE_BUTTONS) {
 			boolean fineFocus=label.equals("Fine Focus");
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 //					IJ.showMessage("Notice","Make sure camera is in TRIG=4 mode, JP4, correct exposure/white balance...");
@@ -4600,7 +4661,7 @@ if (MORE_BUTTONS) {
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 //					IJ.showMessage("Notice","Make sure camera is in TRIG=4 mode, JP4, correct exposure/white balance...");
@@ -4954,7 +5015,7 @@ if (MORE_BUTTONS) {
 			}
 			FOCUSING_FIELD.setDebugLevel(DEBUG_LEVEL);
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 					// reset histories
@@ -5411,7 +5472,7 @@ if (MORE_BUTTONS) {
 		if       (label.equals("No-move measure")) {
 			DEBUG_LEVEL=MASTER_DEBUG_LEVEL;
 			if (!FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)){
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)){
 					FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 					if (!FOCUS_MEASUREMENT_PARAMETERS.getLensSerial()) return;
 					// reset histories
@@ -5982,7 +6043,7 @@ if (MORE_BUTTONS) {
 			MOTORS.setDebug(FOCUS_MEASUREMENT_PARAMETERS.motorDebug);
 
 			if (FOCUS_MEASUREMENT_PARAMETERS.configureCamera) {
-				if (CAMERAS.showDialog("Configure cameras interface", 1, true)) FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
+				if (CAMERAS.showDialog("Configure cameras interface", FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor?2:1, true)) FOCUS_MEASUREMENT_PARAMETERS.cameraIsConfigured=true;
 			}
 */			
 			return;
@@ -10404,7 +10465,7 @@ if (MORE_BUTTONS) {
 			if (DEBUG_LEVEL>0) System.out.println("Autolading grid file "+configPaths[2]);
 			patternParameters.selectAndRestore(true,configPaths[2],dcd.eyesisCameraParameters.numStations); // returns path or null on failure
 		}
-		if (configPaths[3] !=null){ // load sensor
+		if ((configPaths[3] !=null) && (configPaths[3] != "")){ // load sensor
 			if (distortions.fittingStrategy==null) return false;
 			if (DEBUG_LEVEL>0) System.out.println("Autoloading sensor calibration files "+configPaths[3]);
 			distortions.setDistortionFromImageStack(

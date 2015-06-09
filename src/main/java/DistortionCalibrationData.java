@@ -3123,6 +3123,67 @@ import org.apache.commons.configuration.XMLConfiguration;
         	}
         	return this.sensorMasks;
         }
+        
+        
+        /**
+         * Create round mask inside the actual one, with the provided center. Blur result with the same sigma as original
+         * @param chn sensor number
+         * @param xCenter X of the center (before decimation)
+         * @param yCenter Y of the center (before decimation)
+         * @return this channel mask, also sets the round mask instead of the original
+         */
+        public double [] roundOffMask(int chn, double xCenter, double yCenter){
+        	int dWidth=  (eyesisCameraParameters.sensorWidth -1)/eyesisCameraParameters.decimateMasks+1;
+        	int dHeight= (eyesisCameraParameters.sensorHeight-1)/eyesisCameraParameters.decimateMasks+1;
+        	DoubleGaussianBlur gb=new DoubleGaussianBlur();
+
+        	int iXC=(int) Math.round(xCenter/eyesisCameraParameters.decimateMasks);
+        	int iYC=(int) Math.round(yCenter/eyesisCameraParameters.decimateMasks);
+//        	int dcW=eyesisCameraParameters.sensorWidth/eyesisCameraParameters.decimateMasks;
+//        	int dcH=eyesisCameraParameters.sensorHeight/eyesisCameraParameters.decimateMasks;
+        	double r0=iXC;
+        	r0 = Math.min(r0, iYC);
+        	r0 = Math.min(r0, dWidth - iXC);
+        	r0 = Math.min(r0, dHeight - iYC);
+        	int ir02=(int) Math.round(r0*r0);
+        	System.out.println("iXC="+iXC);
+        	System.out.println("iYC="+iYC);
+        	System.out.println("initial ir02="+ir02+ "("+Math.sqrt(ir02)+")");
+        	for (int i = 0; i < this.sensorMasks[chn].length; i++) if (this.sensorMasks[chn][i]<0.5) {
+        		int ix = (i % dWidth) - iXC; 
+        		int iy = (i / dWidth) - iYC;
+        		int ir2=ix*ix + iy*iy;
+        		if (ir2 < ir02) ir02 = ir2;
+        	}
+        	System.out.println("second ir02="+ir02+ "("+Math.sqrt(ir02)+")");
+        	double [] mask= new double[this.sensorMasks[chn].length];
+        	for (int i = 0; i < mask.length; i++) {
+        		int ix = (i % dWidth) - iXC; 
+        		int iy = (i / dWidth) - iYC;
+        		mask[i]=((ix*ix + iy*iy) > ir02)?0.0:1.0;
+        	}
+        	// blur result
+        	double [][] preMask=preCalculateSingleImageMask(chn,
+        			eyesisCameraParameters.decimateMasks,
+        			eyesisCameraParameters.sensorWidth,
+        			eyesisCameraParameters.sensorHeight,
+        			eyesisCameraParameters.shrinkGridForMask);
+
+        	if (preMask==null) return null; //nothing in this channel
+        	double rAverage=preMask[0][0];
+        	double rAverageNum=preMask[0][1];
+        	if (rAverageNum==0.0) return null; // nothing to blur/process for this channel
+        	rAverage/=rAverageNum; // average distance to the fartherst node from the current
+        	double      sigma = eyesisCameraParameters.maskBlurSigma;
+        	if(sigma<0) sigma*=-rAverage;
+        	gb.blurDouble(mask, dWidth, dHeight, sigma/eyesisCameraParameters.decimateMasks, sigma/eyesisCameraParameters.decimateMasks, 0.01);
+        	for (int i=0;i < mask.length;i++){
+        		this.sensorMasks[chn][i] = Math.min(this.sensorMasks[chn][i],mask[i]);
+        	}
+        	return this.sensorMasks[chn];
+        }
+        
+        
         public double [] calculateImageGridMask(int imgNum) {
         	return calculateImageGridMask(
         			imgNum,
