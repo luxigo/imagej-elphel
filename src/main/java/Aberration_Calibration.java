@@ -10515,7 +10515,7 @@ if (MORE_BUTTONS) {
 		}
 		// Show ROI
 		System.out.println("ROI="+focusMeasurementParameters.getMargins());
-		if (focusMeasurementParameters.showROI) imp_sel.setRoi(focusMeasurementParameters.getMargins());
+		if (focusMeasurementParameters.showROI) imp.setRoi(focusMeasurementParameters.getMargins());
 
 		// set all samples
 		if (focusMeasurementParameters.showSamples) {
