@@ -2694,7 +2694,7 @@ if (MORE_BUTTONS) {
 					int yc=(int) Math.round(sampleCoord[i][j][1]);
 					overlay.add(new Roi(xc-sampleHalfSize,yc-sampleHalfSize,2*sampleHalfSize,2*sampleHalfSize));
 				}
-			imp_sel.setOverlay(overlay);
+				imp_sel.setOverlay(overlay);
 			}
 			imp_sel.show();
 			imp_sel.updateAndDraw();
@@ -10513,6 +10513,23 @@ if (MORE_BUTTONS) {
 			IJ.showMessage("Error","Failed to get camera image\nProcess canceled");
 			return;
 		}
+		// Show ROI
+		System.out.println("ROI="+focusMeasurementParameters.getMargins());
+		if (focusMeasurementParameters.showROI) imp_sel.setRoi(focusMeasurementParameters.getMargins());
+
+		// set all samples
+		if (focusMeasurementParameters.showSamples) {
+			int sampleHalfSize=focusMeasurementParameters.sampleSize/2;
+			double [][][] sampleCoord=focusMeasurementParameters.sampleCoordinates(focusMeasurementParameters.result_PX0,focusMeasurementParameters.result_PY0);
+			Overlay overlay=new Overlay();
+			for (int i=0; i<sampleCoord.length; i++) for (int j=0; j<sampleCoord[i].length; j++) {
+				int xc=(int) Math.round(sampleCoord[i][j][0]);
+				int yc=(int) Math.round(sampleCoord[i][j][1]);
+				overlay.add(new Roi(xc-sampleHalfSize,yc-sampleHalfSize,2*sampleHalfSize,2*sampleHalfSize));
+			}
+			imp.setOverlay(overlay);
+		}
+		
 		// set motors, timestamp, ...
 		imp.show();
 		imp.updateAndDraw();
