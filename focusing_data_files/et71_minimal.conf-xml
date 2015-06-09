@@ -132,7 +132,7 @@
 
 <entry key="FOCUS_MEASUREMENT_PARAMETERS.strategyFile">imagej-elphel/focusing_data_files/et71_fixaz0.stg-xml</entry>
 <entry key="FOCUS_MEASUREMENT_PARAMETERS.initialCalibrationFile">imagej-elphel/focusing_data_files/et65.dcal-xml</entry>
-<entry key="FOCUS_MEASUREMENT_PARAMETERS.comment">&lt;![CDATA[deafult for 2-sensor focusing]]&gt;</entry>
+<entry key="FOCUS_MEASUREMENT_PARAMETERS.comment">&lt;![CDATA[default for 2-sensor focusing]]&gt;</entry>
 <entry key="FOCUS_MEASUREMENT_PARAMETERS.gridGeometryFile">imagej-elphel/focusing_data_files/y08a_42.grid-tiff</entry>
 <entry key="FOCUS_MEASUREMENT_PARAMETERS.useExtraSensor">true</entry>
 
