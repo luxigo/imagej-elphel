@@ -31,7 +31,8 @@
 		<dependency>
 			<groupId>net.imagej</groupId>
 			<artifactId>ij</artifactId>
-			<version>${imagej1.version}</version>
+			<version>1.50b</version>
+			<!-- <version>${imagej1.version}</version> -->
 		</dependency>
 		<dependency>
 			<groupId>commons-configuration</groupId>
