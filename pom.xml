@@ -137,7 +137,10 @@
 			<id>elphel.imagej-elphel</id>
 			<url>https://github.com/Elphel/imagej-elphel</url>
 		</repository>
-		
+		<repository>
+			<id>other</id>
+			<url>http://mirror.elphel.com/maven-dependencies</url>
+		</repository>
 	</repositories>
 
 	<scm>
