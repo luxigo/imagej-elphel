@@ -8,19 +8,19 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>1.135</version>
-		<relativePath />
-	</parent>
-<!-- 	
+		<version>3.1</version>
+		<relativePath/>
+        </parent>
+ 	
 	<properties>
-		<imagej.app.directory>/data/ImageJ/ImageJ</imagej.app.directory>
+		<imagej.app.directory>/home/foxel/Desktop/Fiji.app</imagej.app.directory>
 	</properties>
- -->
+
 	<groupId>com.elphel</groupId>
  	<artifactId>imagej-elphel</artifactId>
 <!-- 	<artifactId>Aberration_Calibration</artifactId> -->
 	
-	<version>1.0.0</version>
+	<version>1.0.0-SNAPSHOT</version>
 
  	<name>plugins/imagej_elphel.jar</name>
 <!-- 	<name>plugins/Aberration_Calibration.jar</name> -->
@@ -29,11 +29,11 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>net.imagej</groupId>
-			<artifactId>ij</artifactId>
-			<version>1.50b</version>
-			<!-- <version>${imagej1.version}</version> -->
-		</dependency>
+                         <groupId>net.imagej</groupId>
+                         <artifactId>ij</artifactId>
+                         <version>1.50b</version>
+                         <!-- <version>${imagej1.version}</version> -->
+                </dependency>
 		<dependency>
 			<groupId>commons-configuration</groupId>
 			<artifactId>commons-configuration</artifactId>
@@ -74,29 +74,31 @@
 			</testResource>
 		</testResources>
 		<plugins>
-           <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-plugin-plugin</artifactId>
-                <configuration>
-                    <!-- see http://jira.codehaus.org/browse/MNG-5346 -->
-                   <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>mojo-descriptor</id>
-                        <goals>
-                            <goal>descriptor</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                        <plugin>
+                                <groupId>org.apache.maven.plugins</groupId>
+                                <artifactId>maven-plugin-plugin</artifactId>
+                                <configuration>
+                                    <!-- see http://jira.codehaus.org/browse/MNG-5346 -->
+                                    <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
+                                </configuration>
+                                <executions>
+                                    <execution>
+                                        <id>mojo-descriptor</id>
+                                        <goals>
+                                            <goal>descriptor</goal>
+                                        </goals>
+                                    </execution>
+                                </executions>
 	
-            </plugin>
+                        </plugin>
   			
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
+                                <version>1.3.2</version>
 				<executions>
 					<execution>
+                                                <phase>package</phase>
 						<goals>
 							<goal>java</goal>
 						</goals>
@@ -107,7 +109,28 @@
 					<mainClass>Eyesis_Correction</mainClass>   
 				</configuration>
 			</plugin>
- 			
+ 			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>buildnumber-maven-plugin</artifactId>
+				<version>1.3</version>
+				<executions>
+                                    <execution>
+                                    <phase>validate</phase>
+                                    <goals>
+                                        <goal>create</goal>
+                                    </goals>
+                                    </execution>
+				</executions>
+				<configuration>
+                                    <doCheck>true</doCheck>
+                                    <doUpdate>true</doUpdate>
+                                    <format>Build {0,date,yyyy-MM-dd} {0,time,HH:MM:SS} on host {1}</format>
+                                    <items>
+                                        <item>timestamp</item>
+                                        <item>foxel-MRHM7AP</item>
+                                    </items>
+				</configuration>
+                        </plugin>
 		</plugins>
 		
 	</build>
@@ -146,10 +169,22 @@
 
 	<scm>
 		<connection>scm:git:git://github.com/Elphel/imagej-elphel</connection>
-		<developerConnection>sscm:git:https://github.com/Elphel/imagej-elphel</developerConnection>
+		<developerConnection>scm:git:https://github.com/Elphel/imagej-elphel</developerConnection>
 		<tag>HEAD</tag>
 		<url>https://github.com/Elphel/imagej-elphel</url>
 	</scm>
 
 	<packaging>maven-plugin</packaging>
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                 <version>2.14</version>
+                <configuration>
+                    <configLocation>config/sun_checks.xml</configLocation>
+                </configuration>
+            </plugin>
+        </plugins>
+    </reporting>
 </project>

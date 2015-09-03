@@ -11,6 +11,7 @@ import ij.process.ImageProcessor;
 import java.awt.Rectangle;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -972,7 +973,7 @@ public class EyesisAberrations {
    	
    	public String [][]  preparePartialKernelsFilesList(
    			int debugLevel){
-   		Distortions.DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
+   		DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
    		boolean [] selectedImages=distortions.fittingStrategy.selectedImagesNoBadKernels(this.aberrationParameters.allImages?-1:this.aberrationParameters.seriesNumber); // negative series number OK - will select all enabled
    		int num=0;
    		for (int imgNum=0;imgNum<selectedImages.length;imgNum++) if (selectedImages[imgNum]) num++;
@@ -1072,7 +1073,7 @@ public class EyesisAberrations {
 			int loopDebugLevel, // debug level used inside loops
 			int debugLevel
 			){
-    	Distortions.DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
+    	DistortionCalibrationData distortionCalibrationData= distortions.fittingStrategy.distortionCalibrationData;
     	boolean partialToReprojected=this.aberrationParameters.partialToReprojected;
     	boolean applySensorCorrection=this.aberrationParameters.partialCorrectSensor;
     	// this.distortions is set to top level LENS_DISTORTIONS
@@ -1253,6 +1254,7 @@ public class EyesisAberrations {
         						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].channel, // subCamera,
         						Double.NaN, // goniometerHorizontal, - not used
         						Double.NaN, // goniometerAxial, - not used
+        						Double.NaN, // inter-axis angle, - not used ?
         						distortions.fittingStrategy.distortionCalibrationData.gIP[numGridImage].getSetNumber(), //imageSet,
         						true); //filterBorder)
         				hintTolerance=5.0; // TODO:set from configurable parameter
@@ -1288,7 +1290,7 @@ public class EyesisAberrations {
         			}
         			// now replace extracted grid X,Y with projected (need to add sensor correction)
         			if (projectedGrid!=null){
-        				int numReplaced= matchSimulatedPattern.replaceGridXYWithProjected(projectedGrid);
+        				int numReplaced= matchSimulatedPattern.replaceGridXYWithProjected(projectedGrid,(debugLevel>1)?imp.getTitle():null);
             			if (debugLevel>0) System.out.println("Replaced extracted XY with projected ones for "+numReplaced+" nodes");
         			}
         			correlationSizesUsed=matchSimulatedPattern.getCorrelationSizesUsed();
@@ -2157,6 +2159,10 @@ public class EyesisAberrations {
 			length=kernel[i].length;
 			break;
 		}
+		if (length==0){
+			System.out.println("mergeKernelsToStack(): no non-null kernels");
+			return null;
+		}
 		int [] channelsMask = new int [kernel.length];
 		for (i=0;i<kernel.length;i++) channelsMask[i]=0;
 		for (i=0;i<tilesY ;i++)  for (j=0;j<tilesX;j++) if (kernels[i][j]!=null) {
@@ -2178,6 +2184,7 @@ public class EyesisAberrations {
 		int outHeight=size*tilesY;
 
 		ImageStack stack=new ImageStack(outWidth,outHeight);
+		int numKernels=0;
 		float [] fpixels;
 		for (chn=0;chn<nChn;chn++) {
 			fpixels= new float [outWidth*outHeight];
@@ -2190,10 +2197,16 @@ public class EyesisAberrations {
 						fpixels[index]= (float) kernels[i][j][k][y*size+x];
 					}
 				}
+				if ((kernels[i][j]!=null && (kernels[i][j][k]!=null))) numKernels++;
 			}
 			if (names==null) stack.addSlice("channel"+k, fpixels);
 			else             stack.addSlice(names[chn], fpixels);
 		}
+		if (numKernels==0){
+			System.out.println("mergeKernelsToStack(): all kernels are empty");
+			return null;
+		}
+		System.out.println("mergeKernelsToStack(): got "+numKernels +" non-null kernels");
 		return stack;
 	}
 
@@ -2221,6 +2234,7 @@ public class EyesisAberrations {
 			final int          masterDebugLevel, // get rid of it? // ** NEW
 			final int          globalDebugLevel,// ** NEW
 			final int          debug_level){// debug level used inside loops
+		final boolean debugLateralShifts=(globalDebugLevel>1);
 		System.out.println("createPSFMap(): masterDebugLevel="+masterDebugLevel+" globalDebugLevel="+globalDebugLevel+" debug_level="+debug_level); // 2 2 0
 		final long startTime = System.nanoTime();
 		  Runtime runtime = Runtime.getRuntime();
@@ -2274,14 +2288,19 @@ public class EyesisAberrations {
 				pdfKernelMap[nTileY][nTileX]=new double[colorComponents.colorsToCorrect.length][];
 			} else pdfKernelMap[nTileY][nTileX]=null;
 		}
+		final double [][][][] debugLateral=new double [PSFBooleanMap.length][PSFBooleanMap[0].length][][];
+		for (nTileY=0;nTileY<debugLateral.length;nTileY++) for (nTileX=0;nTileX<debugLateral[0].length;nTileX++){
+			debugLateral[nTileY][nTileX]=null;
+		}
 		final Thread[] threads = newThreadArray(threadsMax);
-		 if (globalDebugLevel>1) System.out.println("Starting "+threads.length+" threads: "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
+		if (globalDebugLevel>1) System.out.println("Starting "+threads.length+" threads: "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 		final AtomicInteger ai = new AtomicInteger(0);
 		final int patternCells=numPatternCells;
 		//	  final double []   overexposedMap, // map of overexposed pixels in the image (may be null)
 		final double [] overexposed=(overexposedAllowed>0)?JP4_INSTANCE.overexposedMap (imp_sel):null;
 		final int mapWidth=imp_sel.getWidth();
    		final AtomicInteger tilesFinishedAtomic = new AtomicInteger(1); // first finished will be 1
+   		final int debugNumColors=6; 
 		for (int ithread = 0; ithread < threads.length; ithread++) {
 			// Concurrently run in as many threads as CPUs
 			threads[ithread] = new Thread() {
@@ -2293,7 +2312,14 @@ public class EyesisAberrations {
 					//	double [] sum_kern_el=new double[6]; // just testing					
 					int x0,y0,nTX,nTY,nChn;
 					double [][] kernels;
-				    MatchSimulatedPattern matchSimulatedPattern=commonMatchSimulatedPattern.clone();
+					// change to true (first 2 only?) to separate memory arrays for threads
+				    MatchSimulatedPattern matchSimulatedPattern=commonMatchSimulatedPattern.cloneDeep(
+				    		false, // boolean clonePATTERN_GRID,
+				    		false, // boolean cloneTargetUV,
+				    		false, // boolean clonePixelsUV,
+				    		false, // boolean cloneFlatFieldForGrid,
+				    		false  // boolean cloneFocusMask
+				    		);
 				    matchSimulatedPattern.debugLevel=globalDebugLevel;
 					SimulationPattern simulationPattern= new SimulationPattern(bitmaskPattern);
 					simulationPattern.debugLevel=globalDebugLevel;
@@ -2323,6 +2349,9 @@ public class EyesisAberrations {
 							pdfKernelMap[nTY][nTX]=null;
 							if (globalDebugLevel>0) System.out.println("Overexposed fraction of "+over+" at x0="+x0+" y0="+y0+" width"+(2*fft_size));
 						} else {
+							if (debugLateralShifts) {
+								debugLateral[nTY][nTX]= new double [debugNumColors][];    // X/Y shift of the PSF array, in Bayer component pixel coordinates (same as PSF arrays)
+							} 
 							kernels=getPSFKernels(imp_sel,
 									simArray, //simulation image, scaled PSF_subpixel/2
 									2*fft_size,       // size in pixels (twice fft_size)
@@ -2342,7 +2371,8 @@ public class EyesisAberrations {
 									fht_instance,      // provide DoubleFHT instance to save on initializations (or null)
 									debug_level,// ((x0<512)&& (y0<512))?3:debug_level DEBUG during "focusing"
 									masterDebugLevel, // get rid of it? // ** NEW
-									globalDebugLevel// ** NEW
+									globalDebugLevel,// ** NEW
+									debugLateralShifts?debugLateral[nTY][nTX]:null
 							);
 							if (kernels!=null) {
 								if (kernelLength(kernels)>(PSFKernelSize*PSFKernelSize)) kernels=resizeForFFT(kernels,PSFKernelSize); // shrink before normalizing
@@ -2372,6 +2402,45 @@ public class EyesisAberrations {
 		startAndJoin(threads);
 		 if (globalDebugLevel>1) System.out.println("Threads done at "+IJ.d2s(0.000000001*(System.nanoTime()-startTime),3));
 //		globalDebugLevel=saved_globalDebugLevel;
+		if (debugLateralShifts) {
+		    boolean [] debugUsedColors=new boolean [debugNumColors];
+		    Arrays.fill(debugUsedColors,false);
+			for (double [][][] dbgRow:debugLateral) for (double [][] dbgTile:dbgRow) if (dbgTile!=null) for (int c=0;c<dbgTile.length;c++){
+				if (dbgTile[c]!=null) debugUsedColors[c]=true;
+			}
+			int numUsedColors=0;
+			for (boolean b:debugUsedColors) if (b) numUsedColors++;
+			if (numUsedColors>0) {
+				int [] cIndex=new int [numUsedColors];
+				int index=0;
+				for (int i=0;i<debugUsedColors.length;i++) if (debugUsedColors[i]) cIndex[index++]=i;
+				String [] dbgComponets={"latChromX","latChromY","shftX","shftY","centX","centY"};
+				String [] debugTitles=new String[dbgComponets.length*numUsedColors];
+				index=0;
+				for (int i=0;i<dbgComponets.length;i++) for (int j=0;j<cIndex.length;j++){
+					debugTitles[index++]=dbgComponets[i]+"-"+cIndex[j];
+				}
+				double [][] dbgLat= new double [debugTitles.length][debugLateral.length*debugLateral[0].length];
+				int layer=0;
+				for (int i=0;i<dbgComponets.length;i++) for (int j=0;j<cIndex.length;j++){
+					Arrays.fill(dbgLat[layer],Double.NaN);
+					for (nTileY=0;nTileY<debugLateral.length;nTileY++) for (nTileX=0;nTileX<debugLateral[0].length;nTileX++) if (debugLateral[nTileY][nTileX]!=null){
+						if (debugLateral[nTileY][nTileX][cIndex[j]]!=null) dbgLat[layer][nTileY*debugLateral[0].length+nTileX]=debugLateral[nTileY][nTileX][cIndex[j]][i];
+					} layer++;
+				}				
+				SDFA_INSTANCE.showArrays(dbgLat, debugLateral[0].length, debugLateral.length, true, "lateral"+imp_sel.getTitle(), debugTitles);
+				/*
+					debugLateralTile[i][0]=lateralChromatic[i][0];
+					debugLateralTile[i][1]=lateralChromatic[i][1];
+					debugLateralTile[i][2]=PSF_shifts[i][0];
+					debugLateralTile[i][3]=PSF_shifts[i][1];
+					debugLateralTile[i][4]=PSF_centroids[i][0];
+					debugLateralTile[i][5]=PSF_centroids[i][1];
+						    			sdfra_instance.showArrays(pointedBayer.clone(), halfWidth, halfHeight, true, title+"-bayer", subtitles);
+
+				 */
+			}
+		}
 		return pdfKernelMap;
 	}
 	/* Combine both greens as a checkerboard pattern (after oversampleFFTInput()) */
@@ -2571,8 +2640,8 @@ public class EyesisAberrations {
 			DoubleFHT fht_instance, // provide DoubleFHT instance to save on initializations (or null)
 			int masterDebugLevel, // get rid of it? // ** NEW
 			int globalDebugLevel,// ** NEW
-
-			int debug
+			int debug,
+			double [][] debugLateralTile
 	){
 		boolean debugThis=false; //(y0==384) && ((x0==448) || (x0==512));
 		if (globalDebugLevel>1){
@@ -2687,6 +2756,7 @@ public class EyesisAberrations {
 				if (!colorComponents.colorsToCorrect[i]) simul_pixels[i]=null; // removed unused
 			}
 			simul_pixels= normalizeAndWindow (simul_pixels, fullHamming);
+			
 		} else {
 			Rectangle PSFCellSim=new Rectangle (x0*subpixel/2,y0*subpixel/2,size*subpixel/2,size*subpixel/2);
 			
@@ -2901,7 +2971,21 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			System.out.println("#!# "+x0+":"+y0+" "+"Lateral shift green from simulation "+IJ.d2s(lateralChromaticAbs[referenceComp],3)+"pix(sensor):  ["+referenceComp+"][0]="+IJ.d2s(lateralChromatic[referenceComp][0],3)+
 					"  ["+referenceComp+"][1]="+IJ.d2s(lateralChromatic[referenceComp][1],3));
 		}
-		
+		if (debugLateralTile!=null)	for (i=0;i<PSF_shifts.length;i++) {
+				if (colorComponents.colorsToCorrect[i]){
+					debugLateralTile[i]=new double [6];
+					debugLateralTile[i][0]=lateralChromatic[i][0];
+					debugLateralTile[i][1]=lateralChromatic[i][1];
+					debugLateralTile[i][2]=PSF_shifts[i][0];
+					debugLateralTile[i][3]=PSF_shifts[i][1];
+					debugLateralTile[i][4]=PSF_centroids[i][0];
+					debugLateralTile[i][5]=PSF_centroids[i][1];
+			} else {
+				debugLateralTile[i]=null;
+			}
+			
+			
+		}
 		if (debugThis && (kernels!=null)){
 			int debugSize=0;
 			for (int ii=0;ii<kernels.length;ii++) if (kernels[ii]!=null){
@@ -3256,8 +3340,7 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 //				if ((globalDebugLevel>0) && (tileY==22) && (tileX==32) && (y>=0) && (x>=0) && (y<height) && (x<width))System.out.println(" uvIndex["+(y*width+x)+"]="+uvIndex[y*width+x]);
 			}
 			result[tileY][tileX]=(sum>absThresh);
-			if (debugLevel>1) System.out.println(" tileY="+tileY+" tileX="+tileX+" x0="+x0+" y0="+y0+" sum="+sum);
-			
+			if (debugLevel>1) System.out.println(" tileY="+tileY+" tileX="+tileX+" x0="+x0+" y0="+y0+" sum="+sum+" threshold="+threshold+" absThresh="+absThresh+" rrsult="+result[tileY][tileX]);
 		}
 		return result;
 	}
@@ -4467,10 +4550,12 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     	public String strategyPath="";
     	public String gridPath="";
     	public String sensorsPath="";
-    	public boolean autoRestoreSensorOverwriteOrientation=true; // overwrite camera parameters from sensor calibration files
+    	public boolean autoRestoreSensorOverwriteOrientation=false; // dangerous! true; // overwrite camera parameters from sensor calibration files
+    	public boolean autoRestoreSensorOverwriteDistortion= false; // dangerous! true; // overwrite camera parameters from sensor calibration files
 		public boolean autoReCalibrate=true; // Re-calibrate grids on autoload
 		public boolean autoReCalibrateIgnoreLaser=false; // "Ignore laser pointers on recalibrate"
-    	public boolean autoFilter=true;
+    	public boolean autoFilter=false; // true;
+    	public boolean trustEnabled= true; // mark all enabled images as hintedMatch=2 on Read Calibration
     	public boolean noMessageBoxes=true;
     	public boolean overwriteResultFiles=false;
     	public boolean partialToReprojected=true; // Use reprojected grid for partial kernel calculation (false - use extracted)
@@ -4503,9 +4588,11 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			properties.setProperty(prefix+"gridPath",this.gridPath);
 			properties.setProperty(prefix+"sensorsPath",this.sensorsPath);
 			properties.setProperty(prefix+"autoRestoreSensorOverwriteOrientation",this.autoRestoreSensorOverwriteOrientation+"");
+			properties.setProperty(prefix+"autoRestoreSensorOverwriteDistortion",this.autoRestoreSensorOverwriteDistortion+"");
 			properties.setProperty(prefix+"autoReCalibrate",this.autoReCalibrate+"");
 			properties.setProperty(prefix+"autoReCalibrateIgnoreLaser",this.autoReCalibrateIgnoreLaser+"");
 			properties.setProperty(prefix+"autoFilter",this.autoFilter+"");
+			properties.setProperty(prefix+"trustEnabled",this.trustEnabled+"");
 			properties.setProperty(prefix+"noMessageBoxes",this.noMessageBoxes+"");
 			properties.setProperty(prefix+"overwriteResultFiles",this.overwriteResultFiles+"");
 			properties.setProperty(prefix+"partialToReprojected",this.partialToReprojected+"");
@@ -4546,11 +4633,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
 			if (properties.getProperty(prefix+"sensorsPath")!=null)                this.sensorsPath=properties.getProperty(prefix+"sensorsPath");
 			if (properties.getProperty(prefix+"autoRestoreSensorOverwriteOrientation")!=null)
 				this.autoRestoreSensorOverwriteOrientation=Boolean.parseBoolean(properties.getProperty(prefix+"autoRestoreSensorOverwriteOrientation"));
+			if (properties.getProperty(prefix+"autoRestoreSensorOverwriteDistortion")!=null)
+				this.autoRestoreSensorOverwriteDistortion=Boolean.parseBoolean(properties.getProperty(prefix+"autoRestoreSensorOverwriteDistortion"));
+			
 			if (properties.getProperty(prefix+"autoReCalibrate")!=null)            this.autoReCalibrate=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrate"));
 			if (properties.getProperty(prefix+"autoReCalibrateIgnoreLaser")!=null) this.autoReCalibrateIgnoreLaser=Boolean.parseBoolean(properties.getProperty(prefix+"autoReCalibrateIgnoreLaser"));
 			if (properties.getProperty(prefix+"autoFilter")!=null)                 this.autoFilter=Boolean.parseBoolean(properties.getProperty(prefix+"autoFilter"));
-			
-			
+			if (properties.getProperty(prefix+"trustEnabled")!=null)               this.trustEnabled=Boolean.parseBoolean(properties.getProperty(prefix+"trustEnabled"));
 			if (properties.getProperty(prefix+"noMessageBoxes")!=null)             this.noMessageBoxes=Boolean.parseBoolean(properties.getProperty(prefix+"noMessageBoxes"));
 			if (properties.getProperty(prefix+"overwriteResultFiles")!=null)       this.overwriteResultFiles=Boolean.parseBoolean(properties.getProperty(prefix+"overwriteResultFiles"));
 			if (properties.getProperty(prefix+"partialToReprojected")!=null)       this.partialToReprojected=Boolean.parseBoolean(properties.getProperty(prefix+"partialToReprojected"));
@@ -4695,10 +4784,13 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		gd.addCheckbox("Process all enabled image files (false - use selected fitting series)", this.allImages);
     		gd.addMessage("===== Autoload options (when restoring configuration) =====");
     		gd.addCheckbox("Autoload additional files on \"Restore\"", this.autoRestore);
-    		gd.addCheckbox("Overwrite SFE parameters from the sensor calibration files (at auto-load)", this.autoRestoreSensorOverwriteOrientation);
+    		gd.addCheckbox("Overwrite all (including position/orientation) SFE parameters from the sensor calibration files (at auto-load) DANGEROUS!", this.autoRestoreSensorOverwriteOrientation);
+    		gd.addCheckbox("Overwrite SFE distortion parameters from the sensor calibration files (at auto-load) DANGEROUS!", this.autoRestoreSensorOverwriteDistortion);
+    		
     		gd.addCheckbox("Re-calibrate grids on autoload", this.autoReCalibrate);
     		gd.addCheckbox("Ignore laser pointers on recalibrate", this.autoReCalibrateIgnoreLaser);
     		gd.addCheckbox("Filter grids after restore", this.autoFilter);
+    		gd.addCheckbox("Trust enabled images on input (mark as hintedGrid=2)", this.trustEnabled);
    		
     		gd.addMessage("Calibration: "+(((this.calibrationPath==null) || (this.calibrationPath.length()==0))?"not configured ":(this.calibrationPath+" "))+
     				((currentConfigs[0]!=null)?("(current: "+currentConfigs[0]+")"):("") ));
@@ -4742,10 +4834,12 @@ if (globalDebugLevel>2)globalDebugLevel=0; //***********************************
     		this.allImages=             gd.getNextBoolean();
     		this.autoRestore=           gd.getNextBoolean();
     		this.autoRestoreSensorOverwriteOrientation= gd.getNextBoolean();
+    		this.autoRestoreSensorOverwriteDistortion= gd.getNextBoolean();
     		this.autoReCalibrate=           gd.getNextBoolean();
     		this.autoReCalibrateIgnoreLaser=gd.getNextBoolean();
     		this.autoFilter=            gd.getNextBoolean();
-
+    		this.trustEnabled=          gd.getNextBoolean();
+    		
     		if (gd.getNextBoolean()) {
     			if (currentConfigs[0]!=null) this.calibrationPath=currentConfigs[0];
     			if (currentConfigs[1]!=null) this.strategyPath=   currentConfigs[1];

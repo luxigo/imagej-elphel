@@ -37,7 +37,6 @@ import javax.swing.SwingUtilities;
 import loci.common.services.DependencyException;
 import loci.common.services.ServiceException;
 import loci.formats.FormatException;
-
 import Jama.Matrix;
 import ij.IJ;
 import ij.ImagePlus;
@@ -15569,6 +15568,16 @@ public class PixelMapping {
 	    // TODO - add option to generate individual flat projections
 		public InterSensor interSensor=null; // multiple sensors may have the same instance of the interSensor
 
+		// new non-radial parameters
+		final private boolean cummulativeCorrection=true; // r_xy, r_od for higher terms are relative to lower ones
+		final private double [][] r_xy_dflt={{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0}}; // only 6, as for the first term delta x, delta y ==0  
+		final private double [][] r_od_dflt=   {{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0},{0.0,0.0}}; // ortho
+		
+		public double [][] r_xy=null; // only 6, as for the first term delta x, delta y ==0  
+		public double [][] r_od=null; // ortho
+
+		public double [][] r_xyod=null; //{x0,y0,ortho, diagonal}   
+
 	    
 	    public SensorData (String channelPath , boolean ok ){
 	    	createEquirectangularMap(channelPath);
@@ -15578,45 +15587,143 @@ public class PixelMapping {
 	    	this.equirectangularMap= new EquirectangularMap(channelPath);
 
 	    }
-        public String [][] parameterDescriptions ={
-        		{"Azimuth",       "Subcamera azimuth, clockwise looking from top","degrees"},                                    // 0
-        		{"Distance",      "Subcamera distance from the axis","mm"},                                                      // 1
-        		{"Height",        "Subcamera height from the 'equator'","mm"},                                                   // 2
-        		{"Heading",       "Optical axis heading (relative to azimuth)","degrees"},                                       // 3
-        		{"Elevation",     "Optical axis elevation (up from equator)","degrees"},                                         // 4
-        		{"Roll",          "Subcamera roll, positive CW looking to the target","degrees"},                                // 5
-    			{"FocalLength",   "Lens focal length","mm","S","I"},                                                                     //15
-    			{"PX0",           "Lens axis on the sensor (horizontal, from left edge)","pixels"},                              //16
-    			{"PY0",           "Lens axis on the sensor (vertical, from top edge)","pixels"},                                 //17
-    			{"DistortionA8",  "Distortion A8(r^8)","relative"},                                                              //18
-    			{"DistortionA7",  "Distortion A7(r^7)","relative"},                                                              //19 18
-    			{"DistortionA6",  "Distortion A6(r^6)","relative"},                                                              //20 18
-    			{"DistortionA5",  "Distortion A5(r^5)","relative"},                                                              //21 18
-    			{"DistortionA",   "Distortion A (r^4)","relative"},                                                              //22 19
-    			{"DistortionB",   "Distortion B (r^3)","relative"},                                                              //23 20
-    			{"DistortionC",   "Distortion C (r^2)","relative"},                                                              //24 21
-    			{"entrancePupilForward",   "Distance to actual entrance pupil from the lens center (positive - away from sensor)","mm"}                                                               //22
+
+	    public void setDefaultNonRadial(){
+			r_od=new double [r_od_dflt.length][2];
+			for (int i=0;i<r_od.length;i++) r_od[i]=r_od_dflt[i].clone();
+			r_xy=new double [r_xy_dflt.length][2];
+			for (int i=0;i<r_xy.length;i++) r_xy[i]=r_xy_dflt[i].clone();
+    	}
+
+	    
+	    public double [][] getNonRadialCumulative(){
+    		this.r_xyod=new double [this.r_od.length][4]; //{x0,y0,ortho, diagonal}
+    		this.r_xyod[0][0]=0.0; // this.px0; //
+    		this.r_xyod[0][1]=0.0; // this.py0;
+    		this.r_xyod[0][2]=this.r_od[0][0];
+    		this.r_xyod[0][3]=this.r_od[0][1];
+    		if (cummulativeCorrection){
+    			for (int i=1;i<this.r_xyod.length;i++){
+    	    		this.r_xyod[i][0]=this.r_xyod[i-1][0]+this.r_xy[i-1][0];
+    	    		this.r_xyod[i][1]=this.r_xyod[i-1][1]+this.r_xy[i-1][1];
+    	    		this.r_xyod[i][2]=this.r_xyod[i-1][2]+this.r_od[i][0];
+    	    		this.r_xyod[i][3]=this.r_xyod[i-1][3]+this.r_od[i][1];
+    			}
+    		} else {
+    			for (int i=1;i<this.r_xyod.length;i++){
+    	    		this.r_xyod[i][0]=this.r_xy[i-1][0]; // this.px0+this.r_xy[i-1][0];
+    	    		this.r_xyod[i][1]=this.r_xy[i-1][1]; // this.py0+this.r_xy[i-1][1];
+    	    		this.r_xyod[i][2]=this.r_od[i][0];
+    	    		this.r_xyod[i][3]=this.r_od[i][1];
+    			}
+    		}
+    		return this.r_xyod;
+	    }
+	    
+	    
+        public String [][] parameterDescriptions ={ // was 17, now 43
+        		{"Azimuth",       "Subcamera azimuth, clockwise looking from top","degrees"},                                    //  0
+        		{"Distance",      "Subcamera distance from the axis","mm"},                                                      //  1
+        		{"Height",        "Subcamera height from the 'equator'","mm"},                                                   //  2
+        		{"Heading",       "Optical axis heading (relative to azimuth)","degrees"},                                       //  3
+        		{"Elevation",     "Optical axis elevation (up from equator)","degrees"},                                         //  4
+        		{"Roll",          "Subcamera roll, positive CW looking to the target","degrees"},                                //  5
+    			{"FocalLength",   "Lens focal length","mm","S","I"},                                                             //  6 15
+    			{"PX0",           "Lens axis on the sensor (horizontal, from left edge)","pixels"},                              //  7 16
+    			{"PY0",           "Lens axis on the sensor (vertical, from top edge)","pixels"},                                 //  8 17
+    			{"DistortionA8",  "Distortion A8(r^8)","relative"},                                                              //  9 18
+    			{"DistortionA7",  "Distortion A7(r^7)","relative"},                                                              // 10 19 18
+    			{"DistortionA6",  "Distortion A6(r^6)","relative"},                                                              // 11 20 18
+    			{"DistortionA5",  "Distortion A5(r^5)","relative"},                                                              // 12 21 18
+    			{"DistortionA",   "Distortion A (r^4)","relative"},                                                              // 13 22 19
+    			{"DistortionB",   "Distortion B (r^3)","relative"},                                                              // 14 23 20
+    			{"DistortionC",   "Distortion C (r^2)","relative"},                                                              // 15 24 21
+    			{"entrancePupilForward",   "Distance to actual entrance pupil from the lens center (positive - away from sensor)","mm"}, // 16 25
+    			
+        		{"elong_C_o",   "Orthogonal elongation for r^2", "relative"},     //17
+        		{"elong_C_d",   "Diagonal   elongation for r^2", "relative"},     //18
+
+        		{"eccen_B_x",   "Distortion center shift X for r^3", "relative"}, //19
+        		{"eccen_B_y",   "Distortion center shift Y for r^3", "relative"}, //20
+        		{"elong_B_o",   "Orthogonal elongation for r^3", "relative"},     //21
+        		{"elong_B_d",   "Diagonal   elongation for r^3", "relative"},     //22
+        		
+        		{"eccen_A_x",   "Distortion center shift X for r^4", "relative"}, //23
+        		{"eccen_A_y",   "Distortion center shift Y for r^4", "relative"}, //24
+        		{"elong_A_o",   "Orthogonal elongation for r^4", "relative"},     //25
+        		{"elong_A_d",   "Diagonal   elongation for r^4", "relative"},     //26
+
+        		{"eccen_A5_x",  "Distortion center shift X for r^5", "relative"}, //27
+        		{"eccen_A5_y",  "Distortion center shift Y for r^5", "relative"}, //28
+        		{"elong_A5_o",  "Orthogonal elongation for r^5", "relative"},     //29
+        		{"elong_A5_d",  "Diagonal   elongation for r^5", "relative"},     //30
+
+        		{"eccen_A6_x",  "Distortion center shift X for r^6", "relative"}, //31
+        		{"eccen_A6_y",  "Distortion center shift Y for r^6", "relative"}, //32
+        		{"elong_A6_o",  "Orthogonal elongation for r^6", "relative"},     //33
+        		{"elong_A6_d",  "Diagonal   elongation for r^6", "relative"},     //34
+
+        		{"eccen_A7_x",  "Distortion center shift X for r^7", "relative"}, //35
+        		{"eccen_A7_y",  "Distortion center shift Y for r^7", "relative"}, //36
+        		{"elong_A7_o",  "Orthogonal elongation for r^7", "relative"},     //37
+        		{"elong_A7_d",  "Diagonal   elongation for r^7", "relative"},     //38
+
+        		{"eccen_A8_x",  "Distortion center shift X for r^8", "relative"}, //39
+        		{"eccen_A8_y",  "Distortion center shift Y for r^8", "relative"}, //40
+        		{"elong_A8_o",  "Orthogonal elongation for r^8", "relative"},     //41
+        		{"elong_A8_d",  "Diagonal   elongation for r^8", "relative"}      //42
         };
-	    public double [] getParametersVector(){
+	    public double [] getParametersVector(){ // was 17, now 43
 	    	double [] vector={
-	    			this.azimuth,
-	    			this.radius,       // mm, distance from the rotation axis
-	    			this.height,       // mm, up - from the origin point
-	    			this.phi,          // degrees, optical axis from azimuth/r vector, clockwise heading
-	    			this.theta,        // degrees, optical axis from the eyesis horizon, positive - up elevation
-	    			this.psi,          // degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target roll
-	    			this.focalLength,
-	    			this.px0,          // center of the lens on the sensor, pixels
-	    			this.py0,          // center of the lens on the sensor, pixels
-	    			this.distortionA8, //r^8 (normalized to focal length or to sensor half width?)
-	    			this.distortionA7, //r^7 (normalized to focal length or to sensor half width?)
-	    			this.distortionA6, //r^6 (normalized to focal length or to sensor half width?)
-	    			this.distortionA5, //r^5 (normalized to focal length or to sensor half width?)
-	    			this.distortionA,  // r^4 (normalized to focal length or to sensor half width?)
-	    			this.distortionB,  // r^3
-	    			this.distortionC,   // r^2
-	    			this.entrancePupilForward //Distance to actual entrance pupil from the lens center (positive - away from sensor)
+	    			this.azimuth,      // 00
+	    			this.radius,       // 01 mm, distance from the rotation axis
+	    			this.height,       // 02 mm, up - from the origin point
+	    			this.phi,          // 03 degrees, optical axis from azimuth/r vector, clockwise heading
+	    			this.theta,        // 04 degrees, optical axis from the eyesis horizon, positive - up elevation
+	    			this.psi,          // 05 degrees, rotation (of the sensor) around the optical axis. Positive if camera is rotated clockwise looking to the target roll
+	    			this.focalLength,  // 06
+	    			this.px0,          // 07 center of the lens on the sensor, pixels
+	    			this.py0,          // 08 center of the lens on the sensor, pixels
+	    			this.distortionA8, // 09 r^8 (normalized to focal length or to sensor half width?)
+	    			this.distortionA7, // 10 r^7 (normalized to focal length or to sensor half width?)
+	    			this.distortionA6, // 11 r^6 (normalized to focal length or to sensor half width?)
+	    			this.distortionA5, // 12 r^5 (normalized to focal length or to sensor half width?)
+	    			this.distortionA,  // 13  r^4 (normalized to focal length or to sensor half width?)
+	    			this.distortionB,  // 14  r^3
+	    			this.distortionC,  // 15  r^2
+	    			this.entrancePupilForward, // 16 Distance to actual entrance pupil from the lens center (positive - away from sensor)
+	    			this.r_od[0][0],
+	    			this.r_od[0][1],
+
+	    			this.r_xy[0][0],
+	    			this.r_xy[0][1],
+	    			this.r_od[1][0],
+	    			this.r_od[1][1],
 	    			
+	    			this.r_xy[1][0],
+	    			this.r_xy[1][1],
+	    			this.r_od[2][0],
+	    			this.r_od[2][1],
+
+	    			this.r_xy[2][0],
+	    			this.r_xy[2][1],
+	    			this.r_od[3][0],
+	    			this.r_od[3][1],
+
+	    			this.r_xy[3][0],
+	    			this.r_xy[3][1],
+	    			this.r_od[4][0],
+	    			this.r_od[4][1],
+
+	    			this.r_xy[4][0],
+	    			this.r_xy[4][1],
+	    			this.r_od[5][0],
+	    			this.r_od[5][1],
+
+	    			this.r_xy[5][0],
+	    			this.r_xy[5][1],
+	    			this.r_od[6][0],
+	    			this.r_od[6][1]
 	    	};
 	    	return vector;
 	    }
@@ -16087,7 +16194,16 @@ public class PixelMapping {
         		this.defectsDiff=null;
         	}
 	        
-	        // now mask    
+        	setDefaultNonRadial();
+			for (int i=0;i<this.r_xy.length;i++) {
+				if (imp.getProperty("r_xy_"+i+"_x")  !=null) this.r_xy[i][0]= Double.parseDouble((String) imp.getProperty("r_xy_"+i+"_x"));
+				if (imp.getProperty("r_xy_"+i+"_y")  !=null) this.r_xy[i][1]= Double.parseDouble((String) imp.getProperty("r_xy_"+i+"_y"));
+			}
+			for (int i=0;i<this.r_od.length;i++) {
+				if (imp.getProperty("r_od_"+i+"_o")  !=null) this.r_od[i][0]= Double.parseDouble((String) imp.getProperty("r_od_"+i+"_o"));
+				if (imp.getProperty("r_od_"+i+"_d")  !=null) this.r_od[i][1]= Double.parseDouble((String) imp.getProperty("r_od_"+i+"_d"));
+			}
+
 	    }
 	    /**
 	     * Calculate rotation matrix that converts sensor coordinates to world coordinates 
@@ -16149,6 +16265,7 @@ public class PixelMapping {
 	    		double y0,
 	    		double pixelStep,
 	    		boolean flat){
+	    	System.out.println("******* BUG: combineDistortionsSensorToEquirectangular() - not yet modified for non-radial !!!! ********");
 	    	if (this.pixelCorrection==null){
 	    		String msg="No pixel correction data";
 	    		IJ.showMessage("Error",msg);
@@ -16165,7 +16282,6 @@ public class PixelMapping {
 	    	int sensorCorrWidth=  (this.pixelCorrectionWidth-1)/this.pixelCorrectionDecimation+1;
 	    	int sensorCorrHeight= (this.pixelCorrectionHeight-1)/this.pixelCorrectionDecimation+1;
 	    	Matrix MA=rotateSensorCoordToPanoCoord();
-
 	    	for (int iy=0;iy<this.directMap.height;iy++){
 	    		for (int ix=0;ix<this.directMap.width;ix++) {
 
@@ -16249,7 +16365,221 @@ public class PixelMapping {
 	    		IJ.showProgress(iy, this.directMap.height-1);
 	    	}
 	    }
+	    
+	    public double ipow(double a, int b){
+	    	switch (b) {
+	    	case 1: return a;
+	    	case 2: return a*a;
+	    	case 3: return a*a*a;
+	    	case 0: return 1.0;
+	    	default:
+	    		if (b<0) {
+	    			return 1.0/ipow(a,-b);
+	    		} else {
+	    			int b1=b>>1;
+	    		return ipow(a,b1)*ipow(a,b-b1);
+	    		}
+	    	}
+	    }
+
+	    
 	    public void combineDistortionsEquirectangularToSensor(
+	    		int    channel,
+		    	double longitudeLeft0,
+		    	double longitudeRight0,
+		    	double latitudeTop0,
+		    	double latitudeBottom0,
+		    	int    pixelsHorizontal0,
+	    		int width0,
+	    		int height0,
+	    		double x00,
+	    		double y00,
+	    		double pixelStep0,
+	    		int maxThreads){
+	    	final double maxKR=2.0; // maximal ratio to distortion radius to consider
+	    	if (this.pixelCorrection==null){
+	    		String msg="No pixel correction data";
+        		IJ.showMessage("Error",msg);
+        		throw new IllegalArgumentException (msg);
+	    	}
+	    	System.out.println("******* INFO: combineDistortionsEquirectangularToSensor() - already modified for non-radial !!!! ********");
+	    	this.equirectangularMap=new EquirectangularMap(
+	    			channel,
+			    	longitudeLeft0,
+			    	longitudeRight0,
+			    	latitudeTop0,
+			    	latitudeBottom0,
+			    	pixelsHorizontal0,
+	    			width0,
+		    		height0,
+		    		x00,
+		    		y00,
+		    		pixelStep0,
+		    		this.pixelCorrection.length);
+	    	final boolean debugThis=false;
+			final int sensorCorrWidth=  (this.pixelCorrectionWidth-1)/this.pixelCorrectionDecimation+1;
+			final int sensorCorrHeight= (this.pixelCorrectionHeight-1)/this.pixelCorrectionDecimation+1;
+	    	final Matrix MA=rotateSensorCoordToPanoCoord().transpose(); // panorama coordinates to sensor coordinates (reversed rotation)
+	   		final Thread[] threads = newThreadArray(maxThreads);
+	   		final AtomicInteger ipLatAtomic     = new AtomicInteger(0);
+	   		final AtomicInteger ipLatDoneAtomic = new AtomicInteger(1);
+
+	    	final double [][] pixelCorrection=this.pixelCorrection;
+	    	final double pixelCorrectionDecimation=this.pixelCorrectionDecimation;
+	    	final double focalLength=     this.focalLength;
+	    	final double px0=             this.px0;
+	    	final double py0=             this.py0;
+	    	final double distortionRadius=this.distortionRadius;
+	    	final double pixelSize=       this.pixelSize;
+	    	final double distortionA8=    this.distortionA8;
+	    	final double distortionA7=    this.distortionA7;
+	    	final double distortionA6=    this.distortionA6;
+	    	final double distortionA5=    this.distortionA5;
+	    	final double distortionA =    this.distortionA;
+	    	final double distortionB =    this.distortionB;
+	    	final double distortionC =    this.distortionC;
+	    	final double [][] r_xyod=getNonRadialCumulative();
+	    	
+//	    	final double d=1.0-this.distortionA8-this.distortionA7-this.distortionA6-this.distortionA5-this.distortionA-this.distortionB-this.distortionC;
+//	    	final boolean use8=(this.distortionA8!=0.0) || (this.distortionA7!=0.0) || (this.distortionA6!=0.0);
+	    	final EquirectangularMap equirectangularMap=this.equirectangularMap;
+	    	
+//	    	for (int iLat=0;iLat<equirectangularMap.pixelsVertical;iLat++){
+	    	for (int ithread = 0; ithread < threads.length; ithread++) {
+	    		threads[ithread] = new Thread() {
+	    			public void run() {
+	    				for (int iLat=ipLatAtomic.getAndIncrement(); iLat<equirectangularMap.pixelsVertical;iLat=ipLatAtomic.getAndIncrement()){
+	    		        	double [] a={distortionC,distortionB,distortionA,distortionA5,distortionA6,distortionA7,distortionA8};
+	    					double latitude=equirectangularMap.latitudeTop-equirectangularMap.degreesPerPixel*iLat;
+	    					for (int iLong=0;iLong<equirectangularMap.pixelsHorizontal;iLong++){
+	    						int outIndex=iLat*equirectangularMap.pixelsHorizontal+iLong;
+	    						double [] pXY=null;
+	    						double longitude=equirectangularMap.longitudeLeft+equirectangularMap.degreesPerPixel*iLong;
+	    						double [][] xyz={ // unity vector in the direction
+	    								{Math.cos(latitude*Math.PI/180.0)*Math.sin(longitude*Math.PI/180.0)},
+	    								{Math.sin(latitude*Math.PI/180.0)},
+	    								{Math.cos(latitude*Math.PI/180.0)*Math.cos(longitude*Math.PI/180.0)}};
+	    						// get sensor coordinates
+	    						double [] v=MA.times(new Matrix (xyz)).getRowPackedCopy();
+	    						if (v[2]>0){ // potentially visible
+	    							v[0]*=focalLength/v[2];
+	    							v[1]*=focalLength/v[2];
+	    							v[2]= focalLength;
+	    							double rND=Math.sqrt(v[0]*v[0]+v[1]*v[1]);
+	    							double r=rND/distortionRadius;
+	    							if (r<maxKR){ // skip if they are too far from the center
+	    					        	double deltaX=0.0,deltaY=0.0; // difference between distorted and non-distorted as a fraction of this.distortionRadius
+	    					        	double xmmc=v[0]/distortionRadius; // non-distorted x relative to distortion radius
+	    					        	double ymmc=v[1]/distortionRadius; // non-distorted y relative to distortion radius (math direction, not image)
+	    					        	for (int i=0;i<r_xyod.length;i++){
+	    					        		double x=xmmc-r_xyod[i][0]; // relative X-shift of this term center
+	    					        		double y=ymmc-r_xyod[i][1]; // relative Y-shift of this term center
+	    					        		double x2=x*x;   // relative squared X-shift from this term center
+	    					        		double y2=y*y;   // relative squared Y-shift from this term center
+	    					        		double r2=x2+y2; // relative squared distance from this term center
+	    					        		// effective distance from this term center corrected for elongation
+	    					        		double rr=Math.sqrt(r2+ r_xyod[i][2]*(y2-x2)+ 2.0*r_xyod[i][3]*x*y );
+	    					                if (rr<0.00000001*distortionRadius) rr=0.00000001*distortionRadius; // avoid 1/0.0 -// Added 3 zeros (old comment)
+	    					        		double rr_pow_i=ipow(rr,i);
+	    					        		double ki=a[i]*(rr_pow_i*rr-1.0); // scaling of distorted distance from this term's center (does not include pinhole center shift itself)
+	    					        		deltaX+=x*ki; // relative distorted distance from the center
+	    					        		deltaY+=y*ki;
+//	    					        		if ((debugLevel>2) && ((r_xyod[i][0]!=0.0) || (r_xyod[i][0]!=0.0))){
+//	    					        			System.out.println ("i="+i+" r_xyod[i][0]="+r_xyod[i][0]+" r_xyod[i][1]="+r_xyod[i][1]+" a[0]="+a[0]+" a[1]="+a[1]+" a[2]="+a[2]+" a[3]="+a[3]);
+//	    					        		}
+	    					        	}	    								
+//	    					        	double [] xyDist={v[0]+distortionRadius*deltaX, v[1]+distortionRadius*deltaY};
+	    								pXY=new double[2];
+	    					        	// convert to sensor pixels coordinates
+	    								pXY[0]= 1000.0/pixelSize*(v[0]+distortionRadius*deltaX) + px0;
+	    								pXY[1]=-1000.0/pixelSize*(v[1]+distortionRadius*deltaY) + py0;
+	    								/*
+	    								double k;
+	    								if (use8) k=((((((distortionA8*r+distortionA7)*r+distortionA6)*r+distortionA5)*r + distortionA)*r+distortionB)*r+distortionC)*r+d;
+	    								else	  k=(((distortionA5*r + distortionA)*r+distortionB)*r+distortionC)*r+d;
+	    								// calculate in sensor pixel
+	    								pXY[0]= v[0]*k*1000.0/pixelSize+px0; // in pixels, right 
+	    								pXY[1]=-v[1]*k*1000.0/pixelSize+py0; // in pixels, down 
+	    								*/
+	    								// un-apply residual correction, for now - consider it small/smooth to skip reverse mapping, make it a two step
+	    								int corrX=((int) Math.floor(pXY[0]/pixelCorrectionDecimation));
+	    								int corrY=((int) Math.floor(pXY[1]/pixelCorrectionDecimation));
+	    								if (corrX<0)                      corrX=0;
+	    								else if (corrX>=sensorCorrWidth)  corrX=sensorCorrWidth-1;
+	    								if (corrY<0)                      corrY=0;
+	    								else if (corrY>=sensorCorrHeight) corrY=sensorCorrHeight-1;
+	    								// x1, y1 - one stage correction
+	    								double x1=pXY[0]+pixelCorrection[0][corrX + corrY*sensorCorrWidth]; // positive correction
+	    								double y1=pXY[1]+pixelCorrection[1][corrX + corrY*sensorCorrWidth];
+	    								// second step correction
+	    								corrX=((int) Math.floor(x1/pixelCorrectionDecimation));
+	    								corrY=((int) Math.floor(y1/pixelCorrectionDecimation));
+	    								double corrDX=x1/pixelCorrectionDecimation-corrX;
+	    								double corrDY=y1/pixelCorrectionDecimation-corrY;
+	    								if (corrX<0)                      {corrX=0;corrDX=0;}
+	    								else if (corrX>=sensorCorrWidth)  {corrX=sensorCorrWidth-1;corrDX=0;}
+	    								if (corrY<0)                      {corrY=0;corrDY=0;}
+	    								else if (corrY>=sensorCorrHeight) {corrY=sensorCorrHeight-1;corrDY=0;}
+	    								int index00=corrX + corrY*sensorCorrWidth;
+	    								int indexX0=index00+((corrX==(sensorCorrWidth-1))?0:1);
+	    								int index0Y=index00+((corrY==(sensorCorrHeight-1))?0:sensorCorrWidth);
+	    								int indexXY=index0Y+((corrX==(sensorCorrWidth-1))?0:1);
+	    								// Linear interpolate all this.pixelCorrection[i][indexXY]
+	    								double [] corr=new double [pixelCorrection.length];
+	    								for (int n=0;n<pixelCorrection.length;n++){
+	    									corr[n]=
+	    										(1-corrDX)* (1-corrDY)* pixelCorrection[n][index00]+
+	    										corrDX * (1-corrDY)* pixelCorrection[n][indexX0]+
+	    										(1-corrDX)*    corrDY * pixelCorrection[n][index0Y]+
+	    										corrDX *    corrDY * pixelCorrection[n][indexXY];
+	    									if (debugThis){
+	    										System.out.println("combineDistortionsSensorToFlat(): this.pixelCorrection["+n+"]["+index00+"]="+pixelCorrection[n][index00]);
+	    										System.out.println("combineDistortionsSensorToFlat(): this.pixelCorrection["+n+"]["+indexX0+"]="+pixelCorrection[n][indexX0]);
+	    										System.out.println("combineDistortionsSensorToFlat(): this.pixelCorrection["+n+"]["+index0Y+"]="+pixelCorrection[n][index0Y]);
+	    										System.out.println("combineDistortionsSensorToFlat(): this.pixelCorrection["+n+"]["+indexXY+"]="+pixelCorrection[n][indexXY]);
+	    									}
+	    								}
+	    								pXY[0]+=corr[0]; // opposite sign as in Distortions.initFittingSeries()
+	    								pXY[1]+=corr[1];
+	    								// map to image pixels 
+	    								pXY[0]=(pXY[0]-equirectangularMap.x0)/equirectangularMap.pixelStep;
+	    								pXY[1]=(pXY[1]-equirectangularMap.y0)/equirectangularMap.pixelStep;
+	    								if (
+	    										(pXY[0]<0) ||
+	    										(pXY[0]>=equirectangularMap.width) ||
+	    										(pXY[1]<0) ||
+	    										(pXY[1]>=equirectangularMap.height) ||
+	    										((corr.length>2) && (corr[2]<equirectangularMap.minAlpha))) {
+	    									pXY=null;
+	    								} else {
+	    									equirectangularMap.map[outIndex]=new float [corr.length];
+	    									for (int n=0;n<2;n++)           equirectangularMap.map[outIndex][n]=(float) pXY[n];
+	    									for (int n=2;n<corr.length;n++) equirectangularMap.map[outIndex][n]=(float) corr[n];
+	    								}
+	    							}
+	    						}
+	    						if (pXY==null) equirectangularMap.map[outIndex]=null; 
+	    					}
+	    					//	    		IJ.showProgress(iLat, equirectangularMap.pixelsVertical-1);
+	    					final int numFinished=ipLatDoneAtomic.getAndIncrement();
+	    					//					IJ.showProgress(progressValues[numFinished]);
+	    					SwingUtilities.invokeLater(new Runnable() {
+	    						public void run() {
+	    							// Here, we can safely update the GUI
+	    							// because we'll be called from the
+	    							// event dispatch thread
+	    							IJ.showProgress(numFinished,equirectangularMap.pixelsVertical);
+	    						}
+	    					});
+	    				}
+	    			}
+	    		};
+	    	}
+	    	startAndJoin(threads);
+	    }
+	    
+	    
+	    public void combineDistortionsEquirectangularToSensorRadial( // old version without non-radial terms
 	    		int    channel,
 		    	double longitudeLeft0,
 		    	double longitudeRight0,
@@ -16303,6 +16633,7 @@ public class PixelMapping {
 	    	final double distortionA =    this.distortionA;
 	    	final double distortionB =    this.distortionB;
 	    	final double distortionC =    this.distortionC;
+	    	
 	    	final double d=1.0-this.distortionA8-this.distortionA7-this.distortionA6-this.distortionA5-this.distortionA-this.distortionB-this.distortionC;
 	    	final boolean use8=(this.distortionA8!=0.0) || (this.distortionA7!=0.0) || (this.distortionA6!=0.0);
 	    	final EquirectangularMap equirectangularMap=this.equirectangularMap;

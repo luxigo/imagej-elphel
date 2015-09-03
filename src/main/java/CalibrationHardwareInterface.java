@@ -150,14 +150,19 @@ public class CalibrationHardwareInterface {
     		this.thisTime=this.startTime;
     	}
 
-		private int [][] channelMap26={ // ip index, channel number
-				{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0}, // modified!
-				{0,1},{1,1},{2,1},{3,1},{4,1},{5,1},{6,1},{7,1},
-				{0,2},{1,2},{2,2},{3,2},{4,2},{5,2},{6,2},{7,2},
-				{8,0},{8,1}};
+		private int [][] channelMap21={ // ip index, channel number
+				{0,1},{0,0},{0,2},
+				{1,1},{1,0},{1,2},
+				{2,1},{2,0},{2,2},
+				{3,1},{3,0},{3,2},
+				{4,1},{4,0},{4,2},
+				{5,1},{5,0},{5,2},
+				{6,1},{6,0},{6,2}};
 		private int [][] channelMap1={ // ip index, channel number
 //				{0,-1}}; // negative channel - single camera
 		{0,0}}; // Try with 0
+		private int [][] channelMap2={ // ip index, channel number
+		{0,0},{0,1}};
 		private int [][] channelMap3={ // ip index, channel number
 //				{0,-1}}; // negative channel - single camera
 		{0,0},{1,0},{2,0}};
@@ -257,19 +262,25 @@ public class CalibrationHardwareInterface {
 		private void initDefaultMap(int size){
 			this.channelMap=new int [size][];
 			 this.flipImages=new boolean[size];
-			 if (size==1) {
+			 if (size==1) { // single camera - old lens focusing
 				 this.channelMap[0]=channelMap1[0].clone();
 				 this.flipImages[0]=true;
+			 } else if (size==2){ // New lens focusing machine
+				 this.channelMap[0]=channelMap2[0].clone();
+				 this.flipImages[0]=true;  // main sensor under test
+				 this.channelMap[1]=channelMap2[1].clone();
+				 this.flipImages[1]=false; // extra sensor for location
+		
 			 } else if (size==3){
 				 for (int i=0;i<size;i++){
 					 this.flipImages[i]=false;
 					 int i0=((i>=this.channelMap3.length)?(this.channelMap3.length-1):i);
-					 this.channelMap[i]=this.channelMap26[i0].clone();
+					 this.channelMap[i]=this.channelMap21[i0].clone();
 				 }
 			 } else for (int i=0;i<size;i++){
 				 this.flipImages[i]=false;
-				 int i0=((i>=this.channelMap26.length)?(this.channelMap26.length-1):i);
-				 this.channelMap[i]=this.channelMap26[i0].clone();
+				 int i0=((i>=this.channelMap21.length)?(this.channelMap21.length-1):i);
+				 this.channelMap[i]=this.channelMap21[i0].clone();
 			 }
 		}
     	public void setProperties(String prefix,Properties properties){
@@ -1758,6 +1769,16 @@ public class CalibrationHardwareInterface {
 	    	this.lastTimestamp=(String) this.images[0].getProperty("timestamp");
 	    	return this.images[0];
 	    }
+	    public ImagePlus [] acquireSeveralImages (boolean useLasers, boolean updateStatus){
+			getImages(
+	   				null, // UVLEDLasers
+					selectAllSubcameras(),
+					(useLasers?selectAllSubcameras():null),
+					true, 
+					this.debugLevel>1); // reset and trigger
+	    	this.lastTimestamp=(String) this.images[0].getProperty("timestamp");
+	    	return this.images;
+	    }
 
 	    public ImagePlus acquireSingleImage (UVLEDandLasers uvLEDLasers, boolean updateStatus){
 			getImages(
@@ -1816,7 +1837,7 @@ public class CalibrationHardwareInterface {
 		public String [] groups={"heater","fan","light","light1","light2"};
     	public int debugLevel=1;
     	private String powerIP="192.168.0.80";
-    	private double lightsDelay=5.0;
+    	private double lightsDelay=1.0;
     	private final String urlFormat="http://%s/insteon/index.php?cmd=%s&group=%s&timestamp=%d";
     	private final String rootElement="Document";
     	public boolean powerConrtolEnabled=false;

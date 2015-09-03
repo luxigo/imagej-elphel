@@ -8632,6 +8632,50 @@ public boolean LevenbergMarquardt(
     	}
 
     	/**
+    	 * Post UV gluing fixture adjustment, screw numbers match motor numbers  
+    	 * @param umPerTurn sensitivity of the 3 adjustment screws - microns of the uv-glued support movement per screw revolution
+    	 * @param zErr  current focal distance error in microns, positive - away from lens
+    	 * @param tXErr current horizontal tilt in microns/mm , positive - 1,2 away from lens, 3 - to the lens
+    	 * @param tYErr current vertical tilt in microns/mm , positive - 2 away from lens, 1 - to the lens
+    	 * @return array of optimal CW rotations of each screw (1.0 == 360 deg)
+    	 * @return array of optimal CW rotations of each screw (1.0 == 360 deg)
+    	 */
+    	public double [] getManualScrews(
+    			double [] umPerTurn, // if null - use defined here
+    			double zErr, // positive - away from lens
+    			double tXErr,// positive - 1,2 away from lens, 3 - to the lens
+    			double tYErr){// positive - 2 away from lens
+//    		double [][] screws={ // right, up, thread pitch (pull) !!! Inverting Y! - again invert? 1 - far left, 2 - near left, 3 - right
+//    				{  13.5, -6.5, 192.8}, // -2.908571735}, // 192.8, ... for proto push-away fixture
+//    				{  13.5,  6.5, 202.6}, // -3.8198374024},
+//    				{ -13.6,  3.5, 83.4}}; // -2.4491867448}};
+    		double [][] screws={ // right, up, thread pitch (pull) 1 - far left, 2 - near left, 3 - right
+    				{ -13.5,  6.5, -300.0}, //192.8}, // -2.908571735}, // 192.8, ... for proto push-away fixture
+    				{ -13.5, -6.5, -300.0}, //202.6}, // -3.8198374024},
+    				{  13.6, -3.5, -120.0}}; //83.4}}; // -2.4491867448}};
+    		
+    		if (umPerTurn!=null) for (int i=0;i<umPerTurn.length;i++) screws[i][2]=umPerTurn[i];
+    		double [] moveDownUm=new double [screws.length];
+    		double [] turnCW=new double [screws.length];
+    		for (int i=0;i<screws.length;i++){
+    			moveDownUm[i]=zErr + screws[i][0]*tXErr+screws[i][1]*tYErr;
+    			turnCW[i]=moveDownUm[i]/screws[i][2];
+    		}
+    		return turnCW;
+    	}
+  /*
+   *
+192.8479341564
+202.5779753086
+83.4354504792
+
+   -2.908571735
+-3.8198374024
+-2.4491867448
+
+   */
+    	
+    	/**
     	 * Calculate three linearized values of motor positions for current parameters, target center focal
     	 * shift and tilt (from the optic axis)
     	 * Use current values of MECH_PAR.z0, MECH_PAR.tx,MECH_PAR.ty

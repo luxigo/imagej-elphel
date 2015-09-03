@@ -818,7 +818,7 @@ public class SFEPhases {
 	
 	// Ask for image selection (multiple directories), accumulate and create array of accumulated images
 	public ImagePlus[] getInteractiveAccumulatedImages(
-			Distortions.DistortionProcessConfiguration distortionProcessConfiguration,
+			DistortionProcessConfiguration distortionProcessConfiguration,
 			final AtomicInteger stopRequested,
 			int threadsMax,
 			boolean updateStatus,
@@ -1199,7 +1199,7 @@ public class SFEPhases {
 	}
 	
 	public SensorDefects[] accummulateSensorDefects(
-			Distortions.DistortionProcessConfiguration distortionProcessConfiguration,
+			DistortionProcessConfiguration distortionProcessConfiguration,
 			int tileClearSize,
 			int tileMargins,
 			int cmask, // bitmask of color channels to process (9 - two greens)

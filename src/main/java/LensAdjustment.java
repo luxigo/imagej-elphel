@@ -71,6 +71,11 @@ public class LensAdjustment {
 		distortionParameters.flatFieldCorrection=focusMeasurementParameters.flatFieldCorrection;
 		distortionParameters.flatFieldExpand=focusMeasurementParameters.flatFieldExpand;
 		
+		distortionParameters.correlationMinContrast=focusMeasurementParameters.correlationMinContrast;
+		distortionParameters.correlationMinInitialContrast=focusMeasurementParameters.correlationMinInitialContrast;
+		distortionParameters.correlationMinAbsoluteContrast=focusMeasurementParameters.correlationMinAbsoluteContrast;
+		distortionParameters.correlationMinAbsoluteInitialContrast=focusMeasurementParameters.correlationMinAbsoluteInitialContrast;
+		
 		if (maskNonPSF) {
 			distortionParameters.numberExtrapolated=0; //1; //3; // measuring PSF - extrapolate
 		} else {
@@ -119,8 +124,8 @@ public class LensAdjustment {
 		int numAbsolutePoints=0;
 		if (updating) {		
 			// add new nodes if the appeared after shift of the pattern
-			if (debug_level>1) { // calculate/print number of defined nodes in the grid
-				System.out.println("updateFocusGrid(), number of defined grid cells (before distortions()) = "+matchSimulatedPattern.numDefinedCells());
+			if (debug_level>0) { // calculate/print number of defined nodes in the grid
+				System.out.println("updateFocusGrid(), number of already defined grid cells (before distortions()) = "+matchSimulatedPattern.numDefinedCells());
 			}
 			matchSimulatedPattern.distortions(
 					null, // is not used in update mode
@@ -201,7 +206,7 @@ public class LensAdjustment {
     	public String resultsSuperDirectory=""; // directory with subdirectories named as serial numbers to stro results
     	public int EEPROM_channel=1; // EEPROM channel to read serial number from
     	public boolean saveResults=true; // save focusing results
-    	public boolean showResults=true; // show focusing (includingh intermediate) results
+    	public boolean showResults=true; // show focusing (including intermediate) results
 
     	public String serialNumber=""; // camera serial number string
     	public double sensorTemperature=Double.NaN; // last measured sensor temperature
@@ -226,14 +231,16 @@ public class LensAdjustment {
     	public String comment="no comments"; // Comment to add to the results
     	public int lensSerialLength=4;
     	public String lensSerial=""; // Lens serial number
-    	public boolean  askLensSerial=true; // Ask lens serial on camera power cycle
+    	public boolean askLensSerial=true; // Ask lens serial on camera power cycle
     	public double reportTemperature=50;      // temperature to report focal length  
-
+    	public boolean showLegacy=false; // Show old focusing parameters (most are not supported anyway)
     	public boolean includeLensSerial=true; // add lens serial to config filename
     	public double centerDeltaX=0.0; // required X-difference between lens center and sensor center 
     	public double centerDeltaY=0.0; // required Y-difference between lens center and sensor center
     	// with the seam in the middle - make even # of samples horizontally
-    	public Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
+    	// to be made private or removed
+//    	public Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
+    	private Rectangle margins=new Rectangle (100,100,2392,1736) ; // maximal height 1816 (1936-120)
     	public int [] numSamples={8,5};       // number of samples in x and y directions
     	public int    sampleSize=256;// 512;       // size of square (2^n), in sensor pixels (twice FFT size)
     	public int    numInCenter=(numSamples[0]-2)*(numSamples[1]-2);// 2 - number of "center" samples
@@ -244,24 +251,27 @@ public class LensAdjustment {
     	public boolean showHistorySamples=true;   // show individual samples
     	public boolean showHistorySingleLine=true; // all parameters in a single line (easier to copy to spreadsheet)
         public boolean showAcquiredImages=false;
+        public boolean showROI=true;
+        public boolean showSamples=true;
+        
         public boolean showFittedParameters=true;
         public boolean useHeadLasers=true;
         
         // when approximating PSF with a second degree polynomial:
         public double psf_cutoffEnergy=0.98; //0.5; // disregard pixels outside of this fraction of the total energy
         public double psf_cutoffLevel= 0.2; // disregard pixels below this fraction of the maximal value
-        public int    psf_minArea    = 10;  // continue increasing the selected area, even if beyound psf_cutoffEnergy and psf_cutoffLevel,
-                                             // if the selected area is smaller than this (so approximation wpuld work)
+        public int    psf_minArea    = 10;  // continue increasing the selected area, even if beyond psf_cutoffEnergy and psf_cutoffLevel,
+                                             // if the selected area is smaller than this (so approximation would work)
         public double psf_blurSigma  = 0.0; // optionally blur the calculated mask
         
         public double weightRatioRedToGreen=0.7;  // Use this data when combining defocusing data from different color PSF
-        public double weightRatioBlueToGreen=0.3;
-        public double targetFarNear=0.0;         // OBSOLETE target logariphm of average tangential-to-radial resolution
+        public double weightRatioBlueToGreen=0.2;
+        public double targetFarNear=0.0;         // OBSOLETE target logarithm of average tangential-to-radial resolution
         public boolean useRadialTangential=false; // Use targetFarNear (radial/tangential resolution)  as a proxy for the distance  
         public double targetMicrons=0.0;          // target lens center distance (away from "best focus"
         public double toleranceMicrons=0.5; // microns
         public double toleranceTilt=0.02; // 
-        public double toleranceThreshold=3.0; // When each error is under swcaled thereshold, reduce correxction step twice
+        public double toleranceThreshold=3.0; // When each error is under scaled threshold, reduce correction step twice
 //        public boolean parallelAdjust=true;   // move 3 motors parallel after each 3-motor focus/tilt adjustment   
         public double  parallelAdjustThreshold=4.0;   // adjust 3 motors parallel if focal distance error in the center exceeds this    
         
@@ -348,7 +358,7 @@ public class LensAdjustment {
     	public int    subdiv=4; 
     	// overwrites  	public static class MultiFilePSF.overexposedMaxFraction
     	public double overexposedMaxFraction=0.1; // allowed fraction of the overexposed pixels in the PSF kernel measurement area 
-    	// overwirites	public static class PSFParameters.minDefinedArea
+    	// overwrites	public static class PSFParameters.minDefinedArea
     	public double minDefinedArea=0.75;    // minimal (weighted) fraction of the defined patter pixels in the FFT area
         public int PSFKernelSize=32;          // size of the detected PSF kernel
 		public boolean approximateGrid=true; // approximate grid with polynomial 
@@ -364,6 +374,14 @@ public class LensAdjustment {
         public int correlationSize=32;
         public double correlationGaussWidth=0.75;
         public double minUVSpan;           // Minimal u/v span in correlation window that triggers increase of the correlation FFT size
+
+		public double correlationMinContrast=1.2;   // minimal contrast for the pattern to pass
+		public double correlationMinInitialContrast=1.5;   // minimal contrast for the pattern of the center (initial point)
+		public double correlationMinAbsoluteContrast=0.5;   // minimal contrast for the pattern to pass, does not compensate for low ligt
+		public double correlationMinAbsoluteInitialContrast=0.5;   // minimal contrast for the pattern of the center (initial point)
+        
+		public double [] postUVscrewSensitivity={-300,-300,-120}; //{-2.908571735,-3.8198374024,-2.4491867448};
+        
         public boolean flatFieldCorrection=true;
         public double flatFieldExpand=4.0;
         
@@ -371,11 +389,32 @@ public class LensAdjustment {
         public int    numIterations=  100; // maximal number of iterations
         
         public boolean cameraIsConfigured=false;
+        public boolean useExtraSensor = true;
+        public boolean enRoundOff = true; // create round mask to refine lens center position (second LMA run) 
+        public boolean keepCircularMask=false; // keep sensor 0 round mask after running LMA, false - recalculate actual mask
         public boolean configureCamera=false; // only valid after dialog
         public int [] motorPos=null; // will point to
     	public double [] ampsSeconds={0.0,0.0,0.0,0.0}; // cumulative Amps*seconds (read only, but will be saved/restored)
-        
     	public int manufacturingState=0;
+    	
+    	// temporary - will re-calculate according to required lens center
+    	public Rectangle getMargins(){
+    		int iXC = (int) Math.round(centerDeltaX);
+    		int iYC = (int) Math.round(centerDeltaY);
+    		Rectangle margins=new Rectangle(this.margins);
+    		if ((iXC !=0) || (iYC!=0)){
+    			int hw=this.margins.width/2;
+    			int hh=this.margins.height/2;
+    			int ix0=this.margins.x+hw;
+    			int iy0=this.margins.y+hh;
+    			hw += (iXC < 0)?iXC:(-iXC);
+    			hh += (iYC < 0)?iYC:(-iYC);
+    			margins=new Rectangle(ix0+iXC-hw,iy0+iYC-hh,2*hw,2*hh);
+    		}
+    		
+    		return margins;
+    	}
+    	
     	public String [] manufacturingStateNames={
     			"New SFE",
     			"UV cured (not released)",
@@ -479,6 +518,9 @@ public class LensAdjustment {
     	    	boolean showHistorySamples,
     	    	boolean showHistorySingleLine, // all parameters in a single line (easier to copy to spreadsheet)
     	    	boolean showAcquiredImages,
+    	        boolean showROI,
+    	        boolean showSamples,
+    	    	
     	    	boolean showFittedParameters,
     	        boolean useHeadLasers,
                 double psf_cutoffEnergy, // disregard pixels outside of this fraction of the total energy
@@ -579,14 +621,23 @@ public class LensAdjustment {
                 int correlationSize,
                 double correlationGaussWidth,
                 double minUVSpan,           // Minimal u/v span in correlation window that triggers increase of the correlation FFT size
+        		double correlationMinContrast,   // minimal contrast for the pattern to pass
+        		double correlationMinInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+        		double correlationMinAbsoluteContrast,   // minimal contrast for the pattern to pass, does not compensate for low ligt
+        		double correlationMinAbsoluteInitialContrast,   // minimal contrast for the pattern of the center (initial point)
+        		double [] postUVscrewSensitivity, // microns/turn for 3 post-UV fixture adjustment screws
                 boolean flatFieldCorrection,
                 double flatFieldExpand,
                 double thresholdFinish,// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
                 int    numIterations, // maximal number of iterations
 				boolean cameraIsConfigured,
+				boolean useExtraSensor,
+				boolean enRoundOff,
+				boolean keepCircularMask,
 				int [] motorPos,
 	        	double [] ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
-	        	double reportTemperature      // temperature to report focal length  
+	        	double reportTemperature,      // temperature to report focal length
+	        	boolean showLegacy
     			){
     		this.gridGeometryFile=gridGeometryFile;
     		this.initialCalibrationFile=initialCalibrationFile;
@@ -634,6 +685,8 @@ public class LensAdjustment {
 			this.showHistorySamples=showHistorySamples;
 			this.showHistorySingleLine=showHistorySingleLine; // all parameters in a single line (easier to copy to spreadsheet)
 			this.showAcquiredImages=showAcquiredImages;
+			this.showROI=showROI;
+			this.showSamples=showSamples;
 			this.showFittedParameters=showFittedParameters;
 			this.useHeadLasers=useHeadLasers;
 			this.psf_cutoffEnergy=psf_cutoffEnergy;
@@ -730,15 +783,23 @@ public class LensAdjustment {
 			this.correlationSize=correlationSize;
 			this.correlationGaussWidth=correlationGaussWidth;
 			this.minUVSpan=minUVSpan;
+			this.correlationMinContrast=correlationMinContrast;   // minimal contrast for the pattern to pass
+			this.correlationMinInitialContrast=correlationMinInitialContrast;   // minimal contrast for the pattern of the center (initial point)
+			this.correlationMinAbsoluteContrast=correlationMinAbsoluteContrast;   // minimal contrast for the pattern to pass, does not compensate for low ligt
+			this.correlationMinAbsoluteInitialContrast=correlationMinAbsoluteInitialContrast;   // minimal contrast for the pattern of the center (initial point)
+			this.postUVscrewSensitivity=postUVscrewSensitivity.clone(); // microns/turn for 3 post-UV fixture adjustment screws
 			this.flatFieldCorrection=flatFieldCorrection;
 			this.flatFieldExpand=flatFieldExpand;
 			this.thresholdFinish=thresholdFinish;// (copied from series) stop iterations if 2 last steps had less improvement (but not worsening ) 
 			this.numIterations=numIterations; // maximal number of iterations
             this.cameraIsConfigured=cameraIsConfigured;
+            this.useExtraSensor=useExtraSensor;
+            this.enRoundOff=enRoundOff;
+            this.keepCircularMask=keepCircularMask;
             this.motorPos=motorPos;
         	this.ampsSeconds=ampsSeconds; // cumulative Amps*seconds (read only, but will be saved/restored)
         	this.reportTemperature=reportTemperature;
-			
+        	this.showLegacy=showLegacy;
     	}
     	public FocusMeasurementParameters clone(){
     		return new FocusMeasurementParameters(
@@ -786,6 +847,8 @@ public class LensAdjustment {
     				this.showHistorySamples,
     				this.showHistorySingleLine, // all parameters in a single line (easier to copy to spreadsheet)
     				this.showAcquiredImages,
+    				this.showROI,
+    				this.showSamples,
     				this.showFittedParameters,
     				this.useHeadLasers,
     				this.psf_cutoffEnergy,
@@ -884,14 +947,23 @@ public class LensAdjustment {
     				this.correlationSize,
     				this.correlationGaussWidth,
     				this.minUVSpan,
+    				this.correlationMinContrast,
+    				this.correlationMinInitialContrast,
+    				this.correlationMinAbsoluteContrast,
+    				this.correlationMinAbsoluteInitialContrast,
+    				this.postUVscrewSensitivity,
     				this.flatFieldCorrection,
     				this.flatFieldExpand,
     				this.thresholdFinish, 
     				this.numIterations,
     				this.cameraIsConfigured,
+    				this.useExtraSensor,
+    				this.enRoundOff,
+    				this.keepCircularMask,
     				this.motorPos,
     	        	this.ampsSeconds, // cumulative Amps*seconds (read only, but will be saved/restored)
-    	        	this.reportTemperature
+    	        	this.reportTemperature,
+    	        	this.showLegacy
         			);
     	}
 		public void setProperties(String prefix,Properties properties){
@@ -945,8 +1017,13 @@ public class LensAdjustment {
 			
 			properties.setProperty(prefix+"showHistorySingleLine",this.showHistorySingleLine+"");
 			properties.setProperty(prefix+"showAcquiredImages",this.showAcquiredImages+"");
+			properties.setProperty(prefix+"showROI",this.showROI+"");
+			properties.setProperty(prefix+"showSamples",this.showSamples+"");
 			properties.setProperty(prefix+"showFittedParameters",this.showFittedParameters+"");
 			properties.setProperty(prefix+"useHeadLasers",this.useHeadLasers+"");
+			properties.setProperty(prefix+"useExtraSensor",this.useExtraSensor+"");
+			properties.setProperty(prefix+"enRoundOff",this.enRoundOff+"");
+			properties.setProperty(prefix+"keepCircularMask",this.keepCircularMask+"");
 			properties.setProperty(prefix+"psf_cutoffEnergy",this.psf_cutoffEnergy+"");
 			properties.setProperty(prefix+"psf_cutoffLevel",this.psf_cutoffLevel+"");
 			properties.setProperty(prefix+"psf_minArea",this.psf_minArea+"");
@@ -1047,6 +1124,14 @@ public class LensAdjustment {
 			properties.setProperty(prefix+"correlationSize",this.correlationSize+"");
 			properties.setProperty(prefix+"correlationGaussWidth",this.correlationGaussWidth+"");
 			properties.setProperty(prefix+"minUVSpan",this.minUVSpan+"");
+			
+			properties.setProperty(prefix+"correlationMinContrast",this.correlationMinContrast+"");
+			properties.setProperty(prefix+"correlationMinInitialContrast",this.correlationMinInitialContrast+"");
+			properties.setProperty(prefix+"correlationMinAbsoluteContrast",this.correlationMinAbsoluteContrast+"");
+			properties.setProperty(prefix+"correlationMinAbsoluteInitialContrast",this.correlationMinAbsoluteInitialContrast+"");
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				properties.setProperty(prefix+"postUVscrewSensitivity_"+i,this.postUVscrewSensitivity[i]+"");
+			}
 			properties.setProperty(prefix+"flatFieldCorrection",this.flatFieldCorrection+"");
 			properties.setProperty(prefix+"flatFieldExpand",this.flatFieldExpand+"");
 			properties.setProperty(prefix+"thresholdFinish",this.thresholdFinish+"");
@@ -1054,6 +1139,7 @@ public class LensAdjustment {
 			for (int i=0;i<this.ampsSeconds.length;i++) 
 				properties.setProperty(prefix+"ampsSeconds_"+i,this.ampsSeconds[i]+"");
 			properties.setProperty(prefix+"reportTemperature",this.reportTemperature+"");
+			properties.setProperty(prefix+"showLegacy",this.showLegacy+"");
 		}    	
 		public void getProperties(String prefix,Properties properties){
 			if (properties.getProperty(prefix+"gridGeometryFile")!=null)
@@ -1157,10 +1243,21 @@ public class LensAdjustment {
 				this.showHistorySingleLine=Boolean.parseBoolean(properties.getProperty(prefix+"showHistorySingleLine"));
 			if (properties.getProperty(prefix+"showAcquiredImages")!=null)
 				this.showAcquiredImages=Boolean.parseBoolean(properties.getProperty(prefix+"showAcquiredImages"));
+			if (properties.getProperty(prefix+"showROI")!=null)
+				this.showROI=Boolean.parseBoolean(properties.getProperty(prefix+"showROI"));
+			if (properties.getProperty(prefix+"showSamples")!=null)
+				this.showSamples=Boolean.parseBoolean(properties.getProperty(prefix+"showSamples"));
 			if (properties.getProperty(prefix+"showFittedParameters")!=null)
 				this.showFittedParameters=Boolean.parseBoolean(properties.getProperty(prefix+"showFittedParameters"));
 			if (properties.getProperty(prefix+"useHeadLasers")!=null)
 				this.useHeadLasers=Boolean.parseBoolean(properties.getProperty(prefix+"useHeadLasers"));
+			if (properties.getProperty(prefix+"useExtraSensor")!=null)
+				this.useExtraSensor=Boolean.parseBoolean(properties.getProperty(prefix+"useExtraSensor"));
+			if (properties.getProperty(prefix+"enRoundOff")!=null)
+				this.enRoundOff = Boolean.parseBoolean(properties.getProperty(prefix+"enRoundOff"));
+			
+			if (properties.getProperty(prefix+"keepCircularMask")!=null)
+				this.keepCircularMask=Boolean.parseBoolean(properties.getProperty(prefix+"keepCircularMask"));
 			if (properties.getProperty(prefix+"psf_cutoffEnergy")!=null)
 				this.psf_cutoffEnergy=Double.parseDouble(properties.getProperty(prefix+"psf_cutoffEnergy"));
 			if (properties.getProperty(prefix+"psf_cutoffLevel")!=null)
@@ -1365,6 +1462,18 @@ public class LensAdjustment {
 				this.correlationGaussWidth=Double.parseDouble(properties.getProperty(prefix+"correlationGaussWidth"));
 			if (properties.getProperty(prefix+"minUVSpan")!=null)
 				this.minUVSpan=Double.parseDouble(properties.getProperty(prefix+"minUVSpan"));
+			if (properties.getProperty(prefix+"correlationMinContrast")!=null)
+				this.correlationMinContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinContrast"));
+			if (properties.getProperty(prefix+"correlationMinInitialContrast")!=null)
+				this.correlationMinInitialContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinInitialContrast"));
+			if (properties.getProperty(prefix+"correlationMinAbsoluteContrast")!=null)
+				this.correlationMinAbsoluteContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteContrast"));
+			if (properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast")!=null)
+				this.correlationMinAbsoluteInitialContrast=Double.parseDouble(properties.getProperty(prefix+"correlationMinAbsoluteInitialContrast"));
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				if (properties.getProperty(prefix+"postUVscrewSensitivity_"+i)!=null)
+					this.postUVscrewSensitivity[i]=Double.parseDouble(properties.getProperty(prefix+"postUVscrewSensitivity_"+i));
+			}
 			if (properties.getProperty(prefix+"flatFieldCorrection")!=null)
 				this.flatFieldCorrection=Boolean.parseBoolean(properties.getProperty(prefix+"flatFieldCorrection"));
 			if (properties.getProperty(prefix+"flatFieldExpand")!=null)
@@ -1377,6 +1486,8 @@ public class LensAdjustment {
 				this.ampsSeconds[i]=Double.parseDouble(properties.getProperty(prefix+"ampsSeconds_"+i));
 			if (properties.getProperty(prefix+"reportTemperature")!=null)
 				this.reportTemperature=Double.parseDouble(properties.getProperty(prefix+"reportTemperature"));
+			if (properties.getProperty(prefix+"showLegacy")!=null)
+				this.showLegacy=Boolean.parseBoolean(properties.getProperty(prefix+"showLegacy"));
 		}
 		public boolean getLensSerial(){
 			while (true) { // loop until OK-ed
@@ -1504,6 +1615,9 @@ public class LensAdjustment {
 			gd.addCheckbox    ("Save SFE focusing results (including intermediate) ", this.saveResults);
 			gd.addCheckbox    ("Show SFE focusing results (including intermediate) ", this.showResults);
 			gd.addCheckbox    ("Configure camera",                       !this.cameraIsConfigured);
+			gd.addCheckbox    ("Use extra sensor for 3d-location of the optical head", this.useExtraSensor);
+			gd.addCheckbox    ("Use circular sensor mask to refine lens center (second LMA run)", this.enRoundOff);
+			gd.addCheckbox    ("Keep circular sensor mask after finding lens center",  this.keepCircularMask);
 			gd.addNumericField("Camera FOV left margin (clear WOI)",      this.margins.x, 0,4,"pix");
 			gd.addNumericField("Camera FOV top margin (clear WOI)",       this.margins.y, 0,4,"pix");
 			gd.addNumericField("Camera FOV width (clear WOI)",            this.margins.width, 0,4,"pix");
@@ -1518,6 +1632,8 @@ public class LensAdjustment {
     		gd.addCheckbox    ("Show history details for each FOV sample",   this.showHistorySamples);
     		gd.addCheckbox    ("Show history details in a single line (for spreadheets)",  this.showHistorySingleLine);
     		gd.addCheckbox    ("Show acquired images",                    this.showAcquiredImages); // false;
+    		gd.addCheckbox    ("Mark ROI on \"Quick get&show\"",          this.showROI); // false;
+    		gd.addCheckbox    ("Mark individual samples on \"Quick get&show\"",this.showSamples); // false;
     		gd.addCheckbox    ("Show LMA fitted parameters",              this.showFittedParameters); // true;
     		gd.addCheckbox    ("Use optical head lasers to determine SFE rotation",this.useHeadLasers); // true;
 //    		gd.addCheckbox    ("Measure SFE rotation with optical head lasers",  this.useHeadLasers); // true;
@@ -1627,15 +1743,26 @@ public class LensAdjustment {
     		gd.addNumericField("Sigma for filling the OTF ",               this.gaps_sigma, 3);
     		gd.addNumericField("Denoise mask ",                            this.mask_denoise, 3);
     		gd.addNumericField("Invert deconvolution if less than",        this.deconvInvert, 3);
+    		gd.addMessage(     "--- Pattern correlation parameters ---");
 			gd.addNumericField("Correlation size:",                        this.correlationSize, 0); // 64
 			gd.addNumericField("Correlation Gauss width (relative):",      this.correlationGaussWidth, 3);
 			gd.addNumericField("Minimal UV span in correlation window to trigger FFT size increase",this.minUVSpan, 3);
+			gd.addNumericField("Correlation minimal contrast (normalized)",                    this.correlationMinContrast, 3);
+			gd.addNumericField("Correlation minimal contrast for initial search (normalized)", this.correlationMinInitialContrast, 3);
+			gd.addNumericField("Correlation minimal contrast (absolute)",                      this.correlationMinAbsoluteContrast, 3);
+			gd.addNumericField("Correlation minimal contrast for initial search (absolute)",   this.correlationMinAbsoluteInitialContrast, 3);
 			gd.addCheckbox    ("Compensate uneven pattern intensity",      this.flatFieldCorrection);
 			gd.addNumericField("Expand during extrapolation (relative to the average grid period)", this.flatFieldExpand, 3);
 			gd.addNumericField("Threshold RMS to exit LMA",                this.thresholdFinish, 7,9,"pix");
 			gd.addNumericField("Maximal number of LMA iterations per series",this.numIterations, 0);
+    		gd.addMessage(     "--- Post-UV fixture screws sensitivity ---");
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				gd.addNumericField("Screw "+i+" sensitivity",              this.postUVscrewSensitivity[i], 4,6,"um/turn CW");
+			}
+    		
     		gd.addMessage("-----");
     		gd.addNumericField("Report focal length at this temperature", this.reportTemperature, 1,5,"C");
+			gd.addCheckbox    ("Show legacy focusing parameters (most are already not supported anyway)",      this.showLegacy);
 			
     		if (!Double.isNaN(this.sensorTemperature)) gd.addMessage("Last measured sensor temperature is "+this.sensorTemperature+" C");
 
@@ -1700,6 +1827,9 @@ public class LensAdjustment {
 			this.showResults=                gd.getNextBoolean();
 //    		this.comment=                    gd.getNextString().replace(' ','_'); //TODO: - add escape
     		this.configureCamera=            gd.getNextBoolean();
+    		this.useExtraSensor=             gd.getNextBoolean();
+    		this.enRoundOff=                 gd.getNextBoolean();
+    		this.keepCircularMask=           gd.getNextBoolean();
     		this.margins.x=            (int) gd.getNextNumber();
     		this.margins.y=            (int) gd.getNextNumber();
     		this.margins.width=        (int) gd.getNextNumber();
@@ -1715,6 +1845,8 @@ public class LensAdjustment {
     		this.showHistorySamples=         gd.getNextBoolean();
     		this.showHistorySingleLine=      gd.getNextBoolean();
     		this.showAcquiredImages=         gd.getNextBoolean();
+			this.showROI=                    gd.getNextBoolean();
+			this.showSamples=                gd.getNextBoolean();
     		this.showFittedParameters=       gd.getNextBoolean();
 			this.useHeadLasers=              gd.getNextBoolean();
     		this.psf_cutoffEnergy=      0.01*gd.getNextNumber();
@@ -1816,11 +1948,19 @@ public class LensAdjustment {
 			this.correlationSize=      (int) gd.getNextNumber();
 			this.correlationGaussWidth=      gd.getNextNumber();
 			this.minUVSpan=                  gd.getNextNumber();
+			this.correlationMinContrast=  gd.getNextNumber();
+			this.correlationMinInitialContrast=  gd.getNextNumber();
+			this.correlationMinAbsoluteContrast=  gd.getNextNumber();
+			this.correlationMinAbsoluteInitialContrast=  gd.getNextNumber();
 			this.flatFieldCorrection=        gd.getNextBoolean();
 			this.flatFieldExpand=            gd.getNextNumber();
 			this.thresholdFinish=            gd.getNextNumber();
 			this.numIterations=        (int) gd.getNextNumber();
+			for (int i=0;i<this.postUVscrewSensitivity.length;i++){
+				this.postUVscrewSensitivity[i]=            gd.getNextNumber();
+			}
     		this.reportTemperature=          gd.getNextNumber();
+			this.showLegacy=                 gd.getNextBoolean();
     		return true;
     	}
 /* ======================================================================== */
@@ -1830,7 +1970,9 @@ public class LensAdjustment {
     			double y0){  // lens center on the sensor
     		int ix0=(int) Math.round(x0);
     		int iy0=(int) Math.round(y0);
-    		Rectangle woi=new Rectangle(this.margins);
+    		
+//    		Rectangle woi=new Rectangle(this.margins);
+    		Rectangle woi=this.getMargins();
 //    		System.out.println("Selection Rectangle("+woi.x+", "+woi.y+", "+woi.width+", "+woi.height+ ")");
     		int extra=this.sampleSize+2*(this.numSamples[1]+this.numSamples[0]);
     		if ((this.centerSamples) &&

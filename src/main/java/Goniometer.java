@@ -47,16 +47,16 @@ horizontal axis:
 	public CalibrationHardwareInterface.CamerasInterface cameras = null;
 	// public CalibrationHardwareInterface.LaserPointers lasers = null;
 	// public static CalibrationHardwareInterface.FocusingMotors motorsS=null;
-	// public Distortions.DistortionProcessConfiguration
+	// public DistortionProcessConfiguration
 	// distortionProcessConfiguration=null;
 
 //	public LensAdjustment.FocusMeasurementParameters focusMeasurementParameters = null;
-	// public Distortions.PatternParameters patternParameters=null;
-	// public Distortions.LensDistortionParameters
+	// public PatternParameters patternParameters=null;
+	// public LensDistortionParameters
 	// lensDistortionParameters=null;
 //	public MatchSimulatedPattern.DistortionParameters distortion = null;
 	public MatchSimulatedPattern.DistortionParameters distortionParametersDefault=null;
-	public Distortions.EyesisCameraParameters eyesisCameraParameters = null;
+	public EyesisCameraParameters eyesisCameraParameters = null;
 
 	public MatchSimulatedPattern[] matchSimulatedPatterns = null; // =new
 																	// MatchSimulatedPattern();
@@ -64,7 +64,7 @@ horizontal axis:
 	MatchSimulatedPattern.PatternDetectParameters patternDetectParameters=null;
 	public SimulationPattern.SimulParameters simulParametersDefault=null;
 	public Goniometer.GoniometerParameters goniometerParameters = null;
-    public Distortions.DistortionProcessConfiguration distortionProcessConfiguration=null;
+    public DistortionProcessConfiguration distortionProcessConfiguration=null;
     public int lastScanStep=-1;
 	public int debugLevel = 2;
 	public double bottomRollerTilt=60.0; // decrease scan step if tilt is above this
@@ -75,11 +75,11 @@ horizontal axis:
 			MatchSimulatedPattern.DistortionParameters distortionParametersDefault,
 //			MatchSimulatedPattern.DistortionParameters distortion,
 			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
-			Distortions.EyesisCameraParameters eyesisCameraParameters,
+			EyesisCameraParameters eyesisCameraParameters,
 			MatchSimulatedPattern.LaserPointer laserPointers,
 			SimulationPattern.SimulParameters simulParametersDefault,
 			Goniometer.GoniometerParameters goniometerParameters,
-			Distortions.DistortionProcessConfiguration distortionProcessConfiguration
+			DistortionProcessConfiguration distortionProcessConfiguration
 			) {
 		this.cameras = cameras;
 		this.distortionParametersDefault = distortionParametersDefault;
@@ -519,8 +519,8 @@ horizontal axis:
 	public boolean testHintedTarget (
 			ImagePlus[] images,
 			Distortions lensDistortions, // should not be null
-			Distortions.DistortionCalibrationData distortionCalibrationData,
-			Distortions.PatternParameters patternParameters, // should not be  null
+			DistortionCalibrationData distortionCalibrationData,
+			PatternParameters patternParameters, // should not be  null
 			boolean equalizeGreens,
 			int threadsMax,
 			boolean updateStatus,
@@ -598,6 +598,7 @@ horizontal axis:
 				subCam,
 				goniometerTiltAxial[0], // Tilt, goniometerHorizontal
 				goniometerTiltAxial[1],  // Axial,goniometerAxial
+				goniometerTiltAxial[2],  // inter-axis angle
 				-1, // use camera parameters, not imageSet
 				true // filter border
 				);
@@ -677,7 +678,7 @@ horizontal axis:
 
 	 * 
 	 * 					this.parameterMode[numSeries][i]=gd.getNextChoiceIndex();
-			Distortions.PatternParameters patternParameters, // should not be  null
+			PatternParameters patternParameters, // should not be  null
 			boolean equalizeGreens,
 			int threadsMax,
 			boolean updateStatus,
@@ -724,8 +725,8 @@ horizontal axis:
 //			MatchSimulatedPattern.PatternDetectParameters patternDetectParameters,
 //			MatchSimulatedPattern.LaserPointer laserPointer, // null OK
 //			SimulationPattern.SimulParameters simulParametersDefault,
-			Distortions.DistortionCalibrationData distortionCalibrationData,
-			Distortions.PatternParameters patternParameters, // should not be  null
+			DistortionCalibrationData distortionCalibrationData,
+			PatternParameters patternParameters, // should not be  null
 			Distortions lensDistortions, // should not be null
 			boolean equalizeGreens,
 			int threadsMax,
@@ -888,8 +889,8 @@ horizontal axis:
 			}
 		}
 		/*
-		 * Distortions.DistortionCalibrationData distortionCalibrationData= new
-		 * Distortions.DistortionCalibrationData( imp_calibrated, //ImagePlus []
+		 * DistortionCalibrationData distortionCalibrationData= new
+		 * DistortionCalibrationData( imp_calibrated, //ImagePlus []
 		 * images, // images in the memory patternParameters,
 		 * //PatternParameters patternParameters, eyesisCameraParameters
 		 * //EyesisCameraParameters eyesisCameraParameters );
@@ -914,7 +915,7 @@ horizontal axis:
 		// fitting strategy
 //		distortionCalibrationData.pathName=this.goniometerParameters.initialCalibrationFile;
 		lensDistortions.debugLevel = this.debugLevel;
-		lensDistortions.fittingStrategy = new Distortions.FittingStrategy(true,
+		lensDistortions.fittingStrategy = new FittingStrategy(true,
 				this.goniometerParameters.strategyFile,
 				distortionCalibrationData); // will use list of grid files
 		if (lensDistortions.fittingStrategy.pathName == null) { // failed to select/open the file
