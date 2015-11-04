@@ -385,6 +385,8 @@ print("CHECK 4: Floor Pattern Radius is: %f m"%(P.R_m))
 
 print("CHECK 5: Cylinder Pattern Radius= %f m, Height= %f m"%(P.R_m,P.H_m))
 
+print("NOTE: Do not pay attention to 'content exceeds the papersize' - it's ok")
+
 # ip - Image Plane - the image of the pattern on the "image plane"
 ip = canvas.canvas()
 
