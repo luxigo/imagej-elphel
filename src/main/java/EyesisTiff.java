@@ -34,6 +34,7 @@ import java.util.Arrays;
 
 //import org.apache.log4j.Logger;
 
+
 import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
@@ -42,20 +43,31 @@ import loci.common.RandomAccessInputStream;
 import loci.common.services.DependencyException;
 import loci.common.services.ServiceException;
 import loci.formats.FormatException;
+import loci.formats.codec.CodecOptions;
 import loci.formats.tiff.IFD;
 import loci.formats.tiff.IFDList;
 import loci.formats.tiff.TiffParser;
 import loci.formats.tiff.TiffRational;
 import loci.formats.tiff.TiffSaver;
+import loci.formats.tiff.TiffCompression;
+
 
 public class EyesisTiff {
 //	private static org.apache.log4j.Logger log= Logger.getLogger(EyesisTiff.class); 
 	
+private String codec="UNCOMPRESSED";
+
 public EyesisTiff(){
 //	Please initialize the log4j system properly
 
 
 }
+
+public EyesisTiff(String codec){
+//	Please initialize the log4j system properly
+	this.codec=codec;
+}
+
 	public void saveTiff(
 			ImagePlus imp,
 			String path,
@@ -175,7 +187,7 @@ public EyesisTiff(){
         ifd.putIFDValue(IFD.SOFTWARE, "Elphel Eyesis"); 
         ifd.putIFDValue(IFD.IMAGE_DESCRIPTION, description);
         // copy some other data?
-        ifd.putIFDValue(IFD.COMPRESSION, 1); //TiffCompression.UNCOMPRESSED);
+        ifd.putIFDValue(IFD.COMPRESSION, TiffCompression.valueOf(codec).getCode());
         ifd.putIFDValue(IFD.PHOTOMETRIC_INTERPRETATION,2); // RGB
         ifd.putIFDValue(IFD.EXTRA_SAMPLES,2); // 0 = Unspecified data  1 = Associated alpha data (with pre-multiplied color) 2 = Unassociated alpha data
 //        int [] bpsArray={8,8,8,8};
@@ -212,6 +224,7 @@ public EyesisTiff(){
         TiffSaver tiffSaver = new TiffSaver(path);
         tiffSaver.setWritingSequentially(true);
         tiffSaver.setLittleEndian(false);
+        tiffSaver.setCodecOptions(TiffCompression.valueOf(codec).getCompressionCodecOptions(ifd));
         tiffSaver.writeHeader(); 
 //        tiffSaver.writeIFD(ifd,0); //* SHould not write here, some fields are calculated during writeImage, that writes IFD too
 //        System.out.println("bytes.length="+bytes.length);
@@ -257,7 +270,7 @@ public EyesisTiff(){
         ifd.putIFDValue(IFD.SOFTWARE, "Elphel Eyesis"); 
         ifd.putIFDValue(IFD.IMAGE_DESCRIPTION, description);
         // copy some other data?
-        ifd.putIFDValue(IFD.COMPRESSION, 1); //TiffCompression.UNCOMPRESSED);
+        ifd.putIFDValue(IFD.COMPRESSION, TiffCompression.valueOf(codec).getCode());
         ifd.putIFDValue(IFD.PHOTOMETRIC_INTERPRETATION,2); // RGB
         ifd.putIFDValue(IFD.EXTRA_SAMPLES,2); // extra bytes (over 3) meaning Unassociated alpha data
 

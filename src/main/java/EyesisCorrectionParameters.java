@@ -61,6 +61,7 @@ public class EyesisCorrectionParameters {
   		public double  outputRangeFP=          255.0; // 1.0 intensity will be saved as 255.0 (in float 32-bit mode)
   		public boolean imageJTags=             false; // encode ImageJ info data to the TIFF output header 
   		
+  		public String tiffCompression =        "UNCOMPRESSED"; // tiff compression codec
   		public boolean jpeg =                  true;  // convert to RGB and save JPEG (if save is true)
   		public boolean save =                  true;
   		public boolean save16 =                false; // save 16-bit tiff also if the end result is 8 bit 
@@ -201,6 +202,7 @@ public class EyesisCorrectionParameters {
   		    if (properties.getProperty(prefix+"equirectangularFormat")!=null) this.equirectangularFormat=Integer.parseInt(properties.getProperty(prefix+"equirectangularFormat"));
   		    if (properties.getProperty(prefix+"outputRangeInt")!=null) this.outputRangeInt=Double.parseDouble(properties.getProperty(prefix+"outputRangeInt"));
   		    if (properties.getProperty(prefix+"outputRangeFP")!=null) this.outputRangeFP=Double.parseDouble(properties.getProperty(prefix+"outputRangeFP"));
+  		    if (properties.getProperty(prefix+"tiffCompression")!=null) this.tiffCompression=properties.getProperty(prefix+"tiffCompression");
   		    if (properties.getProperty(prefix+"imageJTags")!=null) this.imageJTags=Boolean.parseBoolean(properties.getProperty(prefix+"imageJTags"));
   		    if (properties.getProperty(prefix+"jpeg")!=null) this.jpeg=Boolean.parseBoolean(properties.getProperty(prefix+"jpeg"));   // convert to RGB and save jpeg (if save is true)
   		    if (properties.getProperty(prefix+"save")!=null) this.save=Boolean.parseBoolean(properties.getProperty(prefix+"save"));
@@ -283,6 +285,8 @@ public class EyesisCorrectionParameters {
     		gd.addCheckbox ("Save chroma denoise mask (white - use hi-res, black - low-res)", this.saveChromaDenoiseMask);
     		gd.addCheckbox ("Rotate result image",                              this.rotate);
     		gd.addCheckbox ("Crop result image to the original size",           this.crop);
+			String [] tiffCompressionChoices={"UNCOMPRESSED","LZW","JPEG", "JPEG_2000","ALT_JPEG2000"};
+			int tiffCompressionIndex=0;
 			String [] equirectangularFormatChoices={"RGBA 8-bit","RGBA 16-bit","RGBA 32-bit integer","RGBA 32-bit float","ImageJ stack"};
 			int [] equirectangularFormats={0,1,2,3,4};
 			int equirectangularFormatIndex=0;
@@ -294,6 +298,7 @@ public class EyesisCorrectionParameters {
     		gd.addNumericField("Map 1.0 intensity to this fraction of the full range 8/16/32-bit integer mode output", 100*this.outputRangeInt, 2,6,"%");
     		gd.addNumericField("Map 1.0 intensity to this value in 32-bit floating point output mode", this.outputRangeFP, 2,6,"");
     		gd.addCheckbox ("Encode ImageJ specific Info metadata to the output file TIFF header", this.imageJTags);
+    		gd.addChoice("TIFF lossless compression codec",tiffCompressionChoices,tiffCompressionChoices[tiffCompressionIndex]);
    		
 			gd.addCheckbox ("Convert to RGB48",                                 this.toRGB);
     		gd.addCheckbox ("Convert to 8 bit RGB (and save JPEG if save is enabled)", this.jpeg);
@@ -372,6 +377,7 @@ public class EyesisCorrectionParameters {
     		this.outputRangeInt=0.01*gd.getNextNumber();
     		this.outputRangeFP=     gd.getNextNumber();
     		this.imageJTags=        gd.getNextBoolean();
+    		this.tiffCompression=   tiffCompressionChoices[gd.getNextChoiceIndex()];
     		this.toRGB=             gd.getNextBoolean();
     		this.jpeg=              gd.getNextBoolean();
     		this.save=              gd.getNextBoolean();

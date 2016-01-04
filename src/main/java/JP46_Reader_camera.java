@@ -30,6 +30,7 @@ import ij.process.*;
 import ij.gui.*;
 import ij.plugin.frame.*;
 import ij.text.*;
+import ij.plugin.PlugIn;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -50,9 +51,8 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 
-
 /* This plugin opens images in Elphel JP4/JP46 format (opens as JPEG, reads MakerNote and converts). */
-public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
+public class JP46_Reader_camera implements PlugIn, ActionListener {
 
 	/**
 	 * 
@@ -61,6 +61,7 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 	Panel panel1;
 	Panel confpanel;
 	Frame instance;
+	PlugInFrame plugInFrame; 
 
 	String arg;
 
@@ -72,19 +73,34 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 	public String camera_jp46settings = "";
 	public boolean IS_SILENT=true;
 	public boolean ABSOLUTELY_SILENT=false;
-        public boolean demux=true;
+	public boolean demux=true;
 	public String imageTitle="cameraImage";
 	private int ExifOffset=0x0c;
+	private Boolean headless=GraphicsEnvironment.getLocalGraphicsEnvironment().isHeadlessInstance(); 
+
+	public void run(String arg) {
+	}
+
+	public JP46_Reader_camera(Boolean showGui) {
+		if (showGui) initGui();
+	}
 
 	public JP46_Reader_camera() {
-		super("JP46 Reader Camera");
+		initGui();
+	}
+
+	private void initGui() {
+		if (headless) return;
+
 		if (IJ.versionLessThan("1.39t")) return;
 		if (instance!=null) {
 			instance.toFront();
 			return;
 		}
-		instance = this;
-		addKeyListener(IJ.getInstance());
+		plugInFrame=new PlugInFrame("JP46 Reader Camera");
+		instance = (Frame)plugInFrame;
+
+		plugInFrame.addKeyListener(IJ.getInstance());
 
 		panel1 = new Panel();
 
@@ -98,38 +114,12 @@ public class JP46_Reader_camera extends PlugInFrame implements ActionListener {
 		addButton("Split Bayer",panel1);
 		
 
-		add(panel1);
+		plugInFrame.add(panel1);
 
-		pack();
-		GUI.center(this);
-		setVisible(true);
+		plugInFrame.pack();
+		GUI.center(plugInFrame);
+		plugInFrame.setVisible(true);
 	}
-	public JP46_Reader_camera(boolean showGUI) {
-		super("JP46 Reader Camera");
-		if (IJ.versionLessThan("1.39t")) return;
-		if (instance!=null) {
-			instance.toFront();
-			return;
-		}
-		instance = this;
-		addKeyListener(IJ.getInstance());
-
-		panel1 = new Panel();
-
-		panel1.setLayout(new GridLayout(6, 1, 50, 5));
-
-		addButton("Open JP4/JP46...",panel1);    
-		addButton("Open JP4/JP46 from camera",panel1);
-		addButton("Configure...",panel1);
-		addButton("Show image properties",panel1);
-		addButton("Decode image info to properties",panel1);
-		addButton("Split Bayer",panel1);
-		add(panel1);
-		pack();
-		GUI.center(this);
-		setVisible(showGUI);
-	}
-
 	void addButton(String label, Panel panel) {
 		Button b = new Button(label);
 		b.addActionListener(this);
@@ -1321,7 +1311,7 @@ Exception in thread "Thread-3564" java.lang.ArrayIndexOutOfBoundsException: 8970
 	 */
 	public static void main(String[] args) {
 		// set the plugins.dir property to make the plugin appear in the Plugins menu
-		Class<?> clazz = Aberration_Calibration.class;
+		Class<?> clazz = JP46_Reader_camera.class;
 		String url = clazz.getResource("/" + clazz.getName().replace('.', '/') + ".class").toString();
 		String pluginsDir = url.substring(5, url.length() - clazz.getName().length() - 6);
 		System.setProperty("plugins.dir", pluginsDir);
@@ -1330,7 +1320,7 @@ Exception in thread "Thread-3564" java.lang.ArrayIndexOutOfBoundsException: 8970
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");
 	}
-    
+
 }
 
 
