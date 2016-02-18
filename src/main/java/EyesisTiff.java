@@ -33,7 +33,9 @@ import java.lang.reflect.Array;
 import java.util.Arrays;
 
 //import org.apache.log4j.Logger;
-
+import org.slf4j.LoggerFactory;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -59,14 +61,24 @@ private String codec="UNCOMPRESSED";
 
 public EyesisTiff(){
 //	Please initialize the log4j system properly
-
+  setTiffSaverVerbosity();
 
 }
 
 public EyesisTiff(String codec){
 //	Please initialize the log4j system properly
 	this.codec=codec;
+  setTiffSaverVerbosity();
+
 }
+
+
+  public void setTiffSaverVerbosity() {
+    Logger TiffSaverLogger = (Logger)LoggerFactory.getLogger(TiffSaver.class);
+    TiffSaverLogger.setLevel(Level.ERROR);
+
+  }
+
 
 	public void saveTiff(
 			ImagePlus imp,
